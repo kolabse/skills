@@ -1,0 +1,147 @@
+{
+  "tools": [
+    {
+      "name": "git",
+      "toolset": "base",
+      "purpose": "repository synchronization",
+      "version_command": ["git", "--version"],
+      "version_regex": "git version ([0-9]+(?:\\.[0-9]+)*)",
+      "minimum_version": "2.30.0",
+      "guidance": "Install Git.",
+      "install": {
+        "windows": ["winget", "install", "--id", "Git.Git", "--exact", "--accept-package-agreements", "--accept-source-agreements"],
+        "macos": ["brew", "install", "git"],
+        "linux": ["sudo", "apt-get", "install", "-y", "git"]
+      }
+    },
+    {
+      "name": "rg",
+      "toolset": "base",
+      "purpose": "fast source and inventory search",
+      "version_command": ["rg", "--version"],
+      "version_regex": "ripgrep ([0-9.]+)",
+      "minimum_version": "13.0.0",
+      "guidance": "Install ripgrep.",
+      "install": {
+        "windows": ["winget", "install", "--id", "BurntSushi.ripgrep.MSVC", "--exact", "--accept-package-agreements", "--accept-source-agreements"],
+        "macos": ["brew", "install", "ripgrep"],
+        "linux": ["sudo", "apt-get", "install", "-y", "ripgrep"]
+      }
+    },
+    {
+      "name": "ssh",
+      "toolset": "base",
+      "purpose": "remote access and OS Login",
+      "version_command": ["ssh", "-V"],
+      "version_regex": "OpenSSH[^0-9]*([0-9]+(?:\\.[0-9]+)*)",
+      "minimum_version": "8.0.0",
+      "guidance": "Install the OpenSSH client.",
+      "install": {
+        "linux": ["sudo", "apt-get", "install", "-y", "openssh-client"]
+      }
+    },
+    {
+      "name": "yc",
+      "toolset": "base",
+      "purpose": "Yandex Cloud API and OS Login",
+      "version_command": ["yc", "version"],
+      "version_regex": "Yandex Cloud CLI ([0-9.]+)",
+      "minimum_version": "0.100.0",
+      "guidance": "Install the Yandex Cloud CLI using the official Yandex Cloud instructions.",
+      "install": {}
+    },
+    {
+      "name": "terraform",
+      "toolset": "terraform",
+      "purpose": "Terraform workflows",
+      "version_command": ["terraform", "version"],
+      "version_regex": "Terraform v?([0-9.]+)",
+      "minimum_version": "1.5.0",
+      "guidance": "Install Terraform when the project contains Terraform configuration.",
+      "install": {
+        "windows": ["winget", "install", "--id", "Hashicorp.Terraform", "--exact", "--accept-package-agreements", "--accept-source-agreements"],
+        "macos": ["brew", "install", "hashicorp/tap/terraform"],
+        "linux": []
+      }
+    },
+    {
+      "name": "ansible-playbook",
+      "toolset": "ansible",
+      "purpose": "Ansible workflows",
+      "version_command": ["ansible-playbook", "--version"],
+      "version_regex": "(?:core )?([0-9.]+)",
+      "minimum_version": "2.15.0",
+      "guidance": "On Windows install Ansible inside WSL; otherwise use pipx or the OS package manager.",
+      "install": {
+        "macos": ["brew", "install", "ansible"],
+        "linux": ["sudo", "apt-get", "install", "-y", "ansible-core"]
+      }
+    },
+    {
+      "name": "helm",
+      "toolset": "helm",
+      "purpose": "Helm workflows",
+      "version_command": ["helm", "version", "--short"],
+      "version_regex": "v?([0-9.]+)",
+      "minimum_version": "3.12.0",
+      "guidance": "Install Helm when the project contains Helm charts.",
+      "install": {
+        "windows": ["winget", "install", "--id", "Helm.Helm", "--exact", "--accept-package-agreements", "--accept-source-agreements"],
+        "macos": ["brew", "install", "helm"]
+      }
+    },
+    {
+      "name": "kubectl",
+      "toolset": "kubernetes",
+      "purpose": "Kubernetes workflows",
+      "version_command": ["kubectl", "version", "--client", "--output=json"],
+      "version_regex": "gitVersion\\\"?\\s*:\\s*\\\"v?([0-9.]+)",
+      "minimum_version": "1.27.0",
+      "guidance": "Install kubectl when the project contains Kubernetes resources.",
+      "install": {
+        "windows": ["winget", "install", "--id", "Kubernetes.kubectl", "--exact", "--accept-package-agreements", "--accept-source-agreements"],
+        "macos": ["brew", "install", "kubectl"]
+      }
+    },
+    {
+      "name": "jq",
+      "toolset": "data",
+      "purpose": "JSON inspection",
+      "version_command": ["jq", "--version"],
+      "version_regex": "jq-([0-9.]+)",
+      "minimum_version": "1.6.0",
+      "guidance": "Install jq when project runbooks use jq filters.",
+      "install": {
+        "windows": ["winget", "install", "--id", "jqlang.jq", "--exact", "--accept-package-agreements", "--accept-source-agreements"],
+        "macos": ["brew", "install", "jq"],
+        "linux": ["sudo", "apt-get", "install", "-y", "jq"]
+      }
+    },
+    {
+      "name": "yq",
+      "toolset": "data",
+      "purpose": "YAML inspection",
+      "version_command": ["yq", "--version"],
+      "version_regex": "version v?([0-9.]+)",
+      "minimum_version": "4.30.0",
+      "guidance": "Install yq when project runbooks use yq filters.",
+      "install": {
+        "windows": ["winget", "install", "--id", "MikeFarah.yq", "--exact", "--accept-package-agreements", "--accept-source-agreements"],
+        "macos": ["brew", "install", "yq"]
+      }
+    },
+    {
+      "name": "glab",
+      "toolset": "gitlab",
+      "purpose": "GitLab CI and merge requests",
+      "version_command": ["glab", "--version"],
+      "version_regex": "glab (?:version )?([0-9.]+)",
+      "minimum_version": "1.40.0",
+      "guidance": "Install glab when the project uses GitLab.",
+      "install": {
+        "windows": ["winget", "install", "--id", "GLab.GLab", "--exact", "--accept-package-agreements", "--accept-source-agreements"],
+        "macos": ["brew", "install", "glab"]
+      }
+    }
+  ]
+}
