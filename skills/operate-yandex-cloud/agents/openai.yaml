@@ -1,0 +1,4 @@
+interface:
+  display_name: "Yandex Cloud Operations"
+  short_description: "Safe project-scoped Yandex Cloud operations"
+  default_prompt: "Use $operate-yandex-cloud to inspect and safely execute this project's Yandex Cloud infrastructure task."

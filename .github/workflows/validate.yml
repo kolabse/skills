@@ -1,0 +1,35 @@
+name: Validate skills
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+jobs:
+  validate:
+    strategy:
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+        python-version: ["3.11", "3.13"]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+      - name: Validate collection
+        run: python scripts/validate_skills.py
+      - name: Run unit tests
+        run: python -m unittest discover -s tests -v
+
+  skills-cli-discovery:
+    runs-on: ubuntu-latest
+    env:
+      DISABLE_TELEMETRY: "1"
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Verify skills CLI discovery
+        run: npx --yes skills@1.5.22 add . --list
