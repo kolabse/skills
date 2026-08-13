@@ -148,6 +148,13 @@ def update_skills(
     if yes:
         command.append("-y")
     result = run_checked(command, project.resolve(), timeout)
+    combined_output = f"{result.stdout}\n{result.stderr}".casefold()
+    if "no installed skills found matching" in combined_output:
+        requested = ", ".join(skills) if skills else "collection skills"
+        raise ManagerError(
+            f"skills CLI did not update {requested}; the lock source may not support in-place "
+            "updates (local development installs must be re-added from their source)"
+        )
     if result.stdout.strip():
         print_portable(result.stdout.strip())
 
