@@ -23,7 +23,9 @@ def ask(label: str, default: str = "", *, required: bool = False) -> str:
 
 
 def main() -> int:
-    parser = argparse.ArgumentParser(description="Configure one project for Yandex Cloud operations.")
+    parser = argparse.ArgumentParser(
+        description="Configure one project for Yandex Cloud operations."
+    )
     parser.add_argument("--project-path", required=True, type=Path)
     parser.add_argument("--cloud-id")
     parser.add_argument("--folder-id")
@@ -59,7 +61,8 @@ def main() -> int:
         folder_id or "",
         yc_profile or "",
     )
-    print(f"Saved project configuration for cloud {config.cloud_id}.")
+    print(f"Saved shared project configuration for cloud {config.cloud_id}.")
+    print("Saved the yc profile to ignored local configuration.")
     print("The global yc profile was not changed.")
     return 0
 

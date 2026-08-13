@@ -12,6 +12,8 @@ from typing import Any, Iterable, Sequence
 
 
 CONFIG_RELATIVE_PATH = Path(".agents/operate-yandex-cloud/project.yaml")
+LOCAL_CONFIG_RELATIVE_PATH = Path(".agents/operate-yandex-cloud/local.yaml")
+LOCAL_IGNORE_RELATIVE_PATH = Path(".agents/operate-yandex-cloud/.gitignore")
 ID_PATTERN = re.compile(r"^[a-z0-9-]+$")
 IGNORED_DIRECTORIES = {
     ".git",
@@ -30,7 +32,7 @@ class ProjectConfig:
     cloud_id: str
     folder_id: str = ""
     yc_profile: str = ""
-    version: int = 2
+    version: int = 3
 
 
 @dataclass(frozen=True)
@@ -86,6 +88,10 @@ def config_path(project_path: Path) -> Path:
     return project_path.resolve() / CONFIG_RELATIVE_PATH
 
 
+def local_config_path(project_path: Path) -> Path:
+    return project_path.resolve() / LOCAL_CONFIG_RELATIVE_PATH
+
+
 def _decode_yaml_scalar(raw_value: str) -> str:
     value = raw_value.strip()
     if value.startswith('"'):
@@ -95,10 +101,11 @@ def _decode_yaml_scalar(raw_value: str) -> str:
     return value
 
 
-def load_config(project_path: Path) -> ProjectConfig:
-    path = config_path(project_path)
+def _load_yaml(path: Path, *, required: bool) -> dict[str, str]:
     if not path.is_file():
-        raise FileNotFoundError(f"Project configuration was not found: {path}")
+        if required:
+            raise FileNotFoundError(f"Project configuration was not found: {path}")
+        return {}
 
     values: dict[str, str] = {}
     for line_number, line in enumerate(path.read_text(encoding="utf-8").splitlines(), 1):
@@ -109,15 +116,37 @@ def load_config(project_path: Path) -> ProjectConfig:
         if not match:
             raise ValueError(f"Unsupported YAML at {path}:{line_number}")
         values[match.group(1)] = _decode_yaml_scalar(match.group(2))
+    return values
+
+
+def load_config(project_path: Path) -> ProjectConfig:
+    project_values = _load_yaml(config_path(project_path), required=True)
+    local_values = _load_yaml(local_config_path(project_path), required=False)
+    yc_profile = local_values.get("yc_profile")
+    if yc_profile is None:
+        yc_profile = project_values.get("yc_profile", "")
 
     return ProjectConfig(
-        version=int(values.get("version", "1")),
-        cloud_id=validate_identifier(values.get("cloud_id", ""), "cloud_id", required=True),
-        folder_id=validate_identifier(
-            values.get("folder_id", ""), "folder_id", required=False
+        version=int(project_values.get("version", "1")),
+        cloud_id=validate_identifier(
+            project_values.get("cloud_id", ""), "cloud_id", required=True
         ),
-        yc_profile=validate_profile(values.get("yc_profile", "")),
+        folder_id=validate_identifier(
+            project_values.get("folder_id", ""), "folder_id", required=False
+        ),
+        yc_profile=validate_profile(yc_profile),
     )
+
+
+def _ensure_local_config_ignored(project_path: Path) -> Path:
+    path = project_path.resolve() / LOCAL_IGNORE_RELATIVE_PATH
+    path.parent.mkdir(parents=True, exist_ok=True)
+    rule = "/local.yaml"
+    lines = path.read_text(encoding="utf-8").splitlines() if path.is_file() else []
+    if rule not in lines:
+        lines.append(rule)
+        path.write_text("\n".join(lines) + "\n", encoding="utf-8", newline="\n")
+    return path
 
 
 def save_config(project_path: Path, config: ProjectConfig) -> Path:
@@ -125,14 +154,26 @@ def save_config(project_path: Path, config: ProjectConfig) -> Path:
     path.parent.mkdir(parents=True, exist_ok=True)
     content = "\n".join(
         [
-            "version: 2",
+            "version: 3",
             f"cloud_id: {json.dumps(config.cloud_id)}",
             f"folder_id: {json.dumps(config.folder_id)}",
-            f"yc_profile: {json.dumps(config.yc_profile)}",
             "",
         ]
     )
     path.write_text(content, encoding="utf-8", newline="\n")
+    local_path = local_config_path(project_path)
+    local_path.write_text(
+        "\n".join(
+            [
+                "version: 1",
+                f"yc_profile: {json.dumps(config.yc_profile)}",
+                "",
+            ]
+        ),
+        encoding="utf-8",
+        newline="\n",
+    )
+    _ensure_local_config_ignored(project_path)
     return path
 
 
@@ -217,7 +258,11 @@ def run_command(command: Sequence[str], *, cwd: Path | None = None) -> CommandRe
         )
     except (OSError, subprocess.TimeoutExpired) as error:
         return CommandResult(list(command), 127, str(error))
-    output = "\n".join(part for part in [completed.stdout.strip(), completed.stderr.strip()] if part)
+    output = "\n".join(
+        part
+        for part in [completed.stdout.strip(), completed.stderr.strip()]
+        if part
+    )
     return CommandResult(list(command), completed.returncode, output)
 
 
@@ -463,7 +508,8 @@ def run_preflight(
             PreflightCheck(
                 "kubernetes-context",
                 "pass" if context.returncode == 0 else "warn",
-                f"context={context.output.strip()}, namespace={namespace.output.strip() or 'default'}",
+                f"context={context.output.strip()}, "
+                f"namespace={namespace.output.strip() or 'default'}",
             )
         )
 

@@ -3,6 +3,7 @@ from __future__ import annotations
 import argparse
 import json
 from pathlib import Path
+from typing import Sequence
 
 from cloud_skill import (
     detect_toolsets,
@@ -24,7 +25,7 @@ def print_table(results) -> None:
         print("  ".join(str(row[index]).ljust(widths[index]) for index in range(5)))
 
 
-def main() -> int:
+def main(argv: Sequence[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description="Check Yandex Cloud workflow tools.")
     parser.add_argument("--project-path", required=True, type=Path)
     parser.add_argument("--scan-path", action="append", type=Path, default=[])
@@ -33,7 +34,7 @@ def main() -> int:
     parser.add_argument("--json", action="store_true")
     parser.add_argument("--install-missing", action="store_true")
     parser.add_argument("--non-interactive", action="store_true")
-    args = parser.parse_args()
+    args = parser.parse_args(argv)
 
     scan_paths = args.scan_path or [args.project_path]
     toolsets = detect_toolsets(scan_paths) | set(args.toolset)
@@ -63,8 +64,9 @@ def main() -> int:
 
     should_install = args.install_missing
     if installable and not args.install_missing and not args.non_interactive:
+        names = ", ".join(item.name for item in installable)
         answer = input(
-            f"\nInstall supported missing/outdated tools ({', '.join(item.name for item in installable)})? [y/N]: "
+            f"\nInstall supported missing/outdated tools ({names})? [y/N]: "
         )
         should_install = answer.strip().lower() in {"y", "yes"}
     if should_install:
