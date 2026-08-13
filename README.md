@@ -2,6 +2,8 @@
 
 Reusable agent skills maintained by kolabse.
 
+Licensed under the [Apache License 2.0](LICENSE). Copyright 2026 kolabse.
+
 ## Install skills
 
 Install one or more skills into the current project with the cross-agent
@@ -35,8 +37,9 @@ $operate-yandex-cloud Configure this project for Yandex Cloud operations.
 ```
 
 The skill asks for the project's Cloud ID, optional default Folder ID and
-optional `yc` profile. It stores them in
-`.agents/operate-yandex-cloud/project.yaml`, detects required toolsets from the
+optional `yc` profile. It stores shared Cloud/Folder IDs in
+`.agents/operate-yandex-cloud/project.yaml` and the workstation-specific
+profile in an ignored `local.yaml`. It detects required toolsets from the
 project, checks minimum tool versions, offers supported installations, and runs
 a read-only cloud-context preflight. The scripts support JSON output and run on
 Windows, macOS, and Linux with Python 3; PowerShell wrappers are included for
@@ -44,14 +47,11 @@ Windows compatibility.
 
 ## Add a skill
 
-1. Place each skill in `skills/<skill-name>/`.
-2. Keep its required `SKILL.md` and optional `agents/`, `scripts/`,
-   `references/`, and `assets/` inside that folder.
-3. Keep project-specific configuration outside the installed skill folder so
-   updates cannot overwrite it.
-4. Validate every imported or changed skill before publishing it.
-5. Add the skill to the catalog above with its one-line purpose and any
-   required first-run action.
+Follow [CONTRIBUTING.md](CONTRIBUTING.md) and start from
+[`templates/skill-template.md`](templates/skill-template.md). Every skill must
+have a matching `skill-catalog.json` entry that records its owner, platforms,
+status, license, and provenance. Keep project-specific configuration outside
+the installed skill folder so updates cannot overwrite it.
 
 Do not add a repository-level installer for an individual skill. When the
 collection needs managed installation and updates across ChatGPT and Codex,

@@ -1,0 +1,29 @@
+{
+  "schema_version": 1,
+  "license": "Apache-2.0",
+  "skills": [
+    {
+      "name": "operate-yandex-cloud",
+      "path": "skills/operate-yandex-cloud",
+      "status": "experimental",
+      "maintainers": [
+        "@kolabse"
+      ],
+      "platforms": [
+        "linux",
+        "macos",
+        "windows"
+      ],
+      "trigger_evals": "evals/operate-yandex-cloud.json",
+      "license": "Apache-2.0",
+      "provenance": {
+        "kind": "migrated",
+        "source": "FProject workspace",
+        "previous_names": [
+          "operate-fproject-cloud"
+        ],
+        "canonical_repository": "https://github.com/kolabse/skills"
+      }
+    }
+  ]
+}

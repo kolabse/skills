@@ -1,0 +1,43 @@
+{
+  "skill": "operate-yandex-cloud",
+  "positive": [
+    {
+      "prompt": "Настрой этот проект для работы с нужным облаком Yandex Cloud.",
+      "reason": "Project-scoped Yandex Cloud initialization is a core workflow."
+    },
+    {
+      "prompt": "Проверь через yc, есть ли у меня доступ к папке и облаку проекта.",
+      "reason": "Read-only Yandex Cloud access checks should invoke the skill."
+    },
+    {
+      "prompt": "Подготовь Terraform plan для инфраструктуры этого проекта в Yandex Cloud.",
+      "reason": "Terraform changes targeting Yandex Cloud require its safety workflow."
+    },
+    {
+      "prompt": "Разберись, почему deployment не раскатывается в Kubernetes-кластере проекта.",
+      "reason": "Project Kubernetes operations are explicitly in scope."
+    },
+    {
+      "prompt": "Подключись по SSH к виртуальной машине проекта и проверь сервис.",
+      "reason": "Project cloud SSH access must use the configured cloud context."
+    }
+  ],
+  "negative": [
+    {
+      "prompt": "Разверни функцию AWS Lambda в нашем AWS-аккаунте.",
+      "reason": "AWS operations belong to a different cloud-provider workflow."
+    },
+    {
+      "prompt": "Исправь адаптивную верстку и CSS на странице профиля.",
+      "reason": "Frontend implementation does not require cloud operations."
+    },
+    {
+      "prompt": "Составь письмо клиенту о переносе встречи.",
+      "reason": "Writing correspondence is unrelated to infrastructure operations."
+    },
+    {
+      "prompt": "Настрой IAM-политику в Google Cloud Platform.",
+      "reason": "Google Cloud operations require a provider-specific workflow."
+    }
+  ]
+}

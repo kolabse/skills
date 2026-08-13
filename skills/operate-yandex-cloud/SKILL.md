@@ -14,7 +14,8 @@ treat remembered resource identifiers and procedures as hints only.
 1. Resolve the project root as the parent containing `.agents/skills` for this
    installed skill. Fall back to the workspace root or nearest Git root only
    for a nonstandard installation.
-2. Read `.agents/operate-yandex-cloud/project.yaml` from that root.
+2. Read the shared `.agents/operate-yandex-cloud/project.yaml` and ignored local
+   `.agents/operate-yandex-cloud/local.yaml` from that root.
 3. When the file or `cloud_id` is absent, ask for the Cloud ID, optional default
    Folder ID and optional `yc` profile, then run:
 
@@ -26,13 +27,14 @@ treat remembered resource identifiers and procedures as hints only.
    repository. Use detected toolsets by default; use `--all` only for a full
    workstation audit. Show missing and outdated tools, then install supported
    tools only after user confirmation. Use `--json` for machine-readable output.
-5. Keep project configuration outside the skill directory so skill updates do
-   not overwrite it. Never change the global `yc` cloud context as a substitute
-   for project configuration.
+5. Commit `project.yaml` and its sibling `.gitignore` when the project shares
+   one cloud context. Keep `local.yaml` ignored because `yc_profile` is a
+   workstation choice. Never change the global `yc` cloud context as a
+   substitute for project configuration.
 
-Completion criterion: the project file contains `cloud_id` plus any selected
-Folder/profile constraints, and every detected toolset has a reviewed tool
-status.
+Completion criterion: `project.yaml` contains the Cloud/Folder constraints,
+`local.yaml` contains the optional profile and is ignored, and every detected
+toolset has a reviewed tool status.
 
 ## Establish scope and authority
 
