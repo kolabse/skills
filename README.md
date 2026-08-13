@@ -142,6 +142,28 @@ python -m unittest discover -s tests -v
 npx skills@1.5.22 add . --list
 ```
 
+Prepare a blind trigger suite for an agent or model selector with:
+
+```shell
+python scripts/trigger_evals.py prepare --output .trigger-evals/suite.json
+```
+
+The suite contains only skill names, public descriptions, opaque case IDs, and
+prompts. It omits expected labels and author reasons. A selector returns strict
+JSON listing every selected skill for each case; score the observations with:
+
+```shell
+python scripts/trigger_evals.py score \
+  --predictions .trigger-evals/predictions.json \
+  --json-output .trigger-evals/report.json \
+  --markdown-output .trigger-evals/report.md
+```
+
+Use `run` with a command after `--` to invoke a selector that reads the suite
+from standard input and writes predictions to standard output. Keep provider
+credentials outside command arguments. The ignored `.trigger-evals/` directory
+keeps generated suites, predictions, and reports out of commits by default.
+
 ## Verify a release
 
 Versioned releases include deterministic ZIP and TAR.GZ archives,

@@ -14,6 +14,7 @@
 - [ ] Deterministic scripts have automated tests.
 - [ ] Positive trigger prompt:
 - [ ] Nearby negative trigger prompt:
+- [ ] Blind trigger-eval observations and selector identity:
 - [ ] First-run prompt or reason it is not applicable:
 - [ ] `python scripts/validate_skills.py`
 - [ ] `python -m unittest discover -s tests -v`

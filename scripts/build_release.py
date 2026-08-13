@@ -16,6 +16,8 @@ from typing import Iterable
 
 ROOT_FILES = ("README.md", "LICENSE", "CHANGELOG.md", "skill-catalog.json")
 OPTIONAL_PLUGIN_FILES = (".codex-plugin/plugin.json",)
+OPTIONAL_COLLECTION_FILES = ("scripts/trigger_evals.py",)
+OPTIONAL_COLLECTION_DIRECTORIES = ("evals",)
 TAG_PATTERN = re.compile(
     r"^v[0-9]+\.[0-9]+\.[0-9]+(?:[-+][0-9A-Za-z]+(?:[.-][0-9A-Za-z]+)*)?$"
 )
@@ -64,6 +66,28 @@ def release_files(source: Path) -> list[Path]:
             if path.is_symlink():
                 raise ValueError(f"Release input must not be a symbolic link: {path}")
             files.append(path)
+    for name in OPTIONAL_COLLECTION_FILES:
+        path = source / name
+        if path.exists():
+            if not path.is_file():
+                raise ValueError(f"Release input must be a file: {path}")
+            if path.is_symlink():
+                raise ValueError(f"Release input must not be a symbolic link: {path}")
+            files.append(path)
+    for name in OPTIONAL_COLLECTION_DIRECTORIES:
+        directory = source / name
+        if directory.exists():
+            if not directory.is_dir():
+                raise ValueError(f"Release input must be a directory: {directory}")
+            if directory.is_symlink():
+                raise ValueError(
+                    f"Release input must not be a symbolic link: {directory}"
+                )
+            for path in directory.rglob("*"):
+                if path.is_symlink():
+                    raise ValueError(f"Release input must not be a symbolic link: {path}")
+                if path.is_file():
+                    files.append(path)
     skills_root = source / "skills"
     if not skills_root.is_dir():
         raise FileNotFoundError(f"Skills directory was not found: {skills_root}")
@@ -103,6 +127,8 @@ def source_commit(source: Path) -> str:
             "--",
             *ROOT_FILES,
             *OPTIONAL_PLUGIN_FILES,
+            *OPTIONAL_COLLECTION_FILES,
+            *OPTIONAL_COLLECTION_DIRECTORIES,
             "skills",
         ],
         capture_output=True,

@@ -2,6 +2,17 @@
 
 ## Unreleased
 
+## [0.6.0] - 2026-08-13
+
+### Added
+
+- A provider-neutral blind trigger-evaluation runner with stable opaque case
+  IDs, strict selector JSON, multi-skill decisions, collection-wide scoring,
+  per-skill precision/recall/specificity, failure reports, and external command
+  execution through standard input and output.
+- Unit and CI coverage for deterministic blind-suite preparation, stale or
+  incomplete observations, duplicate prompts, and scoring behavior.
+
 ## [0.5.0] - 2026-08-13
 
 ### Added
@@ -65,6 +76,7 @@ First versioned release of the kolabse skill collection.
 - Tests for configuration migration, fake cloud and infrastructure CLIs,
   installation confirmation, and collection metadata.
 
+[0.6.0]: https://github.com/kolabse/skills/releases/tag/v0.6.0
 [0.5.0]: https://github.com/kolabse/skills/releases/tag/v0.5.0
 [0.4.0]: https://github.com/kolabse/skills/releases/tag/v0.4.0
 [0.3.0]: https://github.com/kolabse/skills/releases/tag/v0.3.0
