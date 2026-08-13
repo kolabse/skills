@@ -91,11 +91,36 @@ def source_commit(source: Path) -> str:
     return f"{commit}-dirty" if status.stdout.strip() else commit
 
 
+def release_entries(
+    source: Path,
+    files: Iterable[Path],
+    commit: str,
+) -> list[tuple[Path, bytes]]:
+    entries: list[tuple[Path, bytes]] = []
+    use_git_blobs = bool(commit) and not commit.endswith("-dirty")
+    for path in files:
+        relative = path.relative_to(source)
+        if use_git_blobs:
+            completed = subprocess.run(
+                ["git", "-C", str(source), "show", f"{commit}:{relative.as_posix()}"],
+                capture_output=True,
+                timeout=10,
+                check=False,
+            )
+            if completed.returncode != 0:
+                detail = completed.stderr.decode("utf-8", errors="replace").strip()
+                raise ValueError(f"Could not read Git blob for {relative}: {detail}")
+            content = completed.stdout
+        else:
+            content = path.read_bytes()
+        entries.append((relative, content))
+    return entries
+
+
 def write_zip(
     destination: Path,
-    source: Path,
     prefix: str,
-    files: Iterable[Path],
+    entries: Iterable[tuple[Path, bytes]],
 ) -> None:
     with zipfile.ZipFile(
         destination,
@@ -103,20 +128,21 @@ def write_zip(
         compression=zipfile.ZIP_DEFLATED,
         compresslevel=9,
     ) as archive:
-        for path in files:
-            relative = path.relative_to(source).as_posix()
-            info = zipfile.ZipInfo(f"{prefix}/{relative}", date_time=ZIP_TIMESTAMP)
+        for relative, content in entries:
+            info = zipfile.ZipInfo(
+                f"{prefix}/{relative.as_posix()}",
+                date_time=ZIP_TIMESTAMP,
+            )
             info.create_system = 3
             info.compress_type = zipfile.ZIP_DEFLATED
             info.external_attr = 0o100644 << 16
-            archive.writestr(info, path.read_bytes(), compresslevel=9)
+            archive.writestr(info, content, compresslevel=9)
 
 
 def write_tar_gz(
     destination: Path,
-    source: Path,
     prefix: str,
-    files: Iterable[Path],
+    entries: Iterable[tuple[Path, bytes]],
 ) -> None:
     with destination.open("wb") as raw_output:
         with gzip.GzipFile(
@@ -131,10 +157,8 @@ def write_tar_gz(
                 mode="w",
                 format=tarfile.USTAR_FORMAT,
             ) as archive:
-                for path in files:
-                    relative = path.relative_to(source).as_posix()
-                    content = path.read_bytes()
-                    info = tarfile.TarInfo(f"{prefix}/{relative}")
+                for relative, content in entries:
+                    info = tarfile.TarInfo(f"{prefix}/{relative.as_posix()}")
                     info.size = len(content)
                     info.mode = 0o644
                     info.uid = 0
@@ -151,18 +175,20 @@ def build_release(source: Path, tag: str, output: Path) -> list[Path]:
     source = source.resolve()
     output.mkdir(parents=True, exist_ok=True)
     files = release_files(source)
+    commit = source_commit(source)
+    entries = release_entries(source, files, commit)
     prefix = f"kolabse-skills-{tag}"
     zip_path = output / f"{prefix}.zip"
     tar_path = output / f"{prefix}.tar.gz"
-    write_zip(zip_path, source, prefix, files)
-    write_tar_gz(tar_path, source, prefix, files)
+    write_zip(zip_path, prefix, entries)
+    write_tar_gz(tar_path, prefix, entries)
 
     artifacts = [zip_path, tar_path]
     manifest_path = output / "release-manifest.json"
     manifest = {
         "schema_version": 1,
         "release": tag,
-        "source_commit": source_commit(source),
+        "source_commit": commit,
         "artifacts": [
             {
                 "name": path.name,

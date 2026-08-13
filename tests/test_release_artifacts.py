@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import subprocess
 import sys
 import tarfile
 import tempfile
@@ -61,6 +62,49 @@ class ReleaseArtifactTests(unittest.TestCase):
 
             with self.assertRaisesRegex(ValueError, "Checksum mismatch"):
                 verify_checksums(output / "SHA256SUMS")
+
+    def test_clean_git_source_uses_canonical_blob_line_endings(self) -> None:
+        with tempfile.TemporaryDirectory() as source_directory:
+            with tempfile.TemporaryDirectory() as output_directory:
+                source = Path(source_directory)
+                output = Path(output_directory)
+                files = {
+                    "README.md": "# Test\r\n",
+                    "LICENSE": "Test license\r\n",
+                    "CHANGELOG.md": "# Changes\r\n",
+                    "skill-catalog.json": '{"schema_version": 1}\r\n',
+                    "skills/demo/SKILL.md": (
+                        "---\r\nname: demo\r\ndescription: Demo.\r\n---\r\n"
+                    ),
+                }
+                for name, content in files.items():
+                    path = source / name
+                    path.parent.mkdir(parents=True, exist_ok=True)
+                    path.write_text(content, encoding="utf-8", newline="")
+                self.run_git(source, "init", "--quiet")
+                self.run_git(source, "config", "user.name", "Release Test")
+                self.run_git(source, "config", "user.email", "release@example.test")
+                self.run_git(source, "config", "core.autocrlf", "true")
+                self.run_git(source, "add", ".")
+                self.run_git(source, "commit", "--quiet", "-m", "fixture")
+
+                build_release(source, "v1.2.3", output)
+
+                with zipfile.ZipFile(output / "kolabse-skills-v1.2.3.zip") as archive:
+                    readme = archive.read("kolabse-skills-v1.2.3/README.md")
+                manifest = json.loads(
+                    (output / "release-manifest.json").read_text(encoding="utf-8")
+                )
+                self.assertEqual(b"# Test\n", readme)
+                self.assertFalse(manifest["source_commit"].endswith("-dirty"))
+
+    @staticmethod
+    def run_git(directory: Path, *arguments: str) -> None:
+        subprocess.run(
+            ["git", "-C", str(directory), *arguments],
+            capture_output=True,
+            check=True,
+        )
 
 
 if __name__ == "__main__":
