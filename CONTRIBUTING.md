@@ -152,6 +152,26 @@ selects only verified skills (or explicitly adopted legacy skills), and tests
 cover source collisions, release refs, renamed local checkouts, and legacy
 installations.
 
+## Keep consumer automation inspectable
+
+Keep `plan` read-only: it must not invoke installers, migrations, or network
+operations. Publish versioned JSON Schemas for plan and result payloads and
+distinguish unchanged, updated, migrated, skipped, blocked, and failed states
+without parsing human-oriented CLI output.
+
+Bound global discovery to documented lock and installation roots. Do not scan
+the home directory for possible installations. Apply the same provenance,
+explicit selection, and post-update diagnosis rules at global scope.
+
+The standalone bootstrap must verify the archive checksum before extraction,
+verify GitHub build provenance before execution, reject traversal and symlink
+archive entries, use a temporary directory, and propagate the manager exit
+code. Keep unattested offline execution behind an explicit degraded-mode flag.
+
+Completion criterion: schemas parse, dry-run leaves byte-identical fixtures,
+global fixtures cover supported and ambiguous layouts, and the bootstrap smoke
+passes on every supported CI operating system.
+
 ## Validate the change
 
 Run:

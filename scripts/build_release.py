@@ -17,13 +17,15 @@ from typing import Iterable
 ROOT_FILES = ("README.md", "LICENSE", "CHANGELOG.md", "skill-catalog.json")
 OPTIONAL_PLUGIN_FILES = (".codex-plugin/plugin.json",)
 OPTIONAL_COLLECTION_FILES = (
+    "scripts/bootstrap_update.py",
     "scripts/install_personal_plugin.py",
     "scripts/manage_installed_skills.py",
     "scripts/smoke_install.py",
+    "scripts/smoke_bootstrap.py",
     "scripts/smoke_upgrade.py",
     "scripts/trigger_evals.py",
 )
-OPTIONAL_COLLECTION_DIRECTORIES = ("evals",)
+OPTIONAL_COLLECTION_DIRECTORIES = ("evals", "schemas")
 TAG_PATTERN = re.compile(
     r"^v[0-9]+\.[0-9]+\.[0-9]+(?:[-+][0-9A-Za-z]+(?:[.-][0-9A-Za-z]+)*)?$"
 )

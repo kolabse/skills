@@ -1,0 +1,35 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/kolabse/skills/schemas/manager-plan.schema.json",
+  "title": "kolabse skills update plan",
+  "type": "object",
+  "required": ["schema_version", "operation", "collection", "scope", "target_version", "mutates", "blocked", "outcomes", "migration_candidates"],
+  "properties": {
+    "schema_version": {"const": 1},
+    "operation": {"const": "plan"},
+    "collection": {"const": "kolabse-skills"},
+    "scope": {"enum": ["project", "global"]},
+    "target_version": {"type": "string", "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+"},
+    "mutates": {"const": false},
+    "blocked": {"type": "boolean"},
+    "outcomes": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["skill", "action", "reason", "current_version", "target_version", "provenance_status", "source_identity"],
+        "properties": {
+          "skill": {"type": "string"},
+          "action": {"enum": ["update", "unchanged", "adopt-and-update", "blocked"]},
+          "reason": {"type": "string"},
+          "current_version": {"type": "string"},
+          "target_version": {"type": "string"},
+          "provenance_status": {"enum": ["verified", "legacy-unverified", "mismatch"]},
+          "source_identity": {"type": "string"}
+        },
+        "additionalProperties": false
+      }
+    },
+    "migration_candidates": {"type": "array", "items": {"type": "string"}}
+  },
+  "additionalProperties": false
+}

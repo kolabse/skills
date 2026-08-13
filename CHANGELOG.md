@@ -2,6 +2,25 @@
 
 ## Unreleased
 
+## [1.4.0] - 2026-08-13
+
+### Added
+
+- A standalone release bootstrap that downloads a selected or latest stable
+  release, verifies its checksum and GitHub build attestation, extracts it
+  safely in a temporary directory, and invokes the bundled manager.
+- Read-only global `status` and `doctor` support for the bounded
+  `~/.agents/.skill-lock.json` v3 and `~/.agents/skills` layout.
+- A non-mutating `plan` command plus machine-readable update and migration
+  outcomes, with published JSON Schemas.
+- Cross-platform bootstrap smoke coverage that proves a release-based plan
+  leaves the consumer project unchanged.
+
+### Changed
+
+- Global updates now use the same explicit provenance and post-update diagnosis
+  gates as project updates.
+
 ## [1.3.0] - 2026-08-13
 
 ### Added
@@ -199,6 +218,7 @@ First versioned release of the kolabse skill collection.
 - Tests for configuration migration, fake cloud and infrastructure CLIs,
   installation confirmation, and collection metadata.
 
+[1.4.0]: https://github.com/kolabse/skills/releases/tag/v1.4.0
 [1.3.0]: https://github.com/kolabse/skills/releases/tag/v1.3.0
 [1.2.2]: https://github.com/kolabse/skills/releases/tag/v1.2.2
 [1.2.1]: https://github.com/kolabse/skills/releases/tag/v1.2.1

@@ -12,6 +12,7 @@ from urllib.parse import urlparse
 
 
 COLLECTION = "kolabse-skills"
+COLLECTION_VERSION = "1.4.0"
 SKILLS_CLI_VERSION = "1.5.22"
 LOCK_FILE = "skills-lock.json"
 METADATA_FILE = "collection-metadata.json"
@@ -44,6 +45,10 @@ def load_object(path: Path, label: str) -> dict[str, Any]:
 
 def project_install_root(project: Path) -> Path:
     return project.resolve() / ".agents" / "skills"
+
+
+def default_global_root() -> Path:
+    return Path.home() / ".agents"
 
 
 def normalize_github_source(source: str) -> dict[str, str] | None:
@@ -209,6 +214,81 @@ def read_project_state(
     }
 
 
+def read_global_state(
+    global_root: Path | None = None,
+    trusted_development_sources: dict[str, Path] | None = None,
+) -> dict[str, Any]:
+    root = (global_root or default_global_root()).expanduser().resolve()
+    lock_path = root / ".skill-lock.json"
+    lock = load_object(lock_path, "global skills lock")
+    if lock.get("version") != 3:
+        raise ManagerError("unsupported global skills lock version; expected .skill-lock.json v3")
+    entries = lock.get("skills")
+    if not isinstance(entries, dict):
+        raise ManagerError("global .skill-lock.json field 'skills' must be an object")
+    installed_root = root / "skills"
+    skills: list[dict[str, Any]] = []
+    for name in sorted(set(entries) & KNOWN_SKILLS):
+        entry = entries[name]
+        if not isinstance(entry, dict):
+            raise ManagerError(f"global lock entry for {name} must be an object")
+        skill_root = installed_root / name
+        metadata_path = skill_root / METADATA_FILE
+        metadata: dict[str, Any] = {}
+        metadata_error = ""
+        metadata_present = metadata_path.is_file()
+        try:
+            metadata = load_object(metadata_path, f"{name} metadata")
+        except ManagerError as error:
+            metadata_error = str(error)
+        metadata_schema = metadata.get("schema_version")
+        metadata_valid = (
+            metadata_schema in {1, 2}
+            and metadata.get("collection") == COLLECTION
+            and metadata.get("skill") == name
+            and normalize_github_source(str(metadata.get("source", ""))) is not None
+            and (
+                metadata_schema == 1
+                or normalize_github_source(str(metadata.get("canonical_repository", "")))
+                is not None
+            )
+        )
+        source_state = classify_lock_source(root, name, entry, trusted_development_sources)
+        if source_state["valid"] and metadata_valid:
+            provenance_status = "verified"
+        elif source_state["valid"] and not metadata_present:
+            provenance_status = "legacy-unverified"
+        else:
+            provenance_status = "mismatch"
+        digest = entry.get("skillFolderHash", entry.get("computedHash", ""))
+        skills.append(
+            {
+                "name": name,
+                "installed": skill_root.is_dir(),
+                "path": str(skill_root),
+                "source": entry.get("source", ""),
+                "computed_hash": digest,
+                "collection": metadata.get("collection", ""),
+                "version": metadata.get("version", "unknown"),
+                "metadata_valid": metadata_valid,
+                "metadata_error": metadata_error,
+                "provenance_status": provenance_status,
+                "source_kind": source_state["kind"],
+                "source_identity": source_state["identity"],
+                "provenance_error": source_state["error"],
+                "legacy_adoption_available": provenance_status == "legacy-unverified",
+            }
+        )
+    return {
+        "schema_version": 1,
+        "collection": COLLECTION,
+        "scope": "global",
+        "global_root": str(root),
+        "lock_file": str(lock_path),
+        "skills": skills,
+    }
+
+
 def print_state(state: dict[str, Any], as_json: bool) -> None:
     if as_json:
         print(json.dumps(state, ensure_ascii=False, indent=2, sort_keys=True))
@@ -257,6 +337,7 @@ def resolve_update_selection(
     scope: str,
     adopt_legacy: bool = False,
     trusted_development_sources: dict[str, Path] | None = None,
+    global_root: Path | None = None,
 ) -> list[str]:
     unknown = set(skills) - KNOWN_SKILLS
     if unknown:
@@ -266,15 +347,15 @@ def resolve_update_selection(
             raise ManagerError(
                 "global updates require explicit skill names so unrelated global skills are not updated"
             )
-        return skills
-
-    state = read_project_state(project, trusted_development_sources)
+        state = read_global_state(global_root, trusted_development_sources)
+    else:
+        state = read_project_state(project, trusted_development_sources)
     entries = {item["name"]: item for item in state["skills"]}
     if skills:
         missing = set(skills) - set(entries)
         if missing:
             raise ManagerError(
-                f"Collection skills are not present in the project lock: {', '.join(sorted(missing))}"
+                f"Collection skills are not present in the {scope} lock: {', '.join(sorted(missing))}"
             )
         selected = skills
     else:
@@ -304,10 +385,29 @@ def update_skills(
     timeout: int,
     adopt_legacy: bool = False,
     trusted_development_sources: dict[str, Path] | None = None,
-) -> None:
+    global_root: Path | None = None,
+    as_json: bool = False,
+) -> dict[str, Any]:
+    if scope == "global" and global_root is not None:
+        requested_root = global_root.expanduser().resolve()
+        if requested_root != default_global_root().resolve():
+            raise ManagerError(
+                "relocated global roots are read-only because the external skills CLI cannot target them"
+            )
     selected = resolve_update_selection(
-        project, skills, scope, adopt_legacy, trusted_development_sources
+        project,
+        skills,
+        scope,
+        adopt_legacy,
+        trusted_development_sources,
+        global_root,
     )
+    before = (
+        read_project_state(project, trusted_development_sources)
+        if scope == "project"
+        else read_global_state(global_root, trusted_development_sources)
+    )
+    before_by_name = {item["name"]: item for item in before["skills"]}
     npx = shutil.which("npx")
     if not npx:
         raise ManagerError("npx is required to update skills")
@@ -323,13 +423,40 @@ def update_skills(
             f"skills CLI did not update {requested}; the lock source may not support in-place "
             "updates (local development installs must be re-added from their source)"
         )
-    if result.stdout.strip():
+    if result.stdout.strip() and not as_json:
         print_portable(result.stdout.strip())
-    if scope == "project":
-        state = doctor(project, trusted_development_sources)
-        if not state["healthy"]:
-            detail = "; ".join(state["problems"])
-            raise ManagerError(f"post-update diagnosis failed: {detail}")
+    state = doctor(
+        project,
+        trusted_development_sources,
+        scope=scope,
+        global_root=global_root,
+    )
+    if not state["healthy"]:
+        detail = "; ".join(state["problems"])
+        raise ManagerError(f"post-update diagnosis failed: {detail}")
+    after_by_name = {item["name"]: item for item in state["skills"]}
+    outcomes: list[dict[str, Any]] = []
+    for name in selected:
+        old = before_by_name[name]
+        new = after_by_name[name]
+        changed = old["version"] != new["version"] or old["computed_hash"] != new["computed_hash"]
+        outcomes.append(
+            {
+                "skill": name,
+                "status": "updated" if changed else "unchanged",
+                "previous_version": old["version"],
+                "version": new["version"],
+                "provenance_status": new["provenance_status"],
+            }
+        )
+    return {
+        "schema_version": 1,
+        "operation": "update",
+        "collection": COLLECTION,
+        "scope": scope,
+        "outcomes": outcomes,
+        "healthy": True,
+    }
 
 
 def telegram_config_path(environment: dict[str, str] | None = None) -> Path:
@@ -388,14 +515,98 @@ def migrate(project: Path, include_user_config: bool, timeout: int) -> dict[str,
             payload = json.loads(result.stdout)
         except json.JSONDecodeError as error:
             raise ManagerError(f"{name} migration returned invalid JSON") from error
-        results.append({"skill": name, "result": payload})
-    return {"schema_version": 1, "collection": COLLECTION, "migrations": results}
+        results.append(
+            {
+                "skill": name,
+                "status": "migrated" if payload.get("changed") else "unchanged",
+                "result": payload,
+            }
+        )
+    return {
+        "schema_version": 1,
+        "operation": "migrate",
+        "collection": COLLECTION,
+        "scope": "project",
+        "outcomes": results,
+        "migrations": results,
+    }
+
+
+def build_update_plan(
+    project: Path,
+    skills: list[str],
+    scope: str,
+    adopt_legacy: bool = False,
+    global_root: Path | None = None,
+) -> dict[str, Any]:
+    unknown = set(skills) - KNOWN_SKILLS
+    if unknown:
+        raise ManagerError(f"Unknown collection skills: {', '.join(sorted(unknown))}")
+    state = read_project_state(project) if scope == "project" else read_global_state(global_root)
+    entries = {item["name"]: item for item in state["skills"]}
+    selected = skills or sorted(entries)
+    missing = set(selected) - set(entries)
+    if missing:
+        raise ManagerError(
+            f"Collection skills are not present in the {scope} lock: {', '.join(sorted(missing))}"
+        )
+    outcomes: list[dict[str, Any]] = []
+    for name in selected:
+        item = entries[name]
+        provenance = item["provenance_status"]
+        if provenance == "mismatch":
+            action = "blocked"
+            reason = item["provenance_error"] or "provenance mismatch"
+        elif provenance == "legacy-unverified" and not adopt_legacy:
+            action = "blocked"
+            reason = "legacy installation requires --adopt-legacy"
+        elif provenance == "legacy-unverified":
+            action = "adopt-and-update"
+            reason = ""
+        elif item["version"] == COLLECTION_VERSION:
+            action = "unchanged"
+            reason = ""
+        else:
+            action = "update"
+            reason = ""
+        outcomes.append(
+            {
+                "skill": name,
+                "action": action,
+                "reason": reason,
+                "current_version": item["version"],
+                "target_version": COLLECTION_VERSION,
+                "provenance_status": provenance,
+                "source_identity": item["source_identity"],
+            }
+        )
+    migrations = (
+        [name for name, _ in migration_commands(project, False)] if scope == "project" else []
+    )
+    return {
+        "schema_version": 1,
+        "operation": "plan",
+        "collection": COLLECTION,
+        "scope": scope,
+        "target_version": COLLECTION_VERSION,
+        "mutates": False,
+        "blocked": any(item["action"] == "blocked" for item in outcomes),
+        "outcomes": outcomes,
+        "migration_candidates": migrations,
+    }
 
 
 def doctor(
-    project: Path, trusted_development_sources: dict[str, Path] | None = None
+    project: Path,
+    trusted_development_sources: dict[str, Path] | None = None,
+    scope: str = "project",
+    global_root: Path | None = None,
 ) -> dict[str, Any]:
-    state = read_project_state(project, trusted_development_sources)
+    state = (
+        read_project_state(project, trusted_development_sources)
+        if scope == "project"
+        else read_global_state(global_root, trusted_development_sources)
+    )
     problems: list[str] = []
     if not state["skills"]:
         problems.append("no kolabse skills were found in skills-lock.json")
@@ -419,13 +630,16 @@ def doctor(
         if not isinstance(skill["source"], str) or not skill["source"]:
             problems.append(f"{skill['name']} has no lock source")
         digest = skill["computed_hash"]
-        if not isinstance(digest, str) or len(digest) != 64:
+        valid_digest_lengths = {64} if scope == "project" else {40, 64}
+        if not isinstance(digest, str) or len(digest) not in valid_digest_lengths:
             problems.append(f"{skill['name']} has an invalid lock hash")
     if len(versions) > 1:
         problems.append(f"installed skills use mixed collection versions: {sorted(versions)}")
     state["healthy"] = not problems
     state["problems"] = problems
-    state["migration_candidates"] = [name for name, _ in migration_commands(project, False)]
+    state["migration_candidates"] = (
+        [name for name, _ in migration_commands(project, False)] if scope == "project" else []
+    )
     return state
 
 
@@ -436,6 +650,9 @@ def build_parser() -> argparse.ArgumentParser:
         child = subparsers.add_parser(name)
         child.add_argument("--project-path", type=Path, default=Path.cwd())
         child.add_argument("--json", action="store_true")
+        if name in {"status", "doctor"}:
+            child.add_argument("--scope", choices=("project", "global"), default="project")
+            child.add_argument("--global-root", type=Path)
         if name == "migrate":
             child.add_argument("--include-user-config", action="store_true")
             child.add_argument("--timeout", type=int, default=120)
@@ -448,11 +665,20 @@ def build_parser() -> argparse.ArgumentParser:
     update.add_argument("--timeout", type=int, default=180)
     update.add_argument("--migrate", action="store_true")
     update.add_argument("--include-user-config", action="store_true")
+    update.add_argument("--global-root", type=Path)
+    update.add_argument("--json", action="store_true")
     update.add_argument(
         "--adopt-legacy",
         action="store_true",
         help="explicitly update pre-metadata installs from a verified source",
     )
+    plan = subparsers.add_parser("plan")
+    plan.add_argument("skills", nargs="*")
+    plan.add_argument("--project-path", type=Path, default=Path.cwd())
+    plan.add_argument("--scope", choices=("project", "global"), default="project")
+    plan.add_argument("--global-root", type=Path)
+    plan.add_argument("--adopt-legacy", action="store_true")
+    plan.add_argument("--json", action="store_true")
     return parser
 
 
@@ -460,23 +686,46 @@ def main(argv: list[str] | None = None) -> int:
     args = build_parser().parse_args(argv)
     try:
         if args.command == "status":
-            state = read_project_state(args.project_path)
+            state = (
+                read_project_state(args.project_path)
+                if args.scope == "project"
+                else read_global_state(args.global_root)
+            )
             print_state(state, args.json)
             return 0
         if args.command == "doctor":
-            state = doctor(args.project_path)
+            state = doctor(
+                args.project_path, scope=args.scope, global_root=args.global_root
+            )
             print_state(state, args.json)
             if not args.json and state["problems"]:
                 for problem in state["problems"]:
                     print(f"PROBLEM: {problem}")
             return 0 if state["healthy"] else 1
+        if args.command == "plan":
+            result = build_update_plan(
+                args.project_path,
+                args.skills,
+                args.scope,
+                args.adopt_legacy,
+                args.global_root,
+            )
+            if args.json:
+                print(json.dumps(result, ensure_ascii=False, indent=2, sort_keys=True))
+            else:
+                for outcome in result["outcomes"]:
+                    print(
+                        f"[{outcome['action']}] {outcome['skill']}: "
+                        f"{outcome['current_version']} -> {outcome['target_version']}"
+                    )
+            return 1 if result["blocked"] else 0
         if args.command == "migrate":
             result = migrate(args.project_path, args.include_user_config, args.timeout)
             print(json.dumps(result, ensure_ascii=False, indent=2, sort_keys=True))
             return 0
         if args.migrate and args.scope != "project":
             raise ManagerError("--migrate is supported only for project-scoped updates")
-        update_skills(
+        result = update_skills(
             args.project_path,
             args.skills,
             args.scope,
@@ -484,13 +733,33 @@ def main(argv: list[str] | None = None) -> int:
             args.yes,
             args.timeout,
             args.adopt_legacy,
+            global_root=args.global_root,
+            as_json=args.json,
         )
         if args.migrate:
-            result = migrate(args.project_path, args.include_user_config, args.timeout)
+            migration = migrate(args.project_path, args.include_user_config, args.timeout)
+            result["migration"] = migration
+        if args.json:
             print(json.dumps(result, ensure_ascii=False, indent=2, sort_keys=True))
         return 0
     except ManagerError as error:
-        print(f"MANAGER_FAILED: {error}", file=sys.stderr)
+        if getattr(args, "json", False):
+            failure = {
+                "schema_version": 1,
+                "operation": args.command,
+                "collection": COLLECTION,
+                "scope": getattr(args, "scope", "project"),
+                "outcomes": [
+                    {
+                        "skill": ",".join(getattr(args, "skills", [])) or "collection",
+                        "status": "failed",
+                        "reason": str(error),
+                    }
+                ],
+            }
+            print(json.dumps(failure, ensure_ascii=False, indent=2, sort_keys=True), file=sys.stderr)
+        else:
+            print(f"MANAGER_FAILED: {error}", file=sys.stderr)
         return 1
 
 

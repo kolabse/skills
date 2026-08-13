@@ -58,6 +58,19 @@ python scripts/manage_installed_skills.py update --project-path . --yes --migrat
 python scripts/manage_installed_skills.py doctor --project-path . --json
 ```
 
+Preview the exact selection without invoking the external installer or changing
+configuration:
+
+```shell
+python scripts/manage_installed_skills.py plan --project-path . --json
+```
+
+The plan reports source identity, current and target versions, provenance,
+migration candidates, and `update`, `unchanged`, `adopt-and-update`, or
+`blocked` actions. Its schema is `schemas/manager-plan.schema.json`. Add
+`--json` to `update`; update and migrate outcomes follow
+`schemas/manager-result.schema.json`.
+
 With no names, the manager resolves the installed kolabse skills from the
 project lock and passes those names explicitly to the external CLI; unrelated
 project skills are never part of the update. Global updates require explicit
@@ -89,6 +102,46 @@ post-update diagnosis must verify the installed metadata.
 The external CLI does not update `sourceType: local` development locks in
 place. The manager treats that CLI no-op as a failure; re-add those skills from
 their local source with the original `--skill` and `--agent` selections.
+
+### Run without cloning the repository
+
+Download `scripts/bootstrap_update.py` from a trusted release or this
+repository, then let it resolve the latest stable release, verify the release
+ZIP against `SHA256SUMS` and GitHub build provenance, and run the manager from
+an isolated temporary extraction:
+
+```shell
+python bootstrap_update.py doctor --json
+python bootstrap_update.py plan --json
+python bootstrap_update.py update --yes --migrate --json
+```
+
+Use `--release v1.4.0` to pin a version. The bootstrap requires `gh` for
+attestation verification and removes its temporary directory on completion.
+For an offline cache, provide both `--offline-archive` and
+`--offline-checksums`. Provenance verification remains required when `gh` can
+reach GitHub. `--allow-unattested-offline` is an explicit degraded mode: it
+verifies only the cached checksum and should be used only for artifacts moved
+through an independently trusted channel. Roll back by selecting an older
+release and using the existing rollback procedure; configuration migrations
+remain forward-only.
+
+### Inspect global installations
+
+The supported global layout is deliberately bounded to
+`~/.agents/.skill-lock.json` v3 and `~/.agents/skills`; the manager does not
+scan other user directories:
+
+```shell
+python scripts/manage_installed_skills.py status --scope global --json
+python scripts/manage_installed_skills.py doctor --scope global --json
+python scripts/manage_installed_skills.py plan verify-before-push --scope global --json
+python scripts/manage_installed_skills.py update verify-before-push --scope global --yes --json
+```
+
+Use `--global-root` for read-only inspection of a test or explicitly relocated
+compatible layout. Relocated roots cannot be updated because the external CLI
+cannot target them. Unknown or ambiguous layouts are reported without mutation.
 
 To roll back skill files, first back up project/user configuration, then
 reinstall the required release tag with the same skills and agent targets used
