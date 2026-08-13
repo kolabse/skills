@@ -55,7 +55,9 @@ def frontmatter(path: Path) -> dict[str, str]:
     return values
 
 
-def load_collection(repository_root: Path) -> tuple[list[dict[str, str]], list[dict[str, Any]]]:
+def load_collection(
+    repository_root: Path, corpus: str = "development"
+) -> tuple[list[dict[str, str]], list[dict[str, Any]]]:
     catalog = load_json(repository_root / "skill-catalog.json", "Skill catalog")
     entries = catalog.get("skills") if isinstance(catalog, dict) else None
     if not isinstance(entries, list) or not entries:
@@ -68,26 +70,63 @@ def load_collection(repository_root: Path) -> tuple[list[dict[str, str]], list[d
         if not isinstance(entry, dict):
             raise EvalError("Every catalog skill must be an object")
         name = entry.get("name")
-        eval_path = entry.get("trigger_evals")
-        if not isinstance(name, str) or not isinstance(eval_path, str):
-            raise EvalError("Every catalog skill requires name and trigger_evals")
+        if not isinstance(name, str):
+            raise EvalError("Every catalog skill requires a name")
         metadata = frontmatter(repository_root / "skills" / name / "SKILL.md")
         description = metadata.get("description", "")
         if not description:
             raise EvalError(f"Skill description is missing: {name}")
         skills.append({"name": name, "description": description})
 
-        data = load_json(repository_root / eval_path, f"Trigger evals for {name}")
-        if not isinstance(data, dict) or data.get("skill") != name:
-            raise EvalError(f"Trigger eval file does not identify {name}")
+    if corpus == "development":
+        sources: dict[str, Any] = {}
+        for entry in entries:
+            name = entry["name"]
+            eval_path = entry.get("trigger_evals")
+            if not isinstance(eval_path, str):
+                raise EvalError("Every catalog skill requires trigger_evals")
+            data = load_json(repository_root / eval_path, f"Trigger evals for {name}")
+            if not isinstance(data, dict) or data.get("skill") != name:
+                raise EvalError(f"Trigger eval file does not identify {name}")
+            sources[name] = data
+    elif corpus == "release-holdout":
+        holdout = catalog.get("release_holdout")
+        if not isinstance(holdout, dict):
+            raise EvalError("Skill catalog does not define release_holdout")
+        path = holdout.get("path")
+        expected_digest = holdout.get("sha256")
+        if not isinstance(path, str) or not isinstance(expected_digest, str):
+            raise EvalError("release_holdout requires path and sha256")
+        data = load_json(repository_root / path, "Release holdout")
+        if sha256(data) != expected_digest:
+            raise EvalError("Release holdout does not match its locked canonical digest")
+        if (
+            not isinstance(data, dict)
+            or data.get("schema_version") != SCHEMA_VERSION
+            or data.get("name") != holdout.get("name")
+        ):
+            raise EvalError("Release holdout schema or name does not match the catalog")
+        sources = data.get("skills") if isinstance(data, dict) else None
+        if not isinstance(sources, dict):
+            raise EvalError("Release holdout must contain a skills object")
+    else:
+        raise EvalError(f"Unknown corpus: {corpus}")
+
+    known_names = {item["name"] for item in skills}
+    if set(sources) != known_names:
+        raise EvalError("Evaluation corpus must contain exactly the catalog skills")
+    for name in sorted(sources):
+        data = sources[name]
+        if not isinstance(data, dict):
+            raise EvalError(f"Evaluation data for {name} must be an object")
         for branch, expected in (("positive", True), ("negative", False)):
             cases = data.get(branch)
             if not isinstance(cases, list):
-                raise EvalError(f"{eval_path}: {branch} must be a list")
+                raise EvalError(f"{corpus}/{name}: {branch} must be a list")
             for case in cases:
                 prompt = case.get("prompt") if isinstance(case, dict) else None
                 if not isinstance(prompt, str) or not prompt.strip():
-                    raise EvalError(f"{eval_path}: every case requires a prompt")
+                    raise EvalError(f"{corpus}/{name}: every case requires a prompt")
                 previous = seen_prompts.get(prompt)
                 if previous:
                     raise EvalError(
@@ -110,10 +149,13 @@ def load_collection(repository_root: Path) -> tuple[list[dict[str, str]], list[d
     )
 
 
-def prepare_suite(repository_root: Path) -> tuple[dict[str, Any], list[dict[str, Any]]]:
-    skills, assertions = load_collection(repository_root)
+def prepare_suite(
+    repository_root: Path, corpus: str = "development"
+) -> tuple[dict[str, Any], list[dict[str, Any]]]:
+    skills, assertions = load_collection(repository_root, corpus)
     public = {
         "schema_version": SCHEMA_VERSION,
+        "corpus": corpus,
         "instructions": (
             "For each case, select every skill whose description should trigger for the "
             "user prompt. Return strict JSON with schema_version, suite_digest, optional "
@@ -217,6 +259,8 @@ def score_suite(
     return {
         "schema_version": SCHEMA_VERSION,
         "suite_digest": suite["suite_digest"],
+        "corpus": suite.get("corpus", "development"),
+        "assertion_digest": sha256(assertions),
         "selector": selector,
         "summary": {
             **totals,
@@ -273,6 +317,128 @@ def markdown_report(report: dict[str, Any]) -> str:
     return "\n".join(lines).rstrip() + "\n"
 
 
+def compare_reports(
+    baseline: Any,
+    candidate: Any,
+    max_accuracy_drop: float = 0.0,
+    max_precision_drop: float = 0.0,
+    max_recall_drop: float = 0.0,
+    max_per_skill_drop: float = 0.0,
+) -> dict[str, Any]:
+    for label, report in (("baseline", baseline), ("candidate", candidate)):
+        if not isinstance(report, dict) or not isinstance(report.get("summary"), dict):
+            raise EvalError(f"{label} report is invalid")
+        if not isinstance(report.get("assertion_digest"), str):
+            raise EvalError(f"{label} report has no assertion_digest")
+    if baseline["assertion_digest"] != candidate["assertion_digest"]:
+        raise EvalError("Reports use different evaluation assertions")
+    baseline_rows = baseline.get("per_skill")
+    candidate_rows = candidate.get("per_skill")
+    if not isinstance(baseline_rows, list) or not all(
+        isinstance(item, dict) for item in baseline_rows
+    ):
+        raise EvalError("baseline report per_skill is invalid")
+    if not isinstance(candidate_rows, list) or not all(
+        isinstance(item, dict) for item in candidate_rows
+    ):
+        raise EvalError("candidate report per_skill is invalid")
+    baseline_skills = {item.get("skill"): item for item in baseline_rows}
+    candidate_skills = {item.get("skill"): item for item in candidate_rows}
+    if None in baseline_skills or None in candidate_skills:
+        raise EvalError("Reports contain a skill row without a name")
+    if len(baseline_skills) != len(baseline_rows) or len(candidate_skills) != len(
+        candidate_rows
+    ):
+        raise EvalError("Reports contain duplicate skill rows")
+    if baseline_skills.keys() != candidate_skills.keys():
+        raise EvalError("Reports contain different skill sets")
+
+    limits = {
+        "accuracy": max_accuracy_drop,
+        "precision": max_precision_drop,
+        "recall": max_recall_drop,
+    }
+    deltas: dict[str, float] = {}
+    regressions: list[dict[str, Any]] = []
+    for metric, allowed_drop in limits.items():
+        before = baseline["summary"].get(metric)
+        after = candidate["summary"].get(metric)
+        if not isinstance(before, (int, float)) or not isinstance(after, (int, float)):
+            raise EvalError(f"Reports are missing numeric {metric}")
+        delta = round(after - before, 4)
+        deltas[metric] = delta
+        if delta < -allowed_drop:
+            regressions.append(
+                {
+                    "scope": "overall",
+                    "metric": metric,
+                    "baseline": before,
+                    "candidate": after,
+                    "delta": delta,
+                    "allowed_drop": allowed_drop,
+                }
+            )
+    per_skill: list[dict[str, Any]] = []
+    for name in sorted(baseline_skills):
+        row = {"skill": name}
+        for metric in ("precision", "recall", "specificity"):
+            before = baseline_skills[name].get(metric)
+            after = candidate_skills[name].get(metric)
+            if not isinstance(before, (int, float)) or not isinstance(after, (int, float)):
+                raise EvalError(f"Reports are missing numeric {metric} for {name}")
+            row[metric] = round(after - before, 4)
+            if row[metric] < -max_per_skill_drop:
+                regressions.append(
+                    {
+                        "scope": name,
+                        "metric": metric,
+                        "baseline": before,
+                        "candidate": after,
+                        "delta": row[metric],
+                        "allowed_drop": max_per_skill_drop,
+                    }
+                )
+        per_skill.append(row)
+    return {
+        "schema_version": SCHEMA_VERSION,
+        "assertion_digest": baseline["assertion_digest"],
+        "baseline_selector": baseline.get("selector", {}),
+        "candidate_selector": candidate.get("selector", {}),
+        "deltas": deltas,
+        "per_skill_deltas": per_skill,
+        "regressions": regressions,
+        "passed": not regressions,
+    }
+
+
+def comparison_markdown(comparison: dict[str, Any]) -> str:
+    status = "PASS" if comparison["passed"] else "FAIL"
+    lines = [
+        "# Trigger evaluation comparison",
+        "",
+        f"- Status: {status}",
+        f"- Accuracy delta: {comparison['deltas']['accuracy']:+.2%}",
+        f"- Precision delta: {comparison['deltas']['precision']:+.2%}",
+        f"- Recall delta: {comparison['deltas']['recall']:+.2%}",
+        "",
+        "| Skill | Precision delta | Recall delta | Specificity delta |",
+        "|---|---:|---:|---:|",
+    ]
+    for item in comparison["per_skill_deltas"]:
+        lines.append(
+            f"| `{item['skill']}` | {item['precision']:+.2%} | "
+            f"{item['recall']:+.2%} | {item['specificity']:+.2%} |"
+        )
+    if comparison["regressions"]:
+        lines.extend(["", "## Regressions", ""])
+        for item in comparison["regressions"]:
+            lines.append(
+                f"- {item['scope']} {item['metric']}: {item['baseline']:.2%} -> "
+                f"{item['candidate']:.2%} (allowed drop {item['allowed_drop']:.2%})"
+            )
+    return "\n".join(lines) + "\n"
+
+
 def write_json(path: Path, value: Any) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(json.dumps(value, indent=2, sort_keys=True) + "\n", encoding="utf-8")
@@ -302,6 +468,11 @@ def run_selector(command: list[str], suite: dict[str, Any], timeout: int) -> Any
 
 def add_common(parser: argparse.ArgumentParser) -> None:
     parser.add_argument("--repository-root", type=Path, default=REPOSITORY_ROOT)
+    parser.add_argument(
+        "--corpus",
+        choices=("development", "release-holdout"),
+        default="development",
+    )
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -326,14 +497,60 @@ def main(argv: list[str] | None = None) -> int:
     run.add_argument("--timeout", type=int, default=600)
     run.add_argument("--min-accuracy", type=float, default=0.0)
     run.add_argument("selector_command", nargs=argparse.REMAINDER)
+    compare = commands.add_parser("compare")
+    compare.add_argument("--repository-root", type=Path, default=REPOSITORY_ROOT)
+    compare.add_argument("--baseline", type=Path)
+    compare.add_argument("--candidate", type=Path, required=True)
+    compare.add_argument("--json-output", type=Path)
+    compare.add_argument("--markdown-output", type=Path)
+    compare.add_argument("--max-accuracy-drop", type=float, default=0.0)
+    compare.add_argument("--max-precision-drop", type=float, default=0.0)
+    compare.add_argument("--max-recall-drop", type=float, default=0.0)
+    compare.add_argument("--max-per-skill-drop", type=float, default=0.0)
     args = parser.parse_args(argv)
     try:
+        if args.command == "compare":
+            thresholds = (
+                args.max_accuracy_drop,
+                args.max_precision_drop,
+                args.max_recall_drop,
+                args.max_per_skill_drop,
+            )
+            if any(value < 0.0 or value > 1.0 for value in thresholds):
+                raise EvalError("comparison drop limits must be between 0 and 1")
+            baseline_path = args.baseline
+            if baseline_path is None:
+                catalog = load_json(
+                    args.repository_root.resolve() / "skill-catalog.json",
+                    "Skill catalog",
+                )
+                holdout = catalog.get("release_holdout") if isinstance(catalog, dict) else None
+                baseline_name = (
+                    holdout.get("baseline_report") if isinstance(holdout, dict) else None
+                )
+                if not isinstance(baseline_name, str):
+                    raise EvalError("Skill catalog does not define a holdout baseline report")
+                baseline_path = args.repository_root.resolve() / baseline_name
+            comparison = compare_reports(
+                load_json(baseline_path, "Baseline report"),
+                load_json(args.candidate, "Candidate report"),
+                *thresholds,
+            )
+            if args.json_output:
+                write_json(args.json_output, comparison)
+            if args.markdown_output:
+                args.markdown_output.parent.mkdir(parents=True, exist_ok=True)
+                args.markdown_output.write_text(
+                    comparison_markdown(comparison), encoding="utf-8"
+                )
+            print("Trigger comparison: " + ("passed" if comparison["passed"] else "failed"))
+            return 0 if comparison["passed"] else 1
         if hasattr(args, "min_accuracy") and not 0.0 <= args.min_accuracy <= 1.0:
             raise EvalError("min-accuracy must be between 0 and 1")
         if hasattr(args, "timeout") and args.timeout <= 0:
             raise EvalError("timeout must be positive")
         root = args.repository_root.resolve()
-        suite, assertions = prepare_suite(root)
+        suite, assertions = prepare_suite(root, args.corpus)
         if args.command == "prepare":
             write_json(args.output, suite)
             print(f"Prepared {len(suite['cases'])} blind case(s): {args.output}")

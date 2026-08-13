@@ -2,6 +2,18 @@
 
 ## Unreleased
 
+## [0.8.0] - 2026-08-13
+
+### Added
+
+- A separately versioned release holdout with a catalog-locked canonical
+  SHA-256 and CI protection against modifying or deleting published versions.
+- Fail-closed comparison of baseline and candidate trigger reports with
+  assertion identity, configurable accuracy/precision/recall drop limits,
+  per-skill deltas, JSON output, and Markdown output.
+- A catalog-discoverable v0.8.0 baseline report for automatic comparison on
+  later releases using the same holdout assertions.
+
 ## [0.7.0] - 2026-08-13
 
 ### Changed
@@ -88,6 +100,7 @@ First versioned release of the kolabse skill collection.
 - Tests for configuration migration, fake cloud and infrastructure CLIs,
   installation confirmation, and collection metadata.
 
+[0.8.0]: https://github.com/kolabse/skills/releases/tag/v0.8.0
 [0.7.0]: https://github.com/kolabse/skills/releases/tag/v0.7.0
 [0.6.0]: https://github.com/kolabse/skills/releases/tag/v0.6.0
 [0.5.0]: https://github.com/kolabse/skills/releases/tag/v0.5.0

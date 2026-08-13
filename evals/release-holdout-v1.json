@@ -1,0 +1,116 @@
+{
+  "schema_version": 1,
+  "name": "release-holdout-v1",
+  "skills": {
+    "maintain-work-log": {
+      "positive": [
+        {
+          "prompt": "Проектное правило требует журнал работ. Запиши туда итог сегодняшней проверки и принятое решение.",
+          "reason": "An applicable policy explicitly requires the canonical project work log."
+        },
+        {
+          "prompt": "По истории Git восстанови в docs/reports/work-log.md пропущенные записи за неделю.",
+          "reason": "The request explicitly asks to reconstruct the canonical work log."
+        }
+      ],
+      "negative": [
+        {
+          "prompt": "Добавь на страницу форму ежедневного отчёта сотрудников о проделанной работе.",
+          "reason": "A product feature is not the repository's canonical work log."
+        },
+        {
+          "prompt": "Прочитай journalctl сервиса и кратко объясни причину рестарта.",
+          "reason": "Reading a system journal does not imply maintaining the project work log."
+        }
+      ]
+    },
+    "notify-via-telegram": {
+      "positive": [
+        {
+          "prompt": "Миграция долгая; сообщай мне в Telegram о начале, каждом блокере и результате.",
+          "reason": "The user explicitly requests Telegram lifecycle notifications."
+        },
+        {
+          "prompt": "Пока идёт многоэтапное восстановление, держи меня в курсе удалённо через Телеграм.",
+          "reason": "A lengthy multi-stage task explicitly needs Telegram progress updates."
+        }
+      ],
+      "negative": [
+        {
+          "prompt": "Добавь кнопку «Поделиться в Telegram» в карточку новости.",
+          "reason": "A Telegram product integration is not agent task notification."
+        },
+        {
+          "prompt": "Эта проверка займёт минуту; просто покажи результат в текущем чате.",
+          "reason": "A short task with local-only reporting does not need Telegram notifications."
+        }
+      ]
+    },
+    "operate-yandex-cloud": {
+      "positive": [
+        {
+          "prompt": "Инвентарь указывает на Yandex Cloud. Проверь read-only состояние балансировщика проекта.",
+          "reason": "Project inventory explicitly establishes Yandex Cloud context."
+        },
+        {
+          "prompt": "Подготовь план изменения DNS-зоны проекта в Yandex Cloud, но пока ничего не применяй.",
+          "reason": "An explicitly named Yandex Cloud DNS preview is in scope."
+        }
+      ],
+      "negative": [
+        {
+          "prompt": "Сделай kubectl diff для кластера, провайдер которого пока неизвестен.",
+          "reason": "Generic Kubernetes work without provider context must not imply Yandex Cloud."
+        },
+        {
+          "prompt": "Проверь бакет проекта в Amazon S3 и настрой lifecycle policy.",
+          "reason": "An explicitly different provider is outside Yandex Cloud operations."
+        }
+      ]
+    },
+    "synchronize-git-repositories": {
+      "positive": [
+        {
+          "prompt": "Перед изменениями fetch tracking remote и безопасно fast-forward текущую чистую ветку.",
+          "reason": "The request explicitly requires remote freshness and a safe update."
+        },
+        {
+          "prompt": "Сравни HEAD двух репозиториев с их upstream после fetch и сохрани все локальные изменения.",
+          "reason": "Fetched upstream classification across repositories is the core workflow."
+        }
+      ],
+      "negative": [
+        {
+          "prompt": "Создай локальную ветку experiment от текущего HEAD; сеть не используй.",
+          "reason": "An explicitly local-only branch operation does not require synchronization."
+        },
+        {
+          "prompt": "Удалённый репозиторий не настроен. Покажи diff последнего локального коммита.",
+          "reason": "A local inspection without any remote or upstream has no freshness operation."
+        }
+      ]
+    },
+    "verify-before-push": {
+      "positive": [
+        {
+          "prompt": "Запусти обязательные проверки и свяжи результат с точным состоянием ветки перед push.",
+          "reason": "The request explicitly asks for state-bound pre-push evidence."
+        },
+        {
+          "prompt": "После изменения документации проверь, не устарело ли разрешение на push для набора репозиториев.",
+          "reason": "A state change may invalidate multi-repository push evidence."
+        }
+      ],
+      "negative": [
+        {
+          "prompt": "Покажи документацию команды git push --dry-run, не выполняя команд.",
+          "reason": "Conceptual Git documentation does not require a verification gate."
+        },
+        {
+          "prompt": "Запусти линтер как часть локальной диагностики; коммит и push не планируются.",
+          "reason": "A diagnostic lint run explicitly outside a push workflow is not pre-push evidence."
+        }
+      ]
+    }
+  }
+}

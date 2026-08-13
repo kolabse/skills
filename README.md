@@ -164,6 +164,28 @@ from standard input and writes predictions to standard output. Keep provider
 credentials outside command arguments. The ignored `.trigger-evals/` directory
 keeps generated suites, predictions, and reports out of commits by default.
 
+Before a release, run the separately versioned and digest-locked holdout without
+using it to tune descriptions during development:
+
+```shell
+python scripts/trigger_evals.py prepare \
+  --corpus release-holdout \
+  --output .trigger-evals/release-holdout.json
+```
+
+Compare a candidate report with a report produced for the same holdout version:
+
+```shell
+python scripts/trigger_evals.py compare \
+  --candidate .trigger-evals/candidate-report.json \
+  --markdown-output .trigger-evals/comparison.md
+```
+
+Comparison fails closed when assertion digests differ or overall accuracy,
+precision, recall, or a per-skill metric drops beyond the configured limits.
+By default it uses the published baseline named by `skill-catalog.json`; pass
+`--baseline` only when intentionally comparing with another compatible report.
+
 ## Verify a release
 
 Versioned releases include deterministic ZIP and TAR.GZ archives,

@@ -14,9 +14,12 @@ sys.path.insert(0, str(SCRIPTS))
 
 from trigger_evals import (  # noqa: E402
     EvalError,
+    compare_reports,
+    comparison_markdown,
     markdown_report,
     prepare_suite,
     run_selector,
+    sha256,
     score_suite,
 )
 
@@ -155,6 +158,58 @@ class TriggerEvalTests(unittest.TestCase):
             (root / "skill-catalog.json").write_text(json.dumps(catalog))
             with self.assertRaisesRegex(EvalError, "duplicated across"):
                 prepare_suite(root)
+
+    def test_prepares_digest_locked_release_holdout(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            self.make_repository(root)
+            holdout = {
+                "schema_version": 1,
+                "name": "release-holdout-v1",
+                "skills": {
+                    "demo": {
+                        "positive": [{"prompt": "Release demo", "reason": "yes"}],
+                        "negative": [{"prompt": "No release demo", "reason": "no"}],
+                    }
+                },
+            }
+            (root / "evals/release-holdout-v1.json").write_text(
+                json.dumps(holdout), encoding="utf-8"
+            )
+            catalog = json.loads((root / "skill-catalog.json").read_text())
+            catalog["release_holdout"] = {
+                "name": "release-holdout-v1",
+                "path": "evals/release-holdout-v1.json",
+                "sha256": sha256(holdout),
+            }
+            (root / "skill-catalog.json").write_text(json.dumps(catalog))
+            suite, assertions = prepare_suite(root, "release-holdout")
+            self.assertEqual("release-holdout", suite["corpus"])
+            self.assertEqual(2, len(assertions))
+            holdout["skills"]["demo"]["positive"][0]["prompt"] = "Changed"
+            (root / "evals/release-holdout-v1.json").write_text(json.dumps(holdout))
+            with self.assertRaisesRegex(EvalError, "locked canonical digest"):
+                prepare_suite(root, "release-holdout")
+
+    def test_compares_reports_and_fails_on_regression(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            self.make_repository(root)
+            suite, assertions = prepare_suite(root)
+            perfect = score_suite(
+                suite,
+                assertions,
+                self.predictions(suite, {"Do the demo": ["demo"]}),
+            )
+            failed = score_suite(suite, assertions, self.predictions(suite, {}))
+            regression = compare_reports(perfect, failed)
+            self.assertFalse(regression["passed"])
+            self.assertIn("FAIL", comparison_markdown(regression))
+            improvement = compare_reports(failed, perfect)
+            self.assertTrue(improvement["passed"])
+            failed["assertion_digest"] = "different"
+            with self.assertRaisesRegex(EvalError, "different evaluation assertions"):
+                compare_reports(perfect, failed)
 
 
 if __name__ == "__main__":

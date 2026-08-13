@@ -64,6 +64,11 @@ class ReleaseArtifactTests(unittest.TestCase):
                 for skill in SKILL_NAMES:
                     self.assertIn(prefix + f"evals/{skill}.json", zip_names)
                     self.assertIn(prefix + f"evals/{skill}.json", tar_names)
+                self.assertIn(prefix + "evals/release-holdout-v1.json", zip_names)
+                self.assertIn(prefix + "evals/release-holdout-v1.json", tar_names)
+                baseline = "evals/baselines/release-holdout-v1-v0.8.0.json"
+                self.assertIn(prefix + baseline, zip_names)
+                self.assertIn(prefix + baseline, tar_names)
                 self.assertFalse(any("/.git/" in name for name in zip_names))
 
                 manifest = json.loads(
