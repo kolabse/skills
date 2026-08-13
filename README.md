@@ -69,6 +69,23 @@ migrated too. `status` and `doctor` are read-only. `migrate` changes only
 configuration files that already exist; it does not configure unused skills.
 Each installed skill carries `collection-metadata.json`, so `status` reports its
 collection version even though the external lock format has no version field.
+It also reports `provenance_status`: `verified` requires both collection
+metadata and a canonical GitHub or content-verified local lock source;
+`legacy-unverified` identifies a pre-metadata installation; `mismatch` is never
+updated. A checkout may be renamed because local identity comes from its plugin
+manifest, catalog, and skill contents rather than the directory name.
+
+Adopt a pre-v1.2 metadata-free installation only after reviewing its reported
+source:
+
+```shell
+python scripts/manage_installed_skills.py status --project-path . --json
+python scripts/manage_installed_skills.py update --project-path . --yes --adopt-legacy
+```
+
+The adoption flag does not bless arbitrary files: the source must already
+normalize to `kolabse/skills` or pass local checkout validation, and the normal
+post-update diagnosis must verify the installed metadata.
 The external CLI does not update `sourceType: local` development locks in
 place. The manager treats that CLI no-op as a failure; re-add those skills from
 their local source with the original `--skill` and `--agent` selections.

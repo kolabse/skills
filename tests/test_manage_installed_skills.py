@@ -36,6 +36,7 @@ class ManageInstalledSkillsTests(unittest.TestCase):
             )
             entries[name] = {
                 "source": "kolabse/skills",
+                "sourceType": "github",
                 "computedHash": "0" * 64,
             }
         (project / "skills-lock.json").write_text(
@@ -51,6 +52,86 @@ class ManageInstalledSkillsTests(unittest.TestCase):
             state = manager.read_project_state(project)
             self.assertEqual("1.2.0", state["skills"][0]["version"])
             self.assertTrue(state["skills"][0]["metadata_valid"])
+            self.assertEqual("verified", state["skills"][0]["provenance_status"])
+
+    def test_github_source_variants_normalize_to_canonical_identity(self) -> None:
+        variants = [
+            "kolabse/skills",
+            "kolabse/skills@v1.2.2",
+            "https://github.com/kolabse/skills.git",
+            "https://github.com/kolabse/skills/tree/v1.2.2",
+            "git@github.com:kolabse/skills.git",
+        ]
+        for source in variants:
+            with self.subTest(source=source):
+                identity = manager.normalize_github_source(source)
+                self.assertIsNotNone(identity)
+                self.assertEqual(
+                    "https://github.com/kolabse/skills",
+                    identity["canonical_repository"],
+                )
+
+    def test_same_name_skill_from_another_source_is_a_mismatch(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            project = self.make_project(
+                Path(directory), {"verify-before-push": "1.2.2"}
+            )
+            lock_path = project / "skills-lock.json"
+            lock = json.loads(lock_path.read_text(encoding="utf-8"))
+            lock["skills"]["verify-before-push"]["source"] = "someone-else/skills"
+            lock_path.write_text(json.dumps(lock), encoding="utf-8")
+            state = manager.read_project_state(project)
+            self.assertEqual("mismatch", state["skills"][0]["provenance_status"])
+            with self.assertRaisesRegex(manager.ManagerError, "provenance mismatch"):
+                manager.resolve_update_selection(project, [], "project")
+
+    def test_renamed_local_checkout_is_verified_by_content(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            project = self.make_project(root, {"verify-before-push": "1.2.2"})
+            checkout = root / "renamed-anything"
+            (checkout / ".codex-plugin").mkdir(parents=True)
+            (checkout / "skills/verify-before-push").mkdir(parents=True)
+            (checkout / ".codex-plugin/plugin.json").write_text(
+                json.dumps(
+                    {
+                        "name": "kolabse-skills",
+                        "repository": "https://github.com/kolabse/skills",
+                    }
+                ),
+                encoding="utf-8",
+            )
+            (checkout / "skill-catalog.json").write_text(
+                json.dumps({"skills": [{"name": "verify-before-push"}]}),
+                encoding="utf-8",
+            )
+            (checkout / "skills/verify-before-push/SKILL.md").write_text(
+                "fixture", encoding="utf-8"
+            )
+            lock_path = project / "skills-lock.json"
+            lock = json.loads(lock_path.read_text(encoding="utf-8"))
+            lock["skills"]["verify-before-push"].update(
+                {"source": str(checkout), "sourceType": "local"}
+            )
+            lock_path.write_text(json.dumps(lock), encoding="utf-8")
+            state = manager.read_project_state(project)
+            self.assertEqual("verified", state["skills"][0]["provenance_status"])
+            self.assertEqual("local", state["skills"][0]["source_kind"])
+
+    def test_legacy_install_requires_explicit_adoption(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            project = self.make_project(
+                Path(directory), {"verify-before-push": "1.0.0"}
+            )
+            (project / ".agents/skills/verify-before-push/collection-metadata.json").unlink()
+            state = manager.read_project_state(project)
+            self.assertEqual("legacy-unverified", state["skills"][0]["provenance_status"])
+            with self.assertRaisesRegex(manager.ManagerError, "--adopt-legacy"):
+                manager.resolve_update_selection(project, [], "project")
+            self.assertEqual(
+                ["verify-before-push"],
+                manager.resolve_update_selection(project, [], "project", True),
+            )
 
     def test_doctor_rejects_mixed_versions(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
@@ -153,13 +234,14 @@ class ManageInstalledSkillsTests(unittest.TestCase):
     def test_update_fails_when_post_update_doctor_is_unhealthy(self) -> None:
         with tempfile.TemporaryDirectory() as directory, patch.object(
             shutil, "which", return_value="npx"
-        ), patch.object(manager, "run_checked") as run:
+        ), patch.object(manager, "run_checked") as run, patch.object(
+            manager, "doctor", return_value={"healthy": False, "problems": ["fixture"]}
+        ):
             run.return_value.stdout = "updated"
             run.return_value.stderr = ""
             project = self.make_project(
                 Path(directory), {"verify-before-push": "1.2.0"}
             )
-            (project / ".agents/skills/verify-before-push/collection-metadata.json").unlink()
             with self.assertRaisesRegex(manager.ManagerError, "post-update diagnosis failed"):
                 manager.update_skills(
                     project,

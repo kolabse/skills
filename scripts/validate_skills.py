@@ -504,11 +504,12 @@ def validate(repository_root: Path = REPOSITORY_ROOT) -> list[str]:
             metadata = None
         if isinstance(metadata, dict):
             expected_metadata = {
-                "schema_version": 1,
+                "schema_version": 2,
                 "collection": PLUGIN_NAME,
                 "version": collection_version,
                 "skill": name,
                 "source": "https://github.com/kolabse/skills",
+                "canonical_repository": "https://github.com/kolabse/skills",
             }
             if metadata != expected_metadata:
                 errors.append(f"{metadata_path}: metadata does not match the collection")

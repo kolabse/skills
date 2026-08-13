@@ -2,6 +2,23 @@
 
 ## Unreleased
 
+## [1.3.0] - 2026-08-13
+
+### Added
+
+- Canonical provenance classification for installed skills, including
+  normalized GitHub identities, content-verified local checkouts, and explicit
+  `verified`, `legacy-unverified`, and `mismatch` status values.
+- An explicit `--adopt-legacy` update path for pre-metadata installations whose
+  lock source can still be verified.
+
+### Changed
+
+- Collection membership now requires both valid installed metadata and a
+  canonical or locally verified lock source; a known skill name alone is not
+  trusted.
+- Installed collection metadata schema 2 records the canonical repository.
+
 ## [1.2.2] - 2026-08-13
 
 ### Fixed
@@ -182,6 +199,7 @@ First versioned release of the kolabse skill collection.
 - Tests for configuration migration, fake cloud and infrastructure CLIs,
   installation confirmation, and collection metadata.
 
+[1.3.0]: https://github.com/kolabse/skills/releases/tag/v1.3.0
 [1.2.2]: https://github.com/kolabse/skills/releases/tag/v1.2.2
 [1.2.1]: https://github.com/kolabse/skills/releases/tag/v1.2.1
 [1.2.0]: https://github.com/kolabse/skills/releases/tag/v1.2.0
