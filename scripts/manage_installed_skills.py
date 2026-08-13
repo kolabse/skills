@@ -8,12 +8,15 @@ import subprocess
 import sys
 from pathlib import Path
 from typing import Any
+from urllib.parse import urlparse
 
 
 COLLECTION = "kolabse-skills"
 SKILLS_CLI_VERSION = "1.5.22"
 LOCK_FILE = "skills-lock.json"
 METADATA_FILE = "collection-metadata.json"
+CANONICAL_REPOSITORY = "https://github.com/kolabse/skills"
+CANONICAL_SLUG = "kolabse/skills"
 KNOWN_SKILLS = {
     "maintain-work-log",
     "notify-via-telegram",
@@ -43,7 +46,100 @@ def project_install_root(project: Path) -> Path:
     return project.resolve() / ".agents" / "skills"
 
 
-def read_project_state(project: Path) -> dict[str, Any]:
+def normalize_github_source(source: str) -> dict[str, str] | None:
+    value = source.strip().replace("\\", "/")
+    ref = ""
+    if value.startswith("git@github.com:"):
+        value = value.removeprefix("git@github.com:")
+    elif value.startswith("ssh://git@github.com/"):
+        value = value.removeprefix("ssh://git@github.com/")
+    elif "://" in value:
+        parsed = urlparse(value)
+        if parsed.hostname not in {"github.com", "www.github.com"}:
+            return None
+        value = parsed.path.lstrip("/")
+    if value.endswith(".git"):
+        value = value[:-4]
+    if "/tree/" in value:
+        value, ref = value.split("/tree/", 1)
+    elif "@" in value:
+        value, ref = value.rsplit("@", 1)
+    if value.casefold() != CANONICAL_SLUG:
+        return None
+    identity = CANONICAL_REPOSITORY + (f"@{ref}" if ref else "")
+    return {"kind": "github", "identity": identity, "canonical_repository": CANONICAL_REPOSITORY}
+
+
+def validate_local_source(path: Path, skill: str) -> str:
+    root = path.resolve()
+    manifest = load_object(root / ".codex-plugin/plugin.json", "local source plugin manifest")
+    catalog = load_object(root / "skill-catalog.json", "local source catalog")
+    repository = manifest.get("repository")
+    if manifest.get("name") != COLLECTION or normalize_github_source(str(repository or "")) is None:
+        raise ManagerError(f"local source is not the canonical {COLLECTION} collection: {root}")
+    entries = catalog.get("skills")
+    names = {
+        entry.get("name")
+        for entry in entries
+        if isinstance(entry, dict)
+    } if isinstance(entries, list) else set()
+    if skill not in names or not (root / "skills" / skill / "SKILL.md").is_file():
+        raise ManagerError(f"local source does not contain catalog skill {skill}: {root}")
+    return str(root)
+
+
+def classify_lock_source(
+    project: Path,
+    name: str,
+    entry: dict[str, Any],
+    trusted_development_sources: dict[str, Path] | None = None,
+) -> dict[str, Any]:
+    source = entry.get("source")
+    source_type = entry.get("sourceType")
+    if not isinstance(source, str) or not source.strip():
+        return {"valid": False, "kind": "unknown", "identity": "", "error": "lock source is missing"}
+    github = normalize_github_source(source)
+    if source_type in {None, "github"} and github is not None:
+        return {"valid": True, "error": "", **github}
+    if source_type == "local":
+        candidate = Path(source).expanduser()
+        if not candidate.is_absolute():
+            candidate = project.resolve() / candidate
+        try:
+            identity = validate_local_source(candidate, name)
+        except ManagerError as error:
+            return {"valid": False, "kind": "local", "identity": str(candidate), "error": str(error)}
+        return {
+            "valid": True,
+            "kind": "local",
+            "identity": identity,
+            "canonical_repository": CANONICAL_REPOSITORY,
+            "error": "",
+        }
+    trusted = trusted_development_sources or {}
+    if source in trusted:
+        try:
+            identity = validate_local_source(trusted[source], name)
+        except ManagerError as error:
+            return {"valid": False, "kind": "development", "identity": source, "error": str(error)}
+        return {
+            "valid": True,
+            "kind": "development",
+            "identity": f"{source} -> {identity}",
+            "canonical_repository": CANONICAL_REPOSITORY,
+            "error": "",
+        }
+    return {
+        "valid": False,
+        "kind": str(source_type or "unknown"),
+        "identity": source,
+        "error": f"lock source is not canonical {CANONICAL_SLUG} or a verified local checkout",
+    }
+
+
+def read_project_state(
+    project: Path, trusted_development_sources: dict[str, Path] | None = None
+) -> dict[str, Any]:
     root = project.resolve()
     lock = load_object(root / LOCK_FILE, "skills lock")
     entries = lock.get("skills")
@@ -59,10 +155,32 @@ def read_project_state(project: Path) -> dict[str, Any]:
         metadata_path = skill_root / METADATA_FILE
         metadata: dict[str, Any] = {}
         metadata_error = ""
+        metadata_present = metadata_path.is_file()
         try:
             metadata = load_object(metadata_path, f"{name} metadata")
         except ManagerError as error:
             metadata_error = str(error)
+        metadata_schema = metadata.get("schema_version")
+        metadata_valid = (
+            metadata_schema in {1, 2}
+            and metadata.get("collection") == COLLECTION
+            and metadata.get("skill") == name
+            and normalize_github_source(str(metadata.get("source", ""))) is not None
+            and (
+                metadata_schema == 1
+                or normalize_github_source(
+                    str(metadata.get("canonical_repository", ""))
+                )
+                is not None
+            )
+        )
+        source_state = classify_lock_source(root, name, entry, trusted_development_sources)
+        if source_state["valid"] and metadata_valid:
+            provenance_status = "verified"
+        elif source_state["valid"] and not metadata_present:
+            provenance_status = "legacy-unverified"
+        else:
+            provenance_status = "mismatch"
         skills.append(
             {
                 "name": name,
@@ -72,12 +190,13 @@ def read_project_state(project: Path) -> dict[str, Any]:
                 "computed_hash": entry.get("computedHash", ""),
                 "collection": metadata.get("collection", ""),
                 "version": metadata.get("version", "unknown"),
-                "metadata_valid": (
-                    metadata.get("schema_version") == 1
-                    and metadata.get("collection") == COLLECTION
-                    and metadata.get("skill") == name
-                ),
+                "metadata_valid": metadata_valid,
                 "metadata_error": metadata_error,
+                "provenance_status": provenance_status,
+                "source_kind": source_state["kind"],
+                "source_identity": source_state["identity"],
+                "provenance_error": source_state["error"],
+                "legacy_adoption_available": provenance_status == "legacy-unverified",
             }
         )
     return {
@@ -96,8 +215,11 @@ def print_state(state: dict[str, Any], as_json: bool) -> None:
         return
     print(f"Collection: {state['collection']} ({state['scope']})")
     for skill in state["skills"]:
-        marker = "ok" if skill["installed"] and skill["metadata_valid"] else "problem"
-        print(f"[{marker}] {skill['name']}: {skill['version']} ({skill['source']})")
+        marker = "ok" if skill["installed"] and skill["provenance_status"] == "verified" else "problem"
+        print(
+            f"[{marker}] {skill['name']}: {skill['version']} "
+            f"({skill['provenance_status']}; {skill['source_identity'] or skill['source']})"
+        )
 
 
 def run_checked(command: list[str], cwd: Path, timeout: int) -> subprocess.CompletedProcess[str]:
@@ -129,7 +251,13 @@ def print_portable(value: str) -> None:
         sys.stdout.write("\n")
 
 
-def resolve_update_selection(project: Path, skills: list[str], scope: str) -> list[str]:
+def resolve_update_selection(
+    project: Path,
+    skills: list[str],
+    scope: str,
+    adopt_legacy: bool = False,
+    trusted_development_sources: dict[str, Path] | None = None,
+) -> list[str]:
     unknown = set(skills) - KNOWN_SKILLS
     if unknown:
         raise ManagerError(f"Unknown collection skills: {', '.join(sorted(unknown))}")
@@ -140,21 +268,30 @@ def resolve_update_selection(project: Path, skills: list[str], scope: str) -> li
             )
         return skills
 
-    lock = load_object(project.resolve() / LOCK_FILE, "skills lock")
-    entries = lock.get("skills")
-    if not isinstance(entries, dict):
-        raise ManagerError("skills-lock.json field 'skills' must be an object")
+    state = read_project_state(project, trusted_development_sources)
+    entries = {item["name"]: item for item in state["skills"]}
     if skills:
         missing = set(skills) - set(entries)
         if missing:
             raise ManagerError(
                 f"Collection skills are not present in the project lock: {', '.join(sorted(missing))}"
             )
-        return skills
+        selected = skills
+    else:
+        selected = sorted(entries)
+        if not selected:
+            raise ManagerError("no kolabse skills were found in skills-lock.json")
 
-    selected = sorted(set(entries) & KNOWN_SKILLS)
-    if not selected:
-        raise ManagerError("no kolabse skills were found in skills-lock.json")
+    mismatched = [name for name in selected if entries[name]["provenance_status"] == "mismatch"]
+    if mismatched:
+        raise ManagerError(
+            "collection provenance mismatch for: " + ", ".join(sorted(mismatched))
+        )
+    legacy = [name for name in selected if entries[name]["provenance_status"] == "legacy-unverified"]
+    if legacy and not adopt_legacy:
+        raise ManagerError(
+            "legacy installations require explicit --adopt-legacy: " + ", ".join(sorted(legacy))
+        )
     return selected
 
 
@@ -165,8 +302,12 @@ def update_skills(
     cli_version: str,
     yes: bool,
     timeout: int,
+    adopt_legacy: bool = False,
+    trusted_development_sources: dict[str, Path] | None = None,
 ) -> None:
-    selected = resolve_update_selection(project, skills, scope)
+    selected = resolve_update_selection(
+        project, skills, scope, adopt_legacy, trusted_development_sources
+    )
     npx = shutil.which("npx")
     if not npx:
         raise ManagerError("npx is required to update skills")
@@ -185,7 +326,7 @@ def update_skills(
     if result.stdout.strip():
         print_portable(result.stdout.strip())
     if scope == "project":
-        state = doctor(project)
+        state = doctor(project, trusted_development_sources)
         if not state["healthy"]:
             detail = "; ".join(state["problems"])
             raise ManagerError(f"post-update diagnosis failed: {detail}")
@@ -251,8 +392,10 @@ def migrate(project: Path, include_user_config: bool, timeout: int) -> dict[str,
     return {"schema_version": 1, "collection": COLLECTION, "migrations": results}
 
 
-def doctor(project: Path) -> dict[str, Any]:
-    state = read_project_state(project)
+def doctor(
+    project: Path, trusted_development_sources: dict[str, Path] | None = None
+) -> dict[str, Any]:
+    state = read_project_state(project, trusted_development_sources)
     problems: list[str] = []
     if not state["skills"]:
         problems.append("no kolabse skills were found in skills-lock.json")
@@ -266,6 +409,13 @@ def doctor(project: Path) -> dict[str, Any]:
             problems.append(f"{skill['name']} is locked but not installed")
         elif not skill["metadata_valid"]:
             problems.append(f"{skill['name']} has missing or invalid collection metadata")
+        if skill["provenance_status"] == "legacy-unverified":
+            problems.append(
+                f"{skill['name']} is a legacy installation; run update with --adopt-legacy"
+            )
+        elif skill["provenance_status"] == "mismatch":
+            detail = skill["provenance_error"] or "metadata and lock source do not identify the collection"
+            problems.append(f"{skill['name']} provenance mismatch: {detail}")
         if not isinstance(skill["source"], str) or not skill["source"]:
             problems.append(f"{skill['name']} has no lock source")
         digest = skill["computed_hash"]
@@ -298,6 +448,11 @@ def build_parser() -> argparse.ArgumentParser:
     update.add_argument("--timeout", type=int, default=180)
     update.add_argument("--migrate", action="store_true")
     update.add_argument("--include-user-config", action="store_true")
+    update.add_argument(
+        "--adopt-legacy",
+        action="store_true",
+        help="explicitly update pre-metadata installs from a verified source",
+    )
     return parser
 
 
@@ -328,6 +483,7 @@ def main(argv: list[str] | None = None) -> int:
             args.cli_version,
             args.yes,
             args.timeout,
+            args.adopt_legacy,
         )
         if args.migrate:
             result = migrate(args.project_path, args.include_user_config, args.timeout)

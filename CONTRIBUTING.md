@@ -134,6 +134,24 @@ an executable completion criterion.
 Completion criterion: lifecycle status is backed by observable validation and
 communicates a clear compatibility expectation.
 
+## Preserve installed provenance
+
+Treat a known skill name only as a candidate, never as collection identity.
+Correlate the external lock source with installed `collection-metadata.json`.
+Normalize supported GitHub spellings to `https://github.com/kolabse/skills`;
+verify local development sources from their plugin manifest, catalog, and
+requested skill content without depending on the checkout directory name.
+
+Fail closed on a same-name skill from another source or contradictory metadata.
+Keep legacy adoption explicit and allow it only when the lock source itself is
+verified; successful adoption must end with current metadata and a healthy
+post-update diagnosis.
+
+Completion criterion: status exposes the provenance classification, update
+selects only verified skills (or explicitly adopted legacy skills), and tests
+cover source collisions, release refs, renamed local checkouts, and legacy
+installations.
+
 ## Validate the change
 
 Run:

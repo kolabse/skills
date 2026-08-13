@@ -220,7 +220,16 @@ def run_upgrade(source: Path, baseline: str, cli_version: str, timeout: int) -> 
             previous_telemetry = os.environ.get("DISABLE_TELEMETRY")
             os.environ["DISABLE_TELEMETRY"] = "1"
             try:
-                update_skills(project, [], "project", cli_version, True, timeout)
+                update_skills(
+                    project,
+                    [],
+                    "project",
+                    cli_version,
+                    True,
+                    timeout,
+                    adopt_legacy=True,
+                    trusted_development_sources={source_url: source},
+                )
             finally:
                 if previous_telemetry is None:
                     os.environ.pop("DISABLE_TELEMETRY", None)
@@ -251,7 +260,7 @@ def run_upgrade(source: Path, baseline: str, cli_version: str, timeout: int) -> 
         migrated = {item["skill"] for item in migration["migrations"]}
         if migrated != {"verify-before-push", "operate-yandex-cloud", "notify-via-telegram"}:
             raise UpgradeError(f"Unexpected migrated skills: {sorted(migrated)}")
-        state = doctor(project)
+        state = doctor(project, {source_url: source})
         if not state["healthy"]:
             raise UpgradeError(f"Doctor failed after update: {state['problems']}")
         expected_version = json.loads(
