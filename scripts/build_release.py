@@ -15,6 +15,7 @@ from typing import Iterable
 
 
 ROOT_FILES = ("README.md", "LICENSE", "CHANGELOG.md", "skill-catalog.json")
+OPTIONAL_PLUGIN_FILES = (".codex-plugin/plugin.json",)
 TAG_PATTERN = re.compile(
     r"^v[0-9]+\.[0-9]+\.[0-9]+(?:[-+][0-9A-Za-z]+(?:[.-][0-9A-Za-z]+)*)?$"
 )
@@ -39,6 +40,14 @@ def release_files(source: Path) -> list[Path]:
         if path.is_symlink():
             raise ValueError(f"Release input must not be a symbolic link: {path}")
         files.append(path)
+    for name in OPTIONAL_PLUGIN_FILES:
+        path = source / name
+        if path.exists():
+            if not path.is_file():
+                raise ValueError(f"Release input must be a file: {path}")
+            if path.is_symlink():
+                raise ValueError(f"Release input must not be a symbolic link: {path}")
+            files.append(path)
     skills_root = source / "skills"
     if not skills_root.is_dir():
         raise FileNotFoundError(f"Skills directory was not found: {skills_root}")
@@ -77,6 +86,7 @@ def source_commit(source: Path) -> str:
             "--untracked-files=all",
             "--",
             *ROOT_FILES,
+            *OPTIONAL_PLUGIN_FILES,
             "skills",
         ],
         capture_output=True,

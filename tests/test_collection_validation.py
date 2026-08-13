@@ -45,6 +45,16 @@ class CollectionValidationTests(unittest.TestCase):
                 any("skill 'demo-skill' is missing from the catalog" in error for error in errors)
             )
 
+    def test_reports_missing_plugin_manifest(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            repository = Path(directory)
+
+            errors = validate(repository)
+
+            self.assertTrue(
+                any("required plugin manifest is missing" in error for error in errors)
+            )
+
     def test_reports_invalid_catalog_root_without_crashing(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
             repository = Path(directory)

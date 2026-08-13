@@ -42,6 +42,8 @@ class ReleaseArtifactTests(unittest.TestCase):
                 expected = prefix + "skills/operate-yandex-cloud/SKILL.md"
                 self.assertIn(expected, zip_names)
                 self.assertIn(expected, tar_names)
+                self.assertIn(prefix + ".codex-plugin/plugin.json", zip_names)
+                self.assertIn(prefix + ".codex-plugin/plugin.json", tar_names)
                 self.assertFalse(any("/.git/" in name for name in zip_names))
 
                 manifest = json.loads(

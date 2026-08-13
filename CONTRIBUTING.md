@@ -80,6 +80,10 @@ and the pull request checklist contains evidence for the affected skill.
 - Grant each workflow only its required `GITHUB_TOKEN` permissions.
 - Build release archives through `scripts/build_release.py`; verify
   `SHA256SUMS` before uploading assets.
+- Publish GitHub artifact attestations for every release asset and verify them
+  with `gh attestation verify <artifact> --repo kolabse/skills`.
+- Never replace an existing release asset. A repeated workflow run must verify
+  that the published bytes are identical or fail.
 - Keep version tags immutable. Publish a correction as a new version instead
   of moving an existing tag or replacing its source commit.
 
