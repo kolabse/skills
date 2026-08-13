@@ -1,0 +1,4 @@
+interface:
+  display_name: "Verify Before Push"
+  short_description: "Bind project checks to the exact Git state"
+  default_prompt: "Use $verify-before-push to run project checks and record evidence for the exact Git state before push."
