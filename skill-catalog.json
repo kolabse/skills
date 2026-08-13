@@ -3,6 +3,46 @@
   "license": "Apache-2.0",
   "skills": [
     {
+      "name": "maintain-work-log",
+      "path": "skills/maintain-work-log",
+      "status": "experimental",
+      "maintainers": [
+        "@kolabse"
+      ],
+      "platforms": [
+        "linux",
+        "macos",
+        "windows"
+      ],
+      "trigger_evals": "evals/maintain-work-log.json",
+      "license": "Apache-2.0",
+      "provenance": {
+        "kind": "original",
+        "source": "Derived from prior project experience where this workflow was successfully applied as a project rule",
+        "canonical_repository": "https://github.com/kolabse/skills"
+      }
+    },
+    {
+      "name": "notify-via-telegram",
+      "path": "skills/notify-via-telegram",
+      "status": "experimental",
+      "maintainers": [
+        "@kolabse"
+      ],
+      "platforms": [
+        "linux",
+        "macos",
+        "windows"
+      ],
+      "trigger_evals": "evals/notify-via-telegram.json",
+      "license": "Apache-2.0",
+      "provenance": {
+        "kind": "original",
+        "source": "Derived from prior project experience where this workflow was successfully applied as a project rule",
+        "canonical_repository": "https://github.com/kolabse/skills"
+      }
+    },
+    {
       "name": "operate-yandex-cloud",
       "path": "skills/operate-yandex-cloud",
       "status": "experimental",
@@ -17,11 +57,8 @@
       "trigger_evals": "evals/operate-yandex-cloud.json",
       "license": "Apache-2.0",
       "provenance": {
-        "kind": "migrated",
-        "source": "FProject workspace",
-        "previous_names": [
-          "operate-fproject-cloud"
-        ],
+        "kind": "original",
+        "source": "Derived from prior project experience where this workflow was successfully applied as a project rule",
         "canonical_repository": "https://github.com/kolabse/skills"
       }
     }

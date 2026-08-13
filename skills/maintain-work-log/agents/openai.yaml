@@ -1,0 +1,4 @@
+interface:
+  display_name: "Maintain Work Log"
+  short_description: "Keep a dated chronological project work log"
+  default_prompt: "Use $maintain-work-log to configure and maintain this project's dated work log."

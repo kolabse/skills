@@ -10,7 +10,15 @@ import zipfile
 from pathlib import Path
 
 
-SCRIPTS_DIRECTORY = Path(__file__).resolve().parents[1] / "scripts"
+REPOSITORY_DIRECTORY = Path(__file__).resolve().parents[1]
+SCRIPTS_DIRECTORY = REPOSITORY_DIRECTORY / "scripts"
+PLUGIN_VERSION = json.loads(
+    (REPOSITORY_DIRECTORY / ".codex-plugin" / "plugin.json").read_text(
+        encoding="utf-8"
+    )
+)["version"]
+RELEASE_TAG = f"v{PLUGIN_VERSION}"
+ARCHIVE_BASENAME = f"kolabse-skills-{RELEASE_TAG}"
 sys.dont_write_bytecode = True
 sys.path.insert(0, str(SCRIPTS_DIRECTORY))
 
@@ -19,13 +27,13 @@ from build_release import build_release, verify_checksums  # noqa: E402
 
 class ReleaseArtifactTests(unittest.TestCase):
     def test_release_build_is_deterministic_and_contains_distribution(self) -> None:
-        repository = Path(__file__).resolve().parents[1]
+        repository = REPOSITORY_DIRECTORY
         with tempfile.TemporaryDirectory() as first_directory:
             with tempfile.TemporaryDirectory() as second_directory:
                 first = Path(first_directory)
                 second = Path(second_directory)
-                first_files = build_release(repository, "v1.2.3", first)
-                second_files = build_release(repository, "v1.2.3", second)
+                first_files = build_release(repository, RELEASE_TAG, first)
+                second_files = build_release(repository, RELEASE_TAG, second)
 
                 self.assertEqual(
                     [path.name for path in first_files],
@@ -34,14 +42,19 @@ class ReleaseArtifactTests(unittest.TestCase):
                 for first_path, second_path in zip(first_files, second_files):
                     self.assertEqual(first_path.read_bytes(), second_path.read_bytes())
 
-                prefix = "kolabse-skills-v1.2.3/"
-                with zipfile.ZipFile(first / "kolabse-skills-v1.2.3.zip") as archive:
+                prefix = f"{ARCHIVE_BASENAME}/"
+                with zipfile.ZipFile(first / f"{ARCHIVE_BASENAME}.zip") as archive:
                     zip_names = set(archive.namelist())
-                with tarfile.open(first / "kolabse-skills-v1.2.3.tar.gz") as archive:
+                with tarfile.open(first / f"{ARCHIVE_BASENAME}.tar.gz") as archive:
                     tar_names = set(archive.getnames())
-                expected = prefix + "skills/operate-yandex-cloud/SKILL.md"
-                self.assertIn(expected, zip_names)
-                self.assertIn(expected, tar_names)
+                for skill in (
+                    "maintain-work-log",
+                    "notify-via-telegram",
+                    "operate-yandex-cloud",
+                ):
+                    expected = prefix + f"skills/{skill}/SKILL.md"
+                    self.assertIn(expected, zip_names)
+                    self.assertIn(expected, tar_names)
                 self.assertIn(prefix + ".codex-plugin/plugin.json", zip_names)
                 self.assertIn(prefix + ".codex-plugin/plugin.json", tar_names)
                 self.assertFalse(any("/.git/" in name for name in zip_names))
@@ -49,21 +62,27 @@ class ReleaseArtifactTests(unittest.TestCase):
                 manifest = json.loads(
                     (first / "release-manifest.json").read_text(encoding="utf-8")
                 )
-                self.assertEqual("v1.2.3", manifest["release"])
+                self.assertEqual(RELEASE_TAG, manifest["release"])
                 self.assertEqual(2, len(manifest["artifacts"]))
                 self.assertTrue(manifest["source_commit"])
                 verify_checksums(first / "SHA256SUMS")
 
     def test_verification_rejects_tampered_artifact(self) -> None:
-        repository = Path(__file__).resolve().parents[1]
+        repository = REPOSITORY_DIRECTORY
         with tempfile.TemporaryDirectory() as directory:
             output = Path(directory)
-            build_release(repository, "v1.2.3", output)
-            archive = output / "kolabse-skills-v1.2.3.zip"
+            build_release(repository, RELEASE_TAG, output)
+            archive = output / f"{ARCHIVE_BASENAME}.zip"
             archive.write_bytes(archive.read_bytes() + b"tampered")
 
             with self.assertRaisesRegex(ValueError, "Checksum mismatch"):
                 verify_checksums(output / "SHA256SUMS")
+
+    def test_plugin_version_must_match_release_tag(self) -> None:
+        repository = REPOSITORY_DIRECTORY
+        with tempfile.TemporaryDirectory() as directory:
+            with self.assertRaisesRegex(ValueError, "does not match release tag"):
+                build_release(repository, "v9.9.9", Path(directory))
 
     def test_clean_git_source_uses_canonical_blob_line_endings(self) -> None:
         with tempfile.TemporaryDirectory() as source_directory:

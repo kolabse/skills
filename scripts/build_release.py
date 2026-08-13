@@ -30,6 +30,22 @@ def sha256_file(path: Path) -> str:
     return digest.hexdigest()
 
 
+def validate_plugin_release_version(source: Path, tag: str) -> None:
+    manifest_path = source / ".codex-plugin" / "plugin.json"
+    if not manifest_path.is_file():
+        return
+    try:
+        manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+    except (json.JSONDecodeError, UnicodeDecodeError) as error:
+        raise ValueError(f"Invalid plugin manifest: {error}") from error
+    version = manifest.get("version") if isinstance(manifest, dict) else None
+    expected = tag.removeprefix("v")
+    if version != expected:
+        raise ValueError(
+            f"Plugin version {version!r} does not match release tag {tag!r}"
+        )
+
+
 def release_files(source: Path) -> list[Path]:
     source = source.resolve()
     files: list[Path] = []
@@ -183,6 +199,7 @@ def build_release(source: Path, tag: str, output: Path) -> list[Path]:
     if not TAG_PATTERN.fullmatch(tag):
         raise ValueError(f"Unsupported release tag: {tag}")
     source = source.resolve()
+    validate_plugin_release_version(source, tag)
     output.mkdir(parents=True, exist_ok=True)
     files = release_files(source)
     commit = source_commit(source)

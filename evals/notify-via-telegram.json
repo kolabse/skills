@@ -1,0 +1,39 @@
+{
+  "skill": "notify-via-telegram",
+  "positive": [
+    {
+      "prompt": "Задача займёт несколько часов. Присылай мне в Телеграм начало, переходы между этапами и итог.",
+      "reason": "The user explicitly requests Telegram lifecycle notifications for a long task."
+    },
+    {
+      "prompt": "Разверни новую версию, дождись миграций и smoke-тестов и держи меня в курсе в Telegram.",
+      "reason": "A multi-stage deployment with waits and an explicit Telegram request needs remote updates."
+    },
+    {
+      "prompt": "Проведи длительное исследование по всем нашим сервисам; сообщай в Telegram промежуточные выводы и проблемы.",
+      "reason": "Long research with milestones and problems is a core notification workflow."
+    },
+    {
+      "prompt": "Запусти долгий импорт и уведомляй меня удалённо, когда он перейдёт к следующей фазе или завершится.",
+      "reason": "A lengthy phased operation benefits from start, transition, and completion notifications."
+    }
+  ],
+  "negative": [
+    {
+      "prompt": "Исправь опечатку в README и покажи diff.",
+      "reason": "A short local edit does not justify lifecycle notifications."
+    },
+    {
+      "prompt": "Напиши Telegram-бота для службы поддержки клиентов.",
+      "reason": "Building a Telegram product is unrelated to notifying about agent task progress."
+    },
+    {
+      "prompt": "Объясни, как работает метод sendMessage в Telegram Bot API.",
+      "reason": "A technical explanation is not a long-running task notification workflow."
+    },
+    {
+      "prompt": "Показывай прогресс этой задачи только здесь, в чате Codex.",
+      "reason": "The user explicitly chooses the local conversation rather than Telegram."
+    }
+  ]
+}
