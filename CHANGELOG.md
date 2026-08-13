@@ -4,6 +4,8 @@
 
 ### Added
 
+- The `maintain-work-log` skill for project-level logging policy, dated records
+  of material work and decisions, and evidence-based history reconstruction.
 - The `notify-via-telegram` skill with interactive credential setup, chat
   discovery, milestone-oriented task updates, and a cross-platform standard
   library client.

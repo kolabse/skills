@@ -1,0 +1,39 @@
+{
+  "skill": "maintain-work-log",
+  "positive": [
+    {
+      "prompt": "Веди по этой задаче датированный журнал работ в docs/reports/work-log.md и запиши принятые решения.",
+      "reason": "The user explicitly requires the canonical dated work log and decision recording."
+    },
+    {
+      "prompt": "Установи в проекте правило обязательного ведения журнала работ для всех следующих задач.",
+      "reason": "Configuring a persistent project policy is a core first-use workflow."
+    },
+    {
+      "prompt": "Восстанови пропущенные записи журнала за прошлый квартал по Git-коммитам и доступной истории наших чатов.",
+      "reason": "Retrospective evidence-based reconstruction is an explicit capability of the skill."
+    },
+    {
+      "prompt": "Мы согласовали новый порядок миграции. Зафиксируй решение и причины в хронологическом журнале проекта.",
+      "reason": "A material project decision must be recorded even when no code changes occur."
+    }
+  ],
+  "negative": [
+    {
+      "prompt": "Покажи последние двадцать строк системного журнала nginx.",
+      "reason": "Reading an application log is not itself a request to maintain a project work log."
+    },
+    {
+      "prompt": "Сделай приложение, в котором сотрудники отмечают отработанные часы.",
+      "reason": "Building a time-tracking product is unrelated to maintaining the repository work log."
+    },
+    {
+      "prompt": "Объясни формат conventional commits.",
+      "reason": "A general Git explanation does not imply a dated project work-log policy."
+    },
+    {
+      "prompt": "Запиши мои личные заметки за день в отдельный дневник.",
+      "reason": "A personal diary is not an auditable project work log."
+    }
+  ]
+}

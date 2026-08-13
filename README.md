@@ -31,6 +31,24 @@ and every folder under `skills/` is included in the plugin. The cross-agent
 
 ## Available skills
 
+### `maintain-work-log`
+
+Maintain a dated, chronological record of project changes, operations,
+diagnostics, discussions, decisions, verification, blockers, and rollback
+results in `docs/reports/work-log.md`.
+
+After installing it in a project, invoke it once with:
+
+```text
+$maintain-work-log Configure this project to maintain its dated work log.
+```
+
+The skill adds or preserves a repository-level `AGENTS.md` policy so future
+tasks invoke it, follows the project's existing journal format, keeps secrets
+out of entries, and offers evidence-based reconstruction for non-empty projects
+with missing history. Reconstruction uses Git and only the project conversation
+history that is actually available to the agent.
+
 ### `notify-via-telegram`
 
 Send concise Telegram notifications when long-running agent tasks start,
