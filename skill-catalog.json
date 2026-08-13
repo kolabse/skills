@@ -3,6 +3,26 @@
   "license": "Apache-2.0",
   "skills": [
     {
+      "name": "notify-via-telegram",
+      "path": "skills/notify-via-telegram",
+      "status": "experimental",
+      "maintainers": [
+        "@kolabse"
+      ],
+      "platforms": [
+        "linux",
+        "macos",
+        "windows"
+      ],
+      "trigger_evals": "evals/notify-via-telegram.json",
+      "license": "Apache-2.0",
+      "provenance": {
+        "kind": "original",
+        "source": "kolabse/skills",
+        "canonical_repository": "https://github.com/kolabse/skills"
+      }
+    },
+    {
       "name": "operate-yandex-cloud",
       "path": "skills/operate-yandex-cloud",
       "status": "experimental",

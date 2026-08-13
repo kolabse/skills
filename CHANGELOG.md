@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+### Added
+
+- The `notify-via-telegram` skill with interactive credential setup, chat
+  discovery, milestone-oriented task updates, and a cross-platform standard
+  library client.
+
 ## [0.2.0] - 2026-08-13
 
 ### Added

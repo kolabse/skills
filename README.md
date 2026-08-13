@@ -31,6 +31,25 @@ and every folder under `skills/` is included in the plugin. The cross-agent
 
 ## Available skills
 
+### `notify-via-telegram`
+
+Send concise Telegram notifications when long-running agent tasks start,
+advance, produce intermediate results, encounter problems, become blocked, or
+finish.
+
+After installing it, invoke it once with:
+
+```text
+$notify-via-telegram Configure Telegram notifications for long tasks.
+```
+
+The skill opens an interactive first-run setup so the bot token does not enter
+the conversation or shell history. It validates the bot, helps discover the
+destination chat from a recent `/start` or group command, stores credentials in
+the user's configuration directory outside the installed skill, and sends a
+test notification. Its Python 3 helper uses only the standard library and runs
+on Windows, macOS, and Linux.
+
 ### `operate-yandex-cloud`
 
 Safely operate project-scoped Yandex Cloud infrastructure.
