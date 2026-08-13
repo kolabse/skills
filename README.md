@@ -29,9 +29,72 @@ ChatGPT and Codex. Its manifest is in [`.codex-plugin/plugin.json`](.codex-plugi
 and every folder under `skills/` is included in the plugin. The cross-agent
 `npx skills` installation remains available independently of the plugin.
 
+## Update installed skills
+
+The `skills` CLI records the GitHub source and a content hash in
+`skills-lock.json`. Update every project installation from its recorded source:
+
+```shell
+npx skills@1.5.22 update -p -y
+```
+
+Update one skill or global installations with:
+
+```shell
+npx skills@1.5.22 update verify-before-push -p -y
+npx skills@1.5.22 update -g -y
+```
+
+An unqualified `kolabse/skills` lock follows the repository's default branch;
+it does not pin a collection release. Do not edit copied files under
+`.agents/skills/` because update may replace them. Project and user
+configuration remains outside installed skill folders.
+
+From a cloned checkout or release archive, update and migrate supported project
+configuration in one explicit operation:
+
+```shell
+python scripts/manage_installed_skills.py update --project-path . --yes --migrate
+python scripts/manage_installed_skills.py doctor --project-path . --json
+```
+
+Add `--include-user-config` only when the Telegram user configuration should be
+migrated too. `status` and `doctor` are read-only. `migrate` changes only
+configuration files that already exist; it does not configure unused skills.
+Each installed skill carries `collection-metadata.json`, so `status` reports its
+collection version even though the external lock format has no version field.
+
+To roll back skill files, first back up project/user configuration, then
+reinstall the required release tag with the same skills and agent targets used
+for the original installation, for example:
+
+```shell
+npx skills@1.5.22 add kolabse/skills@v1.1.0 --skill verify-before-push --agent codex --copy -y
+```
+
+Configuration migrations are forward-only unless a release explicitly
+documents a downgrade. Restoring older skill files does not downgrade config;
+restore the matching configuration backup when the older release cannot read
+the newer format.
+
+## Install or update the personal Codex plugin
+
+From a cloned checkout or release archive, create/update the default personal
+marketplace entry, copy the plugin to the local plugin directory, add a Codex
+cachebuster, and activate it:
+
+```shell
+python scripts/install_personal_plugin.py --activate
+```
+
+The installer preserves other personal marketplace entries. It does not edit
+the repository manifest. Run it again after updating the checkout, then start a
+new Codex task so the updated skills are loaded. Use `--json` to record the
+installed version, plugin path, marketplace path, and marketplace name.
+
 ## Available skills
 
-All current skills are stable as of collection v1.0.0. Their project-facing
+All current skills are stable. Their project-facing
 configuration paths, safety boundaries, and documented command interfaces
 follow the compatibility policy in [CONTRIBUTING.md](CONTRIBUTING.md).
 

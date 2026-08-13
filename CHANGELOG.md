@@ -2,6 +2,26 @@
 
 ## Unreleased
 
+## [1.2.0] - 2026-08-13
+
+### Added
+
+- Consumer update, migration, diagnosis, rollback, and personal Codex plugin
+  instructions.
+- A collection manager that delegates downloads to the pinned `skills` CLI and
+  provides `status`, `update`, `migrate`, and read-only `doctor` commands.
+- Installed `collection-metadata.json` files so copied skills expose their
+  collection version independently of the external lock format.
+- A personal marketplace installer that preserves unrelated entries, installs
+  a cachebusted local plugin copy, and can activate it through the Codex CLI.
+- An integration gate for upgrading a copied v1.0.0 installation to the current
+  collection and migrating legacy configuration.
+
+### Changed
+
+- Collection validation now requires plugin, catalog, and installed metadata
+  versions to match.
+
 ## [1.1.0] - 2026-08-13
 
 ### Added
@@ -144,6 +164,7 @@ First versioned release of the kolabse skill collection.
 - Tests for configuration migration, fake cloud and infrastructure CLIs,
   installation confirmation, and collection metadata.
 
+[1.2.0]: https://github.com/kolabse/skills/releases/tag/v1.2.0
 [1.1.0]: https://github.com/kolabse/skills/releases/tag/v1.1.0
 [1.0.0]: https://github.com/kolabse/skills/releases/tag/v1.0.0
 [0.8.0]: https://github.com/kolabse/skills/releases/tag/v0.8.0

@@ -80,6 +80,24 @@ Completion criterion: configure/configure produces byte-identical output,
 status performs no writes, migrations preserve supported input, and tests cover
 missing, malformed, current, and legacy configuration.
 
+## Preserve the consumer update path
+
+- Keep `.codex-plugin/plugin.json`, `skill-catalog.json.collection_version`, and
+  every `skills/*/collection-metadata.json` version identical in a release.
+- Test copied installation and an update from the oldest supported previous
+  release through the pinned `skills` CLI.
+- Keep project/user configuration outside installed skill folders. Never make
+  an updater silently create configuration for an unused skill.
+- Document required migrations and rollback limitations in the README and
+  changelog. Treat configuration downgrade as unsupported unless tested.
+- Preserve unrelated entries when changing the personal marketplace. Apply one
+  cachebuster suffix to the installed plugin copy and require a new Codex task
+  after activation.
+
+Completion criterion: a consumer can identify installed versions, update,
+migrate existing configuration, diagnose mixed versions, and reinstall a prior
+tag without relying on repository-private knowledge.
+
 ## Compose skills by capability
 
 Declare small capability names in `provides`, mandatory prerequisites in
