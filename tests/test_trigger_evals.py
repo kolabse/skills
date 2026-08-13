@@ -14,6 +14,7 @@ sys.path.insert(0, str(SCRIPTS))
 
 from trigger_evals import (  # noqa: E402
     EvalError,
+    aggregate_predictions,
     compare_reports,
     comparison_markdown,
     markdown_report,
@@ -210,6 +211,20 @@ class TriggerEvalTests(unittest.TestCase):
             failed["assertion_digest"] = "different"
             with self.assertRaisesRegex(EvalError, "different evaluation assertions"):
                 compare_reports(perfect, failed)
+
+    def test_aggregates_an_odd_majority_without_labels(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            self.make_repository(root)
+            suite, assertions = prepare_suite(root)
+            positive = self.predictions(suite, {"Do the demo": ["demo"]})
+            negative = self.predictions(suite, {})
+            aggregate = aggregate_predictions(suite, [positive, positive, negative])
+            report = score_suite(suite, assertions, aggregate)
+            self.assertEqual(1.0, report["summary"]["accuracy"])
+            self.assertEqual("majority-vote", aggregate["selector"]["method"])
+            with self.assertRaisesRegex(EvalError, "odd number"):
+                aggregate_predictions(suite, [positive, negative])
 
 
 if __name__ == "__main__":

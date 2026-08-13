@@ -126,6 +126,16 @@ def validate_release_holdout(
     )
     if not isinstance(baseline, dict) or baseline.get("assertion_digest") != assertion_digest:
         errors.append(f"{baseline_path}: assertion_digest does not match the holdout")
+    selector = baseline.get("selector") if isinstance(baseline, dict) else None
+    run_count = selector.get("run_count") if isinstance(selector, dict) else None
+    if (
+        not isinstance(selector, dict)
+        or selector.get("method") != "majority-vote"
+        or not isinstance(run_count, int)
+        or run_count < 3
+        or run_count % 2 == 0
+    ):
+        errors.append(f"{baseline_path}: baseline must use an odd majority of 3+ runs")
     return errors
 
 
@@ -343,8 +353,17 @@ def validate(repository_root: Path = REPOSITORY_ROOT) -> list[str]:
             if path in catalog_paths:
                 errors.append(f"{location}: duplicate catalog path '{path}'")
             catalog_paths.add(path)
-        if entry.get("status") not in ALLOWED_STATUSES:
+        status = entry.get("status")
+        if status not in ALLOWED_STATUSES:
             errors.append(f"{location}.status must be one of {sorted(ALLOWED_STATUSES)}")
+        stable_since = entry.get("stable_since")
+        if status == "stable":
+            if not isinstance(stable_since, str) or not PLUGIN_VERSION_PATTERN.fullmatch(
+                stable_since
+            ):
+                errors.append(f"{location}.stable_since must be a semantic version")
+        elif stable_since is not None:
+            errors.append(f"{location}.stable_since is only valid for stable skills")
         maintainers = entry.get("maintainers")
         if not isinstance(maintainers, list) or not maintainers or not all(
             isinstance(value, str) and value for value in maintainers

@@ -31,6 +31,10 @@ and every folder under `skills/` is included in the plugin. The cross-agent
 
 ## Available skills
 
+All current skills are stable as of collection v1.0.0. Their project-facing
+configuration paths, safety boundaries, and documented command interfaces
+follow the compatibility policy in [CONTRIBUTING.md](CONTRIBUTING.md).
+
 ### `verify-before-push`
 
 Run project-declared checks and record evidence bound to the exact Git commits,
@@ -140,6 +144,7 @@ Run the collection checks locally with:
 python scripts/validate_skills.py
 python -m unittest discover -s tests -v
 npx skills@1.5.22 add . --list
+python scripts/smoke_install.py
 ```
 
 Prepare a blind trigger suite for an agent or model selector with:
@@ -185,6 +190,17 @@ Comparison fails closed when assertion digests differ or overall accuracy,
 precision, recall, or a per-skill metric drops beyond the configured limits.
 By default it uses the published baseline named by `skill-catalog.json`; pass
 `--baseline` only when intentionally comparing with another compatible report.
+
+For model selectors that are not deterministic, collect an odd number of at
+least three blind prediction runs and score their majority decision:
+
+```shell
+python scripts/trigger_evals.py aggregate \
+  --corpus release-holdout \
+  --predictions run-1.json run-2.json run-3.json \
+  --predictions-output .trigger-evals/aggregate.json \
+  --json-output .trigger-evals/candidate-report.json
+```
 
 ## Verify a release
 

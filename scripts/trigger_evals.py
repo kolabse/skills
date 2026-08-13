@@ -439,6 +439,42 @@ def comparison_markdown(comparison: dict[str, Any]) -> str:
     return "\n".join(lines) + "\n"
 
 
+def aggregate_predictions(suite: dict[str, Any], runs: list[Any]) -> dict[str, Any]:
+    if len(runs) < 3 or len(runs) % 2 == 0:
+        raise EvalError("Aggregation requires an odd number of at least 3 prediction runs")
+    indexed_runs = [validate_predictions(suite, run) for run in runs]
+    threshold = len(runs) // 2 + 1
+    predictions: list[dict[str, Any]] = []
+    for case in suite["cases"]:
+        identifier = case["id"]
+        counts = {item["name"]: 0 for item in suite["skills"]}
+        for indexed in indexed_runs:
+            for name in indexed[identifier]["selected_skills"]:
+                counts[name] += 1
+        selected = sorted(name for name, count in counts.items() if count >= threshold)
+        decisions = ", ".join(
+            f"{name}={count}/{len(runs)}" for name, count in sorted(counts.items()) if count
+        )
+        predictions.append(
+            {
+                "id": identifier,
+                "selected_skills": selected,
+                "reason": f"Majority vote ({decisions or 'no selections'}).",
+            }
+        )
+    return {
+        "schema_version": SCHEMA_VERSION,
+        "suite_digest": suite["suite_digest"],
+        "selector": {
+            "method": "majority-vote",
+            "run_count": len(runs),
+            "threshold": threshold,
+            "runs": [run.get("selector", {}) if isinstance(run, dict) else {} for run in runs],
+        },
+        "predictions": predictions,
+    }
+
+
 def write_json(path: Path, value: Any) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(json.dumps(value, indent=2, sort_keys=True) + "\n", encoding="utf-8")
@@ -497,6 +533,13 @@ def main(argv: list[str] | None = None) -> int:
     run.add_argument("--timeout", type=int, default=600)
     run.add_argument("--min-accuracy", type=float, default=0.0)
     run.add_argument("selector_command", nargs=argparse.REMAINDER)
+    aggregate = commands.add_parser("aggregate")
+    add_common(aggregate)
+    aggregate.add_argument("--predictions", type=Path, nargs="+", required=True)
+    aggregate.add_argument("--predictions-output", type=Path, required=True)
+    aggregate.add_argument("--json-output", type=Path)
+    aggregate.add_argument("--markdown-output", type=Path)
+    aggregate.add_argument("--min-accuracy", type=float, default=0.0)
     compare = commands.add_parser("compare")
     compare.add_argument("--repository-root", type=Path, default=REPOSITORY_ROOT)
     compare.add_argument("--baseline", type=Path)
@@ -561,6 +604,10 @@ def main(argv: list[str] | None = None) -> int:
                 command = command[1:]
             predictions = run_selector(command, suite, args.timeout)
             validate_predictions(suite, predictions)
+            write_json(args.predictions_output, predictions)
+        elif args.command == "aggregate":
+            runs = [load_json(path, f"Predictions {path}") for path in args.predictions]
+            predictions = aggregate_predictions(suite, runs)
             write_json(args.predictions_output, predictions)
         else:
             predictions = load_json(args.predictions, "Predictions")

@@ -55,6 +55,25 @@ combining third-party content with Apache-2.0 content.
 Completion criterion: a reader can determine where the skill came from, who
 owns it, how it is licensed, where it runs, and how to validate it.
 
+## Manage lifecycle status
+
+- Keep a new or materially redesigned skill `experimental` until its metadata,
+  deterministic helpers, cross-platform tests, development trigger corpus,
+  independent forward-test, copied-install smoke test, and release holdout have
+  all passed. Requirements that do not apply, such as bundled scripts for a
+  prose-only workflow, may be recorded as not applicable.
+- Mark a skill `stable` only in a versioned collection release. Add
+  `stable_since` with that release version. Stable means documented inputs,
+  configuration locations, safety boundaries, and CLI behavior will remain
+  compatible within the current collection major version or receive migration
+  guidance.
+- Mark a skill `deprecated` before removal. Name its supported replacement or
+  migration path in the skill and changelog, and retain it for at least one
+  minor release unless an urgent safety issue requires earlier removal.
+
+Completion criterion: lifecycle status is backed by observable validation and
+communicates a clear compatibility expectation.
+
 ## Validate the change
 
 Run:
@@ -63,6 +82,7 @@ Run:
 python scripts/validate_skills.py
 python -m unittest discover -s tests -v
 npx skills@1.5.22 add . --list
+python scripts/smoke_install.py
 ```
 
 Exercise the trigger corpus against an actual agent, including the skill's
@@ -97,6 +117,9 @@ a baseline generated from the same holdout version and selector configuration.
 Never compare reports with different assertion digests. After release, retain
 the accepted report under `evals/baselines/` and update the catalog baseline
 pointer; baseline files are release evidence and must not be rewritten.
+When the selector is nondeterministic, use an odd number of at least three
+independent blind runs and compare the majority-vote aggregate. Do not rerun a
+single observation until it passes or discard valid failed observations.
 
 Completion criterion: every command passes on each supported operating system,
 and the pull request checklist contains evidence for the affected skill.
