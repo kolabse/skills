@@ -65,3 +65,15 @@ python scripts/validate_skills.py
 python -m unittest discover -s tests -v
 npx skills@1.5.22 add . --list
 ```
+
+## Verify a release
+
+Versioned releases include deterministic ZIP and TAR.GZ archives,
+`release-manifest.json`, and `SHA256SUMS`. Download all four assets into one
+directory and verify them with:
+
+```shell
+python scripts/build_release.py --verify <download-directory>/SHA256SUMS
+```
+
+GitHub also exposes a SHA-256 `digest` for every uploaded release asset.
