@@ -1,6 +1,6 @@
 ---
 name: maintain-work-log
-description: "Maintain a dated, chronological project work log at docs/reports/work-log.md. Use for every task in a project that requires auditable recording of code and configuration changes, infrastructure operations, diagnostics, discussions, decisions, verification, blockers, and other material work; also use to initialize the logging policy in AGENTS.md or reconstruct missing historical entries from Git history and available project conversations."
+description: "Maintain the canonical dated project work log at docs/reports/work-log.md. Use when the user or applicable project instructions require that log for the current task; when recording material changes, operations, diagnostics, decisions, verification, or blockers in an already configured work-log workflow; when initializing its policy in AGENTS.md; or when reconstructing missing entries from Git history and available project conversations. Do not infer this skill from ordinary project work alone when no work-log requirement is present, and do not use it for application logs, time-tracking products, or personal notes."
 ---
 
 # Maintain Work Log

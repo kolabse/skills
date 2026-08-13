@@ -16,12 +16,28 @@
     {
       "prompt": "Добавь lint и unit tests в проектный pre-push preflight, но не привязывай его к конкретному IDE или агенту.",
       "reason": "Portable project-declared verification without product-specific hook wiring is in scope."
+    },
+    {
+      "prompt": "Перед реальным push проверь, что сохранённый preflight всё ещё относится к текущим HEAD, upstream и worktree.",
+      "reason": "The request explicitly validates state-bound evidence at the push boundary."
+    },
+    {
+      "prompt": "В AGENTS.md уже объявлены обязательные lint и smoke checks. Выполни их и разреши push только для проверенного состояния.",
+      "reason": "An applicable project policy requires the declared fail-closed verification workflow."
     }
   ],
   "negative": [
     {
-      "prompt": "Отправь уже проверенную ветку в origin.",
-      "reason": "A plain push request does not necessarily ask to configure or run verification."
+      "prompt": "Покажи, как выглядит команда git push для ветки feature/demo, но ничего не запускай и не проверяй.",
+      "reason": "A conceptual command example with an explicit no-execution boundary does not require verification evidence."
+    },
+    {
+      "prompt": "Объясни синтаксис git push --set-upstream без обращения к репозиторию.",
+      "reason": "A local conceptual explanation has no quality-gate or evidence operation."
+    },
+    {
+      "prompt": "Запусти один unit-тест, чтобы воспроизвести ошибку, но push и preflight сейчас не нужны.",
+      "reason": "Diagnostic test execution explicitly outside a push gate is not state-bound pre-push verification."
     },
     {
       "prompt": "Объясни, чем pre-commit отличается от pre-push hook.",

@@ -1,6 +1,6 @@
 ---
 name: synchronize-git-repositories
-description: "Safely synchronize one or more Git repositories without overwriting local work. Use before analyzing, editing, validating, committing, pushing, deploying, or running remote operations in a repository; when a task spans related code, infrastructure, or documentation repositories; when the user asks to fetch, pull, update, or check whether repositories are current; and when configuring a project-wide synchronization policy in AGENTS.md."
+description: "Safely establish remote freshness for one or more existing Git repositories without overwriting local work. Use when a repository has a configured remote or upstream and the task depends on current remote state: before analysis, edits, validation, commits, pushes, deployments, or remote execution when project policy requires synchronization; across related code, infrastructure, or documentation repositories; when the user asks to fetch, pull, update, compare with upstream, or check whether repositories are current; and when configuring a synchronization policy in AGENTS.md. Do not use for local-only Git work, repository initialization, conceptual Git help, or destructive remote-ref operations unless synchronization is also requested."
 ---
 
 # Synchronize Git Repositories
