@@ -14,6 +14,16 @@ from typing import Any
 
 CONFIG_RELATIVE = Path(".agents/verify-before-push/config.json")
 DEFAULT_EVIDENCE = Path(".agents/verify-before-push/evidence.json")
+POLICY_START = "<!-- verify-before-push:start -->"
+POLICY_END = "<!-- verify-before-push:end -->"
+POLICY_BLOCK = """<!-- verify-before-push:start -->
+## Verification before push
+
+Use `$verify-before-push` before pushing protected repositories. Run the
+project-declared checks and require current evidence bound to the exact Git
+commits and worktrees being pushed. Treat missing, failed, malformed, or
+stale evidence as a stop condition for a protected push.
+<!-- verify-before-push:end -->"""
 
 
 class VerificationError(RuntimeError):
@@ -90,6 +100,92 @@ def load_config(project_root: Path) -> tuple[dict[str, Any], Path]:
         raise VerificationError("evidence_file must be a non-empty string")
     evidence_path = resolve_inside(project_root, evidence_value, "evidence_file")
     return config, evidence_path
+
+
+def validate_config_document(config: dict[str, Any], project_root: Path) -> Path:
+    if config.get("version") != 1:
+        raise VerificationError("Configuration version must be 1")
+    repositories = config.get("repositories")
+    checks = config.get("checks")
+    if not isinstance(repositories, list) or not repositories:
+        raise VerificationError("repositories must be a non-empty list")
+    if not isinstance(checks, list) or not checks:
+        raise VerificationError("checks must be a non-empty list")
+    evidence_value = config.get("evidence_file", DEFAULT_EVIDENCE.as_posix())
+    if not isinstance(evidence_value, str) or not evidence_value:
+        raise VerificationError("evidence_file must be a non-empty string")
+    evidence_path = resolve_inside(project_root, evidence_value, "evidence_file")
+    roots = [validate_repository_entry(entry, project_root)[1] for entry in repositories]
+    names: set[str] = set()
+    for entry in checks:
+        name = validate_check(entry, project_root, roots)[0]
+        if name in names:
+            raise VerificationError(f"Duplicate check name: {name}")
+        names.add(name)
+    return evidence_path
+
+
+def policy_state(project_root: Path) -> tuple[Path, str, bool]:
+    path = project_root / "AGENTS.md"
+    text = path.read_text(encoding="utf-8") if path.is_file() else ""
+    starts, ends = text.count(POLICY_START), text.count(POLICY_END)
+    if starts != ends or starts > 1 or (starts == 1 and text.index(POLICY_START) > text.index(POLICY_END)):
+        raise VerificationError("AGENTS.md contains malformed or duplicate managed markers")
+    return path, text, starts == 1
+
+
+def ensure_policy(project_root: Path) -> bool:
+    path, text, configured = policy_state(project_root)
+    if configured:
+        return False
+    separator = "" if not text else ("\n" if text.endswith("\n") else "\n\n")
+    path.write_text(f"{text}{separator}{POLICY_BLOCK}\n", encoding="utf-8", newline="\n")
+    return True
+
+
+def ensure_evidence_ignored(project_root: Path, evidence_path: Path) -> bool:
+    relative = evidence_path.relative_to(project_root).as_posix()
+    path = project_root / ".gitignore"
+    text = path.read_text(encoding="utf-8") if path.is_file() else ""
+    lines = text.splitlines()
+    if relative in lines:
+        return False
+    lines.append(relative)
+    path.write_text("\n".join(lines) + "\n", encoding="utf-8", newline="\n")
+    return True
+
+
+def configuration_status(project_root: Path) -> dict[str, Any]:
+    config, evidence_path = load_config(project_root)
+    validate_config_document(config, project_root)
+    _, _, policy = policy_state(project_root)
+    ignore = project_root / ".gitignore"
+    ignored = ignore.is_file() and evidence_path.relative_to(project_root).as_posix() in ignore.read_text(encoding="utf-8").splitlines()
+    return {
+        "skill": "verify-before-push",
+        "scope": "project",
+        "configured": policy and ignored,
+        "valid": True,
+        "version": config["version"],
+        "config_file": str(project_root / CONFIG_RELATIVE),
+        "policy": policy,
+        "evidence_ignored": ignored,
+    }
+
+
+def configure_project(project_root: Path, source: Path | None) -> dict[str, Any]:
+    target = project_root / CONFIG_RELATIVE
+    config = load_json(source.resolve() if source else target, "Configuration")
+    evidence_path = validate_config_document(config, project_root)
+    policy_state(project_root)
+    previous = target.read_bytes() if target.is_file() else None
+    write_atomic(target, config)
+    changed = previous != target.read_bytes()
+    changed = ensure_policy(project_root) or changed
+    changed = ensure_evidence_ignored(project_root, evidence_path) or changed
+    state = configuration_status(project_root)
+    state["changed"] = changed
+    return state
 
 
 def validate_repository_entry(entry: Any, project_root: Path) -> tuple[str, Path, bool, bool]:
@@ -306,11 +402,15 @@ def verify_evidence(project_root: Path, repository: Path | None = None) -> bool:
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description="Run and validate Git-state-bound pre-push evidence.")
     subparsers = parser.add_subparsers(dest="command", required=True)
-    for command in ("run", "verify", "gate"):
+    for command in ("run", "verify", "gate", "configure", "status", "migrate"):
         child = subparsers.add_parser(command)
         child.add_argument("--project-root", type=Path, default=Path.cwd())
         if command == "gate":
             child.add_argument("--repository", type=Path, required=True)
+        if command == "configure":
+            child.add_argument("--config-source", type=Path)
+        if command in {"configure", "status", "migrate"}:
+            child.add_argument("--json", action="store_true")
     args = parser.parse_args(argv)
     project_root = args.project_root.resolve()
     try:
@@ -318,8 +418,19 @@ def main(argv: list[str] | None = None) -> int:
             run_verification(project_root)
         elif args.command == "verify":
             verify_evidence(project_root)
-        else:
+        elif args.command == "gate":
             verify_evidence(project_root, args.repository)
+        elif args.command == "configure":
+            state = configure_project(project_root, args.config_source)
+            print(json.dumps(state, sort_keys=True) if args.json else f"Configured: {state['config_file']}")
+        elif args.command == "status":
+            state = configuration_status(project_root)
+            print(json.dumps(state, sort_keys=True) if args.json else f"Configured: {state['configured']}")
+            if not state["configured"]:
+                return 1
+        else:
+            state = configure_project(project_root, None)
+            print(json.dumps(state, sort_keys=True) if args.json else f"Configuration is version {state['version']}")
         return 0
     except VerificationError as error:
         print(f"VERIFICATION_FAILED: {error}", file=sys.stderr)

@@ -2,6 +2,31 @@
 
 ## Unreleased
 
+## [1.1.0] - 2026-08-13
+
+### Added
+
+- A collection-wide configuration contract with idempotent configure helpers,
+  read-only JSON status commands, catalog-declared scope, and fail-closed
+  managed-marker handling.
+- JSON Schemas and explicit migration commands for verification, Telegram, and
+  Yandex Cloud configuration.
+- A local fake Telegram Bot API integration test covering real HTTP encoding,
+  configuration, test delivery, and normal message delivery without external
+  network access.
+- Capability metadata, two ordered multi-skill compositions, and a deterministic
+  composition planner for explicitly enabled optional steps.
+- Dependency-free secret, unsafe subprocess, workflow permission, and GitHub
+  Action pinning checks with a dedicated least-privilege security workflow.
+
+### Changed
+
+- The collection validator now enforces configuration contracts, schema and
+  helper paths, capability providers, and composition references.
+- Telegram configuration is versioned, status JSON redacts the token, legacy
+  configuration migrates idempotently, and tests can redirect API calls to a
+  local fixture endpoint.
+
 ## [1.0.0] - 2026-08-13
 
 ### Added
@@ -119,6 +144,7 @@ First versioned release of the kolabse skill collection.
 - Tests for configuration migration, fake cloud and infrastructure CLIs,
   installation confirmation, and collection metadata.
 
+[1.1.0]: https://github.com/kolabse/skills/releases/tag/v1.1.0
 [1.0.0]: https://github.com/kolabse/skills/releases/tag/v1.0.0
 [0.8.0]: https://github.com/kolabse/skills/releases/tag/v0.8.0
 [0.7.0]: https://github.com/kolabse/skills/releases/tag/v0.7.0

@@ -55,6 +55,48 @@ combining third-party content with Apache-2.0 content.
 Completion criterion: a reader can determine where the skill came from, who
 owns it, how it is licensed, where it runs, and how to validate it.
 
+## Configuration contract
+
+Every configurable skill declares a `configuration` object in
+`skill-catalog.json` and follows these rules:
+
+- `configure` is an argv array, is safe to repeat, preserves unrelated project
+  content, and reports no change on an identical second pass;
+- `status` is read-only, supports machine-readable JSON, exits zero only when
+  the declared configuration is present and valid, and never prints secrets;
+- project and user scope are explicit; configuration remains outside the
+  installed skill directory;
+- JSON and YAML configuration has a positive integer version, a bundled JSON
+  Schema describing its decoded document, and a fail-closed migration command;
+- managed text uses paired, skill-specific markers, rejects malformed or
+  duplicate markers, and does not rewrite text outside its block.
+
+Commands are stored as arrays rather than shell strings. Use placeholders such
+as `<project-root>` for caller-supplied values and never put credentials in a
+catalog command. Keep migration steps incremental and idempotent; reject a
+newer unknown version instead of guessing how to downgrade it.
+
+Completion criterion: configure/configure produces byte-identical output,
+status performs no writes, migrations preserve supported input, and tests cover
+missing, malformed, current, and legacy configuration.
+
+## Compose skills by capability
+
+Declare small capability names in `provides`, mandatory prerequisites in
+`requires`, and non-blocking integrations in `optional_integrations`. Add a
+named collection composition only for a recurring workflow with at least two
+skills. Its `required_steps` are ordered; `optional_steps` run only when the
+project or user has enabled their capability.
+
+Do not copy one skill's workflow into another. Invoke the prerequisite skill,
+consume its observable completion result, and stop when a required capability
+is unavailable. Optional notification or logging must never turn a successful
+primary operation into a false success, nor conceal its failure.
+
+Completion criterion: every required capability has a provider, composition
+steps reference existing skills once, and the order has an integration test or
+an executable completion criterion.
+
 ## Manage lifecycle status
 
 - Keep a new or materially redesigned skill `experimental` until its metadata,

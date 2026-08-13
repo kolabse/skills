@@ -12,8 +12,13 @@ local work merely to make a repository appear current.
 ## Configure the project policy
 
 1. Resolve the project boundary and inspect the applicable `AGENTS.md` files.
-2. Preserve an existing equivalent policy. Otherwise add this managed block to
-   the repository-level `AGENTS.md` without changing unrelated instructions:
+2. When no equivalent policy already exists, run the idempotent helper:
+
+   ```shell
+   python <skill-root>/scripts/configure_project.py configure --project-path <project-root>
+   ```
+
+   It preserves unrelated content and adds exactly one managed block:
 
    ```markdown
    <!-- synchronize-git-repositories:start -->
@@ -31,6 +36,12 @@ local work merely to make a repository appear current.
    roles or relative locations only when the project must always coordinate a
    known set of repositories.
 4. Run the synchronization workflow once after configuration.
+
+Inspect configuration without changing files with:
+
+```shell
+python <skill-root>/scripts/configure_project.py status --project-path <project-root> --json
+```
 
 Completion criterion: one effective project policy invokes this skill, existing
 instructions remain intact, and the initial repository state is reported.

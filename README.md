@@ -35,6 +35,24 @@ All current skills are stable as of collection v1.0.0. Their project-facing
 configuration paths, safety boundaries, and documented command interfaces
 follow the compatibility policy in [CONTRIBUTING.md](CONTRIBUTING.md).
 
+Each catalog entry now declares its configuration scope, idempotent configure
+command, read-only JSON status command, capabilities, prerequisites, and
+optional integrations. Versioned JSON/YAML configurations also publish a JSON
+Schema and migration command next to the skill.
+
+## Supported compositions
+
+The catalog defines two reusable ordered workflows:
+
+- `protected-push`: synchronize repositories, then produce current
+  verification evidence; work logging and Telegram notification are optional.
+- `yandex-cloud-operation`: synchronize repositories, then run the scoped cloud
+  operation; verification, work logging, and Telegram notification are
+  optional when project policy enables them.
+
+Required steps fail closed. Optional logging and notification report their own
+failure without changing the observed result of the primary operation.
+
 ### `verify-before-push`
 
 Run project-declared checks and record evidence bound to the exact Git commits,

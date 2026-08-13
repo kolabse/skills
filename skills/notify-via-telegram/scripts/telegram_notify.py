@@ -35,7 +35,7 @@ def default_config_path(environ: dict[str, str] | None = None) -> Path:
     return base / "codex" / "telegram-notify" / "config.json"
 
 
-def load_config(path: Path) -> dict[str, str]:
+def load_config(path: Path) -> dict[str, Any]:
     if not path.is_file():
         return {}
     try:
@@ -44,10 +44,19 @@ def load_config(path: Path) -> dict[str, str]:
         raise TelegramError(f"Cannot read configuration at {path}: {error}") from error
     if not isinstance(value, dict):
         raise TelegramError(f"Configuration at {path} must contain a JSON object")
-    return {str(key): str(item) for key, item in value.items() if item is not None}
+    version = value.get("version", 0)
+    if version not in {0, 1}:
+        raise TelegramError(f"Unsupported configuration version {version!r} at {path}")
+    result: dict[str, Any] = {}
+    if version:
+        result["version"] = version
+    for key in ("bot_token", "chat_id", "message_thread_id"):
+        if value.get(key) is not None:
+            result[key] = str(value[key])
+    return result
 
 
-def save_config(path: Path, config: dict[str, str]) -> None:
+def save_config(path: Path, config: dict[str, Any]) -> None:
     path.parent.mkdir(parents=True, exist_ok=True, mode=0o700)
     handle, temporary_name = tempfile.mkstemp(
         dir=path.parent, prefix=".telegram-notify-", suffix=".tmp"
@@ -55,7 +64,7 @@ def save_config(path: Path, config: dict[str, str]) -> None:
     temporary = Path(temporary_name)
     try:
         with os.fdopen(handle, "w", encoding="utf-8") as stream:
-            json.dump(config, stream, indent=2, ensure_ascii=False)
+            json.dump(config, stream, indent=2, ensure_ascii=False, sort_keys=True)
             stream.write("\n")
         try:
             temporary.chmod(0o600)
@@ -168,7 +177,7 @@ def extract_chat_candidates(updates: list[dict[str, Any]]) -> list[dict[str, str
 
 
 def resolve_credentials(
-    config: dict[str, str], environ: dict[str, str] | None = None
+    config: dict[str, Any], environ: dict[str, str] | None = None
 ) -> tuple[str, str, str]:
     env = os.environ if environ is None else environ
     return (
@@ -253,7 +262,7 @@ def command_configure(args: argparse.Namespace, path: Path) -> None:
         chat_id = selected["chat_id"]
         thread_id = args.thread_id or selected.get("thread_id", "")
 
-    stored = {"bot_token": token, "chat_id": str(chat_id)}
+    stored: dict[str, Any] = {"version": 1, "bot_token": token, "chat_id": str(chat_id)}
     if thread_id:
         stored["message_thread_id"] = str(thread_id)
     save_config(path, stored)
@@ -283,18 +292,52 @@ def command_discover(path: Path) -> None:
     print_candidates(candidates)
 
 
-def command_status(args: argparse.Namespace, path: Path) -> None:
-    token, chat_id, thread_id = resolve_credentials(load_config(path))
-    print(f"Config: {path}")
-    print(f"Bot token: {'configured' if token else 'missing'}")
-    print(f"Chat ID: {chat_id if chat_id else 'missing'}")
-    print(f"Thread ID: {thread_id if thread_id else 'not configured'}")
+def command_status(args: argparse.Namespace, path: Path) -> bool:
+    config = load_config(path)
+    token, chat_id, thread_id = resolve_credentials(config)
+    state = {
+        "skill": "notify-via-telegram",
+        "scope": "user",
+        "configured": bool(token and chat_id),
+        "valid": True,
+        "version": config.get("version", 0),
+        "config_file": str(path),
+        "bot_token": "configured" if token else "missing",
+        "chat_id": chat_id if chat_id else "missing",
+        "thread_id": thread_id if thread_id else "not configured",
+    }
     if args.verify:
         if not token or not chat_id:
             raise TelegramError("Bot token and chat ID are required for verification")
         identity = api_call(token, "getMe")
         username = identity.get("username", "unknown") if isinstance(identity, dict) else "unknown"
-        print(f"Verified bot: @{username}")
+        state["verified_bot"] = f"@{username}"
+    if args.json:
+        print(json.dumps(state, ensure_ascii=False, sort_keys=True))
+    else:
+        print(f"Config: {path}")
+        print(f"Bot token: {state['bot_token']}")
+        print(f"Chat ID: {state['chat_id']}")
+        print(f"Thread ID: {state['thread_id']}")
+        if state.get("verified_bot"):
+            print(f"Verified bot: {state['verified_bot']}")
+    return bool(state["configured"])
+
+
+def command_migrate(path: Path, as_json: bool) -> None:
+    config = load_config(path)
+    previous = path.read_bytes() if path.is_file() else None
+    if not config.get("bot_token") or not config.get("chat_id"):
+        raise TelegramError("Bot token and chat ID are required before migration")
+    config["version"] = 1
+    save_config(path, config)
+    state = {
+        "skill": "notify-via-telegram",
+        "version": 1,
+        "changed": previous != path.read_bytes(),
+        "config_file": str(path),
+    }
+    print(json.dumps(state, sort_keys=True) if as_json else f"Configuration is version 1: {path}")
 
 
 def command_send(args: argparse.Namespace, path: Path) -> None:
@@ -333,6 +376,10 @@ def build_parser() -> argparse.ArgumentParser:
 
     status = subparsers.add_parser("status", help="Show configuration presence")
     status.add_argument("--verify", action="store_true", help="Verify the bot token")
+    status.add_argument("--json", action="store_true", help="Print machine-readable status")
+
+    migrate = subparsers.add_parser("migrate", help="Migrate local configuration")
+    migrate.add_argument("--json", action="store_true", help="Print machine-readable result")
 
     send = subparsers.add_parser("send", help="Send a plain-text notification")
     send.add_argument("message", nargs="?", help="Notification text")
@@ -351,7 +398,10 @@ def main(argv: list[str] | None = None) -> int:
         elif args.command == "discover":
             command_discover(path)
         elif args.command == "status":
-            command_status(args, path)
+            if not command_status(args, path):
+                return 1
+        elif args.command == "migrate":
+            command_migrate(path, args.json)
         elif args.command == "send":
             command_send(args, path)
     except (TelegramError, OSError) as error:

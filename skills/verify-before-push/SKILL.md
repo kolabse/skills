@@ -27,7 +27,15 @@ a substitute for review, CI, or deployment verification.
    <!-- verify-before-push:end -->
    ```
 
-3. Create `.agents/verify-before-push/config.json`. Keep generated evidence at
+3. Create a document from `schemas/config.schema.json`, then install it
+   idempotently:
+
+   ```shell
+   python <skill-root>/scripts/verify_before_push.py configure --project-root <project-root> --config-source <draft-config.json>
+   ```
+
+   A later setup pass may omit `--config-source`; it validates and preserves
+   the installed configuration. Keep generated evidence at
    `.agents/verify-before-push/evidence.json` and ignore that file. Commit the
    configuration; never put credentials in commands or evidence.
 4. Use repository-relative paths from the project root. Define command
@@ -78,6 +86,10 @@ a substitute for review, CI, or deployment verification.
 Completion criterion: configuration names all gated repositories and checks,
 the evidence path is ignored, and a second setup pass creates no duplicate
 policy or ignore entry.
+
+Inspect configuration without running checks with `status --json`. After
+updating the skill, run `migrate --json`; it migrates supported older versions
+and rejects unknown newer versions.
 
 ## Run verification
 

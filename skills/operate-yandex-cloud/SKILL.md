@@ -36,6 +36,16 @@ Completion criterion: `project.yaml` contains the Cloud/Folder constraints,
 `local.yaml` contains the optional profile and is ignored, and every detected
 toolset has a reviewed tool status.
 
+The decoded shared document follows `schemas/project.schema.json`. After a
+skill update run:
+
+```shell
+python <skill-root>/scripts/migrate_config.py --project-path <project-root> --json
+```
+
+The migration upgrades supported legacy documents to version 3, preserves the
+local profile, is idempotent, and rejects malformed or unknown configuration.
+
 ## Establish scope and authority
 
 1. Identify the requested system, environment and outcome.
