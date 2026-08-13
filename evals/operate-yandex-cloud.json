@@ -14,12 +14,20 @@
       "reason": "Terraform changes targeting Yandex Cloud require its safety workflow."
     },
     {
-      "prompt": "Разберись, почему deployment не раскатывается в Kubernetes-кластере проекта.",
-      "reason": "Project Kubernetes operations are explicitly in scope."
+      "prompt": "В project.yaml указан Yandex Cloud. Разберись, почему deployment не раскатывается в Kubernetes-кластере проекта.",
+      "reason": "Project configuration explicitly establishes Yandex Cloud context for Kubernetes operations."
     },
     {
-      "prompt": "Подключись по SSH к виртуальной машине проекта и проверь сервис.",
-      "reason": "Project cloud SSH access must use the configured cloud context."
+      "prompt": "По инвентарю проекта эта виртуальная машина находится в Yandex Cloud. Подключись по SSH и проверь сервис.",
+      "reason": "Project inventory explicitly establishes Yandex Cloud context for SSH access."
+    },
+    {
+      "prompt": "Проверь состояние managed PostgreSQL в папке Yandex Cloud проекта и ничего не изменяй.",
+      "reason": "Read-only discovery of an explicitly named Yandex Cloud database is in scope."
+    },
+    {
+      "prompt": "Инструкция проекта связывает этот Helm release с кластером Managed Service for Kubernetes в Yandex Cloud. Выполни безопасный diff.",
+      "reason": "Applicable project instructions establish Yandex Cloud context for the Helm operation."
     }
   ],
   "negative": [
@@ -38,6 +46,14 @@
     {
       "prompt": "Настрой IAM-политику в Google Cloud Platform.",
       "reason": "Google Cloud operations require a provider-specific workflow."
+    },
+    {
+      "prompt": "Диагностируй rollout в локальном kind-кластере на ноутбуке.",
+      "reason": "A local Kubernetes cluster has no Yandex Cloud context."
+    },
+    {
+      "prompt": "Подключись по SSH к серверу в Hetzner и перезапусти тестовый сервис.",
+      "reason": "A different explicitly named provider is outside Yandex Cloud operations."
     }
   ]
 }

@@ -16,6 +16,14 @@
     {
       "prompt": "В рабочем дереве есть мои изменения. Fetch remote и объясни, можно ли продолжать, ничего не stash и не reset.",
       "reason": "Preserving a dirty worktree while establishing remote freshness requires this skill."
+    },
+    {
+      "prompt": "У ветки настроен upstream. Перед ревью обнови remote refs и сообщи точные ahead/behind, не переписывая историю.",
+      "reason": "The task explicitly requires fetched upstream classification with local-history preservation."
+    },
+    {
+      "prompt": "Задача затрагивает три существующих репозитория. Проверь, что каждый актуален относительно своей tracking branch.",
+      "reason": "Remote freshness across several task-scoped repositories is the central workflow."
     }
   ],
   "negative": [
@@ -34,6 +42,14 @@
     {
       "prompt": "Удали старую удалённую ветку feature/legacy.",
       "reason": "Remote branch deletion is a separate destructive Git operation, not synchronization."
+    },
+    {
+      "prompt": "Переименуй текущую локальную ветку и не обращайся к сети.",
+      "reason": "An explicitly local-only branch operation does not need remote freshness."
+    },
+    {
+      "prompt": "Покажи последние пять локальных коммитов из уже открытого репозитория, remote не проверяй.",
+      "reason": "The user explicitly excludes remote access from a local history inspection."
     }
   ]
 }

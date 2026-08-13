@@ -1,6 +1,6 @@
 ---
 name: operate-yandex-cloud
-description: "Operate project-scoped Yandex Cloud infrastructure safely. Use for Yandex Cloud CLI and OS Login; SSH access; Terraform, Ansible, Helm and Kubernetes; CI/CD, deployments and releases; DNS, networks, databases, storage, backups, monitoring, secrets, incidents, and read-only cloud discovery."
+description: "Operate project-scoped Yandex Cloud infrastructure safely. Use when the request explicitly targets Yandex Cloud or applicable project configuration, inventory, or instructions establish that the target resources are in Yandex Cloud. Covers Yandex Cloud CLI and OS Login; project-scoped SSH; Terraform, Ansible, Helm and Kubernetes; CI/CD, deployments and releases; DNS, networks, databases, storage, backups, monitoring, secrets, incidents, and read-only cloud discovery. Do not infer Yandex Cloud from generic Kubernetes, SSH, Terraform, or deployment work without that provider context."
 ---
 
 # Operate Yandex Cloud

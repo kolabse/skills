@@ -16,6 +16,14 @@
     {
       "prompt": "Мы согласовали новый порядок миграции. Зафиксируй решение и причины в хронологическом журнале проекта.",
       "reason": "A material project decision must be recorded even when no code changes occur."
+    },
+    {
+      "prompt": "Согласно правилу в AGENTS.md обновляй docs/reports/work-log.md по ходу исправления инцидента.",
+      "reason": "An applicable project policy explicitly requires maintaining the canonical work log."
+    },
+    {
+      "prompt": "Добавь в журнал работ проверенный результат диагностики и оставшийся блокер под сегодняшней датой.",
+      "reason": "The request explicitly records diagnostic evidence and a blocker in the dated work log."
     }
   ],
   "negative": [
@@ -34,6 +42,14 @@
     {
       "prompt": "Запиши мои личные заметки за день в отдельный дневник.",
       "reason": "A personal diary is not an auditable project work log."
+    },
+    {
+      "prompt": "Проанализируй audit.log приложения и найди неудачные попытки входа.",
+      "reason": "Analyzing an application log is not maintaining the canonical project work log."
+    },
+    {
+      "prompt": "Добавь в продукт отчёт по часам, которые сотрудники внесли за месяц.",
+      "reason": "A time-tracking product feature is unrelated to the repository work-log workflow."
     }
   ]
 }

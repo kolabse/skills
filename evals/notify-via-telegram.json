@@ -16,6 +16,14 @@
     {
       "prompt": "Запусти долгий импорт и уведомляй меня удалённо, когда он перейдёт к следующей фазе или завершится.",
       "reason": "A lengthy phased operation benefits from start, transition, and completion notifications."
+    },
+    {
+      "prompt": "Сборка займёт около сорока минут; отправь в Telegram сообщение при старте, ошибке и завершении.",
+      "reason": "The user explicitly requests Telegram lifecycle notifications for a long build."
+    },
+    {
+      "prompt": "Настрой уведомления этой многоэтапной задачи в Телеграм и затем начинай выполнение.",
+      "reason": "Explicit Telegram setup for a multi-stage task is a core workflow."
     }
   ],
   "negative": [
@@ -34,6 +42,14 @@
     {
       "prompt": "Показывай прогресс этой задачи только здесь, в чате Codex.",
       "reason": "The user explicitly chooses the local conversation rather than Telegram."
+    },
+    {
+      "prompt": "Отправь клиенту одно согласованное сообщение в общий Telegram-чат.",
+      "reason": "A business chat message is not agent lifecycle notification for a task."
+    },
+    {
+      "prompt": "Выполни быструю локальную команду и покажи результат здесь, уведомления не нужны.",
+      "reason": "A short local command with notifications explicitly excluded should not trigger the skill."
     }
   ]
 }

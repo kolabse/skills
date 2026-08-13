@@ -2,6 +2,18 @@
 
 ## Unreleased
 
+## [0.7.0] - 2026-08-13
+
+### Changed
+
+- Refined trigger boundaries for repository synchronization, project work-log
+  maintenance, and Yandex Cloud operations to require the relevant remote,
+  policy, or provider context instead of inferring them from ordinary work.
+- Expanded the blind trigger corpus from 41 to 61 cases, adding local-only Git,
+  product-versus-log, notification, provider, and project-context boundaries.
+- Replaced ambiguous pre-push and generic infrastructure assertions with
+  self-contained prompts whose expected workflow follows from public context.
+
 ## [0.6.0] - 2026-08-13
 
 ### Added
@@ -76,6 +88,7 @@ First versioned release of the kolabse skill collection.
 - Tests for configuration migration, fake cloud and infrastructure CLIs,
   installation confirmation, and collection metadata.
 
+[0.7.0]: https://github.com/kolabse/skills/releases/tag/v0.7.0
 [0.6.0]: https://github.com/kolabse/skills/releases/tag/v0.6.0
 [0.5.0]: https://github.com/kolabse/skills/releases/tag/v0.5.0
 [0.4.0]: https://github.com/kolabse/skills/releases/tag/v0.4.0
