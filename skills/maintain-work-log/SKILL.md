@@ -12,8 +12,14 @@ transcript of routine command execution.
 ## Configure the project
 
 1. Resolve the repository root and inspect the applicable `AGENTS.md` files.
-2. Ensure the repository-level `AGENTS.md` contains one equivalent policy. Add
-   this managed block when no policy exists, preserving all existing content:
+2. When no equivalent policy already exists, run the idempotent helper:
+
+   ```shell
+   python <skill-root>/scripts/configure_project.py configure --project-path <project-root>
+   ```
+
+   It preserves unrelated content, creates the log when absent, and adds one
+   managed block:
 
    ```markdown
    <!-- maintain-work-log:start -->
@@ -46,6 +52,12 @@ transcript of routine command execution.
    history. When work predates the earliest reliable log entry, offer to
    reconstruct the missing period. State the proposed date range and available
    sources before performing a large retrospective update.
+
+Inspect configuration without changing files with:
+
+```shell
+python <skill-root>/scripts/configure_project.py status --project-path <project-root> --json
+```
 
 Completion criterion: the project policy names the log and invokes this skill,
 the log exists in the project's established format, and any historical gap has

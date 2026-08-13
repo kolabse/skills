@@ -104,6 +104,20 @@ class VerifyBeforePushTests(unittest.TestCase):
         self.assertEqual("passed", evidence["checks"][0]["status"])
         self.assertEqual("skipped", evidence["checks"][1]["status"])
 
+    def test_configure_and_status_are_idempotent(self) -> None:
+        first = self.helper("configure", "--json")
+        self.assertEqual(0, first.returncode, first.stderr)
+        agents = (self.project / "AGENTS.md").read_bytes()
+        config = (self.project / ".agents/verify-before-push/config.json").read_bytes()
+        second = self.helper("configure", "--json")
+        self.assertEqual(0, second.returncode, second.stderr)
+        self.assertFalse(json.loads(second.stdout)["changed"])
+        self.assertEqual(agents, (self.project / "AGENTS.md").read_bytes())
+        self.assertEqual(config, (self.project / ".agents/verify-before-push/config.json").read_bytes())
+        status = self.helper("status", "--json")
+        self.assertEqual(0, status.returncode, status.stderr)
+        self.assertTrue(json.loads(status.stdout)["configured"])
+
     def test_evidence_stales_after_worktree_or_commit_change(self) -> None:
         run = self.helper("run")
         self.assertEqual(0, run.returncode, run.stderr)

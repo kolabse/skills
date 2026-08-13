@@ -122,12 +122,18 @@ def _load_yaml(path: Path, *, required: bool) -> dict[str, str]:
 def load_config(project_path: Path) -> ProjectConfig:
     project_values = _load_yaml(config_path(project_path), required=True)
     local_values = _load_yaml(local_config_path(project_path), required=False)
+    try:
+        version = int(project_values.get("version", "1"))
+    except ValueError as error:
+        raise ValueError("Project configuration version must be an integer") from error
+    if version not in {1, 2, 3}:
+        raise ValueError(f"Unsupported project configuration version: {version}")
     yc_profile = local_values.get("yc_profile")
     if yc_profile is None:
         yc_profile = project_values.get("yc_profile", "")
 
     return ProjectConfig(
-        version=int(project_values.get("version", "1")),
+        version=version,
         cloud_id=validate_identifier(
             project_values.get("cloud_id", ""), "cloud_id", required=True
         ),

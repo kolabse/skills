@@ -39,6 +39,11 @@ credentials, private reasoning, raw logs, and unnecessary implementation detail.
 Completion criterion: `status --verify` confirms a bot and destination without
 printing the token, and the user receives the test notification.
 
+Configuration is versioned and described by `schemas/config.schema.json`.
+After updating the skill, run `migrate --json`; legacy unversioned configuration
+is upgraded to version 1, while unknown newer versions fail closed. Use
+`status --json` for read-only automation; it never emits the token.
+
 ## Plan notification points
 
 Before starting substantive work, identify only the meaningful notification

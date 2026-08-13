@@ -14,6 +14,8 @@ NAME_PATTERN = re.compile(r"^[a-z0-9]+(?:-[a-z0-9]+)*$")
 ALLOWED_PLATFORMS = {"linux", "macos", "windows"}
 ALLOWED_STATUSES = {"experimental", "stable", "deprecated"}
 ALLOWED_PROVENANCE = {"original", "migrated", "vendored"}
+ALLOWED_CONFIG_SCOPES = {"project", "user"}
+ALLOWED_CONFIG_FORMATS = {"json", "yaml", "managed-markdown"}
 PLUGIN_NAME = "kolabse-skills"
 PLUGIN_VERSION_PATTERN = re.compile(
     r"^[0-9]+\.[0-9]+\.[0-9]+(?:-[0-9A-Za-z]+(?:[.-][0-9A-Za-z]+)*)?$"
@@ -231,6 +233,109 @@ def validate_trigger_evals(
     return errors
 
 
+def validate_configuration_contract(
+    repository_root: Path, entry: dict[str, object], location: str
+) -> list[str]:
+    configuration = entry.get("configuration")
+    if not isinstance(configuration, dict):
+        return [f"{location}.configuration must be an object"]
+    errors: list[str] = []
+    if configuration.get("scope") not in ALLOWED_CONFIG_SCOPES:
+        errors.append(f"{location}.configuration.scope is invalid")
+    config_format = configuration.get("format")
+    if config_format not in ALLOWED_CONFIG_FORMATS:
+        errors.append(f"{location}.configuration.format is invalid")
+    skill_path = repository_root / str(entry.get("path", ""))
+    operations = ["configure", "status"]
+    if config_format in {"json", "yaml"}:
+        operations.append("migrate")
+    for operation in operations:
+        command = configuration.get(operation)
+        if not isinstance(command, list) or not command or not all(
+            isinstance(item, str) and item for item in command
+        ):
+            errors.append(f"{location}.configuration.{operation} must be a non-empty argv list")
+            continue
+        for item in command:
+            candidate = Path(item)
+            if candidate.is_absolute() or ".." in candidate.parts:
+                errors.append(f"{location}.configuration.{operation} must not escape the skill")
+            if item.startswith("scripts/") and not (skill_path / candidate).is_file():
+                errors.append(f"{location}.configuration.{operation} references missing {item}")
+    if config_format in {"json", "yaml"}:
+        version = configuration.get("current_version")
+        if not isinstance(version, int) or version < 1:
+            errors.append(f"{location}.configuration.current_version must be positive")
+        schema = configuration.get("schema")
+        if not isinstance(schema, str) or not schema:
+            errors.append(f"{location}.configuration.schema is required")
+        else:
+            schema_path = Path(schema)
+            full_schema = skill_path / schema_path
+            if schema_path.is_absolute() or ".." in schema_path.parts or not full_schema.is_file():
+                errors.append(f"{location}.configuration.schema is missing or unsafe")
+            else:
+                try:
+                    document = json.loads(full_schema.read_text(encoding="utf-8"))
+                except (json.JSONDecodeError, UnicodeDecodeError) as error:
+                    errors.append(f"{full_schema}: invalid JSON Schema: {error}")
+                else:
+                    if not isinstance(document, dict) or "$schema" not in document:
+                        errors.append(f"{full_schema}: $schema is required")
+    return errors
+
+
+def validate_compositions(catalog: dict[str, object], entries: list[object]) -> list[str]:
+    errors: list[str] = []
+    typed_entries = [entry for entry in entries if isinstance(entry, dict)]
+    names = {entry.get("name") for entry in typed_entries}
+    providers: dict[str, set[str]] = {}
+    for entry in typed_entries:
+        name = entry.get("name")
+        for field in ("provides", "requires", "optional_integrations"):
+            values = entry.get(field)
+            if not isinstance(values, list) or not all(isinstance(value, str) and value for value in values):
+                errors.append(f"skill-catalog.json: {name}.{field} must be a string list")
+        for capability in entry.get("provides", []) if isinstance(entry.get("provides"), list) else []:
+            providers.setdefault(capability, set()).add(str(name))
+    for entry in typed_entries:
+        name = entry.get("name")
+        for capability in entry.get("requires", []) if isinstance(entry.get("requires"), list) else []:
+            if capability not in providers:
+                errors.append(f"skill-catalog.json: {name} requires unprovided capability {capability!r}")
+    compositions = catalog.get("compositions")
+    if not isinstance(compositions, list) or not compositions:
+        return [*errors, "skill-catalog.json: compositions must be a non-empty list"]
+    seen: set[str] = set()
+    for index, composition in enumerate(compositions):
+        location = f"skill-catalog.json: compositions[{index}]"
+        if not isinstance(composition, dict):
+            errors.append(f"{location} must be an object")
+            continue
+        name = composition.get("name")
+        if not isinstance(name, str) or not NAME_PATTERN.fullmatch(name) or name in seen:
+            errors.append(f"{location}.name must be unique lowercase hyphen-case")
+        else:
+            seen.add(name)
+        all_steps: list[str] = []
+        for field in ("required_steps", "optional_steps"):
+            steps = composition.get(field)
+            if (
+                not isinstance(steps, list)
+                or not all(isinstance(step, str) for step in steps)
+                or (field == "required_steps" and not steps)
+            ):
+                errors.append(f"{location}.{field} must be a {'non-empty ' if field == 'required_steps' else ''}list")
+                continue
+            all_steps.extend(str(step) for step in steps)
+            unknown = set(steps) - names
+            if unknown:
+                errors.append(f"{location}.{field} references unknown skills {sorted(unknown)}")
+        if len(all_steps) != len(set(all_steps)):
+            errors.append(f"{location} contains duplicate steps")
+    return errors
+
+
 def frontmatter(skill_file: Path) -> dict[str, str]:
     text = skill_file.read_text(encoding="utf-8")
     match = re.match(r"^---\n(.*?)\n---\n", text, flags=re.DOTALL)
@@ -378,6 +483,7 @@ def validate(repository_root: Path = REPOSITORY_ROOT) -> list[str]:
             errors.append(f"{location}.platforms contains unsupported values")
         if not isinstance(entry.get("license"), str) or not entry["license"]:
             errors.append(f"{location}.license is required")
+        errors.extend(validate_configuration_contract(repository_root, entry, location))
         errors.extend(validate_trigger_evals(repository_root, entry, location))
         provenance = entry.get("provenance")
         if not isinstance(provenance, dict):
@@ -404,6 +510,7 @@ def validate(repository_root: Path = REPOSITORY_ROOT) -> list[str]:
     for unknown in sorted(catalog_names - names):
         errors.append(f"{catalog_path}: catalog references unknown skill '{unknown}'")
     errors.extend(validate_release_holdout(repository_root, catalog, catalog_names))
+    errors.extend(validate_compositions(catalog, entries))
     return errors
 
 

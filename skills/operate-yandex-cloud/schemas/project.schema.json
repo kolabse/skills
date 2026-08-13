@@ -1,0 +1,13 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/kolabse/skills/operate-yandex-cloud/project.schema.json",
+  "title": "Decoded Yandex Cloud project configuration",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["version", "cloud_id"],
+  "properties": {
+    "version": {"const": 3},
+    "cloud_id": {"type": "string", "pattern": "^[a-z0-9-]+$"},
+    "folder_id": {"type": "string", "pattern": "^(?:[a-z0-9-]+)?$"}
+  }
+}

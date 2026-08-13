@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import importlib.util
+import json
 import tempfile
 import unittest
 from pathlib import Path
@@ -75,6 +76,16 @@ class TelegramNotifyTests(unittest.TestCase):
             },
         )
         self.assertEqual(resolved, ("env-token", "2", "3"))
+
+    def test_migrate_legacy_config_is_idempotent(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / "config.json"
+            path.write_text('{"bot_token":"secret","chat_id":"123"}\n', encoding="utf-8")
+            telegram_notify.command_migrate(path, True)
+            first = path.read_bytes()
+            self.assertEqual(1, json.loads(first)["version"])
+            telegram_notify.command_migrate(path, True)
+            self.assertEqual(first, path.read_bytes())
 
 
 if __name__ == "__main__":

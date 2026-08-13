@@ -8,6 +8,18 @@
     "baseline_release": "v1.0.0",
     "baseline_report": "evals/baselines/release-holdout-v2-v1.0.0.json"
   },
+  "compositions": [
+    {
+      "name": "protected-push",
+      "required_steps": ["synchronize-git-repositories", "verify-before-push"],
+      "optional_steps": ["maintain-work-log", "notify-via-telegram"]
+    },
+    {
+      "name": "yandex-cloud-operation",
+      "required_steps": ["synchronize-git-repositories", "operate-yandex-cloud"],
+      "optional_steps": ["verify-before-push", "maintain-work-log", "notify-via-telegram"]
+    }
+  ],
   "skills": [
     {
       "name": "verify-before-push",
@@ -24,6 +36,18 @@
       ],
       "trigger_evals": "evals/verify-before-push.json",
       "license": "Apache-2.0",
+      "provides": ["push-verification-evidence"],
+      "requires": ["repository-freshness"],
+      "optional_integrations": ["work-log", "task-notification"],
+      "configuration": {
+        "scope": "project",
+        "format": "json",
+        "current_version": 1,
+        "schema": "schemas/config.schema.json",
+        "configure": ["python", "scripts/verify_before_push.py", "configure", "--project-root", "<project-root>"],
+        "status": ["python", "scripts/verify_before_push.py", "status", "--project-root", "<project-root>", "--json"],
+        "migrate": ["python", "scripts/verify_before_push.py", "migrate", "--project-root", "<project-root>", "--json"]
+      },
       "provenance": {
         "kind": "original",
         "source": "Derived from prior project experience where this workflow was successfully applied as a project rule",
@@ -45,6 +69,15 @@
       ],
       "trigger_evals": "evals/synchronize-git-repositories.json",
       "license": "Apache-2.0",
+      "provides": ["repository-freshness"],
+      "requires": [],
+      "optional_integrations": ["work-log"],
+      "configuration": {
+        "scope": "project",
+        "format": "managed-markdown",
+        "configure": ["python", "scripts/configure_project.py", "configure", "--project-path", "<project-root>"],
+        "status": ["python", "scripts/configure_project.py", "status", "--project-path", "<project-root>", "--json"]
+      },
       "provenance": {
         "kind": "original",
         "source": "Derived from prior project experience where this workflow was successfully applied as a project rule",
@@ -66,6 +99,15 @@
       ],
       "trigger_evals": "evals/maintain-work-log.json",
       "license": "Apache-2.0",
+      "provides": ["work-log"],
+      "requires": [],
+      "optional_integrations": [],
+      "configuration": {
+        "scope": "project",
+        "format": "managed-markdown",
+        "configure": ["python", "scripts/configure_project.py", "configure", "--project-path", "<project-root>"],
+        "status": ["python", "scripts/configure_project.py", "status", "--project-path", "<project-root>", "--json"]
+      },
       "provenance": {
         "kind": "original",
         "source": "Derived from prior project experience where this workflow was successfully applied as a project rule",
@@ -87,6 +129,18 @@
       ],
       "trigger_evals": "evals/notify-via-telegram.json",
       "license": "Apache-2.0",
+      "provides": ["task-notification"],
+      "requires": [],
+      "optional_integrations": [],
+      "configuration": {
+        "scope": "user",
+        "format": "json",
+        "current_version": 1,
+        "schema": "schemas/config.schema.json",
+        "configure": ["python", "scripts/telegram_notify.py", "configure"],
+        "status": ["python", "scripts/telegram_notify.py", "status", "--json"],
+        "migrate": ["python", "scripts/telegram_notify.py", "migrate", "--json"]
+      },
       "provenance": {
         "kind": "original",
         "source": "Derived from prior project experience where this workflow was successfully applied as a project rule",
@@ -108,6 +162,18 @@
       ],
       "trigger_evals": "evals/operate-yandex-cloud.json",
       "license": "Apache-2.0",
+      "provides": ["yandex-cloud-operations"],
+      "requires": ["repository-freshness"],
+      "optional_integrations": ["push-verification-evidence", "work-log", "task-notification"],
+      "configuration": {
+        "scope": "project",
+        "format": "yaml",
+        "current_version": 3,
+        "schema": "schemas/project.schema.json",
+        "configure": ["python", "scripts/configure_project.py", "--project-path", "<project-root>"],
+        "status": ["python", "scripts/preflight.py", "--project-path", "<project-root>", "--json"],
+        "migrate": ["python", "scripts/migrate_config.py", "--project-path", "<project-root>", "--json"]
+      },
       "provenance": {
         "kind": "original",
         "source": "Derived from prior project experience where this workflow was successfully applied as a project rule",
