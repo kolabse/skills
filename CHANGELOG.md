@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+## [0.2.0] - 2026-08-13
+
 ### Added
 
 - Deterministic release archives, SHA-256 checksums, release manifests, and an
@@ -31,4 +33,5 @@ First versioned release of the kolabse skill collection.
 - Tests for configuration migration, fake cloud and infrastructure CLIs,
   installation confirmation, and collection metadata.
 
+[0.2.0]: https://github.com/kolabse/skills/releases/tag/v0.2.0
 [0.1.0]: https://github.com/kolabse/skills/releases/tag/v0.1.0
