@@ -1,5 +1,14 @@
 # Changelog
 
+## Unreleased
+
+### Added
+
+- Deterministic release archives, SHA-256 checksums, release manifests, and an
+  automated artifact backfill workflow.
+- Full-SHA GitHub Action pins and Dependabot maintenance for workflow
+  dependencies.
+
 ## [0.1.0] - 2026-08-13
 
 First versioned release of the kolabse skill collection.

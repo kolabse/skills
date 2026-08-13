@@ -72,3 +72,16 @@ result in the pull request.
 
 Completion criterion: every command passes on each supported operating system,
 and the pull request checklist contains evidence for the affected skill.
+
+## Protect the release chain
+
+- Pin every external GitHub Action to a full commit SHA and retain its release
+  version in a comment. Let Dependabot propose reviewed SHA updates.
+- Grant each workflow only its required `GITHUB_TOKEN` permissions.
+- Build release archives through `scripts/build_release.py`; verify
+  `SHA256SUMS` before uploading assets.
+- Keep version tags immutable. Publish a correction as a new version instead
+  of moving an existing tag or replacing its source commit.
+
+Completion criterion: the tag resolves to the reviewed commit, the uploaded
+assets match `SHA256SUMS`, and workflow dependencies are immutable references.
