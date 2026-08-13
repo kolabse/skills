@@ -129,6 +129,35 @@ def print_portable(value: str) -> None:
         sys.stdout.write("\n")
 
 
+def resolve_update_selection(project: Path, skills: list[str], scope: str) -> list[str]:
+    unknown = set(skills) - KNOWN_SKILLS
+    if unknown:
+        raise ManagerError(f"Unknown collection skills: {', '.join(sorted(unknown))}")
+    if scope == "global":
+        if not skills:
+            raise ManagerError(
+                "global updates require explicit skill names so unrelated global skills are not updated"
+            )
+        return skills
+
+    lock = load_object(project.resolve() / LOCK_FILE, "skills lock")
+    entries = lock.get("skills")
+    if not isinstance(entries, dict):
+        raise ManagerError("skills-lock.json field 'skills' must be an object")
+    if skills:
+        missing = set(skills) - set(entries)
+        if missing:
+            raise ManagerError(
+                f"Collection skills are not present in the project lock: {', '.join(sorted(missing))}"
+            )
+        return skills
+
+    selected = sorted(set(entries) & KNOWN_SKILLS)
+    if not selected:
+        raise ManagerError("no kolabse skills were found in skills-lock.json")
+    return selected
+
+
 def update_skills(
     project: Path,
     skills: list[str],
@@ -137,26 +166,29 @@ def update_skills(
     yes: bool,
     timeout: int,
 ) -> None:
-    unknown = set(skills) - KNOWN_SKILLS
-    if unknown:
-        raise ManagerError(f"Unknown collection skills: {', '.join(sorted(unknown))}")
+    selected = resolve_update_selection(project, skills, scope)
     npx = shutil.which("npx")
     if not npx:
         raise ManagerError("npx is required to update skills")
-    command = [npx, "--yes", f"skills@{cli_version}", "update", *skills]
+    command = [npx, "--yes", f"skills@{cli_version}", "update", *selected]
     command.append("-p" if scope == "project" else "-g")
     if yes:
         command.append("-y")
     result = run_checked(command, project.resolve(), timeout)
     combined_output = f"{result.stdout}\n{result.stderr}".casefold()
     if "no installed skills found matching" in combined_output:
-        requested = ", ".join(skills) if skills else "collection skills"
+        requested = ", ".join(selected)
         raise ManagerError(
             f"skills CLI did not update {requested}; the lock source may not support in-place "
             "updates (local development installs must be re-added from their source)"
         )
     if result.stdout.strip():
         print_portable(result.stdout.strip())
+    if scope == "project":
+        state = doctor(project)
+        if not state["healthy"]:
+            detail = "; ".join(state["problems"])
+            raise ManagerError(f"post-update diagnosis failed: {detail}")
 
 
 def telegram_config_path(environment: dict[str, str] | None = None) -> Path:

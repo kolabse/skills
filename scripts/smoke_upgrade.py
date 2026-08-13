@@ -127,8 +127,9 @@ def normalized_manifest(root: Path) -> dict[str, str]:
 def verify_updated_installation(source: Path, project: Path, names: list[str]) -> None:
     installed = project / ".agents/skills"
     actual_names = sorted(path.name for path in installed.iterdir() if path.is_dir())
-    if actual_names != names:
-        raise UpgradeError(f"Updated skill set differs: expected {names}, got {actual_names}")
+    missing_names = sorted(set(names) - set(actual_names))
+    if missing_names:
+        raise UpgradeError(f"Updated collection skills are missing: {missing_names}")
     for name in names:
         expected = normalized_manifest(source / "skills" / name)
         actual = normalized_manifest(installed / name)
@@ -136,8 +137,8 @@ def verify_updated_installation(source: Path, project: Path, names: list[str]) -
             raise UpgradeError(f"Updated {name} does not match candidate after LF normalization")
     lock = json.loads((project / "skills-lock.json").read_text(encoding="utf-8"))
     entries = lock.get("skills") if isinstance(lock, dict) else None
-    if not isinstance(entries, dict) or sorted(entries) != names:
-        raise UpgradeError("Updated skills lock does not match the collection")
+    if not isinstance(entries, dict) or not set(names).issubset(entries):
+        raise UpgradeError("Updated skills lock is missing collection entries")
     for name in names:
         digest = entries[name].get("computedHash") if isinstance(entries[name], dict) else None
         if not isinstance(digest, str) or len(digest) != 64:
@@ -200,6 +201,19 @@ def run_upgrade(source: Path, baseline: str, cli_version: str, timeout: int) -> 
                 timeout,
                 environment,
             )
+            lock_path = project / "skills-lock.json"
+            lock = json.loads(lock_path.read_text(encoding="utf-8"))
+            unrelated_entry = {
+                "source": "fixture/unrelated-skills",
+                "sourceType": "github",
+                "computedHash": "a" * 64,
+            }
+            lock["skills"]["unrelated-fixture-skill"] = unrelated_entry
+            lock_path.write_text(json.dumps(lock, indent=2) + "\n", encoding="utf-8")
+            unrelated_root = project / ".agents/skills/unrelated-fixture-skill"
+            unrelated_root.mkdir(parents=True)
+            unrelated_file = unrelated_root / "SKILL.md"
+            unrelated_file.write_text("fixture must remain unchanged\n", encoding="utf-8")
             configure_identity(git, project, timeout)
             write_legacy_configuration(project, telegram, python)
             run([git, "--git-dir", str(remote), "update-ref", "refs/heads/main", candidate], root, timeout)
@@ -212,6 +226,11 @@ def run_upgrade(source: Path, baseline: str, cli_version: str, timeout: int) -> 
                     os.environ.pop("DISABLE_TELEMETRY", None)
                 else:
                     os.environ["DISABLE_TELEMETRY"] = previous_telemetry
+            updated_lock = json.loads(lock_path.read_text(encoding="utf-8"))
+            if updated_lock["skills"].get("unrelated-fixture-skill") != unrelated_entry:
+                raise UpgradeError("Collection update changed an unrelated lock entry")
+            if unrelated_file.read_text(encoding="utf-8") != "fixture must remain unchanged\n":
+                raise UpgradeError("Collection update changed an unrelated installed skill")
             verify_updated_installation(source, project, catalog_skills(source))
             previous_config_env = os.environ.get("TELEGRAM_NOTIFY_CONFIG")
             os.environ["TELEGRAM_NOTIFY_CONFIG"] = str(telegram)

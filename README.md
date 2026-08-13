@@ -58,6 +58,12 @@ python scripts/manage_installed_skills.py update --project-path . --yes --migrat
 python scripts/manage_installed_skills.py doctor --project-path . --json
 ```
 
+With no names, the manager resolves the installed kolabse skills from the
+project lock and passes those names explicitly to the external CLI; unrelated
+project skills are never part of the update. Global updates require explicit
+collection skill names. Project updates finish with the same fail-closed
+diagnosis as `doctor`.
+
 Add `--include-user-config` only when the Telegram user configuration should be
 migrated too. `status` and `doctor` are read-only. `migrate` changes only
 configuration files that already exist; it does not configure unused skills.
