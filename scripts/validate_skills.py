@@ -13,6 +13,53 @@ NAME_PATTERN = re.compile(r"^[a-z0-9]+(?:-[a-z0-9]+)*$")
 ALLOWED_PLATFORMS = {"linux", "macos", "windows"}
 ALLOWED_STATUSES = {"experimental", "stable", "deprecated"}
 ALLOWED_PROVENANCE = {"original", "migrated", "vendored"}
+PLUGIN_NAME = "kolabse-skills"
+PLUGIN_VERSION_PATTERN = re.compile(
+    r"^[0-9]+\.[0-9]+\.[0-9]+(?:-[0-9A-Za-z]+(?:[.-][0-9A-Za-z]+)*)?$"
+)
+
+
+def validate_plugin_manifest(repository_root: Path) -> list[str]:
+    manifest_path = repository_root / ".codex-plugin/plugin.json"
+    if not manifest_path.is_file():
+        return [f"{manifest_path}: required plugin manifest is missing"]
+    try:
+        manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+    except (json.JSONDecodeError, UnicodeDecodeError) as error:
+        return [f"{manifest_path}: invalid JSON: {error}"]
+    if not isinstance(manifest, dict):
+        return [f"{manifest_path}: manifest root must be an object"]
+
+    errors: list[str] = []
+    if manifest.get("name") != PLUGIN_NAME:
+        errors.append(f"{manifest_path}: name must be '{PLUGIN_NAME}'")
+    version = manifest.get("version")
+    if not isinstance(version, str) or not PLUGIN_VERSION_PATTERN.fullmatch(version):
+        errors.append(f"{manifest_path}: version must use semantic versioning")
+    if not isinstance(manifest.get("description"), str) or not manifest["description"]:
+        errors.append(f"{manifest_path}: description is required")
+    if manifest.get("skills") != "./skills/":
+        errors.append(f"{manifest_path}: skills must be './skills/'")
+    if manifest.get("license") != "Apache-2.0":
+        errors.append(f"{manifest_path}: license must be 'Apache-2.0'")
+    author = manifest.get("author")
+    if not isinstance(author, dict) or not author.get("name"):
+        errors.append(f"{manifest_path}: author.name is required")
+    interface = manifest.get("interface")
+    required_interface = {
+        "displayName",
+        "shortDescription",
+        "longDescription",
+        "developerName",
+        "category",
+    }
+    if not isinstance(interface, dict):
+        errors.append(f"{manifest_path}: interface must be an object")
+    else:
+        for field in sorted(required_interface):
+            if not isinstance(interface.get(field), str) or not interface[field]:
+                errors.append(f"{manifest_path}: interface.{field} is required")
+    return errors
 
 
 def validate_trigger_evals(
@@ -79,14 +126,14 @@ def frontmatter(skill_file: Path) -> dict[str, str]:
 
 
 def validate(repository_root: Path = REPOSITORY_ROOT) -> list[str]:
-    errors: list[str] = []
+    errors = validate_plugin_manifest(repository_root)
     names: set[str] = set()
     skills_root = repository_root / "skills"
     readme = repository_root / "README.md"
     readme_text = readme.read_text(encoding="utf-8") if readme.is_file() else ""
     skill_files = sorted(skills_root.glob("*/SKILL.md"))
     if not skill_files:
-        return ["no skills found under skills/"]
+        return [*errors, "no skills found under skills/"]
 
     for skill_file in skill_files:
         folder_name = skill_file.parent.name

@@ -24,6 +24,11 @@ this repository, for example from:
 https://github.com/kolabse/skills/tree/main/skills/operate-yandex-cloud
 ```
 
+The repository is also packaged as the skills-only `kolabse-skills` plugin for
+ChatGPT and Codex. Its manifest is in [`.codex-plugin/plugin.json`](.codex-plugin/plugin.json),
+and every folder under `skills/` is included in the plugin. The cross-agent
+`npx skills` installation remains available independently of the plugin.
+
 ## Available skills
 
 ### `operate-yandex-cloud`
@@ -77,3 +82,9 @@ python scripts/build_release.py --verify <download-directory>/SHA256SUMS
 ```
 
 GitHub also exposes a SHA-256 `digest` for every uploaded release asset.
+Release workflows additionally publish GitHub artifact attestations. Verify a
+downloaded artifact against this repository with:
+
+```shell
+gh attestation verify <artifact> --repo kolabse/skills
+```

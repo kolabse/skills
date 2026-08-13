@@ -1,0 +1,35 @@
+{
+  "name": "kolabse-skills",
+  "version": "0.2.0",
+  "description": "Reusable infrastructure and engineering workflows maintained by kolabse.",
+  "author": {
+    "name": "kolabse",
+    "url": "https://github.com/kolabse"
+  },
+  "homepage": "https://github.com/kolabse/skills",
+  "repository": "https://github.com/kolabse/skills",
+  "license": "Apache-2.0",
+  "keywords": [
+    "agent-skills",
+    "cloud",
+    "infrastructure",
+    "yandex-cloud"
+  ],
+  "skills": "./skills/",
+  "interface": {
+    "displayName": "kolabse Skills",
+    "shortDescription": "Reusable engineering and cloud workflows",
+    "longDescription": "A maintained collection of project-scoped workflows for safely operating cloud infrastructure and related engineering tools.",
+    "developerName": "kolabse",
+    "category": "Developer Tools",
+    "capabilities": [
+      "Interactive",
+      "Write"
+    ],
+    "websiteURL": "https://github.com/kolabse/skills",
+    "defaultPrompt": [
+      "Configure this project for Yandex Cloud operations.",
+      "Check the Yandex Cloud tools required by this project."
+    ]
+  }
+}

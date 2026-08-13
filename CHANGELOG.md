@@ -8,6 +8,11 @@
   automated artifact backfill workflow.
 - Full-SHA GitHub Action pins and Dependabot maintenance for workflow
   dependencies.
+- A skills-only `kolabse-skills` plugin manifest for ChatGPT and Codex.
+- GitHub artifact attestations and safe, idempotent release backfills.
+- Required pull requests, CI checks, linear history, and conversation
+  resolution on the protected `main` branch; force-pushes and deletion are
+  disabled.
 
 ## [0.1.0] - 2026-08-13
 
