@@ -88,6 +88,16 @@ raw predictions with the review evidence, and inspect each false positive and
 false negative before changing a description. A higher score is not sufficient
 reason to broaden a trigger when that would make nearby workflows ambiguous.
 
+Treat `evals/release-holdout-vN.json` as append-only release evidence. Do not
+read or run the active holdout while tuning descriptions. Existing holdout
+versions are immutable: create `vN+1`, update the catalog name, path, and
+canonical digest, and retain every published version. Run the active holdout
+only after the candidate descriptions are frozen, then compare its report with
+a baseline generated from the same holdout version and selector configuration.
+Never compare reports with different assertion digests. After release, retain
+the accepted report under `evals/baselines/` and update the catalog baseline
+pointer; baseline files are release evidence and must not be rewritten.
+
 Completion criterion: every command passes on each supported operating system,
 and the pull request checklist contains evidence for the affected skill.
 

@@ -1,0 +1,32 @@
+{
+  "assertion_digest": "79ecbe7f9185c861c042e44059523931590653d9b6734789b73f39cc1ee9d635",
+  "corpus": "release-holdout",
+  "failures": [],
+  "per_skill": [
+    {"fn": 0, "fp": 0, "precision": 1.0, "recall": 1.0, "skill": "maintain-work-log", "specificity": 1.0, "tn": 2, "tp": 2},
+    {"fn": 0, "fp": 0, "precision": 1.0, "recall": 1.0, "skill": "notify-via-telegram", "specificity": 1.0, "tn": 2, "tp": 2},
+    {"fn": 0, "fp": 0, "precision": 1.0, "recall": 1.0, "skill": "operate-yandex-cloud", "specificity": 1.0, "tn": 2, "tp": 2},
+    {"fn": 0, "fp": 0, "precision": 1.0, "recall": 1.0, "skill": "synchronize-git-repositories", "specificity": 1.0, "tn": 2, "tp": 2},
+    {"fn": 0, "fp": 0, "precision": 1.0, "recall": 1.0, "skill": "verify-before-push", "specificity": 1.0, "tn": 2, "tp": 2}
+  ],
+  "schema_version": 1,
+  "selector": {
+    "configuration": "release-holdout-v1",
+    "model": "independent-agent",
+    "provider": "Codex",
+    "run": "candidate"
+  },
+  "suite_digest": "2eb8154315cdec7b60991f228cbdd0cbe107b330d62e9a0f34e6858321966226",
+  "summary": {
+    "accuracy": 1.0,
+    "assertions": 20,
+    "failed": 0,
+    "fn": 0,
+    "fp": 0,
+    "passed": 20,
+    "precision": 1.0,
+    "recall": 1.0,
+    "tn": 10,
+    "tp": 10
+  }
+}

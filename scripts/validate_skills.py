@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import ast
+import hashlib
 import json
 import re
 import sys
@@ -17,6 +18,115 @@ PLUGIN_NAME = "kolabse-skills"
 PLUGIN_VERSION_PATTERN = re.compile(
     r"^[0-9]+\.[0-9]+\.[0-9]+(?:-[0-9A-Za-z]+(?:[.-][0-9A-Za-z]+)*)?$"
 )
+
+
+def canonical_digest(value: object) -> str:
+    encoded = json.dumps(value, sort_keys=True, separators=(",", ":")).encode()
+    return hashlib.sha256(encoded).hexdigest()
+
+
+def validate_release_holdout(
+    repository_root: Path, catalog: dict[str, object], skill_names: set[str]
+) -> list[str]:
+    holdout = catalog.get("release_holdout")
+    if not isinstance(holdout, dict):
+        return ["skill-catalog.json: release_holdout must be an object"]
+    name = holdout.get("name")
+    relative_path = holdout.get("path")
+    expected_digest = holdout.get("sha256")
+    if not isinstance(name, str) or not re.fullmatch(r"release-holdout-v[1-9][0-9]*", name):
+        return ["skill-catalog.json: release_holdout.name must be versioned"]
+    if relative_path != f"evals/{name}.json":
+        return [f"skill-catalog.json: release_holdout.path must be evals/{name}.json"]
+    if not isinstance(expected_digest, str) or not re.fullmatch(r"[0-9a-f]{64}", expected_digest):
+        return ["skill-catalog.json: release_holdout.sha256 must be lowercase SHA-256"]
+    path = repository_root / relative_path
+    try:
+        data = json.loads(path.read_text(encoding="utf-8"))
+    except FileNotFoundError:
+        return [f"{path}: release holdout is missing"]
+    except (json.JSONDecodeError, UnicodeDecodeError) as error:
+        return [f"{path}: invalid JSON: {error}"]
+    errors: list[str] = []
+    if not isinstance(data, dict):
+        return [f"{path}: holdout root must be an object"]
+    if data.get("schema_version") != 1 or data.get("name") != name:
+        errors.append(f"{path}: schema_version or name does not match the catalog")
+    if canonical_digest(data) != expected_digest:
+        errors.append(f"{path}: canonical digest does not match the catalog lock")
+    skills = data.get("skills")
+    if not isinstance(skills, dict) or set(skills) != skill_names:
+        errors.append(f"{path}: skills must exactly match the catalog")
+        return errors
+    seen: set[str] = set()
+    for skill_name, branches in skills.items():
+        if not isinstance(branches, dict):
+            errors.append(f"{path}: {skill_name} must be an object")
+            continue
+        for branch in ("positive", "negative"):
+            cases = branches.get(branch)
+            if not isinstance(cases, list) or len(cases) < 2:
+                errors.append(f"{path}: {skill_name}.{branch} needs at least 2 cases")
+                continue
+            for index, case in enumerate(cases):
+                location = f"{path}: {skill_name}.{branch}[{index}]"
+                prompt = case.get("prompt") if isinstance(case, dict) else None
+                reason = case.get("reason") if isinstance(case, dict) else None
+                if not isinstance(prompt, str) or not prompt.strip():
+                    errors.append(f"{location}.prompt is required")
+                elif prompt in seen:
+                    errors.append(f"{location}.prompt is duplicated")
+                else:
+                    seen.add(prompt)
+                if not isinstance(reason, str) or not reason.strip():
+                    errors.append(f"{location}.reason is required")
+    if errors:
+        return errors
+    baseline_release = holdout.get("baseline_release")
+    baseline_report = holdout.get("baseline_report")
+    if not isinstance(baseline_release, str) or not re.fullmatch(
+        r"v[0-9]+\.[0-9]+\.[0-9]+", baseline_release
+    ):
+        errors.append("skill-catalog.json: release_holdout.baseline_release is invalid")
+        return errors
+    expected_baseline = f"evals/baselines/{name}-{baseline_release}.json"
+    if baseline_report != expected_baseline:
+        errors.append(
+            "skill-catalog.json: release_holdout.baseline_report must be "
+            f"{expected_baseline}"
+        )
+        return errors
+    baseline_path = repository_root / baseline_report
+    try:
+        baseline = json.loads(baseline_path.read_text(encoding="utf-8"))
+    except FileNotFoundError:
+        errors.append(f"{baseline_path}: baseline report is missing")
+        return errors
+    except (json.JSONDecodeError, UnicodeDecodeError) as error:
+        errors.append(f"{baseline_path}: invalid JSON: {error}")
+        return errors
+    assertions: list[dict[str, object]] = []
+    for skill_name in sorted(skills):
+        for branch, expected in (("positive", True), ("negative", False)):
+            for case in skills[skill_name][branch]:
+                prompt = case["prompt"]
+                identifier = hashlib.sha256(
+                    f"{skill_name}\0{branch}\0{prompt}".encode()
+                ).hexdigest()[:16]
+                assertions.append(
+                    {
+                        "id": identifier,
+                        "prompt": prompt,
+                        "target_skill": skill_name,
+                        "expected": expected,
+                    }
+                )
+    assertion_digest = canonical_digest(
+        sorted(assertions, key=lambda item: str(item["id"]))
+    )
+    if not isinstance(baseline, dict) or baseline.get("assertion_digest") != assertion_digest:
+        errors.append(f"{baseline_path}: assertion_digest does not match the holdout")
+    return errors
 
 
 def validate_plugin_manifest(repository_root: Path) -> list[str]:
@@ -274,6 +384,7 @@ def validate(repository_root: Path = REPOSITORY_ROOT) -> list[str]:
         errors.append(f"{catalog_path}: skill '{missing}' is missing from the catalog")
     for unknown in sorted(catalog_names - names):
         errors.append(f"{catalog_path}: catalog references unknown skill '{unknown}'")
+    errors.extend(validate_release_holdout(repository_root, catalog, catalog_names))
     return errors
 
 
