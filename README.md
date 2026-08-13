@@ -31,6 +31,23 @@ and every folder under `skills/` is included in the plugin. The cross-agent
 
 ## Available skills
 
+### `verify-before-push`
+
+Run project-declared checks and record evidence bound to the exact Git commits,
+worktrees, upstream state, and verification configuration being pushed.
+
+After installing it in a project, invoke it once with:
+
+```text
+$verify-before-push Configure this project's verification policy and checks.
+```
+
+The skill stores committed configuration outside its installed folder, keeps
+generated evidence ignored, supports multiple repositories and commands, and
+fails closed for configured repositories when evidence is missing, malformed,
+failed, or stale. Its gate mode leaves unrelated repositories unaffected and
+does not attempt to parse shell commands or install a product-specific hook.
+
 ### `synchronize-git-repositories`
 
 Safely synchronize every Git repository involved in a task without overwriting

@@ -1,0 +1,39 @@
+{
+  "skill": "verify-before-push",
+  "positive": [
+    {
+      "prompt": "Перед push запусти объявленные проектом тесты и сохрани проверяемую отметку для текущих SHA кода и документации.",
+      "reason": "The request explicitly requires checks and evidence bound to multiple repository commits."
+    },
+    {
+      "prompt": "Настрой в проекте fail-closed проверку: push разрешён только если preflight прошёл для неизменившегося worktree.",
+      "reason": "Configuring a stale-sensitive protected push gate is a core workflow."
+    },
+    {
+      "prompt": "Проверь, осталась ли действительной отметка тестов после нового коммита и появления untracked файла.",
+      "reason": "Validating evidence invalidation after Git state changes requires the skill."
+    },
+    {
+      "prompt": "Добавь lint и unit tests в проектный pre-push preflight, но не привязывай его к конкретному IDE или агенту.",
+      "reason": "Portable project-declared verification without product-specific hook wiring is in scope."
+    }
+  ],
+  "negative": [
+    {
+      "prompt": "Отправь уже проверенную ветку в origin.",
+      "reason": "A plain push request does not necessarily ask to configure or run verification."
+    },
+    {
+      "prompt": "Объясни, чем pre-commit отличается от pre-push hook.",
+      "reason": "A conceptual Git explanation does not require verification evidence."
+    },
+    {
+      "prompt": "Исправь один упавший unit-тест и покажи diff.",
+      "reason": "Fixing a test is separate from establishing a project-wide pre-push gate."
+    },
+    {
+      "prompt": "Покажи статус последнего GitHub Actions workflow.",
+      "reason": "Reading remote CI status is not local Git-state-bound verification."
+    }
+  ]
+}

@@ -2,6 +2,14 @@
 
 ## Unreleased
 
+## [0.5.0] - 2026-08-13
+
+### Added
+
+- The `verify-before-push` skill with project-declared checks, multi-repository
+  Git-state fingerprints, atomic evidence, upstream refresh, stale-evidence
+  detection, and fail-closed gate mode for configured repositories.
+
 ## [0.4.0] - 2026-08-13
 
 ### Added
@@ -57,6 +65,7 @@ First versioned release of the kolabse skill collection.
 - Tests for configuration migration, fake cloud and infrastructure CLIs,
   installation confirmation, and collection metadata.
 
+[0.5.0]: https://github.com/kolabse/skills/releases/tag/v0.5.0
 [0.4.0]: https://github.com/kolabse/skills/releases/tag/v0.4.0
 [0.3.0]: https://github.com/kolabse/skills/releases/tag/v0.3.0
 [0.2.0]: https://github.com/kolabse/skills/releases/tag/v0.2.0

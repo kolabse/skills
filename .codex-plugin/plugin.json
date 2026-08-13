@@ -1,6 +1,6 @@
 {
   "name": "kolabse-skills",
-  "version": "0.4.0",
+  "version": "0.5.0",
   "description": "Reusable Git, project, notification, and infrastructure workflows maintained by kolabse.",
   "author": {
     "name": "kolabse",
@@ -18,15 +18,17 @@
     "notifications",
     "project-workflows",
     "repository-synchronization",
+    "testing",
     "telegram",
     "work-log",
+    "pre-push",
     "yandex-cloud"
   ],
   "skills": "./skills/",
   "interface": {
     "displayName": "kolabse Skills",
     "shortDescription": "Reusable Git, project, and cloud workflows",
-    "longDescription": "A maintained collection of workflows for safe Git synchronization, chronological project work logs, task notifications, and project-scoped cloud infrastructure.",
+    "longDescription": "A maintained collection of workflows for safe Git synchronization, state-bound pre-push verification, project work logs, task notifications, and cloud infrastructure.",
     "developerName": "kolabse",
     "category": "Developer Tools",
     "capabilities": [
@@ -35,6 +37,7 @@
     ],
     "websiteURL": "https://github.com/kolabse/skills",
     "defaultPrompt": [
+      "Run project checks and verify evidence for this Git state before push.",
       "Safely synchronize every Git repository involved in this task.",
       "Configure and maintain this project's dated work log.",
       "Configure Telegram notifications for long-running tasks.",
