@@ -61,6 +61,8 @@ class ReleaseArtifactTests(unittest.TestCase):
                 self.assertIn(prefix + ".codex-plugin/plugin.json", tar_names)
                 self.assertIn(prefix + "scripts/trigger_evals.py", zip_names)
                 self.assertIn(prefix + "scripts/trigger_evals.py", tar_names)
+                self.assertIn(prefix + "scripts/smoke_install.py", zip_names)
+                self.assertIn(prefix + "scripts/smoke_install.py", tar_names)
                 for skill in SKILL_NAMES:
                     self.assertIn(prefix + f"evals/{skill}.json", zip_names)
                     self.assertIn(prefix + f"evals/{skill}.json", tar_names)
@@ -69,6 +71,11 @@ class ReleaseArtifactTests(unittest.TestCase):
                 baseline = "evals/baselines/release-holdout-v1-v0.8.0.json"
                 self.assertIn(prefix + baseline, zip_names)
                 self.assertIn(prefix + baseline, tar_names)
+                stable_baseline = "evals/baselines/release-holdout-v2-v1.0.0.json"
+                self.assertIn(prefix + stable_baseline, zip_names)
+                self.assertIn(prefix + stable_baseline, tar_names)
+                self.assertIn(prefix + "evals/release-holdout-v2.json", zip_names)
+                self.assertIn(prefix + "evals/release-holdout-v2.json", tar_names)
                 self.assertFalse(any("/.git/" in name for name in zip_names))
 
                 manifest = json.loads(

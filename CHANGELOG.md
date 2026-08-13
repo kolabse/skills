@@ -2,6 +2,25 @@
 
 ## Unreleased
 
+## [1.0.0] - 2026-08-13
+
+### Added
+
+- A real consumer smoke test that installs every skill through the pinned
+  `skills` CLI in copy mode and verifies names, files, byte content, and lock
+  hashes against the catalog and source tree.
+- Explicit lifecycle criteria and `stable_since` catalog metadata.
+- Label-blind majority aggregation for an odd number of independent selector
+  runs, preventing one stochastic observation from deciding a release gate.
+- Release holdout v2 with 40 assertions, finer per-skill resolution, and an
+  unambiguous state-bound pre-push evidence case; published v1 remains intact.
+
+### Changed
+
+- Promoted all five current skills to stable after cross-platform tests,
+  independent trigger evaluation, release holdout, deterministic packaging,
+  and copied-install verification passed.
+
 ## [0.8.0] - 2026-08-13
 
 ### Added
@@ -100,6 +119,7 @@ First versioned release of the kolabse skill collection.
 - Tests for configuration migration, fake cloud and infrastructure CLIs,
   installation confirmation, and collection metadata.
 
+[1.0.0]: https://github.com/kolabse/skills/releases/tag/v1.0.0
 [0.8.0]: https://github.com/kolabse/skills/releases/tag/v0.8.0
 [0.7.0]: https://github.com/kolabse/skills/releases/tag/v0.7.0
 [0.6.0]: https://github.com/kolabse/skills/releases/tag/v0.6.0

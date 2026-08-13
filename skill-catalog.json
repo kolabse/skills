@@ -2,17 +2,18 @@
   "schema_version": 1,
   "license": "Apache-2.0",
   "release_holdout": {
-    "name": "release-holdout-v1",
-    "path": "evals/release-holdout-v1.json",
-    "sha256": "ddf3c79b660479f47243dedff7e943051991510f028f8d3cde9840c7ca691b62",
-    "baseline_release": "v0.8.0",
-    "baseline_report": "evals/baselines/release-holdout-v1-v0.8.0.json"
+    "name": "release-holdout-v2",
+    "path": "evals/release-holdout-v2.json",
+    "sha256": "70e6e9dea8105c1e3d61a22e4d6d73816a2aad4309680698360edb5be25184d9",
+    "baseline_release": "v1.0.0",
+    "baseline_report": "evals/baselines/release-holdout-v2-v1.0.0.json"
   },
   "skills": [
     {
       "name": "verify-before-push",
       "path": "skills/verify-before-push",
-      "status": "experimental",
+      "status": "stable",
+      "stable_since": "1.0.0",
       "maintainers": [
         "@kolabse"
       ],
@@ -32,7 +33,8 @@
     {
       "name": "synchronize-git-repositories",
       "path": "skills/synchronize-git-repositories",
-      "status": "experimental",
+      "status": "stable",
+      "stable_since": "1.0.0",
       "maintainers": [
         "@kolabse"
       ],
@@ -52,7 +54,8 @@
     {
       "name": "maintain-work-log",
       "path": "skills/maintain-work-log",
-      "status": "experimental",
+      "status": "stable",
+      "stable_since": "1.0.0",
       "maintainers": [
         "@kolabse"
       ],
@@ -72,7 +75,8 @@
     {
       "name": "notify-via-telegram",
       "path": "skills/notify-via-telegram",
-      "status": "experimental",
+      "status": "stable",
+      "stable_since": "1.0.0",
       "maintainers": [
         "@kolabse"
       ],
@@ -92,7 +96,8 @@
     {
       "name": "operate-yandex-cloud",
       "path": "skills/operate-yandex-cloud",
-      "status": "experimental",
+      "status": "stable",
+      "stable_since": "1.0.0",
       "maintainers": [
         "@kolabse"
       ],

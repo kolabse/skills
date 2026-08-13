@@ -160,7 +160,13 @@ class CollectionValidationTests(unittest.TestCase):
             )
             baseline_path.parent.mkdir()
             baseline_path.write_text(
-                json.dumps({"assertion_digest": assertion_digest}), encoding="utf-8"
+                json.dumps(
+                    {
+                        "assertion_digest": assertion_digest,
+                        "selector": {"method": "majority-vote", "run_count": 3},
+                    }
+                ),
+                encoding="utf-8",
             )
             catalog = {
                 "release_holdout": {
