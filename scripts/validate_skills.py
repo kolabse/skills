@@ -427,6 +427,16 @@ def validate(repository_root: Path = REPOSITORY_ROOT) -> list[str]:
         return errors
     if catalog.get("schema_version") != 1:
         errors.append(f"{catalog_path}: schema_version must be 1")
+    collection_version = catalog.get("collection_version")
+    manifest_path = repository_root / ".codex-plugin/plugin.json"
+    try:
+        plugin_version = json.loads(manifest_path.read_text(encoding="utf-8")).get("version")
+    except (OSError, json.JSONDecodeError, UnicodeDecodeError, AttributeError):
+        plugin_version = None
+    if collection_version != plugin_version:
+        errors.append(
+            f"{catalog_path}: collection_version must match plugin version {plugin_version!r}"
+        )
     if not isinstance(catalog.get("license"), str) or not catalog["license"]:
         errors.append(f"{catalog_path}: repository license is required")
     if not (repository_root / "LICENSE").is_file():
@@ -483,6 +493,25 @@ def validate(repository_root: Path = REPOSITORY_ROOT) -> list[str]:
             errors.append(f"{location}.platforms contains unsupported values")
         if not isinstance(entry.get("license"), str) or not entry["license"]:
             errors.append(f"{location}.license is required")
+        metadata_path = repository_root / expected_path / "collection-metadata.json"
+        try:
+            metadata = json.loads(metadata_path.read_text(encoding="utf-8"))
+        except FileNotFoundError:
+            errors.append(f"{metadata_path}: installed collection metadata is missing")
+            metadata = None
+        except (json.JSONDecodeError, UnicodeDecodeError) as error:
+            errors.append(f"{metadata_path}: invalid JSON: {error}")
+            metadata = None
+        if isinstance(metadata, dict):
+            expected_metadata = {
+                "schema_version": 1,
+                "collection": PLUGIN_NAME,
+                "version": collection_version,
+                "skill": name,
+                "source": "https://github.com/kolabse/skills",
+            }
+            if metadata != expected_metadata:
+                errors.append(f"{metadata_path}: metadata does not match the collection")
         errors.extend(validate_configuration_contract(repository_root, entry, location))
         errors.extend(validate_trigger_evals(repository_root, entry, location))
         provenance = entry.get("provenance")
