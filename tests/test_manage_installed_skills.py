@@ -90,6 +90,22 @@ class ManageInstalledSkillsTests(unittest.TestCase):
                 command,
             )
 
+    def test_update_rejects_cli_noop_reported_with_zero_exit_code(self) -> None:
+        with tempfile.TemporaryDirectory() as directory, patch.object(
+            shutil, "which", return_value="npx"
+        ), patch.object(manager, "run_checked") as run:
+            run.return_value.stdout = "No installed skills found matching: verify-before-push"
+            run.return_value.stderr = ""
+            with self.assertRaisesRegex(manager.ManagerError, "did not update"):
+                manager.update_skills(
+                    Path(directory),
+                    ["verify-before-push"],
+                    "project",
+                    "1.5.22",
+                    True,
+                    30,
+                )
+
     def test_migration_discovery_does_not_create_configuration(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
             project = self.make_project(

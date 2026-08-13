@@ -2,6 +2,14 @@
 
 ## Unreleased
 
+## [1.2.1] - 2026-08-13
+
+### Fixed
+
+- Treat the pinned `skills` CLI's zero-exit "No installed skills found matching"
+  response as an update failure instead of reporting a false success. Local
+  development installs now receive an actionable re-add instruction.
+
 ## [1.2.0] - 2026-08-13
 
 ### Added
@@ -164,6 +172,7 @@ First versioned release of the kolabse skill collection.
 - Tests for configuration migration, fake cloud and infrastructure CLIs,
   installation confirmation, and collection metadata.
 
+[1.2.1]: https://github.com/kolabse/skills/releases/tag/v1.2.1
 [1.2.0]: https://github.com/kolabse/skills/releases/tag/v1.2.0
 [1.1.0]: https://github.com/kolabse/skills/releases/tag/v1.1.0
 [1.0.0]: https://github.com/kolabse/skills/releases/tag/v1.0.0

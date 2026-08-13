@@ -63,6 +63,9 @@ migrated too. `status` and `doctor` are read-only. `migrate` changes only
 configuration files that already exist; it does not configure unused skills.
 Each installed skill carries `collection-metadata.json`, so `status` reports its
 collection version even though the external lock format has no version field.
+The external CLI does not update `sourceType: local` development locks in
+place. The manager treats that CLI no-op as a failure; re-add those skills from
+their local source with the original `--skill` and `--agent` selections.
 
 To roll back skill files, first back up project/user configuration, then
 reinstall the required release tag with the same skills and agent targets used
