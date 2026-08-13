@@ -17,6 +17,12 @@ PLUGIN_VERSION = json.loads(
         encoding="utf-8"
     )
 )["version"]
+SKILL_NAMES = tuple(
+    entry["name"]
+    for entry in json.loads(
+        (REPOSITORY_DIRECTORY / "skill-catalog.json").read_text(encoding="utf-8")
+    )["skills"]
+)
 RELEASE_TAG = f"v{PLUGIN_VERSION}"
 ARCHIVE_BASENAME = f"kolabse-skills-{RELEASE_TAG}"
 sys.dont_write_bytecode = True
@@ -47,11 +53,7 @@ class ReleaseArtifactTests(unittest.TestCase):
                     zip_names = set(archive.namelist())
                 with tarfile.open(first / f"{ARCHIVE_BASENAME}.tar.gz") as archive:
                     tar_names = set(archive.getnames())
-                for skill in (
-                    "maintain-work-log",
-                    "notify-via-telegram",
-                    "operate-yandex-cloud",
-                ):
+                for skill in SKILL_NAMES:
                     expected = prefix + f"skills/{skill}/SKILL.md"
                     self.assertIn(expected, zip_names)
                     self.assertIn(expected, tar_names)

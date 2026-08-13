@@ -1,0 +1,39 @@
+{
+  "skill": "synchronize-git-repositories",
+  "positive": [
+    {
+      "prompt": "Перед началом работы синхронизируй репозитории приложения, инфраструктуры и документации, не потеряв локальные изменения.",
+      "reason": "The task explicitly requires safe synchronization of several related repositories."
+    },
+    {
+      "prompt": "Добавь в AGENTS.md правило: перед анализом, изменениями, коммитом и push всегда проверять и безопасно подтягивать upstream.",
+      "reason": "Configuring the persistent repository synchronization policy is a core workflow."
+    },
+    {
+      "prompt": "Проверь, актуальна ли текущая ветка относительно origin, и подтяни её только если возможен fast-forward.",
+      "reason": "Fetched-state classification and a guarded fast-forward are central capabilities."
+    },
+    {
+      "prompt": "В рабочем дереве есть мои изменения. Fetch remote и объясни, можно ли продолжать, ничего не stash и не reset.",
+      "reason": "Preserving a dirty worktree while establishing remote freshness requires this skill."
+    }
+  ],
+  "negative": [
+    {
+      "prompt": "Объясни разницу между git merge и git rebase на простом примере.",
+      "reason": "A general Git explanation does not require synchronizing a repository."
+    },
+    {
+      "prompt": "Создай новый локальный Git-репозиторий и добавь первый commit.",
+      "reason": "Repository initialization has no existing upstream state to synchronize."
+    },
+    {
+      "prompt": "Покажи diff моих незакоммиченных изменений, но не обращайся к remote.",
+      "reason": "The user explicitly limits the task to local diff inspection."
+    },
+    {
+      "prompt": "Удали старую удалённую ветку feature/legacy.",
+      "reason": "Remote branch deletion is a separate destructive Git operation, not synchronization."
+    }
+  ]
+}

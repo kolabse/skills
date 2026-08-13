@@ -1,7 +1,7 @@
 {
   "name": "kolabse-skills",
-  "version": "0.3.0",
-  "description": "Reusable project, task, notification, and infrastructure workflows maintained by kolabse.",
+  "version": "0.4.0",
+  "description": "Reusable Git, project, notification, and infrastructure workflows maintained by kolabse.",
   "author": {
     "name": "kolabse",
     "url": "https://github.com/kolabse"
@@ -12,10 +12,12 @@
   "keywords": [
     "agent-skills",
     "cloud",
+    "git",
     "infrastructure",
     "logging",
     "notifications",
     "project-workflows",
+    "repository-synchronization",
     "telegram",
     "work-log",
     "yandex-cloud"
@@ -23,8 +25,8 @@
   "skills": "./skills/",
   "interface": {
     "displayName": "kolabse Skills",
-    "shortDescription": "Reusable project, task, and cloud workflows",
-    "longDescription": "A maintained collection of workflows for chronological project work logs, task notifications, and safely operating project-scoped cloud infrastructure.",
+    "shortDescription": "Reusable Git, project, and cloud workflows",
+    "longDescription": "A maintained collection of workflows for safe Git synchronization, chronological project work logs, task notifications, and project-scoped cloud infrastructure.",
     "developerName": "kolabse",
     "category": "Developer Tools",
     "capabilities": [
@@ -33,6 +35,7 @@
     ],
     "websiteURL": "https://github.com/kolabse/skills",
     "defaultPrompt": [
+      "Safely synchronize every Git repository involved in this task.",
       "Configure and maintain this project's dated work log.",
       "Configure Telegram notifications for long-running tasks.",
       "Configure this project for Yandex Cloud operations.",

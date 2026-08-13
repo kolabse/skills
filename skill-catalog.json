@@ -3,6 +3,26 @@
   "license": "Apache-2.0",
   "skills": [
     {
+      "name": "synchronize-git-repositories",
+      "path": "skills/synchronize-git-repositories",
+      "status": "experimental",
+      "maintainers": [
+        "@kolabse"
+      ],
+      "platforms": [
+        "linux",
+        "macos",
+        "windows"
+      ],
+      "trigger_evals": "evals/synchronize-git-repositories.json",
+      "license": "Apache-2.0",
+      "provenance": {
+        "kind": "original",
+        "source": "Derived from prior project experience where this workflow was successfully applied as a project rule",
+        "canonical_repository": "https://github.com/kolabse/skills"
+      }
+    },
+    {
       "name": "maintain-work-log",
       "path": "skills/maintain-work-log",
       "status": "experimental",
