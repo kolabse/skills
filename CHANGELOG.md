@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+## [0.3.0] - 2026-08-13
+
 ### Added
 
 - The `maintain-work-log` skill for project-level logging policy, dated records
@@ -9,6 +11,12 @@
 - The `notify-via-telegram` skill with interactive credential setup, chat
   discovery, milestone-oriented task updates, and a cross-platform standard
   library client.
+
+### Changed
+
+- Expanded plugin metadata for the complete three-skill collection.
+- Recorded privacy-preserving provenance from successful prior-project rules.
+- Required the plugin version to match the release tag when building assets.
 
 ## [0.2.0] - 2026-08-13
 
@@ -41,5 +49,6 @@ First versioned release of the kolabse skill collection.
 - Tests for configuration migration, fake cloud and infrastructure CLIs,
   installation confirmation, and collection metadata.
 
+[0.3.0]: https://github.com/kolabse/skills/releases/tag/v0.3.0
 [0.2.0]: https://github.com/kolabse/skills/releases/tag/v0.2.0
 [0.1.0]: https://github.com/kolabse/skills/releases/tag/v0.1.0

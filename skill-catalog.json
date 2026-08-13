@@ -18,7 +18,7 @@
       "license": "Apache-2.0",
       "provenance": {
         "kind": "original",
-        "source": "kolabse/skills",
+        "source": "Derived from prior project experience where this workflow was successfully applied as a project rule",
         "canonical_repository": "https://github.com/kolabse/skills"
       }
     },
@@ -38,7 +38,7 @@
       "license": "Apache-2.0",
       "provenance": {
         "kind": "original",
-        "source": "kolabse/skills",
+        "source": "Derived from prior project experience where this workflow was successfully applied as a project rule",
         "canonical_repository": "https://github.com/kolabse/skills"
       }
     },
@@ -57,11 +57,8 @@
       "trigger_evals": "evals/operate-yandex-cloud.json",
       "license": "Apache-2.0",
       "provenance": {
-        "kind": "migrated",
-        "source": "FProject workspace",
-        "previous_names": [
-          "operate-fproject-cloud"
-        ],
+        "kind": "original",
+        "source": "Derived from prior project experience where this workflow was successfully applied as a project rule",
         "canonical_repository": "https://github.com/kolabse/skills"
       }
     }
