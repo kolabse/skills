@@ -65,6 +65,10 @@ class ReleaseArtifactTests(unittest.TestCase):
                 self.assertIn(prefix + "scripts/smoke_install.py", tar_names)
                 self.assertIn(prefix + "scripts/smoke_upgrade.py", zip_names)
                 self.assertIn(prefix + "scripts/manage_installed_skills.py", zip_names)
+                self.assertIn(prefix + "scripts/bootstrap_update.py", zip_names)
+                self.assertIn(prefix + "scripts/smoke_bootstrap.py", zip_names)
+                self.assertIn(prefix + "schemas/manager-plan.schema.json", zip_names)
+                self.assertIn(prefix + "schemas/manager-result.schema.json", zip_names)
                 self.assertIn(prefix + "scripts/install_personal_plugin.py", zip_names)
                 for skill in SKILL_NAMES:
                     self.assertIn(prefix + f"evals/{skill}.json", zip_names)

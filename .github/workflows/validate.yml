@@ -34,6 +34,8 @@ jobs:
         run: git diff --diff-filter=MD --exit-code "${{ github.event.pull_request.base.sha }}" -- 'evals/release-holdout-v*.json' 'evals/baselines/*.json'
       - name: Run unit tests
         run: python -m unittest discover -s tests -v
+      - name: Smoke-test standalone bootstrap
+        run: python scripts/smoke_bootstrap.py
 
   skills-cli-discovery:
     runs-on: ubuntu-latest

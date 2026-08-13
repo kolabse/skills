@@ -1,0 +1,34 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/kolabse/skills/schemas/manager-result.schema.json",
+  "title": "kolabse skills operation result",
+  "type": "object",
+  "required": ["schema_version", "operation", "collection", "scope", "outcomes"],
+  "properties": {
+    "schema_version": {"const": 1},
+    "operation": {"enum": ["update", "migrate"]},
+    "collection": {"const": "kolabse-skills"},
+    "scope": {"enum": ["project", "global"]},
+    "healthy": {"type": "boolean"},
+    "outcomes": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["skill", "status"],
+        "properties": {
+          "skill": {"type": "string"},
+          "status": {"enum": ["updated", "unchanged", "migrated", "skipped", "failed"]},
+          "reason": {"type": "string"},
+          "previous_version": {"type": "string"},
+          "version": {"type": "string"},
+          "provenance_status": {"type": "string"},
+          "result": {"type": "object"}
+        },
+        "additionalProperties": false
+      }
+    },
+    "migrations": {"type": "array"},
+    "migration": {"type": "object"}
+  },
+  "additionalProperties": false
+}

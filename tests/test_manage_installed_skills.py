@@ -5,6 +5,8 @@ import shutil
 import sys
 import tempfile
 import unittest
+from contextlib import redirect_stderr
+from io import StringIO
 from pathlib import Path
 from unittest.mock import patch
 
@@ -43,6 +45,36 @@ class ManageInstalledSkillsTests(unittest.TestCase):
             json.dumps({"version": 1, "skills": entries}), encoding="utf-8"
         )
         return project
+
+    def make_global(self, root: Path, versions: dict[str, str]) -> Path:
+        global_root = root / ".agents"
+        entries: dict[str, object] = {}
+        for name, version in versions.items():
+            skill = global_root / "skills" / name
+            skill.mkdir(parents=True)
+            (skill / "collection-metadata.json").write_text(
+                json.dumps(
+                    {
+                        "schema_version": 2,
+                        "collection": "kolabse-skills",
+                        "version": version,
+                        "skill": name,
+                        "source": "https://github.com/kolabse/skills",
+                        "canonical_repository": "https://github.com/kolabse/skills",
+                    }
+                ),
+                encoding="utf-8",
+            )
+            entries[name] = {
+                "source": "kolabse/skills",
+                "sourceType": "github",
+                "skillFolderHash": "0" * 40,
+            }
+        global_root.mkdir(parents=True, exist_ok=True)
+        (global_root / ".skill-lock.json").write_text(
+            json.dumps({"version": 3, "skills": entries}), encoding="utf-8"
+        )
+        return global_root
 
     def test_status_reports_installed_collection_versions(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
@@ -222,6 +254,128 @@ class ManageInstalledSkillsTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as directory:
             with self.assertRaisesRegex(manager.ManagerError, "explicit skill names"):
                 manager.resolve_update_selection(Path(directory), [], "global")
+
+    def test_global_status_and_doctor_support_skill_lock_v3(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            global_root = self.make_global(
+                Path(directory), {"verify-before-push": "1.4.0"}
+            )
+            state = manager.read_global_state(global_root)
+            self.assertEqual("global", state["scope"])
+            self.assertEqual("verified", state["skills"][0]["provenance_status"])
+            diagnosis = manager.doctor(
+                Path(directory), scope="global", global_root=global_root
+            )
+            self.assertTrue(diagnosis["healthy"])
+
+    def test_global_doctor_rejects_unsupported_or_ambiguous_layout(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            global_root = Path(directory) / ".agents"
+            global_root.mkdir()
+            (global_root / ".skill-lock.json").write_text(
+                '{"version":3,"skills":{"verify-before-push":{}}}',
+                encoding="utf-8",
+            )
+            diagnosis = manager.doctor(
+                Path(directory), scope="global", global_root=global_root
+            )
+            self.assertFalse(diagnosis["healthy"])
+            self.assertTrue(any("provenance mismatch" in item for item in diagnosis["problems"]))
+
+    def test_global_update_uses_explicit_verified_selection(self) -> None:
+        with tempfile.TemporaryDirectory() as directory, patch.object(
+            shutil, "which", return_value="npx"
+        ), patch.object(manager, "run_checked") as run, patch.object(
+            manager, "default_global_root"
+        ) as default_root:
+            root = Path(directory)
+            global_root = self.make_global(root, {"verify-before-push": "1.4.0"})
+            default_root.return_value = global_root
+            run.return_value.stdout = "unchanged"
+            run.return_value.stderr = ""
+            report = manager.update_skills(
+                root,
+                ["verify-before-push"],
+                "global",
+                "1.5.22",
+                True,
+                30,
+                global_root=global_root,
+                as_json=True,
+            )
+            self.assertIn("-g", run.call_args.args[0])
+            self.assertEqual("unchanged", report["outcomes"][0]["status"])
+
+    def test_relocated_global_update_is_rejected_without_mutation(self) -> None:
+        with tempfile.TemporaryDirectory() as directory, patch.object(
+            manager, "run_checked"
+        ) as run:
+            root = Path(directory)
+            global_root = self.make_global(root, {"verify-before-push": "1.4.0"})
+            with self.assertRaisesRegex(manager.ManagerError, "read-only"):
+                manager.update_skills(
+                    root,
+                    ["verify-before-push"],
+                    "global",
+                    "1.5.22",
+                    True,
+                    30,
+                    global_root=global_root,
+                )
+            run.assert_not_called()
+
+    def test_plan_is_read_only_and_reports_update_migrations_and_target(self) -> None:
+        with tempfile.TemporaryDirectory() as directory, patch.object(
+            manager, "run_checked"
+        ) as run:
+            project = self.make_project(
+                Path(directory), {"verify-before-push": "1.3.0"}
+            )
+            script = project / ".agents/skills/verify-before-push/scripts/verify_before_push.py"
+            script.parent.mkdir(parents=True, exist_ok=True)
+            script.write_text("", encoding="utf-8")
+            config = project / ".agents/verify-before-push/config.json"
+            config.parent.mkdir(parents=True)
+            config.write_text("{}", encoding="utf-8")
+            before = (project / "skills-lock.json").read_bytes()
+            plan = manager.build_update_plan(project, [], "project")
+            self.assertFalse(plan["mutates"])
+            self.assertEqual("1.4.0", plan["target_version"])
+            self.assertEqual("update", plan["outcomes"][0]["action"])
+            self.assertEqual(["verify-before-push"], plan["migration_candidates"])
+            self.assertEqual(before, (project / "skills-lock.json").read_bytes())
+            run.assert_not_called()
+
+    def test_plan_reports_provenance_block_without_mutation(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            project = self.make_project(
+                Path(directory), {"verify-before-push": "1.3.0"}
+            )
+            lock_path = project / "skills-lock.json"
+            lock = json.loads(lock_path.read_text(encoding="utf-8"))
+            lock["skills"]["verify-before-push"]["source"] = "other/skills"
+            lock_path.write_text(json.dumps(lock), encoding="utf-8")
+            plan = manager.build_update_plan(project, [], "project")
+            self.assertTrue(plan["blocked"])
+            self.assertEqual("blocked", plan["outcomes"][0]["action"])
+
+    def test_json_failure_is_machine_readable(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            output = StringIO()
+            with redirect_stderr(output):
+                result = manager.main(
+                    [
+                        "update",
+                        "verify-before-push",
+                        "--project-path",
+                        directory,
+                        "--json",
+                    ]
+                )
+            self.assertEqual(1, result)
+            payload = json.loads(output.getvalue())
+            self.assertEqual("failed", payload["outcomes"][0]["status"])
+            self.assertEqual("update", payload["operation"])
 
     def test_project_update_rejects_skill_missing_from_lock(self) -> None:
         with tempfile.TemporaryDirectory() as directory:

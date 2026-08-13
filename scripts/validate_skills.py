@@ -336,6 +336,28 @@ def validate_compositions(catalog: dict[str, object], entries: list[object]) -> 
     return errors
 
 
+def validate_manager_contract(repository_root: Path, collection_version: str) -> list[str]:
+    errors: list[str] = []
+    manager_path = repository_root / "scripts/manage_installed_skills.py"
+    try:
+        manager_text = manager_path.read_text(encoding="utf-8")
+    except (FileNotFoundError, UnicodeDecodeError) as error:
+        return [f"{manager_path}: manager is missing or unreadable: {error}"]
+    match = re.search(r'^COLLECTION_VERSION = "([^"]+)"$', manager_text, re.MULTILINE)
+    if not match or match.group(1) != collection_version:
+        errors.append(f"{manager_path}: COLLECTION_VERSION must match the catalog")
+    for name in ("manager-plan.schema.json", "manager-result.schema.json"):
+        path = repository_root / "schemas" / name
+        try:
+            schema = json.loads(path.read_text(encoding="utf-8"))
+        except (FileNotFoundError, json.JSONDecodeError, UnicodeDecodeError) as error:
+            errors.append(f"{path}: schema is missing or invalid: {error}")
+            continue
+        if not isinstance(schema, dict) or schema.get("$schema") != "https://json-schema.org/draft/2020-12/schema":
+            errors.append(f"{path}: expected a JSON Schema Draft 2020-12 object")
+    return errors
+
+
 def frontmatter(skill_file: Path) -> dict[str, str]:
     text = skill_file.read_text(encoding="utf-8")
     match = re.match(r"^---\n(.*?)\n---\n", text, flags=re.DOTALL)
@@ -541,6 +563,7 @@ def validate(repository_root: Path = REPOSITORY_ROOT) -> list[str]:
         errors.append(f"{catalog_path}: catalog references unknown skill '{unknown}'")
     errors.extend(validate_release_holdout(repository_root, catalog, catalog_names))
     errors.extend(validate_compositions(catalog, entries))
+    errors.extend(validate_manager_contract(repository_root, collection_version))
     return errors
 
 
