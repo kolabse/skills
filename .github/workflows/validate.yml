@@ -23,6 +23,8 @@ jobs:
           python-version: ${{ matrix.python-version }}
       - name: Validate collection
         run: python scripts/validate_skills.py
+      - name: Prepare blind trigger suite
+        run: python scripts/trigger_evals.py prepare --output .trigger-evals/suite.json
       - name: Run unit tests
         run: python -m unittest discover -s tests -v
 

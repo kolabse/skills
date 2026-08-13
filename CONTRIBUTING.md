@@ -70,6 +70,24 @@ first-run path. Structural CI checks keep the corpus complete, but do not
 substitute for observing model invocation. Include the prompts and observed
 result in the pull request.
 
+For collection-wide trigger evaluation, prepare a blind suite and score the
+selector observations:
+
+```shell
+python scripts/trigger_evals.py prepare --output .trigger-evals/suite.json
+python scripts/trigger_evals.py score \
+  --predictions .trigger-evals/predictions.json \
+  --json-output .trigger-evals/report.json \
+  --markdown-output .trigger-evals/report.md
+```
+
+Selectors may choose multiple skills or none. Do not expose the source eval
+files, expected labels, author reasons, suspected failures, or prior reports to
+the selector. Record provider/model identity in the prediction metadata, keep
+raw predictions with the review evidence, and inspect each false positive and
+false negative before changing a description. A higher score is not sufficient
+reason to broaden a trigger when that would make nearby workflows ambiguous.
+
 Completion criterion: every command passes on each supported operating system,
 and the pull request checklist contains evidence for the affected skill.
 
