@@ -2,6 +2,14 @@
 
 ## Unreleased
 
+## [0.4.0] - 2026-08-13
+
+### Added
+
+- The `synchronize-git-repositories` skill for project policies, task-scoped
+  multi-repository discovery, fetched-state classification, safe fast-forward
+  updates, local-work preservation, and repeat synchronization checkpoints.
+
 ## [0.3.0] - 2026-08-13
 
 ### Added
@@ -49,6 +57,7 @@ First versioned release of the kolabse skill collection.
 - Tests for configuration migration, fake cloud and infrastructure CLIs,
   installation confirmation, and collection metadata.
 
+[0.4.0]: https://github.com/kolabse/skills/releases/tag/v0.4.0
 [0.3.0]: https://github.com/kolabse/skills/releases/tag/v0.3.0
 [0.2.0]: https://github.com/kolabse/skills/releases/tag/v0.2.0
 [0.1.0]: https://github.com/kolabse/skills/releases/tag/v0.1.0

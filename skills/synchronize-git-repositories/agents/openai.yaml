@@ -1,0 +1,4 @@
+interface:
+  display_name: "Synchronize Git Repositories"
+  short_description: "Safely synchronize related Git repositories"
+  default_prompt: "Use $synchronize-git-repositories to safely synchronize all repositories involved in this task."

@@ -31,6 +31,23 @@ and every folder under `skills/` is included in the plugin. The cross-agent
 
 ## Available skills
 
+### `synchronize-git-repositories`
+
+Safely synchronize every Git repository involved in a task without overwriting
+local work or rewriting history.
+
+After installing it in a project, invoke it once with:
+
+```text
+$synchronize-git-repositories Configure this project's repository synchronization policy.
+```
+
+The skill preserves existing `AGENTS.md` instructions, discovers only
+task-relevant repositories, fetches their tracked remotes, applies clean
+fast-forward updates, and reports dirty, ahead, diverged, detached, or
+untracked states without automatically stashing, resetting, rebasing, merging,
+cleaning, switching branches, or force-pushing.
+
 ### `maintain-work-log`
 
 Maintain a dated, chronological record of project changes, operations,
