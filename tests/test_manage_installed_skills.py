@@ -17,6 +17,7 @@ import manage_installed_skills as manager  # noqa: E402
 class ManageInstalledSkillsTests(unittest.TestCase):
     def make_project(self, root: Path, versions: dict[str, str]) -> Path:
         project = root / "project"
+        project.mkdir(parents=True, exist_ok=True)
         entries: dict[str, object] = {}
         for name, version in versions.items():
             skill = project / ".agents/skills" / name
@@ -76,8 +77,12 @@ class ManageInstalledSkillsTests(unittest.TestCase):
             shutil, "which", return_value="npx"
         ), patch.object(manager, "run_checked") as run:
             run.return_value.stdout = "updated"
+            run.return_value.stderr = ""
+            project = self.make_project(
+                Path(directory), {"verify-before-push": "1.2.0"}
+            )
             manager.update_skills(
-                Path(directory),
+                project,
                 ["verify-before-push"],
                 "project",
                 "1.5.22",
@@ -96,9 +101,68 @@ class ManageInstalledSkillsTests(unittest.TestCase):
         ), patch.object(manager, "run_checked") as run:
             run.return_value.stdout = "No installed skills found matching: verify-before-push"
             run.return_value.stderr = ""
+            project = self.make_project(
+                Path(directory), {"verify-before-push": "1.2.0"}
+            )
             with self.assertRaisesRegex(manager.ManagerError, "did not update"):
                 manager.update_skills(
-                    Path(directory),
+                    project,
+                    ["verify-before-push"],
+                    "project",
+                    "1.5.22",
+                    True,
+                    30,
+                )
+
+    def test_collection_update_does_not_select_unrelated_locked_skills(self) -> None:
+        with tempfile.TemporaryDirectory() as directory, patch.object(
+            shutil, "which", return_value="npx"
+        ), patch.object(manager, "run_checked") as run:
+            run.return_value.stdout = "updated"
+            run.return_value.stderr = ""
+            project = self.make_project(
+                Path(directory), {"verify-before-push": "1.2.0"}
+            )
+            lock_path = project / "skills-lock.json"
+            lock = json.loads(lock_path.read_text(encoding="utf-8"))
+            lock["skills"]["third-party-skill"] = {
+                "source": "elsewhere/skills",
+                "computedHash": "1" * 64,
+            }
+            lock_path.write_text(json.dumps(lock), encoding="utf-8")
+
+            manager.update_skills(project, [], "project", "1.5.22", True, 30)
+
+            command = run.call_args.args[0]
+            self.assertIn("verify-before-push", command)
+            self.assertNotIn("third-party-skill", command)
+
+    def test_global_update_requires_explicit_collection_skills(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            with self.assertRaisesRegex(manager.ManagerError, "explicit skill names"):
+                manager.resolve_update_selection(Path(directory), [], "global")
+
+    def test_project_update_rejects_skill_missing_from_lock(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            project = self.make_project(Path(directory), {})
+            with self.assertRaisesRegex(manager.ManagerError, "not present"):
+                manager.resolve_update_selection(
+                    project, ["verify-before-push"], "project"
+                )
+
+    def test_update_fails_when_post_update_doctor_is_unhealthy(self) -> None:
+        with tempfile.TemporaryDirectory() as directory, patch.object(
+            shutil, "which", return_value="npx"
+        ), patch.object(manager, "run_checked") as run:
+            run.return_value.stdout = "updated"
+            run.return_value.stderr = ""
+            project = self.make_project(
+                Path(directory), {"verify-before-push": "1.2.0"}
+            )
+            (project / ".agents/skills/verify-before-push/collection-metadata.json").unlink()
+            with self.assertRaisesRegex(manager.ManagerError, "post-update diagnosis failed"):
+                manager.update_skills(
+                    project,
                     ["verify-before-push"],
                     "project",
                     "1.5.22",

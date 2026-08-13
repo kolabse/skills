@@ -2,6 +2,16 @@
 
 ## Unreleased
 
+## [1.2.2] - 2026-08-13
+
+### Fixed
+
+- Scope collection updates to the installed kolabse skills explicitly so a
+  project update cannot also update unrelated third-party skills.
+- Require explicit names for global updates and fail when a requested project
+  skill is absent from the lock.
+- Run a fail-closed post-update diagnosis for project-scoped updates.
+
 ## [1.2.1] - 2026-08-13
 
 ### Fixed
@@ -172,6 +182,7 @@ First versioned release of the kolabse skill collection.
 - Tests for configuration migration, fake cloud and infrastructure CLIs,
   installation confirmation, and collection metadata.
 
+[1.2.2]: https://github.com/kolabse/skills/releases/tag/v1.2.2
 [1.2.1]: https://github.com/kolabse/skills/releases/tag/v1.2.1
 [1.2.0]: https://github.com/kolabse/skills/releases/tag/v1.2.0
 [1.1.0]: https://github.com/kolabse/skills/releases/tag/v1.1.0
