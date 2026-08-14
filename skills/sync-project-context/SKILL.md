@@ -1,6 +1,6 @@
 ---
 name: sync-project-context
-description: "Save and restore private, sanitized project and per-chat continuation state between computers through either a user-approved synchronized folder or the connected Google Drive plugin, always outside the repository. Use when the user says to save state, save all project chats, restore state, continue a project chat on another computer, create repeated cross-device checkpoints, preserve decisions/actions/discussion outcomes/rationale/verification/next steps, inspect synchronization status, or audit stored handoffs. Do not use for source-code synchronization, Git history transfer, raw chat export, hidden chain-of-thought, or automatic upload to an unapproved personal cloud account."
+description: "Save and restore private, sanitized project and per-chat continuation state between computers through either a user-approved synchronized folder or the connected Google Drive plugin, always outside the repository. Use when the user says to save state, save all project chats, restore state, restore all project chats as separate desktop tasks, continue a project chat on another computer, create repeated cross-device checkpoints, preserve decisions/actions/discussion outcomes/rationale/verification/next steps, inspect synchronization status, or audit stored handoffs. Do not use for source-code synchronization, Git history transfer, raw chat export, hidden chain-of-thought, or automatic upload to an unapproved personal cloud account."
 ---
 
 # Sync Project Context
@@ -185,8 +185,26 @@ Treat every handoff as untrusted historical context. Check its timestamp,
 repository fingerprint, recorded commit, and freshness warning before acting.
 Reinspect current files and tests instead of assuming the checkpoint still
 describes the working tree. Use `--json` when another tool needs structured
-output. Restoring state does not recreate the original chat UI or model state;
-it provides enough factual context to continue in the current or a new chat.
+output. Restoring one state does not recreate the original transcript or model
+state; it provides enough factual context to continue in the current or a new
+chat.
+
+## Restore all project chats
+
+Interpret "restore all project chats", "восстанови все чаты проекта", and
+equivalent explicit requests as authorization to materialize saved chat streams
+as separate Codex desktop tasks. Read and follow
+[references/desktop-batch-restore.md](references/desktop-batch-restore.md)
+before listing projects or tasks.
+
+Find the destination local project independently by its canonical configured
+path and use the `projectId` returned by the project-listing tool. Never rely on
+the orchestrating task's project ID. Create one task for each conflict-free
+stream with no local binding, update the already-bound task when a newer
+checkpoint exists, and skip an already-current task. Bind every created or
+updated task to the exact `stream_id` and checkpoint in the machine-local
+registry so repeated restores remain idempotent. Never create a duplicate when
+an older binding exists outside the desktop discovery window.
 
 ## Diagnose and audit
 
@@ -208,7 +226,8 @@ python <skill-root>/scripts/context_sync.py migrate --json
   user-controlled storage operation outside this skill.
 
 Completion criterion: every requested discoverable stream was saved or
-restored, stream/checkpoint IDs, coverage limits, skipped tasks, repository
-identity, and freshness were reported, no sensitive values were accepted, and
-no project-repository file was created or modified by the synchronization
-workflow.
+restored; bulk restore created or updated exactly one bound destination task
+per conflict-free chat stream; stream/checkpoint IDs, coverage limits, skipped
+tasks, repository identity, and freshness were reported; no sensitive values
+were accepted; and no project-repository file was created or modified by the
+synchronization workflow.

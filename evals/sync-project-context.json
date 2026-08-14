@@ -44,6 +44,10 @@
     {
       "prompt": "Сохрани все доступные чаты этого проекта одним пакетом, новые подробно, а изменившиеся после прошлого раза — короткими обновлениями.",
       "reason": "The explicit desktop batch command discovers project chats and creates baseline or delta continuation streams without exporting transcripts."
+    },
+    {
+      "prompt": "Восстанови все сохранённые чаты проекта на этом компьютере как отдельные задачи проекта и не создавай дубли при повторном запуске.",
+      "reason": "The explicit desktop batch restore must materialize missing saved streams as project tasks and update or skip existing local bindings idempotently."
     }
   ],
   "negative": [

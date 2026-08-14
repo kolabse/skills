@@ -283,6 +283,174 @@ class SyncProjectContextTests(unittest.TestCase):
             self.assertEqual("unchanged", plan["threads"][0]["action"])
             self.assertEqual(stream_id, plan["threads"][0]["stream_id"])
 
+    def test_materialize_plan_creates_then_updates_one_task_per_stream(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            project = root / "project"
+            storage = root / "storage"
+            config = root / "config.json"
+            payload = root / "payload.json"
+            discovery = root / "discovery.json"
+            create_repository(project, "https://example.invalid/team/demo.git")
+            context_sync.command_configure(
+                namespace(
+                    project_path=str(project),
+                    storage_root=str(storage),
+                    project_id="proj-materialize",
+                    mode="metadata-only",
+                    acknowledge_storage_policy=True,
+                    config_path=str(config),
+                )
+            )
+            stream_id = "stream-" + "f" * 32
+            payload.write_text(
+                json.dumps({"summary": "Prepared the restored feature."}),
+                encoding="utf-8",
+            )
+            baseline = context_sync.command_capture(
+                namespace(
+                    project_path=str(project),
+                    config_path=str(config),
+                    input=str(payload),
+                    stdin=False,
+                    stream_id=stream_id,
+                )
+            )
+            project_context = context_sync.command_capture(
+                namespace(
+                    project_path=str(project),
+                    config_path=str(config),
+                    input=str(payload),
+                    stdin=False,
+                    stream_id="project",
+                )
+            )
+            discovery.write_text('{"threads": []}', encoding="utf-8")
+            initial = context_sync.command_materialize_plan(
+                namespace(
+                    project_path=str(project),
+                    config_path=str(config),
+                    input=str(discovery),
+                    stdin=False,
+                )
+            )
+            self.assertEqual("create", initial["streams"][0]["action"])
+            self.assertEqual(1, initial["stream_count"])
+            self.assertEqual(
+                project_context["checkpoint_id"],
+                initial["project_context_checkpoint_id"],
+            )
+
+            context_sync.command_bind_thread(
+                namespace(
+                    project_path=str(project),
+                    config_path=str(config),
+                    thread_id="restored-task-id",
+                    stream_id=stream_id,
+                    checkpoint_id=baseline["checkpoint_id"],
+                    source_revision=None,
+                    source_head_turn_id=None,
+                )
+            )
+            discovery.write_text(
+                json.dumps({"threads": [{"thread_id": "restored-task-id"}]}),
+                encoding="utf-8",
+            )
+            unchanged = context_sync.command_materialize_plan(
+                namespace(
+                    project_path=str(project),
+                    config_path=str(config),
+                    input=str(discovery),
+                    stdin=False,
+                )
+            )
+            self.assertEqual("unchanged", unchanged["streams"][0]["action"])
+            self.assertEqual(0, unchanged["streams"][0]["target_index"])
+
+            payload.write_text(
+                json.dumps({"summary": "Added a short follow-up decision."}),
+                encoding="utf-8",
+            )
+            delta = context_sync.command_capture(
+                namespace(
+                    project_path=str(project),
+                    config_path=str(config),
+                    input=str(payload),
+                    stdin=False,
+                    stream_id=stream_id,
+                )
+            )
+            update = context_sync.command_materialize_plan(
+                namespace(
+                    project_path=str(project),
+                    config_path=str(config),
+                    input=str(discovery),
+                    stdin=False,
+                )
+            )
+            self.assertEqual("update", update["streams"][0]["action"])
+            self.assertEqual(
+                delta["checkpoint_id"],
+                update["streams"][0]["latest_checkpoint_id"],
+            )
+
+    def test_materialize_plan_does_not_duplicate_an_undiscoverable_bound_task(
+        self,
+    ) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            project = root / "project"
+            storage = root / "storage"
+            config = root / "config.json"
+            payload = root / "payload.json"
+            discovery = root / "discovery.json"
+            create_repository(project, "https://example.invalid/team/demo.git")
+            context_sync.command_configure(
+                namespace(
+                    project_path=str(project),
+                    storage_root=str(storage),
+                    project_id="proj-hidden-binding",
+                    mode="metadata-only",
+                    acknowledge_storage_policy=True,
+                    config_path=str(config),
+                )
+            )
+            stream_id = "stream-" + "c" * 32
+            payload.write_text(
+                json.dumps({"summary": "Prepared a baseline."}),
+                encoding="utf-8",
+            )
+            context_sync.command_capture(
+                namespace(
+                    project_path=str(project),
+                    config_path=str(config),
+                    input=str(payload),
+                    stdin=False,
+                    stream_id=stream_id,
+                )
+            )
+            context_sync.command_bind_thread(
+                namespace(
+                    project_path=str(project),
+                    config_path=str(config),
+                    thread_id="older-restored-task",
+                    stream_id=stream_id,
+                    source_revision=None,
+                    source_head_turn_id=None,
+                )
+            )
+            discovery.write_text('{"threads": []}', encoding="utf-8")
+            plan = context_sync.command_materialize_plan(
+                namespace(
+                    project_path=str(project),
+                    config_path=str(config),
+                    input=str(discovery),
+                    stdin=False,
+                )
+            )
+            self.assertEqual("unavailable", plan["streams"][0]["action"])
+            self.assertEqual(0, plan["counts"]["create"])
+
     def test_batch_rejects_two_local_threads_bound_to_one_stream(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)

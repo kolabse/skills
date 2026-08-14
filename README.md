@@ -309,8 +309,12 @@ mixing them. In the desktop app, an explicit "save all project chats" command
 can discover the 50 most recent non-pinned tasks plus all pinned tasks, create
 baselines for new workstreams, append deltas only to changed workstreams, and
 skip unchanged or active tasks. A machine-local hashed registry prevents
-duplicate streams without storing task titles or transcripts. The connector
-backend validates a complete downloaded snapshot
+duplicate streams without storing task titles or transcripts. The matching
+"restore all project chats" command resolves the destination local project by
+its canonical path, creates one project task per missing saved stream, updates
+an existing bound task when a newer delta arrives, and skips already-current
+tasks without importing raw transcripts. The connector backend validates a
+complete downloaded snapshot
 locally and reads uploads back before success. It records reviewed summaries,
 factual rationale, discussion outcomes, decisions, actions, verification,
 questions, next steps, and Git fingerprints; it never copies source contents,

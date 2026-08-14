@@ -1,4 +1,4 @@
 interface:
   display_name: "Sync Project Context"
-  short_description: "Save one or all project chats across devices"
-  default_prompt: "Use $sync-project-context to save one chat or all discoverable project chats through approved cross-device storage."
+  short_description: "Save and recreate project chats across devices"
+  default_prompt: "Use $sync-project-context to save or restore one or all project chats through approved cross-device storage."

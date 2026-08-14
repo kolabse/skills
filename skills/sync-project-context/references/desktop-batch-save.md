@@ -102,7 +102,9 @@ raw thread IDs or titles in `metadata-only` mode.
 
 After restoring a stream into a new desktop task, bind that local task so a
 later batch save appends to the restored stream instead of creating another
-one. Identify the current task only when the desktop metadata makes it
+one. For bulk restoration, follow
+[desktop-batch-restore.md](desktop-batch-restore.md). Identify the current task
+only when the desktop metadata makes it
 unambiguous, then run:
 
 ```shell
@@ -110,6 +112,7 @@ python <skill-root>/scripts/context_sync.py bind-thread \
   --project-path <project-root> [--snapshot-root <snapshot>] \
   --thread-id <current-thread-id> \
   --stream-id <restored-stream-id> \
+  --checkpoint-id <restored-checkpoint-id> \
   --source-revision <current-updated-at> \
   --source-head-turn-id <current-newest-turn-id> --json
 ```

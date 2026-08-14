@@ -15,6 +15,9 @@
 - A desktop-only `save all project chats` workflow with project-aware task
   discovery, baseline/delta planning, unchanged-task skips, a hashed local
   thread registry, restored-stream binding, and explicit discovery limits.
+- A desktop-only `restore all project chats` workflow that independently
+  resolves the destination project, creates missing tasks from sanitized
+  streams, updates existing bound tasks, and avoids duplicate materialization.
 
 ### Changed
 

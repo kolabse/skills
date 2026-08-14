@@ -1511,10 +1511,34 @@ def command_batch_capture(args: argparse.Namespace) -> dict[str, Any]:
 def command_bind_thread(args: argparse.Namespace) -> dict[str, Any]:
     _project_root, config_path, config, entry, _current, directory = configured_context(args)
     stream_id = validate_stream_id(args.stream_id)
-    if stream_id not in checkpoint_stream_ids(
-        load_checkpoints(directory, entry["project_id"])
-    ):
+    checkpoints = load_checkpoints(directory, entry["project_id"])
+    if stream_id not in checkpoint_stream_ids(checkpoints):
         raise ContextSyncError(f"Checkpoint stream does not exist: {stream_id}")
+    stream_checkpoints = [
+        item for item in checkpoints if checkpoint_stream_id(item) == stream_id
+    ]
+    heads = checkpoint_heads(stream_checkpoints, stream_id)
+    requested_checkpoint = getattr(args, "checkpoint_id", None)
+    if requested_checkpoint is not None:
+        selected = next(
+            (
+                item
+                for item in stream_checkpoints
+                if item["checkpoint_id"] == requested_checkpoint
+            ),
+            None,
+        )
+        if selected is None:
+            raise ContextSyncError(
+                "Materialized checkpoint does not belong to the selected stream"
+            )
+        materialized_checkpoint_id = selected["checkpoint_id"]
+    elif len(heads) == 1:
+        materialized_checkpoint_id = heads[0]["checkpoint_id"]
+    else:
+        raise ContextSyncError(
+            "A conflicted stream requires an explicit --checkpoint-id binding"
+        )
     key = thread_registry_key(entry["project_id"], args.thread_id)
     registry_path = thread_registry_path(config_path)
     registry = load_thread_registry(registry_path, config["machine_id"])
@@ -1522,6 +1546,18 @@ def command_bind_thread(args: argparse.Namespace) -> dict[str, Any]:
     existing = bindings.get(key)
     if existing and existing["stream_id"] != stream_id:
         raise ContextSyncError("Thread is already bound to another stream")
+    duplicate = next(
+        (
+            binding
+            for other_key, binding in bindings.items()
+            if other_key != key and binding["stream_id"] == stream_id
+        ),
+        None,
+    )
+    if duplicate is not None:
+        raise ContextSyncError(
+            "Another local thread is already bound to this stream"
+        )
     bindings[key] = {
         "stream_id": stream_id,
         "source_revision": normalize_optional_source_marker(
@@ -1530,7 +1566,7 @@ def command_bind_thread(args: argparse.Namespace) -> dict[str, Any]:
         "source_head_turn_id": normalize_optional_source_marker(
             args.source_head_turn_id, "source_head_turn_id"
         ),
-        "last_checkpoint_id": None,
+        "last_checkpoint_id": materialized_checkpoint_id,
         "updated_at": utc_now(),
     }
     atomic_write_json(registry_path, registry)
@@ -1538,7 +1574,144 @@ def command_bind_thread(args: argparse.Namespace) -> dict[str, Any]:
         "bound": True,
         "project_id": entry["project_id"],
         "stream_id": stream_id,
+        "checkpoint_id": materialized_checkpoint_id,
         "registry_path": str(registry_path),
+    }
+
+
+def load_materialization_threads(
+    args: argparse.Namespace, project_root: Path
+) -> list[dict[str, str]]:
+    value = load_capture_input(args, project_root)
+    if not isinstance(value, dict) or set(value) != {"threads"}:
+        raise ContextSyncError(
+            "Materialization input must contain only a threads array"
+        )
+    records = value.get("threads")
+    if not isinstance(records, list):
+        raise ContextSyncError("Materialization threads must be an array")
+    normalized: list[dict[str, str]] = []
+    seen: set[str] = set()
+    for index, record in enumerate(records):
+        if not isinstance(record, dict) or set(record) != {"thread_id"}:
+            raise ContextSyncError(
+                f"Materialization threads[{index}] must contain only thread_id"
+            )
+        thread_id = record.get("thread_id")
+        key = thread_registry_key("project-key-validation", thread_id)
+        if key in seen:
+            raise ContextSyncError(
+                "Materialization input contains a duplicate thread_id"
+            )
+        seen.add(key)
+        normalized.append({"thread_id": str(thread_id).strip()})
+    return normalized
+
+
+def command_materialize_plan(args: argparse.Namespace) -> dict[str, Any]:
+    (
+        project_root,
+        config_path,
+        config,
+        entry,
+        _current,
+        directory,
+    ) = configured_context(args)
+    records = load_materialization_threads(args, project_root)
+    registry_path = thread_registry_path(config_path)
+    registry = load_thread_registry(registry_path, config["machine_id"])
+    bindings = registry_threads(registry, entry["project_id"])
+    all_bindings_by_stream: dict[str, list[dict[str, Any]]] = {}
+    for binding in bindings.values():
+        all_bindings_by_stream.setdefault(binding["stream_id"], []).append(
+            binding
+        )
+    visible_by_stream: dict[str, list[tuple[int, dict[str, Any]]]] = {}
+    visible_keys: set[str] = set()
+    for index, record in enumerate(records):
+        key = thread_registry_key(entry["project_id"], record["thread_id"])
+        visible_keys.add(key)
+        binding = bindings.get(key)
+        if binding:
+            visible_by_stream.setdefault(binding["stream_id"], []).append(
+                (index, binding)
+            )
+    hidden_streams = {
+        binding["stream_id"]
+        for key, binding in bindings.items()
+        if key not in visible_keys
+    }
+    checkpoints = load_checkpoints(directory, entry["project_id"])
+    if not checkpoints:
+        raise ContextSyncError("No checkpoints are available")
+    plan: list[dict[str, Any]] = []
+    counts = {
+        "create": 0,
+        "update": 0,
+        "unchanged": 0,
+        "unavailable": 0,
+        "blocked": 0,
+    }
+    project_context_checkpoint_id = None
+    for stream_id in checkpoint_stream_ids(checkpoints):
+        stream_checkpoints = [
+            item
+            for item in checkpoints
+            if checkpoint_stream_id(item) == stream_id
+        ]
+        heads = checkpoint_heads(stream_checkpoints, stream_id)
+        if stream_id == DEFAULT_STREAM_ID:
+            if len(heads) == 1:
+                project_context_checkpoint_id = heads[0]["checkpoint_id"]
+            continue
+        targets = visible_by_stream.get(stream_id, [])
+        target_index = targets[0][0] if len(targets) == 1 else None
+        latest_checkpoint_id = (
+            heads[0]["checkpoint_id"] if len(heads) == 1 else None
+        )
+        all_targets = all_bindings_by_stream.get(stream_id, [])
+        if len(heads) != 1:
+            action = "blocked"
+            reason = "concurrent_checkpoint_heads"
+        elif len(all_targets) > 1:
+            action = "blocked"
+            reason = "multiple_local_tasks_bound"
+        elif len(targets) == 1:
+            last_checkpoint_id = targets[0][1]["last_checkpoint_id"]
+            if last_checkpoint_id == latest_checkpoint_id:
+                action = "unchanged"
+                reason = "already_materialized"
+            else:
+                action = "update"
+                reason = "new_checkpoint_available"
+        elif stream_id in hidden_streams:
+            action = "unavailable"
+            reason = "bound_task_not_in_desktop_listing"
+        else:
+            action = "create"
+            reason = "no_local_task_binding"
+        counts[action] += 1
+        plan.append(
+            {
+                "stream_id": stream_id,
+                "action": action,
+                "reason": reason,
+                "target_index": target_index,
+                "latest_checkpoint_id": latest_checkpoint_id,
+                "head_checkpoint_ids": [
+                    item["checkpoint_id"] for item in heads
+                ],
+            }
+        )
+    return {
+        "planned": True,
+        "project_id": entry["project_id"],
+        "registry_path": str(registry_path),
+        "discoverable_thread_count": len(records),
+        "stream_count": len(plan),
+        "counts": counts,
+        "project_context_checkpoint_id": project_context_checkpoint_id,
+        "streams": plan,
     }
 
 
@@ -1855,9 +2028,23 @@ def build_parser() -> argparse.ArgumentParser:
     bind_thread.add_argument("--snapshot-root")
     bind_thread.add_argument("--thread-id", required=True)
     bind_thread.add_argument("--stream-id", required=True)
+    bind_thread.add_argument("--checkpoint-id")
     bind_thread.add_argument("--source-revision")
     bind_thread.add_argument("--source-head-turn-id")
     bind_thread.add_argument("--json", action="store_true")
+
+    materialize_plan = subparsers.add_parser(
+        "materialize-plan",
+        help="Plan creation or update of restored streams as desktop tasks",
+    )
+    materialize_plan.add_argument("--project-path", required=True)
+    materialize_plan.add_argument("--snapshot-root")
+    materialize_source = materialize_plan.add_mutually_exclusive_group(
+        required=True
+    )
+    materialize_source.add_argument("--input")
+    materialize_source.add_argument("--stdin", action="store_true")
+    materialize_plan.add_argument("--json", action="store_true")
 
     migrate = subparsers.add_parser("migrate")
     migrate.add_argument("--json", action="store_true")
@@ -1878,6 +2065,7 @@ def main() -> int:
             "batch-plan": command_batch_plan,
             "batch-capture": command_batch_capture,
             "bind-thread": command_bind_thread,
+            "materialize-plan": command_materialize_plan,
             "restore": command_restore,
             "audit": command_audit,
             "migrate": command_migrate,
