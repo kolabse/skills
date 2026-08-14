@@ -113,8 +113,20 @@ def load_collection(
         raise EvalError(f"Unknown corpus: {corpus}")
 
     known_names = {item["name"] for item in skills}
-    if set(sources) != known_names:
-        raise EvalError("Evaluation corpus must contain exactly the catalog skills")
+    evaluated_names = (
+        known_names
+        if corpus == "development"
+        else {
+            entry["name"]
+            for entry in entries
+            if isinstance(entry, dict) and entry.get("status") == "stable"
+        }
+    )
+    if set(sources) != evaluated_names:
+        scope = "catalog" if corpus == "development" else "stable catalog"
+        raise EvalError(
+            f"Evaluation corpus must contain exactly the {scope} skills"
+        )
     for name in sorted(sources):
         data = sources[name]
         if not isinstance(data, dict):

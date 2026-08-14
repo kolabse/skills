@@ -18,7 +18,6 @@ SKILLS_CLI_VERSION = "1.5.22"
 BASELINE_TAG = "v1.0.0"
 sys.path.insert(0, str(ROOT / "scripts"))
 from manage_installed_skills import doctor, migrate, update_skills  # noqa: E402
-from smoke_install import catalog_skills  # noqa: E402
 
 
 class UpgradeError(RuntimeError):
@@ -203,6 +202,7 @@ def run_upgrade(source: Path, baseline: str, cli_version: str, timeout: int) -> 
             )
             lock_path = project / "skills-lock.json"
             lock = json.loads(lock_path.read_text(encoding="utf-8"))
+            baseline_names = sorted(lock["skills"])
             unrelated_entry = {
                 "source": "fixture/unrelated-skills",
                 "sourceType": "github",
@@ -240,7 +240,7 @@ def run_upgrade(source: Path, baseline: str, cli_version: str, timeout: int) -> 
                 raise UpgradeError("Collection update changed an unrelated lock entry")
             if unrelated_file.read_text(encoding="utf-8") != "fixture must remain unchanged\n":
                 raise UpgradeError("Collection update changed an unrelated installed skill")
-            verify_updated_installation(source, project, catalog_skills(source))
+            verify_updated_installation(source, project, baseline_names)
             previous_config_env = os.environ.get("TELEGRAM_NOTIFY_CONFIG")
             os.environ["TELEGRAM_NOTIFY_CONFIG"] = str(telegram)
             try:
