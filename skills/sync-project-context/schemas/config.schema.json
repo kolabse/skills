@@ -1,0 +1,45 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/kolabse/skills/sync-project-context/config.schema.json",
+  "title": "Private project context synchronization configuration",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["version", "machine_id", "projects"],
+  "properties": {
+    "version": {"const": 2},
+    "machine_id": {"type": "string", "pattern": "^machine-[0-9a-f]{12}$"},
+    "projects": {
+      "type": "array",
+      "items": {
+        "oneOf": [
+          {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["project_id", "local_root", "backend", "storage_root", "mode"],
+            "properties": {
+              "project_id": {"type": "string", "pattern": "^[a-z0-9][a-z0-9-]{2,63}$"},
+              "local_root": {"type": "string", "minLength": 1},
+              "backend": {"const": "local-folder"},
+              "storage_root": {"type": "string", "minLength": 1},
+              "mode": {"enum": ["metadata-only", "paths"]}
+            }
+          },
+          {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["project_id", "local_root", "backend", "drive_project_folder_id", "drive_checkpoints_folder_id", "drive_marker_file_id", "mode"],
+            "properties": {
+              "project_id": {"type": "string", "pattern": "^[a-z0-9][a-z0-9-]{2,63}$"},
+              "local_root": {"type": "string", "minLength": 1},
+              "backend": {"const": "google-drive"},
+              "drive_project_folder_id": {"type": "string", "minLength": 1},
+              "drive_checkpoints_folder_id": {"type": "string", "minLength": 1},
+              "drive_marker_file_id": {"type": "string", "minLength": 1},
+              "mode": {"enum": ["metadata-only", "paths"]}
+            }
+          }
+        ]
+      }
+    }
+  }
+}

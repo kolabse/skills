@@ -37,7 +37,11 @@ class TriggerEvalTests(unittest.TestCase):
             json.dumps(
                 {
                     "skills": [
-                        {"name": "demo", "trigger_evals": "evals/demo.json"}
+                        {
+                            "name": "demo",
+                            "status": "stable",
+                            "trigger_evals": "evals/demo.json",
+                        }
                     ]
                 }
             ),
@@ -191,6 +195,51 @@ class TriggerEvalTests(unittest.TestCase):
             (root / "evals/release-holdout-v1.json").write_text(json.dumps(holdout))
             with self.assertRaisesRegex(EvalError, "locked canonical digest"):
                 prepare_suite(root, "release-holdout")
+
+    def test_release_holdout_excludes_experimental_skills(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            self.make_repository(root)
+            (root / "skills/experimental").mkdir()
+            (root / "skills/experimental/SKILL.md").write_text(
+                '---\nname: experimental\ndescription: "Experimental workflow."\n---\n',
+                encoding="utf-8",
+            )
+            holdout = {
+                "schema_version": 1,
+                "name": "release-holdout-v1",
+                "skills": {
+                    "demo": {
+                        "positive": [{"prompt": "Release demo", "reason": "yes"}],
+                        "negative": [{"prompt": "No release demo", "reason": "no"}],
+                    }
+                },
+            }
+            (root / "evals/release-holdout-v1.json").write_text(
+                json.dumps(holdout), encoding="utf-8"
+            )
+            catalog = json.loads((root / "skill-catalog.json").read_text())
+            catalog["skills"].append(
+                {
+                    "name": "experimental",
+                    "status": "experimental",
+                    "trigger_evals": "evals/experimental.json",
+                }
+            )
+            catalog["release_holdout"] = {
+                "name": "release-holdout-v1",
+                "path": "evals/release-holdout-v1.json",
+                "sha256": sha256(holdout),
+            }
+            (root / "skill-catalog.json").write_text(json.dumps(catalog))
+
+            suite, assertions = prepare_suite(root, "release-holdout")
+
+            self.assertEqual(
+                ["demo", "experimental"],
+                [item["name"] for item in suite["skills"]],
+            )
+            self.assertEqual({"demo"}, {item["target_skill"] for item in assertions})
 
     def test_compares_reports_and_fails_on_regression(self) -> None:
         with tempfile.TemporaryDirectory() as directory:

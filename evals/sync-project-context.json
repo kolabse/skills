@@ -1,0 +1,59 @@
+{
+  "skill": "sync-project-context",
+  "positive": [
+    {
+      "prompt": "Перед уходом с рабочего компьютера сохрани очищенный handoff проекта в мою разрешённую синхронизируемую папку, не меняя командный репозиторий.",
+      "reason": "The request explicitly asks for a private cross-device project checkpoint outside the repository."
+    },
+    {
+      "prompt": "На домашнем компьютере восстанови последний контекст этой задачи: решения, проверки, открытые вопросы и следующие шаги.",
+      "reason": "Restoring a structured project handoff on another computer is the core workflow."
+    },
+    {
+      "prompt": "Настрой для этого клона metadata-only перенос контекста через корпоративный Google Drive с тем же opaque project_id.",
+      "reason": "The user explicitly requests safe configuration of approved synchronized storage."
+    },
+    {
+      "prompt": "Проверь, относится ли сохранённый межкомпьютерный checkpoint к текущему remote и не устарел ли он относительно HEAD.",
+      "reason": "Repository identity and freshness validation are core restore safeguards."
+    },
+    {
+      "prompt": "Сделай приватный checkpoint продолжения работы, но не включай diff, исходники, чат или имена файлов.",
+      "reason": "The request explicitly names a metadata-only sanitized handoff."
+    },
+    {
+      "prompt": "Проведи аудит сохранённых handoff-файлов на токены и повреждённые записи перед продолжением проекта на втором компьютере.",
+      "reason": "Auditing stored checkpoints is an explicit capability of the skill."
+    },
+    {
+      "prompt": "На этом компьютере нет Google Drive Desktop. Настрой приватный перенос контекста проекта через подключённый Google Drive plugin.",
+      "reason": "The request explicitly selects the optional connector backend for a project handoff."
+    }
+  ],
+  "negative": [
+    {
+      "prompt": "Синхронизируй исходный код между компьютерами через обычные git fetch и pull.",
+      "reason": "Source synchronization belongs to Git workflows, not private context handoffs."
+    },
+    {
+      "prompt": "Загрузи папку с фотографиями в Google Drive и включи общий доступ по ссылке.",
+      "reason": "Generic Drive file management is not project-context synchronization."
+    },
+    {
+      "prompt": "Экспортируй полный transcript чата вместе со всеми внутренними рассуждениями модели.",
+      "reason": "Raw transcript and hidden chain-of-thought export are explicitly outside the skill boundary."
+    },
+    {
+      "prompt": "Добавь принятые архитектурные решения в командный ADR внутри репозитория.",
+      "reason": "A committed team ADR is not private out-of-repository handoff storage."
+    },
+    {
+      "prompt": "Покажи список моих файлов на Google Drive, ничего не изменяя.",
+      "reason": "Drive browsing alone does not involve a configured project handoff."
+    },
+    {
+      "prompt": "Продолжи текущий чат на этом же компьютере, дополнительный checkpoint не нужен.",
+      "reason": "Ordinary same-chat continuation explicitly does not require cross-device persistence."
+    }
+  ]
+}

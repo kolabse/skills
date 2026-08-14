@@ -173,9 +173,10 @@ installed version, plugin path, marketplace path, and marketplace name.
 
 ## Available skills
 
-All current skills are stable. Their project-facing
-configuration paths, safety boundaries, and documented command interfaces
-follow the compatibility policy in [CONTRIBUTING.md](CONTRIBUTING.md).
+Stable skills and experimental additions are identified in `skill-catalog.json`.
+Their project-facing configuration paths, safety boundaries, and documented
+command interfaces follow the compatibility policy in
+[CONTRIBUTING.md](CONTRIBUTING.md).
 
 Each catalog entry now declares its configuration scope, idempotent configure
 command, read-only JSON status command, capabilities, prerequisites, and
@@ -284,6 +285,30 @@ project, checks minimum tool versions, offers supported installations, and runs
 a read-only cloud-context preflight. The scripts support JSON output and run on
 Windows, macOS, and Linux with Python 3; PowerShell wrappers are included for
 Windows compatibility.
+
+### `sync-project-context`
+
+Save and restore a private, sanitized project handoff between computers without
+adding context files to the team repository. This skill is experimental while
+its cross-device trigger and storage behavior is evaluated independently.
+
+After installing it on each computer, invoke it first with:
+
+```text
+$sync-project-context Configure this clone in metadata-only mode using my approved local synchronized folder or connected Google Drive.
+```
+
+The dependency-free helper stores machine-local configuration in the user's
+configuration directory and immutable checkpoints through either an approved
+local synchronized folder or the optional Google Drive plugin. The connector
+backend validates a complete downloaded snapshot locally and reads uploads back
+before success. It records
+reviewed summaries, decisions, actions, verification, questions, next steps,
+and Git fingerprints; it never copies source contents, diffs, raw transcripts,
+or hidden reasoning. Metadata-only mode also omits branch names and file paths.
+Configuration requires an explicit storage-policy acknowledgement, repository
+fingerprints prevent cross-project restore, and high-confidence secret patterns
+fail closed.
 
 ## Add a skill
 

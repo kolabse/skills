@@ -561,7 +561,12 @@ def validate(repository_root: Path = REPOSITORY_ROOT) -> list[str]:
         errors.append(f"{catalog_path}: skill '{missing}' is missing from the catalog")
     for unknown in sorted(catalog_names - names):
         errors.append(f"{catalog_path}: catalog references unknown skill '{unknown}'")
-    errors.extend(validate_release_holdout(repository_root, catalog, catalog_names))
+    stable_names = {
+        str(entry.get("name"))
+        for entry in entries
+        if isinstance(entry, dict) and entry.get("status") == "stable"
+    }
+    errors.extend(validate_release_holdout(repository_root, catalog, stable_names))
     errors.extend(validate_compositions(catalog, entries))
     errors.extend(validate_manager_contract(repository_root, collection_version))
     return errors
