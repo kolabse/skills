@@ -2,3 +2,5 @@ __pycache__/
 *.py[cod]
 .pytest_cache/
 .trigger-evals/
+.agents/
+skills-lock.json
