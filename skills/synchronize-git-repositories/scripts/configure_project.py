@@ -8,6 +8,15 @@ from pathlib import Path
 
 START = "<!-- synchronize-git-repositories:start -->"
 END = "<!-- synchronize-git-repositories:end -->"
+LEGACY_BLOCK = """<!-- synchronize-git-repositories:start -->
+## Repository synchronization
+
+Use `$synchronize-git-repositories` before analysis, edits, validation,
+commits, pushes, deployments, or remote operations. Synchronize every
+repository involved in the task with its tracked upstream using safe
+fast-forward updates, preserve dirty worktrees, and never resolve divergence
+with an automatic stash, reset, rebase, merge, clean, or force-push.
+<!-- synchronize-git-repositories:end -->"""
 BLOCK = """<!-- synchronize-git-repositories:start -->
 ## Repository synchronization
 
@@ -16,6 +25,9 @@ commits, pushes, deployments, or remote operations. Synchronize every
 repository involved in the task with its tracked upstream using safe
 fast-forward updates, preserve dirty worktrees, and never resolve divergence
 with an automatic stash, reset, rebase, merge, clean, or force-push.
+For authorized changes intended for publication, publish a feature branch
+from the verified current primary-branch SHA before the first code edit and
+track that branch's own remote ref rather than the primary branch.
 <!-- synchronize-git-repositories:end -->"""
 
 
@@ -53,6 +65,11 @@ def configure(project_path: Path) -> tuple[dict[str, object], bool]:
     if not state["configured"]:
         separator = "" if not text else ("\n" if text.endswith("\n") else "\n\n")
         path.write_text(f"{text}{separator}{BLOCK}\n", encoding="utf-8", newline="\n")
+        changed = True
+    elif LEGACY_BLOCK in text:
+        path.write_text(
+            text.replace(LEGACY_BLOCK, BLOCK, 1), encoding="utf-8", newline="\n"
+        )
         changed = True
     result = inspect(project_path)
     result["changed"] = changed

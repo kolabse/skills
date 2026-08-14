@@ -7,6 +7,9 @@
 - `release-skill-collection` now requires verified post-publication branch
   cleanup and completion on a clean, current primary branch, while preserving
   divergent work behind an explicit backup-and-approval boundary.
+- `synchronize-git-repositories` now publishes an authorized feature branch at
+  the verified current primary SHA before the first edit, avoiding temporary
+  tracking against `origin/main`, and upgrades its known legacy policy block.
 
 ## [1.6.0] - 2026-08-14
 
