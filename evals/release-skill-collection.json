@@ -6,7 +6,8 @@
     {"prompt": "Собери детерминированные архивы набора навыков и проверь SHA256SUMS перед GitHub Release.", "reason": "Deterministic collection artifacts and checksums are core release checks."},
     {"prompt": "Составь fail-closed план выпуска agent skills с holdout, smoke tests и immutable tag.", "reason": "The requested gates are specific to releasing a skill collection."},
     {"prompt": "Можно ли уже публиковать новую версию kolabse-skills? Проверь changelog, тесты и источник тега.", "reason": "This is a collection release-readiness assessment."},
-    {"prompt": "Повтори workflow релиза навыков, не заменяя уже существующие assets и не двигая тег.", "reason": "Immutable tags and assets are explicit collection release safety boundaries."}
+    {"prompt": "Повтори workflow релиза навыков, не заменяя уже существующие assets и не двигая тег.", "reason": "Immutable tags and assets are explicit collection release safety boundaries."},
+    {"prompt": "Выпусти новую версию коллекции навыков, а после успешной публикации удали слитые release-ветки и закончи на актуальной main.", "reason": "Post-publication branch cleanup and returning to the current primary branch are part of the collection release lifecycle."}
   ],
   "negative": [
     {"prompt": "Опубликуй новую версию npm-пакета веб-приложения.", "reason": "An ordinary application package release is outside this skill."},

@@ -27,6 +27,14 @@ Use the collection's declared policies and scripts as the source of truth. Keep 
 5. Use `verify-before-push` to bind the final declared verification evidence to the exact Git state.
 6. Show the user the target commit, tag, remaining external gates, and publication action. Creating or moving a tag, pushing, dispatching a workflow, or uploading assets requires explicit user authorization.
 7. Publish only through the repository's protected release workflow. Never replace an existing release asset or move an existing release tag; issue a new version instead.
+8. After the workflow succeeds, audit the published release and clean up Git state:
+   - fetch and prune remote refs;
+   - prove each temporary feature or release branch is merged, has an identical tree, or has every patch represented upstream;
+   - switch to the configured primary branch, normally `main`, and make it current with its tracked upstream;
+   - delete the proven merged local branches and their remote branches;
+   - finish with a clean worktree on the current primary branch and report any branch retained with the reason.
+
+   A diverged primary branch is not routine cleanup. Classify it first. For equivalent divergence, present a separate backup-then-align plan and require explicit user approval before rewriting the branch. Preserve ordinary divergence for manual reconciliation.
 
 ## Safety boundaries
 
@@ -34,6 +42,8 @@ Use the collection's declared policies and scripts as the source of truth. Keep 
 - Never infer permission to commit, tag, push, create a GitHub release, or upload an asset from a request to plan or verify a release.
 - Do not expose the active holdout to the selector while tuning descriptions. Require matching assertion digests when comparing reports.
 - Do not claim release readiness until all collection-declared supported-platform, consumer-smoke, holdout, provenance, and immutable-source gates have evidence.
+- Do not delete a branch merely because its name looks temporary. Require upstream representation evidence and a successfully published release first.
+- Do not finish a successful release on a detached HEAD or temporary branch. If the primary branch cannot be made current safely, keep all affected refs and report the blocker.
 
 ## Commands
 

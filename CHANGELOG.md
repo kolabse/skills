@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+### Changed
+
+- `release-skill-collection` now requires verified post-publication branch
+  cleanup and completion on a clean, current primary branch, while preserving
+  divergent work behind an explicit backup-and-approval boundary.
+
 ## [1.6.0] - 2026-08-14
 
 ### Added
