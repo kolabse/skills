@@ -156,8 +156,61 @@ def load_collection(
                         "expected": expected,
                     }
                 )
+    if corpus == "development" and catalog.get("composition_evals") is not None:
+        composition_path = catalog.get("composition_evals")
+        if not isinstance(composition_path, str):
+            raise EvalError("composition_evals must be a path string")
+        composition_data = load_json(
+            repository_root / composition_path, "Composition trigger evals"
+        )
+        cases = composition_data.get("cases") if isinstance(composition_data, dict) else None
+        if (
+            not isinstance(composition_data, dict)
+            or composition_data.get("schema_version") != SCHEMA_VERSION
+            or not isinstance(cases, list)
+        ):
+            raise EvalError("Composition trigger evals must contain schema_version 1 and cases")
+        for index, case in enumerate(cases):
+            if not isinstance(case, dict):
+                raise EvalError(f"composition case {index} must be an object")
+            prompt = case.get("prompt")
+            expected_skills = case.get("expected_skills")
+            reason = case.get("reason")
+            if not isinstance(prompt, str) or not prompt.strip():
+                raise EvalError(f"composition case {index} requires a prompt")
+            if prompt in seen_prompts:
+                raise EvalError(
+                    f"Prompt is duplicated across trigger evals: compositions and {seen_prompts[prompt]}"
+                )
+            if (
+                not isinstance(expected_skills, list)
+                or not expected_skills
+                or not all(isinstance(name, str) for name in expected_skills)
+                or len(expected_skills) != len(set(expected_skills))
+                or set(expected_skills) - known_names
+            ):
+                raise EvalError(
+                    f"composition case {index} expected_skills must be unique known skills"
+                )
+            if not isinstance(reason, str) or not reason.strip():
+                raise EvalError(f"composition case {index} requires a reason")
+            seen_prompts[prompt] = "compositions"
+            identifier = hashlib.sha256(
+                f"composition\0{prompt}".encode("utf-8")
+            ).hexdigest()[:16]
+            for name in sorted(known_names):
+                assertions.append(
+                    {
+                        "id": identifier,
+                        "prompt": prompt,
+                        "target_skill": name,
+                        "expected": name in expected_skills,
+                        "composition": True,
+                        "expected_skills": expected_skills,
+                    }
+                )
     return sorted(skills, key=lambda item: item["name"]), sorted(
-        assertions, key=lambda item: item["id"]
+        assertions, key=lambda item: (item["id"], item["target_skill"])
     )
 
 
@@ -175,7 +228,12 @@ def prepare_suite(
             "short reason. Select no skills when none apply."
         ),
         "skills": skills,
-        "cases": [{"id": item["id"], "prompt": item["prompt"]} for item in assertions],
+        "cases": list(
+            {
+                item["id"]: {"id": item["id"], "prompt": item["prompt"]}
+                for item in assertions
+            }.values()
+        ),
     }
     public["suite_digest"] = sha256(public)
     return public, assertions
@@ -250,6 +308,25 @@ def score_suite(
                 }
             )
 
+    composition_failures: list[dict[str, Any]] = []
+    composition_cases: dict[str, dict[str, Any]] = {}
+    for assertion in assertions:
+        if assertion.get("composition"):
+            composition_cases.setdefault(assertion["id"], assertion)
+    for identifier, assertion in sorted(composition_cases.items()):
+        actual = indexed[identifier]["selected_skills"]
+        expected = assertion["expected_skills"]
+        if actual != expected:
+            composition_failures.append(
+                {
+                    "id": identifier,
+                    "expected_skills": expected,
+                    "selected_skills": actual,
+                    "prompt": assertion["prompt"],
+                    "selector_reason": indexed[identifier]["reason"],
+                }
+            )
+
     per_skill: list[dict[str, Any]] = []
     totals = {key: 0 for key in ("tp", "fn", "fp", "tn")}
     for name in sorted(metrics):
@@ -282,9 +359,16 @@ def score_suite(
             "accuracy": ratio(totals["tp"] + totals["tn"], len(assertions)),
             "precision": ratio(totals["tp"], totals["tp"] + totals["fp"]),
             "recall": ratio(totals["tp"], totals["tp"] + totals["fn"]),
+            "composition_cases": len(composition_cases),
+            "composition_passed": len(composition_cases) - len(composition_failures),
+            "composition_failed": len(composition_failures),
+            "composition_accuracy": ratio(
+                len(composition_cases) - len(composition_failures), len(composition_cases)
+            ),
         },
         "per_skill": per_skill,
         "failures": failures,
+        "composition_failures": composition_failures,
     }
 
 
@@ -303,6 +387,11 @@ def markdown_report(report: dict[str, Any]) -> str:
         "| Skill | TP | FN | FP | TN | Precision | Recall | Specificity |",
         "|---|---:|---:|---:|---:|---:|---:|---:|",
     ]
+    if summary.get("composition_cases"):
+        lines[8:8] = [
+            f"- Composition cases: {summary['composition_cases']}",
+            f"- Exact composition accuracy: {summary['composition_accuracy']:.2%}",
+        ]
     for item in report["per_skill"]:
         lines.append(
             f"| `{item['skill']}` | {item['tp']} | {item['fn']} | {item['fp']} | "
@@ -323,6 +412,23 @@ def markdown_report(report: dict[str, Any]) -> str:
                     f"Selected: {selected}",
                     "",
                     f"Reason: {failure['selector_reason']}",
+                    "",
+                ]
+            )
+    if report.get("composition_failures"):
+        lines.extend(["", "## Composition failures", ""])
+        for failure in report["composition_failures"]:
+            expected = ", ".join(failure["expected_skills"])
+            selected = ", ".join(failure["selected_skills"]) or "none"
+            lines.extend(
+                [
+                    f"### `{failure['id']}` — exact ordered selection",
+                    "",
+                    f"Prompt: {failure['prompt']}",
+                    "",
+                    f"Expected: {expected}",
+                    "",
+                    f"Selected: {selected}",
                     "",
                 ]
             )
@@ -463,7 +569,20 @@ def aggregate_predictions(suite: dict[str, Any], runs: list[Any]) -> dict[str, A
         for indexed in indexed_runs:
             for name in indexed[identifier]["selected_skills"]:
                 counts[name] += 1
-        selected = sorted(name for name, count in counts.items() if count >= threshold)
+        selected_names = [name for name, count in counts.items() if count >= threshold]
+        positions: dict[str, list[int]] = {name: [] for name in selected_names}
+        for indexed in indexed_runs:
+            ordered = indexed[identifier]["selected_skills"]
+            for position, name in enumerate(ordered):
+                if name in positions:
+                    positions[name].append(position)
+        selected = sorted(
+            selected_names,
+            key=lambda name: (
+                sum(positions[name]) / len(positions[name]) if positions[name] else 10**6,
+                name,
+            ),
+        )
         decisions = ", ".join(
             f"{name}={count}/{len(runs)}" for name, count in sorted(counts.items()) if count
         )

@@ -185,6 +185,82 @@ class ManageInstalledSkillsTests(unittest.TestCase):
             self.assertFalse(state["healthy"])
             self.assertIn("no kolabse skills were found in skills-lock.json", state["problems"])
 
+    def test_deep_doctor_reports_unconfigured_runtime_without_failing_installation(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            project = self.make_project(root, {"verify-before-push": "1.5.0"})
+            skill = project / ".agents/skills/verify-before-push"
+            (skill / "scripts").mkdir()
+            (skill / "scripts/status.py").write_text(
+                "import json; print(json.dumps({'configured': False, 'valid': True}))\n",
+                encoding="utf-8",
+            )
+            (root / "skill-catalog.json").write_text(
+                json.dumps(
+                    {
+                        "skills": [
+                            {
+                                "name": "verify-before-push",
+                                "configuration": {
+                                    "scope": "project",
+                                    "status": ["python", "scripts/status.py"],
+                                },
+                            }
+                        ]
+                    }
+                ),
+                encoding="utf-8",
+            )
+
+            state = manager.doctor(project, deep=True, repository_root=root)
+
+            self.assertTrue(state["healthy"])
+            self.assertEqual("unconfigured", state["runtime_checks"][0]["status"])
+            self.assertIn(
+                "verify-before-push is installed but not configured", state["warnings"]
+            )
+
+    def test_deep_doctor_rejects_partial_runtime_configuration(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            project = self.make_project(root, {"verify-before-push": "1.5.0"})
+            skill = project / ".agents/skills/verify-before-push"
+            (skill / "scripts").mkdir()
+            config = project / ".agents/verify-before-push/config.json"
+            config.parent.mkdir(parents=True)
+            config.write_text("{}", encoding="utf-8")
+            (skill / "scripts/status.py").write_text(
+                "import json,sys; print(json.dumps({'configured': False, 'valid': True, "
+                "'config_file': sys.argv[1]})); raise SystemExit(1)\n",
+                encoding="utf-8",
+            )
+            (root / "skill-catalog.json").write_text(
+                json.dumps(
+                    {
+                        "skills": [
+                            {
+                                "name": "verify-before-push",
+                                "configuration": {
+                                    "scope": "project",
+                                    "status": [
+                                        "python",
+                                        "scripts/status.py",
+                                        str(config),
+                                    ],
+                                },
+                            }
+                        ]
+                    }
+                ),
+                encoding="utf-8",
+            )
+
+            state = manager.doctor(project, deep=True, repository_root=root)
+
+            self.assertFalse(state["healthy"])
+            self.assertEqual("partial", state["runtime_checks"][0]["status"])
+            self.assertTrue(any("partially configured" in item for item in state["problems"]))
+
     def test_update_delegates_to_pinned_cli_without_shell(self) -> None:
         with tempfile.TemporaryDirectory() as directory, patch.object(
             shutil, "which", return_value="npx"
@@ -340,7 +416,7 @@ class ManageInstalledSkillsTests(unittest.TestCase):
             before = (project / "skills-lock.json").read_bytes()
             plan = manager.build_update_plan(project, [], "project")
             self.assertFalse(plan["mutates"])
-            self.assertEqual("1.5.0", plan["target_version"])
+            self.assertEqual("1.6.0", plan["target_version"])
             self.assertEqual("update", plan["outcomes"][0]["action"])
             self.assertEqual(["verify-before-push"], plan["migration_candidates"])
             self.assertEqual(before, (project / "skills-lock.json").read_bytes())

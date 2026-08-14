@@ -1,0 +1,19 @@
+{
+  "skill": "release-skill-collection",
+  "positive": [
+    {"prompt": "Подготовь релиз v1.6.0 нашей коллекции навыков и проверь все release gates, но пока ничего не публикуй.", "reason": "This explicitly requests planning and verification of a skill collection release."},
+    {"prompt": "Проверь, что версии plugin manifest, catalog и collection-metadata согласованы перед тегом коллекции skills.", "reason": "Cross-file collection version consistency is a release gate."},
+    {"prompt": "Собери детерминированные архивы набора навыков и проверь SHA256SUMS перед GitHub Release.", "reason": "Deterministic collection artifacts and checksums are core release checks."},
+    {"prompt": "Составь fail-closed план выпуска agent skills с holdout, smoke tests и immutable tag.", "reason": "The requested gates are specific to releasing a skill collection."},
+    {"prompt": "Можно ли уже публиковать новую версию kolabse-skills? Проверь changelog, тесты и источник тега.", "reason": "This is a collection release-readiness assessment."},
+    {"prompt": "Повтори workflow релиза навыков, не заменяя уже существующие assets и не двигая тег.", "reason": "Immutable tags and assets are explicit collection release safety boundaries."}
+  ],
+  "negative": [
+    {"prompt": "Опубликуй новую версию npm-пакета веб-приложения.", "reason": "An ordinary application package release is outside this skill."},
+    {"prompt": "Обнови один установленный навык в текущем проекте.", "reason": "Consumer update is not collection release orchestration."},
+    {"prompt": "Сделай git fetch и безопасно синхронизируй ветку.", "reason": "Repository synchronization alone belongs to the Git synchronization skill."},
+    {"prompt": "Запусти тесты перед push и привяжи evidence к SHA.", "reason": "State-bound push verification alone belongs to verify-before-push."},
+    {"prompt": "Создай новый навык из шаблона.", "reason": "Skill authoring is not collection release management."},
+    {"prompt": "Покажи последние GitHub Releases репозитория, ничего не проверяя локально.", "reason": "Release browsing alone does not invoke the local release workflow."}
+  ]
+}

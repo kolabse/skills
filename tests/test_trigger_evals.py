@@ -164,6 +164,96 @@ class TriggerEvalTests(unittest.TestCase):
             with self.assertRaisesRegex(EvalError, "duplicated across"):
                 prepare_suite(root)
 
+    def test_composition_evals_require_exact_skill_set_and_order(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            self.make_repository(root)
+            (root / "skills/other").mkdir()
+            (root / "skills/other/SKILL.md").write_text(
+                '---\nname: other\ndescription: "Handle other requests."\n---\n',
+                encoding="utf-8",
+            )
+            (root / "evals/other.json").write_text(
+                json.dumps({"skill": "other", "positive": [], "negative": []}),
+                encoding="utf-8",
+            )
+            (root / "evals/compositions.json").write_text(
+                json.dumps(
+                    {
+                        "schema_version": 1,
+                        "cases": [
+                            {
+                                "prompt": "Run the demo and then the other workflow",
+                                "expected_skills": ["demo", "other"],
+                                "reason": "Both ordered workflows are explicit.",
+                            }
+                        ],
+                    }
+                ),
+                encoding="utf-8",
+            )
+            catalog = json.loads((root / "skill-catalog.json").read_text())
+            catalog["skills"].append(
+                {"name": "other", "status": "stable", "trigger_evals": "evals/other.json"}
+            )
+            catalog["composition_evals"] = "evals/compositions.json"
+            (root / "skill-catalog.json").write_text(json.dumps(catalog))
+
+            suite, assertions = prepare_suite(root)
+            prompts = [case["prompt"] for case in suite["cases"]]
+            self.assertEqual(1, prompts.count("Run the demo and then the other workflow"))
+            perfect = score_suite(
+                suite,
+                assertions,
+                self.predictions(
+                    suite,
+                    {"Run the demo and then the other workflow": ["demo", "other"]},
+                ),
+            )
+            reversed_order = score_suite(
+                suite,
+                assertions,
+                self.predictions(
+                    suite,
+                    {"Run the demo and then the other workflow": ["other", "demo"]},
+                ),
+            )
+            self.assertEqual(1.0, perfect["summary"]["composition_accuracy"])
+            self.assertEqual(0.0, reversed_order["summary"]["composition_accuracy"])
+            self.assertEqual(1, len(reversed_order["composition_failures"]))
+
+    def test_majority_aggregation_preserves_consensus_composition_order(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            self.make_repository(root)
+            (root / "skills/other").mkdir()
+            (root / "skills/other/SKILL.md").write_text(
+                '---\nname: other\ndescription: "Handle other requests."\n---\n',
+                encoding="utf-8",
+            )
+            (root / "evals/other.json").write_text(
+                json.dumps({"skill": "other", "positive": [], "negative": []}),
+                encoding="utf-8",
+            )
+            catalog = json.loads((root / "skill-catalog.json").read_text())
+            catalog["skills"].append(
+                {"name": "other", "status": "stable", "trigger_evals": "evals/other.json"}
+            )
+            (root / "skill-catalog.json").write_text(json.dumps(catalog))
+            suite, _ = prepare_suite(root)
+            first = self.predictions(suite, {"Do the demo": ["demo", "other"]})
+            second = self.predictions(suite, {"Do the demo": ["demo", "other"]})
+            third = self.predictions(suite, {"Do the demo": ["other", "demo"]})
+
+            aggregate = aggregate_predictions(suite, [first, second, third])
+            row = next(
+                item
+                for item in aggregate["predictions"]
+                if next(case for case in suite["cases"] if case["id"] == item["id"])["prompt"]
+                == "Do the demo"
+            )
+            self.assertEqual(["demo", "other"], row["selected_skills"])
+
     def test_prepares_digest_locked_release_holdout(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)

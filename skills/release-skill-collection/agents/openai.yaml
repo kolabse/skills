@@ -1,0 +1,4 @@
+interface:
+  display_name: "Release Skill Collection"
+  short_description: "Plan and verify safe skill collection releases"
+  default_prompt: "Use $release-skill-collection to plan and verify this skill collection release."

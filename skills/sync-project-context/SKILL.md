@@ -259,6 +259,11 @@ python <skill-root>/scripts/context_sync.py migrate --json
 - Never delete or compact checkpoints automatically. Retention is an explicit
   user-controlled storage operation outside this skill.
 
+Before proposing stable status or after changing checkpoint, Drive, batch, or
+conflict behavior, read [references/stabilization-checklist.md](references/stabilization-checklist.md)
+and run its deterministic two-machine acceptance. Do not substitute the
+simulation for the required real-device Google Drive procedure.
+
 Completion criterion: every requested discoverable stream was saved or
 restored; bulk restore created or updated exactly one bound destination task
 per conflict-free chat stream with its exact available title; bidirectional
