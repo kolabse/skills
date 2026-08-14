@@ -37,8 +37,36 @@ class ProjectConfigurationHelperTests(unittest.TestCase):
             self.assertEqual(0, second.returncode, second.stderr)
             self.assertEqual(first_text, agents.read_text(encoding="utf-8"))
             self.assertIn("Keep this.", first_text)
+            self.assertIn("before the first code edit", first_text)
             self.assertEqual(1, first_text.count("synchronize-git-repositories:start"))
             self.assertFalse(json.loads(second.stdout)["changed"])
+
+    def test_sync_configuration_upgrades_the_known_legacy_block(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            project = Path(directory)
+            agents = project / "AGENTS.md"
+            legacy = """<!-- synchronize-git-repositories:start -->
+## Repository synchronization
+
+Use `$synchronize-git-repositories` before analysis, edits, validation,
+commits, pushes, deployments, or remote operations. Synchronize every
+repository involved in the task with its tracked upstream using safe
+fast-forward updates, preserve dirty worktrees, and never resolve divergence
+with an automatic stash, reset, rebase, merge, clean, or force-push.
+<!-- synchronize-git-repositories:end -->
+"""
+            agents.write_text(f"# Existing\n\n{legacy}", encoding="utf-8")
+
+            result = self.run_helper(
+                "synchronize-git-repositories", "configure", project
+            )
+
+            self.assertEqual(0, result.returncode, result.stderr)
+            updated = agents.read_text(encoding="utf-8")
+            self.assertIn("# Existing", updated)
+            self.assertIn("before the first code edit", updated)
+            self.assertEqual(1, updated.count("synchronize-git-repositories:start"))
+            self.assertTrue(json.loads(result.stdout)["changed"])
 
     def test_work_log_configuration_creates_required_files_once(self) -> None:
         with tempfile.TemporaryDirectory() as directory:

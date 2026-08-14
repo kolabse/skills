@@ -24,6 +24,10 @@
     {
       "prompt": "Задача затрагивает три существующих репозитория. Проверь, что каждый актуален относительно своей tracking branch.",
       "reason": "Remote freshness across several task-scoped repositories is the central workflow."
+    },
+    {
+      "prompt": "Перед первым изменением кода создай от проверенной актуальной main feature-ветку, сразу опубликуй её и настрой tracking на её собственный remote ref.",
+      "reason": "The request explicitly invokes the safe pre-edit feature-branch publication bootstrap."
     }
   ],
   "negative": [
