@@ -427,7 +427,9 @@ class ManageInstalledSkillsTests(unittest.TestCase):
     def test_migration_discovers_existing_sync_project_context_config(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
-            project = self.make_project(root, {"sync-project-context": "1.4.0"})
+            project = self.make_project(
+                root, {"sync-project-context": "1.4.0"}
+            ).resolve()
             script = project / ".agents/skills/sync-project-context/scripts/context_sync.py"
             script.parent.mkdir(parents=True)
             script.write_text("", encoding="utf-8")
