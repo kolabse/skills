@@ -85,7 +85,9 @@ python <skill-root>/scripts/context_sync.py audit \
 ```
 
 For capture, hydrate immediately before creating the checkpoint. Upload only
-the exact `path` returned by the helper to the stored checkpoints folder:
+the exact `path` returned by the helper to the stored checkpoints folder. A
+desktop batch may return several paths; apply the same exact-name upload and
+readback verification to every path:
 
 ```shell
 python <skill-root>/scripts/context_sync.py capture \

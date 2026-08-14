@@ -28,6 +28,7 @@ The default `metadata-only` mode may store:
 - commit hashes and repository fingerprint hashes;
 - counts of staged, unstaged, and untracked changes;
 - opaque chat-stream identifiers;
+- machine-local hashes that associate desktop tasks with chat streams;
 - concise user-reviewed summaries, factual rationale and considered options,
   discussion outcomes, decisions, actions, verification, blockers, open
   questions, and next steps.

@@ -305,7 +305,12 @@ local synchronized folder or the optional Google Drive plugin. Independent
 opaque streams let each project chat keep a detailed first baseline followed by
 short incremental updates, so repeated "save state" and "restore state"
 requests can continue several implementation tracks across computers without
-mixing them. The connector backend validates a complete downloaded snapshot
+mixing them. In the desktop app, an explicit "save all project chats" command
+can discover the 50 most recent non-pinned tasks plus all pinned tasks, create
+baselines for new workstreams, append deltas only to changed workstreams, and
+skip unchanged or active tasks. A machine-local hashed registry prevents
+duplicate streams without storing task titles or transcripts. The connector
+backend validates a complete downloaded snapshot
 locally and reads uploads back before success. It records reviewed summaries,
 factual rationale, discussion outcomes, decisions, actions, verification,
 questions, next steps, and Git fingerprints; it never copies source contents,

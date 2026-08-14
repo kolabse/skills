@@ -12,6 +12,9 @@
 - Per-chat continuation streams with detailed first baselines, concise later
   deltas, independent conflict detection, accumulated restore history, and an
   all-streams overview for repeated work across multiple computers.
+- A desktop-only `save all project chats` workflow with project-aware task
+  discovery, baseline/delta planning, unchanged-task skips, a hashed local
+  thread registry, restored-stream binding, and explicit discovery limits.
 
 ### Changed
 

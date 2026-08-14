@@ -40,6 +40,10 @@
     {
       "prompt": "Снова сохрани состояние: после предыдущего checkpoint мы только обсудили варианты и приняли одно решение.",
       "reason": "A short incremental delta is the intended repeated-save workflow for an existing chat stream."
+    },
+    {
+      "prompt": "Сохрани все доступные чаты этого проекта одним пакетом, новые подробно, а изменившиеся после прошлого раза — короткими обновлениями.",
+      "reason": "The explicit desktop batch command discovers project chats and creates baseline or delta continuation streams without exporting transcripts."
     }
   ],
   "negative": [
@@ -66,6 +70,10 @@
     {
       "prompt": "Продолжи текущий чат на этом же компьютере, дополнительный checkpoint не нужен.",
       "reason": "Ordinary same-chat continuation explicitly does not require cross-device persistence."
+    },
+    {
+      "prompt": "Покажи последние чаты Codex, но ничего не сохраняй и не синхронизируй.",
+      "reason": "Listing desktop tasks without a project-handoff request is ordinary task management, not context synchronization."
     }
   ]
 }

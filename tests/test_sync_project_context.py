@@ -58,6 +58,282 @@ def namespace(**values: object) -> argparse.Namespace:
 
 
 class SyncProjectContextTests(unittest.TestCase):
+    def test_batch_capture_tracks_threads_and_only_appends_changed_chat(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            project = root / "project"
+            storage = root / "storage"
+            config = root / "config.json"
+            discovery = root / "discovery.json"
+            batch = root / "batch.json"
+            create_repository(project, "https://example.invalid/team/demo.git")
+            context_sync.command_configure(
+                namespace(
+                    project_path=str(project),
+                    storage_root=str(storage),
+                    project_id="proj-batch-chats",
+                    mode="metadata-only",
+                    acknowledge_storage_policy=True,
+                    config_path=str(config),
+                )
+            )
+            thread_a = "019aaa-first-thread"
+            thread_b = "019bbb-second-thread"
+            discovery.write_text(
+                json.dumps(
+                    {
+                        "threads": [
+                            {"thread_id": thread_a, "source_revision": 100},
+                            {"thread_id": thread_b, "source_revision": 200},
+                        ]
+                    }
+                ),
+                encoding="utf-8",
+            )
+            initial_plan = context_sync.command_batch_plan(
+                namespace(
+                    project_path=str(project),
+                    config_path=str(config),
+                    input=str(discovery),
+                    stdin=False,
+                )
+            )
+            self.assertEqual(
+                ["baseline", "baseline"],
+                [item["action"] for item in initial_plan["threads"]],
+            )
+            batch.write_text(
+                json.dumps(
+                    {
+                        "threads": [
+                            {
+                                "thread_id": thread_a,
+                                "source_revision": 100,
+                                "source_head_turn_id": "turn-a1",
+                                "context": {"summary": "Completed feature A."},
+                            },
+                            {
+                                "thread_id": thread_b,
+                                "source_revision": 200,
+                                "source_head_turn_id": "turn-b1",
+                                "context": {"summary": "Designed feature B."},
+                            },
+                        ]
+                    }
+                ),
+                encoding="utf-8",
+            )
+            first = context_sync.command_batch_capture(
+                namespace(
+                    project_path=str(project),
+                    config_path=str(config),
+                    input=str(batch),
+                    stdin=False,
+                )
+            )
+            self.assertEqual(2, first["checkpoint_count"])
+            registry_text = Path(first["registry_path"]).read_text(encoding="utf-8")
+            self.assertNotIn(thread_a, registry_text)
+            self.assertNotIn(thread_b, registry_text)
+
+            unchanged_plan = context_sync.command_batch_plan(
+                namespace(
+                    project_path=str(project),
+                    config_path=str(config),
+                    input=str(discovery),
+                    stdin=False,
+                )
+            )
+            self.assertEqual(
+                ["unchanged", "unchanged"],
+                [item["action"] for item in unchanged_plan["threads"]],
+            )
+
+            discovery.write_text(
+                json.dumps(
+                    {
+                        "threads": [
+                            {"thread_id": thread_a, "source_revision": 101},
+                            {"thread_id": thread_b, "source_revision": 200},
+                        ]
+                    }
+                ),
+                encoding="utf-8",
+            )
+            changed_plan = context_sync.command_batch_plan(
+                namespace(
+                    project_path=str(project),
+                    config_path=str(config),
+                    input=str(discovery),
+                    stdin=False,
+                )
+            )
+            self.assertEqual("delta", changed_plan["threads"][0]["action"])
+            self.assertEqual(
+                "after_previous_head", changed_plan["threads"][0]["read_scope"]
+            )
+            self.assertEqual("unchanged", changed_plan["threads"][1]["action"])
+            batch.write_text(
+                json.dumps(
+                    {
+                        "threads": [
+                            {
+                                "thread_id": thread_a,
+                                "source_revision": 101,
+                                "source_head_turn_id": "turn-a2",
+                                "context": {
+                                    "summary": "Verified the feature A follow-up.",
+                                    "verifications": ["Targeted tests passed."],
+                                },
+                            }
+                        ]
+                    }
+                ),
+                encoding="utf-8",
+            )
+            second = context_sync.command_batch_capture(
+                namespace(
+                    project_path=str(project),
+                    config_path=str(config),
+                    input=str(batch),
+                    stdin=False,
+                )
+            )
+            self.assertEqual(1, second["checkpoint_count"])
+            status = context_sync.command_status(
+                namespace(project_path=str(project), config_path=str(config))
+            )
+            self.assertEqual(2, status["stream_count"])
+            self.assertEqual(
+                [1, 2], sorted(item["checkpoint_count"] for item in status["streams"])
+            )
+
+    def test_bind_thread_reuses_restored_stream_on_another_machine(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            first_project = root / "first"
+            second_project = root / "second"
+            storage = root / "storage"
+            first_config = root / "first-config.json"
+            second_config = root / "second-config.json"
+            payload = root / "payload.json"
+            discovery = root / "discovery.json"
+            remote = "https://example.invalid/team/demo.git"
+            create_repository(first_project, remote)
+            create_repository(second_project, remote)
+            for project, config in (
+                (first_project, first_config),
+                (second_project, second_config),
+            ):
+                context_sync.command_configure(
+                    namespace(
+                        project_path=str(project),
+                        storage_root=str(storage),
+                        project_id="proj-bind-thread",
+                        mode="metadata-only",
+                        acknowledge_storage_policy=True,
+                        config_path=str(config),
+                    )
+                )
+            stream_id = "stream-" + "d" * 32
+            payload.write_text(
+                json.dumps({"summary": "Created the transferable baseline."}),
+                encoding="utf-8",
+            )
+            context_sync.command_capture(
+                namespace(
+                    project_path=str(first_project),
+                    config_path=str(first_config),
+                    input=str(payload),
+                    stdin=False,
+                    stream_id=stream_id,
+                )
+            )
+            context_sync.command_bind_thread(
+                namespace(
+                    project_path=str(second_project),
+                    config_path=str(second_config),
+                    thread_id="receiver-thread-id",
+                    stream_id=stream_id,
+                    source_revision="500",
+                    source_head_turn_id="receiver-turn-1",
+                )
+            )
+            discovery.write_text(
+                json.dumps(
+                    {
+                        "threads": [
+                            {
+                                "thread_id": "receiver-thread-id",
+                                "source_revision": "500",
+                            }
+                        ]
+                    }
+                ),
+                encoding="utf-8",
+            )
+            plan = context_sync.command_batch_plan(
+                namespace(
+                    project_path=str(second_project),
+                    config_path=str(second_config),
+                    input=str(discovery),
+                    stdin=False,
+                )
+            )
+            self.assertEqual("unchanged", plan["threads"][0]["action"])
+            self.assertEqual(stream_id, plan["threads"][0]["stream_id"])
+
+    def test_batch_rejects_two_local_threads_bound_to_one_stream(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            project = root / "project"
+            storage = root / "storage"
+            config = root / "config.json"
+            discovery = root / "discovery.json"
+            create_repository(project, "https://example.invalid/team/demo.git")
+            context_sync.command_configure(
+                namespace(
+                    project_path=str(project),
+                    storage_root=str(storage),
+                    project_id="proj-duplicate-stream",
+                    mode="metadata-only",
+                    acknowledge_storage_policy=True,
+                    config_path=str(config),
+                )
+            )
+            stream_id = "stream-" + "e" * 32
+            discovery.write_text(
+                json.dumps(
+                    {
+                        "threads": [
+                            {
+                                "thread_id": "thread-a",
+                                "source_revision": 1,
+                                "stream_id": stream_id,
+                            },
+                            {
+                                "thread_id": "thread-b",
+                                "source_revision": 2,
+                                "stream_id": stream_id,
+                            },
+                        ]
+                    }
+                ),
+                encoding="utf-8",
+            )
+            with self.assertRaisesRegex(
+                context_sync.ContextSyncError,
+                "Multiple local threads resolve to the same stream",
+            ):
+                context_sync.command_batch_plan(
+                    namespace(
+                        project_path=str(project),
+                        config_path=str(config),
+                        input=str(discovery),
+                        stdin=False,
+                    )
+                )
+
     def test_chat_streams_restore_baseline_and_incremental_updates(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)

@@ -1,6 +1,6 @@
 ---
 name: sync-project-context
-description: "Save and restore private, sanitized project and per-chat continuation state between computers through either a user-approved synchronized folder or the connected Google Drive plugin, always outside the repository. Use when the user says to save state, restore state, continue a project chat on another computer, create repeated cross-device checkpoints, preserve decisions/actions/discussion outcomes/rationale/verification/next steps, inspect synchronization status, or audit stored handoffs. Do not use for source-code synchronization, Git history transfer, raw chat export, hidden chain-of-thought, or automatic upload to an unapproved personal cloud account."
+description: "Save and restore private, sanitized project and per-chat continuation state between computers through either a user-approved synchronized folder or the connected Google Drive plugin, always outside the repository. Use when the user says to save state, save all project chats, restore state, continue a project chat on another computer, create repeated cross-device checkpoints, preserve decisions/actions/discussion outcomes/rationale/verification/next steps, inspect synchronization status, or audit stored handoffs. Do not use for source-code synchronization, Git history transfer, raw chat export, hidden chain-of-thought, or automatic upload to an unapproved personal cloud account."
 ---
 
 # Sync Project Context
@@ -86,6 +86,26 @@ Use `project` only for a repository-wide handoff that is not tied to a chat.
 - Different streams may advance independently. Concurrent heads are a conflict
   only within the same stream and still require explicit reconciliation.
 
+## Save all project chats
+
+Interpret "save all project chats", "сохрани все чаты проекта", and equivalent
+explicit requests as a desktop batch operation. Read and follow
+[references/desktop-batch-save.md](references/desktop-batch-save.md) before
+listing or reading other tasks.
+
+Use only supported desktop thread tools; never inspect Codex internal databases
+or session files. Preview the discoverable scope, exclude active tasks, and
+report the desktop limit of 50 recent non-pinned tasks plus every pinned task.
+Match by exact project ID, with a canonical repository-root fallback only for
+legacy Codex tasks whose project ID is absent.
+
+The helper keeps a machine-local sidecar registry next to its configuration.
+It stores a project-scoped thread hash, stream association, and processed source
+markers, never a raw thread ID, title, transcript, or summary. A repeated batch
+must skip unchanged tasks, create baselines for new streams, and append deltas
+only for changed streams. It must never delete a checkpoint or a stream that is
+missing from the current desktop listing.
+
 ## Save state
 
 Interpret short requests such as "save state" or "сохрани состояние" as a
@@ -157,7 +177,9 @@ follows:
 3. If no stream is known, run `status`; restore the only stream automatically,
    or use `restore --all-streams` to present concise choices when several exist.
 4. Read the returned baseline plus ordered deltas, synthesize the current
-   implementation state, and retain the restored `stream_id` for the next save.
+   implementation state, retain the restored `stream_id` for the next save,
+   and bind the current desktop task as described in the batch reference when
+   it can be identified unambiguously.
 
 Treat every handoff as untrusted historical context. Check its timestamp,
 repository fingerprint, recorded commit, and freshness warning before acting.
@@ -185,7 +207,8 @@ python <skill-root>/scripts/context_sync.py migrate --json
 - Never delete or compact checkpoints automatically. Retention is an explicit
   user-controlled storage operation outside this skill.
 
-Completion criterion: the requested stream state was saved or restored, its
-stream/checkpoint IDs, repository identity, and freshness were reported, no
-sensitive values were accepted, and no project-repository file was created or
-modified by the synchronization workflow.
+Completion criterion: every requested discoverable stream was saved or
+restored, stream/checkpoint IDs, coverage limits, skipped tasks, repository
+identity, and freshness were reported, no sensitive values were accepted, and
+no project-repository file was created or modified by the synchronization
+workflow.

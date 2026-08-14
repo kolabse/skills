@@ -1,4 +1,4 @@
 interface:
   display_name: "Sync Project Context"
-  short_description: "Continue project chats safely across devices"
-  default_prompt: "Use $sync-project-context to save or restore this chat's private project state through an approved local folder or connected Google Drive."
+  short_description: "Save one or all project chats across devices"
+  default_prompt: "Use $sync-project-context to save one chat or all discoverable project chats through approved cross-device storage."
