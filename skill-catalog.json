@@ -197,11 +197,11 @@
       "license": "Apache-2.0",
       "provides": ["private-project-handoff"],
       "requires": [],
-      "optional_integrations": ["repository-freshness", "work-log"],
+      "optional_integrations": ["google-drive", "repository-freshness", "work-log"],
       "configuration": {
         "scope": "user",
         "format": "json",
-        "current_version": 1,
+        "current_version": 2,
         "schema": "schemas/config.schema.json",
         "configure": ["python", "scripts/context_sync.py", "configure", "--project-path", "<project-root>", "--storage-root", "<approved-sync-folder>", "--acknowledge-storage-policy"],
         "status": ["python", "scripts/context_sync.py", "status", "--project-path", "<project-root>", "--json"],

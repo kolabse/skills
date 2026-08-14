@@ -55,6 +55,189 @@ def namespace(**values: object) -> argparse.Namespace:
 
 
 class SyncProjectContextTests(unittest.TestCase):
+    def test_google_drive_snapshot_capture_and_restore(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            project = root / "project"
+            config = root / "profile/config.json"
+            marker = root / "connector/project.json"
+            snapshot = root / "snapshot"
+            payload = root / "payload.json"
+            create_repository(project, "https://example.invalid/team/demo.git")
+            before = git(project, "status", "--porcelain=v1")
+
+            prepared = context_sync.command_prepare_drive_marker(
+                namespace(
+                    project_path=str(project),
+                    output=str(marker),
+                    project_id="proj-google-drive",
+                    acknowledge_storage_policy=True,
+                )
+            )
+            configured = context_sync.command_configure(
+                namespace(
+                    project_path=str(project),
+                    backend="google-drive",
+                    storage_root=None,
+                    project_id=prepared["project_id"],
+                    marker_file=str(marker),
+                    drive_project_folder_id="drive-project-folder",
+                    drive_checkpoints_folder_id="drive-checkpoints-folder",
+                    drive_marker_file_id="drive-marker-file",
+                    mode="metadata-only",
+                    acknowledge_storage_policy=True,
+                    config_path=str(config),
+                )
+            )
+            transport = context_sync.command_transport(
+                namespace(project_path=str(project), config_path=str(config))
+            )
+            hydrated = context_sync.command_hydrate_drive(
+                namespace(
+                    project_path=str(project),
+                    config_path=str(config),
+                    marker_file=str(marker),
+                    checkpoint_file=[],
+                    output_root=str(snapshot),
+                )
+            )
+            payload.write_text(
+                json.dumps(
+                    {
+                        "summary": "Prepared the connector-backed handoff.",
+                        "verifications": ["Drive snapshot tests passed."],
+                    }
+                ),
+                encoding="utf-8",
+            )
+            captured = context_sync.command_capture(
+                namespace(
+                    project_path=str(project),
+                    config_path=str(config),
+                    snapshot_root=str(snapshot),
+                    input=str(payload),
+                    stdin=False,
+                )
+            )
+            restored = context_sync.command_restore(
+                namespace(
+                    project_path=str(project),
+                    config_path=str(config),
+                    snapshot_root=str(snapshot),
+                )
+            )
+
+            self.assertEqual("google-drive", configured["backend"])
+            self.assertEqual("drive-project-folder", transport["drive_project_folder_id"])
+            self.assertTrue(transport["requires_connector_hydration"])
+            self.assertEqual(0, hydrated["checkpoint_count"])
+            self.assertEqual("google-drive", captured["backend"])
+            self.assertEqual(captured["checkpoint_id"], restored["checkpoint_id"])
+            self.assertEqual(before, git(project, "status", "--porcelain=v1"))
+
+    def test_google_drive_hydration_rejects_tampering(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            project = root / "project"
+            config = root / "config.json"
+            marker = root / "project.json"
+            create_repository(project, "https://example.invalid/team/demo.git")
+            context_sync.command_prepare_drive_marker(
+                namespace(
+                    project_path=str(project),
+                    output=str(marker),
+                    project_id="proj-drive-audit",
+                    acknowledge_storage_policy=True,
+                )
+            )
+            context_sync.command_configure(
+                namespace(
+                    project_path=str(project),
+                    backend="google-drive",
+                    storage_root=None,
+                    project_id="proj-drive-audit",
+                    marker_file=str(marker),
+                    drive_project_folder_id="folder-project",
+                    drive_checkpoints_folder_id="folder-checkpoints",
+                    drive_marker_file_id="file-marker",
+                    mode="metadata-only",
+                    acknowledge_storage_policy=True,
+                    config_path=str(config),
+                )
+            )
+            downloaded = root / "provider-download.bin"
+            checkpoint = {
+                "schema_version": 1,
+                "checkpoint_id": "checkpoint-" + "a" * 32,
+                "project_id": "proj-drive-audit",
+                "machine_id": "machine-000000000000",
+                "created_at": "2026-08-14T00:00:00Z",
+                "parent_checkpoint_ids": [],
+                "repository": {},
+                "context": {"summary": "Valid before tampering."},
+            }
+            checkpoint["content_sha256"] = "0" * 64
+            downloaded.write_text(json.dumps(checkpoint), encoding="utf-8")
+
+            with self.assertRaisesRegex(
+                context_sync.ContextSyncError, "digest does not match"
+            ):
+                context_sync.command_hydrate_drive(
+                    namespace(
+                        project_path=str(project),
+                        config_path=str(config),
+                        marker_file=str(marker),
+                        checkpoint_file=[str(downloaded)],
+                        output_root=str(root / "snapshot"),
+                    )
+                )
+
+    def test_google_drive_hydration_rejects_incomplete_history(self) -> None:
+        checkpoint_id = "checkpoint-" + "a" * 32
+        missing_id = "checkpoint-" + "b" * 32
+        with self.assertRaisesRegex(
+            context_sync.ContextSyncError, "missing parents"
+        ):
+            context_sync.validate_checkpoint_graph(
+                [
+                    {
+                        "checkpoint_id": checkpoint_id,
+                        "parent_checkpoint_ids": [missing_id],
+                    }
+                ]
+            )
+
+    def test_migrates_local_configuration_to_backend_version(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            config = root / "config.json"
+            config.write_text(
+                json.dumps(
+                    {
+                        "version": 1,
+                        "machine_id": "machine-000000000000",
+                        "projects": [
+                            {
+                                "project_id": "proj-legacy-local",
+                                "local_root": str(root / "project"),
+                                "storage_root": str(root / "storage"),
+                                "mode": "metadata-only",
+                            }
+                        ],
+                    }
+                ),
+                encoding="utf-8",
+            )
+
+            first = context_sync.command_migrate(namespace(config_path=str(config)))
+            migrated = json.loads(config.read_text(encoding="utf-8"))
+            second = context_sync.command_migrate(namespace(config_path=str(config)))
+
+            self.assertTrue(first["changed"])
+            self.assertEqual(2, migrated["version"])
+            self.assertEqual("local-folder", migrated["projects"][0]["backend"])
+            self.assertFalse(second["changed"])
+
     def test_configure_capture_restore_without_project_writes(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)

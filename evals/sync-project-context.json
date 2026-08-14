@@ -24,6 +24,10 @@
     {
       "prompt": "Проведи аудит сохранённых handoff-файлов на токены и повреждённые записи перед продолжением проекта на втором компьютере.",
       "reason": "Auditing stored checkpoints is an explicit capability of the skill."
+    },
+    {
+      "prompt": "На этом компьютере нет Google Drive Desktop. Настрой приватный перенос контекста проекта через подключённый Google Drive plugin.",
+      "reason": "The request explicitly selects the optional connector backend for a project handoff."
     }
   ],
   "negative": [

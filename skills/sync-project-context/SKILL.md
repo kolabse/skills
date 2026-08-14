@@ -1,14 +1,14 @@
 ---
 name: sync-project-context
-description: "Save and restore a private, sanitized project handoff between computers through a user-approved synchronized folder outside the repository. Use when the user asks to continue the same project on another computer, create or load a cross-device checkpoint, preserve decisions/actions/verification/next steps without committing them to the team repository, inspect synchronization status, or audit stored handoffs. Do not use for source-code synchronization, Git history transfer, raw chat export, hidden chain-of-thought, or automatic upload to an unapproved personal cloud account."
+description: "Save and restore a private, sanitized project handoff between computers through either a user-approved synchronized folder or the connected Google Drive plugin, always outside the repository. Use when the user asks to continue the same project on another computer, create or load a cross-device checkpoint, preserve decisions/actions/verification/next steps without committing them to the team repository, inspect synchronization status, or audit stored handoffs. Do not use for source-code synchronization, Git history transfer, raw chat export, hidden chain-of-thought, or automatic upload to an unapproved personal cloud account."
 ---
 
 # Sync Project Context
 
-Transfer a factual continuation packet, not private reasoning or model state. Use
-the dependency-free helper with a locally synchronized directory such as an
-organization-approved Google Drive folder. Keep all configuration and context
-outside the project repository.
+Transfer a factual continuation packet, not private reasoning or model state.
+Use the dependency-free helper with either a locally synchronized directory or
+the connected Google Drive plugin. Keep all configuration and context outside
+the project repository.
 
 ## Protect the publication boundary
 
@@ -24,7 +24,19 @@ outside the project repository.
 5. Read [references/storage-safety.md](references/storage-safety.md) before
    configuring work-project storage or enabling path collection.
 
-## Configure each computer
+## Select a backend
+
+Use `local-folder` when an approved desktop synchronization client exposes a
+normal local directory. Use `google-drive` when the Google Drive plugin is
+connected and no desktop client is available. The Drive integration is
+optional; do not require or install it for a local-folder workflow.
+
+For `google-drive`, read
+[references/google-drive-backend.md](references/google-drive-backend.md) before
+any connector action and follow its verified download/hydration/upload flow.
+For `local-folder`, continue below.
+
+## Configure a local folder on each computer
 
 Use the same opaque `project_id` on both computers and a machine-local path to
 the same synchronized folder. The helper stores its mapping in the user's
@@ -33,6 +45,7 @@ also stay outside every Git worktree so it cannot be committed accidentally.
 
 ```shell
 python <skill-root>/scripts/context_sync.py configure \
+  --backend local-folder \
   --project-path <project-root> \
   --storage-root <approved-synchronized-folder> \
   --mode metadata-only \
@@ -44,7 +57,9 @@ to the second computer and configure it with `--project-id <project-id>`.
 Prefer `metadata-only`; select `--mode paths` only after confirming that
 relative filenames may leave the workstation.
 
-Inspect configuration and freshness without changing anything:
+Inspect configuration and freshness without changing anything. Google Drive
+commands additionally require a freshly hydrated snapshot as described in its
+backend reference.
 
 ```shell
 python <skill-root>/scripts/context_sync.py status \

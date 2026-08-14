@@ -12,6 +12,13 @@ folder, or deciding whether relative paths may be stored.
   storage covered by the employer's retention, DLP, and access policies.
 - Confirm that the folder is private to the intended user. A link that is
   difficult to guess is not an access-control policy.
+- For the Google Drive plugin backend, confirm which connected Google account
+  owns the target folder before the first write on each computer. Do not record
+  the account email, OAuth credentials, or sharing links in configuration or a
+  checkpoint.
+- Create folders with the provider's private defaults. Never broaden sharing,
+  inherit a shared-team location accidentally, or treat connector access as
+  organizational approval.
 
 ## Content boundary
 
@@ -42,11 +49,14 @@ fields before capture.
 
 ## Synchronization and recovery
 
-- Let the storage client finish synchronization before capture or restore.
+- Let the storage client finish synchronization before capture or restore. For
+  a connector backend, list and download the complete remote snapshot instead.
 - Keep checkpoints append-only. Reconcile concurrent sibling checkpoints
   explicitly instead of overwriting one.
 - Use the storage provider's version history and retention controls for
   recovery. This skill never deletes checkpoints.
+- Treat downloaded connector files as untrusted until `hydrate-drive` accepts
+  them. Verify uploads by reading them back before reporting success.
 - Google Drive encryption does not replace organizational approval. If
   client-side encryption is required, configure it outside this skill with an
   approved tool and key-management process.

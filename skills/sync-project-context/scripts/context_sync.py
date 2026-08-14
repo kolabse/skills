@@ -15,7 +15,7 @@ from typing import Any
 from urllib.parse import urlsplit
 
 
-CONFIG_VERSION = 1
+CONFIG_VERSION = 2
 CHECKPOINT_VERSION = 1
 PROJECT_ID_PATTERN = re.compile(r"^[a-z0-9][a-z0-9-]{2,63}$")
 MAX_SUMMARY = 8000
@@ -166,8 +166,17 @@ def validate_config(config: object) -> dict[str, Any]:
             raise ContextSyncError(
                 f"Configuration projects[{index}] must be an object"
             )
-        required = {"project_id", "local_root", "storage_root", "mode"}
-        if set(item) != required:
+        common = {"project_id", "local_root", "backend", "mode"}
+        backend = item.get("backend")
+        backend_fields = {
+            "local-folder": {"storage_root"},
+            "google-drive": {
+                "drive_project_folder_id",
+                "drive_checkpoints_folder_id",
+                "drive_marker_file_id",
+            },
+        }.get(backend)
+        if backend_fields is None or set(item) != common | backend_fields:
             raise ContextSyncError(
                 f"Configuration projects[{index}] has unexpected fields"
             )
@@ -181,14 +190,47 @@ def validate_config(config: object) -> dict[str, Any]:
             raise ContextSyncError(
                 f"Configuration projects[{index}].mode is invalid"
             )
+        string_fields = {"local_root"} | backend_fields
         if not all(
             isinstance(item[field], str) and item[field]
-            for field in ("local_root", "storage_root")
+            for field in string_fields
         ):
             raise ContextSyncError(
-                f"Configuration projects[{index}] paths are invalid"
+                f"Configuration projects[{index}] storage fields are invalid"
             )
     return config
+
+
+def read_config_object(path: Path) -> dict[str, Any]:
+    try:
+        value = json.loads(path.read_text(encoding="utf-8"))
+    except FileNotFoundError as error:
+        raise ContextSyncError(f"Configuration is missing: {path}") from error
+    except (json.JSONDecodeError, UnicodeDecodeError) as error:
+        raise ContextSyncError(f"Configuration is invalid JSON: {error}") from error
+    if not isinstance(value, dict):
+        raise ContextSyncError("Configuration root must be an object")
+    return value
+
+
+def migrate_config(config: dict[str, Any]) -> tuple[dict[str, Any], bool]:
+    version = config.get("version")
+    if version == CONFIG_VERSION:
+        return validate_config(config), False
+    if version != 1:
+        raise ContextSyncError("Unsupported configuration version")
+    projects = config.get("projects")
+    if not isinstance(projects, list):
+        raise ContextSyncError("Configuration projects must be an array")
+    migrated = dict(config)
+    migrated["version"] = CONFIG_VERSION
+    migrated["projects"] = [
+        {**item, "backend": "local-folder"}
+        if isinstance(item, dict) and "backend" not in item
+        else item
+        for item in projects
+    ]
+    return validate_config(migrated), True
 
 
 def load_config(path: Path, *, allow_missing: bool = False) -> dict[str, Any]:
@@ -196,10 +238,7 @@ def load_config(path: Path, *, allow_missing: bool = False) -> dict[str, Any]:
         if allow_missing:
             return new_config()
         raise ContextSyncError(f"Configuration is missing: {path}")
-    try:
-        return validate_config(json.loads(path.read_text(encoding="utf-8")))
-    except (json.JSONDecodeError, UnicodeDecodeError) as error:
-        raise ContextSyncError(f"Configuration is invalid JSON: {error}") from error
+    return validate_config(read_config_object(path))
 
 
 def find_project(
@@ -404,11 +443,14 @@ def validate_context(value: object, mode: str) -> dict[str, Any]:
 
 
 def project_directory(entry: dict[str, Any]) -> Path:
+    if entry.get("backend") != "local-folder":
+        raise ContextSyncError(
+            "Google Drive storage requires a hydrated local snapshot"
+        )
     return resolved(entry["storage_root"]) / entry["project_id"]
 
 
-def load_project_marker(directory: Path) -> dict[str, Any]:
-    path = directory / "project.json"
+def load_project_marker_file(path: Path) -> dict[str, Any]:
     try:
         marker = json.loads(path.read_text(encoding="utf-8"))
     except FileNotFoundError as error:
@@ -421,13 +463,19 @@ def load_project_marker(directory: Path) -> dict[str, Any]:
         ) from error
     if not isinstance(marker, dict) or marker.get("schema_version") != 1:
         raise ContextSyncError("Storage project marker version is unsupported")
+    if scan_secrets(marker):
+        raise ContextSyncError("Storage project marker contains a possible secret")
     return marker
 
 
+def load_project_marker(directory: Path) -> dict[str, Any]:
+    return load_project_marker_file(directory / "project.json")
+
+
 def validate_storage(
-    entry: dict[str, Any], current_fingerprint: str | None
+    entry: dict[str, Any], current_fingerprint: str | None, directory: Path | None = None
 ) -> Path:
-    directory = project_directory(entry)
+    directory = directory or project_directory(entry)
     marker = load_project_marker(directory)
     if marker.get("project_id") != entry["project_id"]:
         raise ContextSyncError(
@@ -447,54 +495,95 @@ def checkpoint_digest(checkpoint: dict[str, Any]) -> str:
     return canonical_digest(unsigned)
 
 
+def load_checkpoint_file(
+    path: Path, project_id: str, *, require_filename: bool = True
+) -> dict[str, Any]:
+    try:
+        value = json.loads(path.read_text(encoding="utf-8"))
+    except (json.JSONDecodeError, UnicodeDecodeError) as error:
+        raise ContextSyncError(f"Checkpoint is invalid: {path}: {error}") from error
+    if (
+        not isinstance(value, dict)
+        or value.get("schema_version") != CHECKPOINT_VERSION
+    ):
+        raise ContextSyncError(f"Checkpoint version is unsupported: {path}")
+    if value.get("project_id") != project_id:
+        raise ContextSyncError(f"Checkpoint project_id mismatch: {path}")
+    checkpoint_id = value.get("checkpoint_id")
+    if not isinstance(checkpoint_id, str) or not re.fullmatch(
+        r"checkpoint-[0-9a-f]{32}", checkpoint_id
+    ):
+        raise ContextSyncError(f"Checkpoint id is invalid: {path}")
+    if require_filename and path.stem != checkpoint_id:
+        raise ContextSyncError(
+            f"Checkpoint filename does not match its id: {path}"
+        )
+    parents = value.get("parent_checkpoint_ids")
+    if not isinstance(parents, list) or not all(
+        isinstance(parent, str)
+        and re.fullmatch(r"checkpoint-[0-9a-f]{32}", parent)
+        for parent in parents
+    ):
+        raise ContextSyncError(f"Checkpoint parents are invalid: {path}")
+    if len(parents) != len(set(parents)):
+        raise ContextSyncError(f"Checkpoint parents are duplicated: {path}")
+    if value.get("content_sha256") != checkpoint_digest(value):
+        raise ContextSyncError(f"Checkpoint digest does not match: {path}")
+    if scan_secrets(value):
+        raise ContextSyncError(f"Checkpoint contains a possible secret: {path}")
+    return value
+
+
 def load_checkpoints(
     directory: Path, project_id: str
 ) -> list[dict[str, Any]]:
-    checkpoints: list[dict[str, Any]] = []
-    for path in sorted((directory / "checkpoints").glob("*.json")):
-        try:
-            value = json.loads(path.read_text(encoding="utf-8"))
-        except (json.JSONDecodeError, UnicodeDecodeError) as error:
-            raise ContextSyncError(
-                f"Checkpoint is invalid: {path}: {error}"
-            ) from error
-        if (
-            not isinstance(value, dict)
-            or value.get("schema_version") != CHECKPOINT_VERSION
-        ):
-            raise ContextSyncError(
-                f"Checkpoint version is unsupported: {path}"
-            )
-        if value.get("project_id") != project_id:
-            raise ContextSyncError(f"Checkpoint project_id mismatch: {path}")
-        if path.stem != value.get("checkpoint_id"):
-            raise ContextSyncError(
-                f"Checkpoint filename does not match its id: {path}"
-            )
-        parents = value.get("parent_checkpoint_ids")
-        if not isinstance(parents, list) or not all(
-            isinstance(parent, str)
-            and re.fullmatch(r"checkpoint-[0-9a-f]{32}", parent)
-            for parent in parents
-        ):
-            raise ContextSyncError(f"Checkpoint parents are invalid: {path}")
-        if len(parents) != len(set(parents)):
-            raise ContextSyncError(f"Checkpoint parents are duplicated: {path}")
-        if value.get("content_sha256") != checkpoint_digest(value):
-            raise ContextSyncError(f"Checkpoint digest does not match: {path}")
-        findings = scan_secrets(value)
-        if findings:
-            raise ContextSyncError(
-                f"Checkpoint contains a possible secret: {path}"
-            )
-        checkpoints.append(value)
+    checkpoints = [
+        load_checkpoint_file(path, project_id)
+        for path in sorted((directory / "checkpoints").glob("*.json"))
+    ]
     checkpoints.sort(
         key=lambda item: (
             str(item.get("created_at", "")),
             str(item.get("checkpoint_id", "")),
         )
     )
+    validate_checkpoint_graph(checkpoints)
     return checkpoints
+
+
+def validate_checkpoint_graph(checkpoints: list[dict[str, Any]]) -> None:
+    by_id = {item["checkpoint_id"]: item for item in checkpoints}
+    if len(by_id) != len(checkpoints):
+        raise ContextSyncError("Checkpoint IDs are duplicated")
+    missing = sorted(
+        {
+            parent
+            for item in checkpoints
+            for parent in item["parent_checkpoint_ids"]
+            if parent not in by_id
+        }
+    )
+    if missing:
+        raise ContextSyncError(
+            "Checkpoint history is incomplete; missing parents: "
+            + ", ".join(missing)
+        )
+    visiting: set[str] = set()
+    visited: set[str] = set()
+
+    def visit(checkpoint_id: str) -> None:
+        if checkpoint_id in visiting:
+            raise ContextSyncError("Checkpoint history contains a cycle")
+        if checkpoint_id in visited:
+            return
+        visiting.add(checkpoint_id)
+        for parent in by_id[checkpoint_id]["parent_checkpoint_ids"]:
+            visit(parent)
+        visiting.remove(checkpoint_id)
+        visited.add(checkpoint_id)
+
+    for checkpoint_id in by_id:
+        visit(checkpoint_id)
 
 
 def checkpoint_heads(
@@ -539,28 +628,75 @@ def load_capture_input(
         ) from error
 
 
+def validate_external_path(
+    path: Path, project_root: Path, label: str, *, reject_git: bool = True
+) -> None:
+    if path == project_root or is_within(path, project_root):
+        raise ContextSyncError(f"{label} must stay outside the project directory")
+    git_root = enclosing_git_root(path)
+    if reject_git and git_root is not None:
+        raise ContextSyncError(
+            f"{label} must stay outside every Git worktree: {git_root}"
+        )
+
+
+def project_marker(project_root: Path, project_id: str) -> dict[str, Any]:
+    return {
+        "schema_version": 1,
+        "project_id": project_id,
+        "repository_fingerprint": repository_fingerprint(project_root),
+        "created_at": utc_now(),
+    }
+
+
+def command_prepare_drive_marker(args: argparse.Namespace) -> dict[str, Any]:
+    if not args.acknowledge_storage_policy:
+        raise ContextSyncError(
+            "Pass --acknowledge-storage-policy after confirming the Drive account is approved"
+        )
+    project_root = resolved(args.project_path)
+    if not project_root.is_dir():
+        raise ContextSyncError(f"Project directory does not exist: {project_root}")
+    output = resolved(args.output)
+    validate_external_path(output, project_root, "Marker output")
+    project_id = args.project_id or f"proj-{uuid.uuid4().hex[:16]}"
+    if not PROJECT_ID_PATTERN.fullmatch(project_id):
+        raise ContextSyncError(
+            "project_id must be 3-64 lowercase letters, digits, or hyphens"
+        )
+    marker = project_marker(project_root, project_id)
+    atomic_write_json(output, marker)
+    return {
+        "prepared": True,
+        "backend": "google-drive",
+        "project_id": project_id,
+        "marker_path": str(output),
+        "repository_fingerprint": marker["repository_fingerprint"],
+    }
+
+
 def command_configure(args: argparse.Namespace) -> dict[str, Any]:
     if not args.acknowledge_storage_policy:
         raise ContextSyncError(
             "Pass --acknowledge-storage-policy after confirming the storage is approved"
         )
     project_root = resolved(args.project_path)
-    storage_root = resolved(args.storage_root)
     if not project_root.is_dir():
         raise ContextSyncError(
             f"Project directory does not exist: {project_root}"
         )
-    if project_root == storage_root or is_within(storage_root, project_root):
-        raise ContextSyncError(
-            "Storage root must stay outside the project directory"
-        )
-    storage_git_root = enclosing_git_root(storage_root)
-    if storage_git_root is not None:
-        raise ContextSyncError(
-            "Storage root must stay outside every Git worktree: "
-            f"{storage_git_root}"
-        )
-    project_id = args.project_id or f"proj-{uuid.uuid4().hex[:16]}"
+    backend = getattr(args, "backend", "local-folder")
+    marker_file = getattr(args, "marker_file", None)
+    marker: dict[str, Any] | None = None
+    if backend == "google-drive":
+        if not marker_file:
+            raise ContextSyncError("Google Drive configuration requires --marker-file")
+        marker_path = resolved(marker_file)
+        validate_external_path(marker_path, project_root, "Marker file")
+        marker = load_project_marker_file(marker_path)
+    project_id = args.project_id or (
+        str(marker.get("project_id")) if marker else f"proj-{uuid.uuid4().hex[:16]}"
+    )
     if not PROJECT_ID_PATTERN.fullmatch(project_id):
         raise ContextSyncError(
             "project_id must be 3-64 lowercase letters, digits, or hyphens"
@@ -574,34 +710,49 @@ def command_configure(args: argparse.Namespace) -> dict[str, Any]:
         )
     config = load_config(config_path, allow_missing=True)
     fingerprint = repository_fingerprint(project_root)
-    directory = storage_root / project_id
-    marker_path = directory / "project.json"
-    if marker_path.exists():
-        marker = load_project_marker(directory)
-        if marker.get("project_id") != project_id:
-            raise ContextSyncError(
-                "Existing storage marker uses another project_id"
-            )
-        expected = marker.get("repository_fingerprint")
-        if expected and fingerprint and expected != fingerprint:
-            raise ContextSyncError(
-                "Existing storage marker belongs to another repository"
-            )
-    else:
-        marker = {
-            "schema_version": 1,
+    if backend == "local-folder":
+        storage_value = getattr(args, "storage_root", None)
+        if not storage_value:
+            raise ContextSyncError("Local-folder configuration requires --storage-root")
+        storage_root = resolved(storage_value)
+        validate_external_path(storage_root, project_root, "Storage root")
+        directory = storage_root / project_id
+        marker_path = directory / "project.json"
+        if marker_path.exists():
+            marker = load_project_marker(directory)
+        else:
+            marker = project_marker(project_root, project_id)
+            atomic_write_json(marker_path, marker)
+        (directory / "checkpoints").mkdir(parents=True, exist_ok=True)
+        new_entry = {
             "project_id": project_id,
-            "repository_fingerprint": fingerprint,
-            "created_at": utc_now(),
+            "local_root": str(project_root),
+            "backend": backend,
+            "storage_root": str(storage_root),
+            "mode": args.mode,
         }
-        atomic_write_json(marker_path, marker)
-    (directory / "checkpoints").mkdir(parents=True, exist_ok=True)
-    new_entry = {
-        "project_id": project_id,
-        "local_root": str(project_root),
-        "storage_root": str(storage_root),
-        "mode": args.mode,
-    }
+        storage_project = str(directory)
+    else:
+        drive_fields = {
+            "drive_project_folder_id": getattr(args, "drive_project_folder_id", None),
+            "drive_checkpoints_folder_id": getattr(args, "drive_checkpoints_folder_id", None),
+            "drive_marker_file_id": getattr(args, "drive_marker_file_id", None),
+        }
+        if not all(isinstance(value, str) and value.strip() for value in drive_fields.values()):
+            raise ContextSyncError("Google Drive configuration requires all Drive file and folder IDs")
+        new_entry = {
+            "project_id": project_id,
+            "local_root": str(project_root),
+            "backend": backend,
+            **drive_fields,
+            "mode": args.mode,
+        }
+        storage_project = f"google-drive:{drive_fields['drive_project_folder_id']}"
+    if marker is None or marker.get("project_id") != project_id:
+        raise ContextSyncError("Storage marker uses another project_id")
+    expected = marker.get("repository_fingerprint")
+    if expected and fingerprint and expected != fingerprint:
+        raise ContextSyncError("Storage marker belongs to another repository")
     identity = os.path.normcase(str(project_root))
     existing = [
         item
@@ -622,14 +773,15 @@ def command_configure(args: argparse.Namespace) -> dict[str, Any]:
     return {
         "configured": True,
         "changed": changed,
+        "backend": backend,
         "project_id": project_id,
         "mode": args.mode,
         "config_path": str(config_path),
-        "storage_project": str(directory),
+        "storage_project": storage_project,
     }
 
 
-def configured_context(
+def configured_mapping(
     args: argparse.Namespace,
 ) -> tuple[
     Path,
@@ -652,37 +804,135 @@ def configured_context(
         )
     config = load_config(config_path)
     entry = find_project(config, project_root)
-    storage_root = resolved(entry["storage_root"])
-    if storage_root == project_root or is_within(storage_root, project_root):
-        raise ContextSyncError(
-            "Configured storage root is inside the project directory"
-        )
-    storage_git_root = enclosing_git_root(storage_root)
-    if storage_git_root is not None:
-        raise ContextSyncError(
-            "Configured storage root is inside a Git worktree: "
-            f"{storage_git_root}"
-        )
     current = repository_state(project_root, entry["mode"])
-    validate_storage(entry, current.get("fingerprint"))
     return project_root, config_path, config, entry, current
 
 
+def active_storage_directory(
+    args: argparse.Namespace,
+    project_root: Path,
+    entry: dict[str, Any],
+    current: dict[str, Any],
+) -> Path:
+    if entry["backend"] == "local-folder":
+        storage_root = resolved(entry["storage_root"])
+        validate_external_path(storage_root, project_root, "Configured storage root")
+        directory = project_directory(entry)
+    else:
+        snapshot_value = getattr(args, "snapshot_root", None)
+        if not snapshot_value:
+            raise ContextSyncError(
+                "Google Drive operations require --snapshot-root after connector hydration"
+            )
+        directory = resolved(snapshot_value)
+        validate_external_path(directory, project_root, "Drive snapshot")
+    validate_storage(entry, current.get("fingerprint"), directory)
+    return directory
+
+
+def configured_context(
+    args: argparse.Namespace,
+) -> tuple[
+    Path,
+    Path,
+    dict[str, Any],
+    dict[str, Any],
+    dict[str, Any],
+    Path,
+]:
+    project_root, config_path, config, entry, current = configured_mapping(args)
+    directory = active_storage_directory(args, project_root, entry, current)
+    return project_root, config_path, config, entry, current, directory
+
+
+def command_transport(args: argparse.Namespace) -> dict[str, Any]:
+    _root, config_path, _config, entry, current = configured_mapping(args)
+    result = {
+        "configured": True,
+        "backend": entry["backend"],
+        "project_id": entry["project_id"],
+        "mode": entry["mode"],
+        "config_path": str(config_path),
+        "current_repository": current,
+    }
+    if entry["backend"] == "local-folder":
+        result["storage_project"] = str(project_directory(entry))
+    else:
+        result.update(
+            {
+                "drive_project_folder_id": entry["drive_project_folder_id"],
+                "drive_checkpoints_folder_id": entry["drive_checkpoints_folder_id"],
+                "drive_marker_file_id": entry["drive_marker_file_id"],
+                "requires_connector_hydration": True,
+            }
+        )
+    return result
+
+
+def command_hydrate_drive(args: argparse.Namespace) -> dict[str, Any]:
+    project_root, _config_path, _config, entry, current = configured_mapping(args)
+    if entry["backend"] != "google-drive":
+        raise ContextSyncError("hydrate-drive requires a Google Drive mapping")
+    output_root = resolved(args.output_root)
+    validate_external_path(output_root, project_root, "Drive snapshot")
+    if output_root.exists() and any(output_root.iterdir()):
+        raise ContextSyncError("Drive snapshot output must be absent or empty")
+    marker_path = resolved(args.marker_file)
+    validate_external_path(marker_path, project_root, "Downloaded marker")
+    marker = load_project_marker_file(marker_path)
+    if marker.get("project_id") != entry["project_id"]:
+        raise ContextSyncError("Downloaded marker project_id mismatch")
+    expected = marker.get("repository_fingerprint")
+    fingerprint = current.get("fingerprint")
+    if expected and fingerprint and expected != fingerprint:
+        raise ContextSyncError("Downloaded marker belongs to another repository")
+    values: dict[str, dict[str, Any]] = {}
+    for value in getattr(args, "checkpoint_file", []) or []:
+        source = resolved(value)
+        validate_external_path(source, project_root, "Downloaded checkpoint")
+        checkpoint = load_checkpoint_file(
+            source, entry["project_id"], require_filename=False
+        )
+        checkpoint_id = checkpoint["checkpoint_id"]
+        if checkpoint_id in values:
+            raise ContextSyncError(f"Downloaded checkpoint is duplicated: {checkpoint_id}")
+        values[checkpoint_id] = checkpoint
+    validate_checkpoint_graph(list(values.values()))
+    atomic_write_json(output_root / "project.json", marker)
+    (output_root / "checkpoints").mkdir(parents=True, exist_ok=True)
+    for checkpoint_id, checkpoint in values.items():
+        atomic_write_json(
+            output_root / "checkpoints" / f"{checkpoint_id}.json", checkpoint
+        )
+    load_checkpoints(output_root, entry["project_id"])
+    return {
+        "hydrated": True,
+        "backend": "google-drive",
+        "project_id": entry["project_id"],
+        "snapshot_root": str(output_root),
+        "checkpoint_count": len(values),
+    }
+
+
 def command_status(args: argparse.Namespace) -> dict[str, Any]:
-    _project_root, config_path, _config, entry, current = configured_context(
+    _project_root, config_path, _config, entry, current, directory = configured_context(
         args
     )
-    directory = project_directory(entry)
     checkpoints = load_checkpoints(directory, entry["project_id"])
     heads = checkpoint_heads(checkpoints)
     latest = heads[-1] if len(heads) == 1 else None
     recorded = latest.get("repository", {}) if latest else {}
     return {
         "configured": True,
+        "backend": entry["backend"],
         "project_id": entry["project_id"],
         "mode": entry["mode"],
         "config_path": str(config_path),
-        "storage_project": str(directory),
+        "storage_project": (
+            str(directory)
+            if entry["backend"] == "local-folder"
+            else f"google-drive:{entry['drive_project_folder_id']}"
+        ),
         "checkpoint_count": len(checkpoints),
         "head_checkpoint_ids": [item["checkpoint_id"] for item in heads],
         "latest_checkpoint_id": (
@@ -699,8 +949,7 @@ def command_status(args: argparse.Namespace) -> dict[str, Any]:
 
 
 def command_capture(args: argparse.Namespace) -> dict[str, Any]:
-    project_root, _config_path, config, entry, current = configured_context(args)
-    directory = project_directory(entry)
+    project_root, _config_path, config, entry, current, directory = configured_context(args)
     context = validate_context(
         load_capture_input(args, project_root), entry["mode"]
     )
@@ -733,6 +982,7 @@ def command_capture(args: argparse.Namespace) -> dict[str, Any]:
     atomic_write_json(path, checkpoint)
     return {
         "captured": True,
+        "backend": entry["backend"],
         "checkpoint_id": checkpoint_id,
         "parent_checkpoint_ids": parents,
         "created_at": checkpoint["created_at"],
@@ -752,8 +1002,7 @@ def freshness(
 
 
 def command_restore(args: argparse.Namespace) -> dict[str, Any]:
-    _root, _config_path, _config, entry, current = configured_context(args)
-    directory = project_directory(entry)
+    _root, _config_path, _config, entry, current, directory = configured_context(args)
     checkpoints = load_checkpoints(directory, entry["project_id"])
     if not checkpoints:
         raise ContextSyncError("No checkpoints are available")
@@ -790,8 +1039,8 @@ def command_restore(args: argparse.Namespace) -> dict[str, Any]:
 
 
 def command_audit(args: argparse.Namespace) -> dict[str, Any]:
-    _root, _config_path, _config, entry, current = configured_context(args)
-    directory = validate_storage(entry, current.get("fingerprint"))
+    _root, _config_path, _config, entry, current, directory = configured_context(args)
+    validate_storage(entry, current.get("fingerprint"), directory)
     checkpoints = load_checkpoints(directory, entry["project_id"])
     return {
         "ok": True,
@@ -806,11 +1055,11 @@ def command_migrate(args: argparse.Namespace) -> dict[str, Any]:
     config_path = (
         resolved(args.config_path) if args.config_path else default_config_path()
     )
-    config = load_config(config_path)
+    config, changed = migrate_config(read_config_object(config_path))
     atomic_write_json(config_path, config)
     return {
         "migrated": True,
-        "changed": False,
+        "changed": changed,
         "version": CONFIG_VERSION,
         "config_path": str(config_path),
     }
@@ -865,10 +1114,19 @@ def build_parser() -> argparse.ArgumentParser:
     subparsers = parser.add_subparsers(dest="command", required=True)
 
     configure = subparsers.add_parser(
-        "configure", help="Configure a local project mapping"
+        "configure", help="Configure a local-folder or Google Drive mapping"
     )
     configure.add_argument("--project-path", required=True)
-    configure.add_argument("--storage-root", required=True)
+    configure.add_argument(
+        "--backend",
+        choices=("local-folder", "google-drive"),
+        default="local-folder",
+    )
+    configure.add_argument("--storage-root")
+    configure.add_argument("--drive-project-folder-id")
+    configure.add_argument("--drive-checkpoints-folder-id")
+    configure.add_argument("--drive-marker-file-id")
+    configure.add_argument("--marker-file")
     configure.add_argument("--project-id")
     configure.add_argument(
         "--mode", choices=("metadata-only", "paths"), default="metadata-only"
@@ -878,18 +1136,39 @@ def build_parser() -> argparse.ArgumentParser:
     )
     configure.add_argument("--json", action="store_true")
 
+    marker = subparsers.add_parser("prepare-drive-marker")
+    marker.add_argument("--project-path", required=True)
+    marker.add_argument("--output", required=True)
+    marker.add_argument("--project-id")
+    marker.add_argument("--acknowledge-storage-policy", action="store_true")
+    marker.add_argument("--json", action="store_true")
+
+    transport = subparsers.add_parser("transport")
+    transport.add_argument("--project-path", required=True)
+    transport.add_argument("--json", action="store_true")
+
+    hydrate = subparsers.add_parser("hydrate-drive")
+    hydrate.add_argument("--project-path", required=True)
+    hydrate.add_argument("--marker-file", required=True)
+    hydrate.add_argument("--checkpoint-file", action="append", default=[])
+    hydrate.add_argument("--output-root", required=True)
+    hydrate.add_argument("--json", action="store_true")
+
     for name in ("status", "audit"):
         child = subparsers.add_parser(name)
         child.add_argument("--project-path", required=True)
+        child.add_argument("--snapshot-root")
         child.add_argument("--json", action="store_true")
 
     restore = subparsers.add_parser("restore")
     restore.add_argument("--project-path", required=True)
+    restore.add_argument("--snapshot-root")
     restore.add_argument("--checkpoint-id")
     restore.add_argument("--json", action="store_true")
 
     capture = subparsers.add_parser("capture")
     capture.add_argument("--project-path", required=True)
+    capture.add_argument("--snapshot-root")
     source = capture.add_mutually_exclusive_group(required=True)
     source.add_argument("--input")
     source.add_argument("--stdin", action="store_true")
@@ -907,6 +1186,9 @@ def main() -> int:
     try:
         handler = {
             "configure": command_configure,
+            "prepare-drive-marker": command_prepare_drive_marker,
+            "transport": command_transport,
+            "hydrate-drive": command_hydrate_drive,
             "status": command_status,
             "capture": command_capture,
             "restore": command_restore,

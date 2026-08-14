@@ -295,12 +295,14 @@ its cross-device trigger and storage behavior is evaluated independently.
 After installing it on each computer, invoke it first with:
 
 ```text
-$sync-project-context Configure this clone to use my approved synchronized folder in metadata-only mode.
+$sync-project-context Configure this clone in metadata-only mode using my approved local synchronized folder or connected Google Drive.
 ```
 
 The dependency-free helper stores machine-local configuration in the user's
-configuration directory and immutable checkpoints in an approved local folder
-that may be synchronized by Google Drive or another provider. It records
+configuration directory and immutable checkpoints through either an approved
+local synchronized folder or the optional Google Drive plugin. The connector
+backend validates a complete downloaded snapshot locally and reads uploads back
+before success. It records
 reviewed summaries, decisions, actions, verification, questions, next steps,
 and Git fingerprints; it never copies source contents, diffs, raw transcripts,
 or hidden reasoning. Metadata-only mode also omits branch names and file paths.

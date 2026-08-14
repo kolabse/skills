@@ -5,12 +5,16 @@
 ### Added
 
 - An experimental `sync-project-context` skill that saves immutable, sanitized
-  cross-device handoff checkpoints in an approved synchronized folder outside
-  the team repository, with repository fingerprinting, freshness reporting,
-  secret rejection, and metadata-only defaults.
+  cross-device handoff checkpoints outside the team repository through an
+  approved synchronized folder or the optional Google Drive plugin, with
+  repository fingerprinting, freshness reporting, verified connector
+  readback, secret rejection, and metadata-only defaults.
 
 ### Changed
 
+- `sync-project-context` configuration schema v2 records the storage backend
+  explicitly and migrates existing local-folder configurations without
+  changing their behavior.
 - Release holdout validation now targets stable skills; experimental additions
   must pass ordinary trigger evals and receive a new independent holdout before
   promotion to stable.
