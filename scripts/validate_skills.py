@@ -15,7 +15,7 @@ ALLOWED_PLATFORMS = {"linux", "macos", "windows"}
 ALLOWED_STATUSES = {"experimental", "stable", "deprecated"}
 ALLOWED_PROVENANCE = {"original", "migrated", "vendored"}
 ALLOWED_CONFIG_SCOPES = {"project", "user"}
-ALLOWED_CONFIG_FORMATS = {"json", "yaml", "managed-markdown"}
+ALLOWED_CONFIG_FORMATS = {"json", "yaml", "managed-markdown", "none"}
 PLUGIN_NAME = "kolabse-skills"
 PLUGIN_VERSION_PATTERN = re.compile(
     r"^[0-9]+\.[0-9]+\.[0-9]+(?:-[0-9A-Za-z]+(?:[.-][0-9A-Za-z]+)*)?$"
@@ -246,7 +246,7 @@ def validate_configuration_contract(
     if config_format not in ALLOWED_CONFIG_FORMATS:
         errors.append(f"{location}.configuration.format is invalid")
     skill_path = repository_root / str(entry.get("path", ""))
-    operations = ["configure", "status"]
+    operations = ["status"] if config_format == "none" else ["configure", "status"]
     if config_format in {"json", "yaml"}:
         operations.append("migrate")
     for operation in operations:
@@ -285,7 +285,9 @@ def validate_configuration_contract(
     return errors
 
 
-def validate_compositions(catalog: dict[str, object], entries: list[object]) -> list[str]:
+def validate_compositions(
+    repository_root: Path, catalog: dict[str, object], entries: list[object]
+) -> list[str]:
     errors: list[str] = []
     typed_entries = [entry for entry in entries if isinstance(entry, dict)]
     names = {entry.get("name") for entry in typed_entries}
@@ -333,6 +335,45 @@ def validate_compositions(catalog: dict[str, object], entries: list[object]) -> 
                 errors.append(f"{location}.{field} references unknown skills {sorted(unknown)}")
         if len(all_steps) != len(set(all_steps)):
             errors.append(f"{location} contains duplicate steps")
+    eval_path = catalog.get("composition_evals")
+    if not isinstance(eval_path, str) or not eval_path:
+        errors.append("skill-catalog.json: composition_evals must be a path string")
+        return errors
+    full_path = repository_root / eval_path
+    try:
+        document = json.loads(full_path.read_text(encoding="utf-8"))
+    except (FileNotFoundError, json.JSONDecodeError, UnicodeDecodeError) as error:
+        errors.append(f"{full_path}: composition evals are missing or invalid: {error}")
+        return errors
+    cases = document.get("cases") if isinstance(document, dict) else None
+    if not isinstance(document, dict) or document.get("schema_version") != 1 or not isinstance(
+        cases, list
+    ):
+        errors.append(f"{full_path}: expected schema_version 1 and a cases list")
+        return errors
+    prompts: set[str] = set()
+    for index, case in enumerate(cases):
+        location = f"{full_path}: cases[{index}]"
+        if not isinstance(case, dict):
+            errors.append(f"{location} must be an object")
+            continue
+        prompt = case.get("prompt")
+        expected = case.get("expected_skills")
+        reason = case.get("reason")
+        if not isinstance(prompt, str) or not prompt.strip() or prompt in prompts:
+            errors.append(f"{location}.prompt must be unique and non-empty")
+        else:
+            prompts.add(prompt)
+        if (
+            not isinstance(expected, list)
+            or len(expected) < 2
+            or not all(isinstance(name, str) for name in expected)
+            or len(expected) != len(set(expected))
+            or set(expected) - names
+        ):
+            errors.append(f"{location}.expected_skills must contain at least two unique known skills")
+        if not isinstance(reason, str) or not reason.strip():
+            errors.append(f"{location}.reason must be non-empty")
     return errors
 
 
@@ -567,7 +608,7 @@ def validate(repository_root: Path = REPOSITORY_ROOT) -> list[str]:
         if isinstance(entry, dict) and entry.get("status") == "stable"
     }
     errors.extend(validate_release_holdout(repository_root, catalog, stable_names))
-    errors.extend(validate_compositions(catalog, entries))
+    errors.extend(validate_compositions(repository_root, catalog, entries))
     errors.extend(validate_manager_contract(repository_root, collection_version))
     return errors
 

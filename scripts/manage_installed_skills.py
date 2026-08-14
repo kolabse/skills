@@ -12,16 +12,18 @@ from urllib.parse import urlparse
 
 
 COLLECTION = "kolabse-skills"
-COLLECTION_VERSION = "1.5.0"
+COLLECTION_VERSION = "1.6.0"
 SKILLS_CLI_VERSION = "1.5.22"
 LOCK_FILE = "skills-lock.json"
 METADATA_FILE = "collection-metadata.json"
 CANONICAL_REPOSITORY = "https://github.com/kolabse/skills"
 CANONICAL_SLUG = "kolabse/skills"
+REPOSITORY_ROOT = Path(__file__).resolve().parents[1]
 KNOWN_SKILLS = {
     "maintain-work-log",
     "notify-via-telegram",
     "operate-yandex-cloud",
+    "release-skill-collection",
     "sync-project-context",
     "synchronize-git-repositories",
     "verify-before-push",
@@ -323,6 +325,142 @@ def run_checked(command: list[str], cwd: Path, timeout: int) -> subprocess.Compl
             f"Command failed ({result.returncode}): {' '.join(command)}: {detail[-1000:]}"
         )
     return result
+
+
+def runtime_status_command(
+    project: Path, installed_skill: Path, declared: object
+) -> list[str]:
+    if not isinstance(declared, list) or not declared or not all(
+        isinstance(item, str) and item for item in declared
+    ):
+        raise ManagerError("runtime status command must be a non-empty string array")
+    command: list[str] = []
+    for index, token in enumerate(declared):
+        value = token.replace("<project-root>", str(project.resolve())).replace(
+            "<project-path>", str(project.resolve())
+        )
+        if "<" in value or ">" in value:
+            raise ManagerError(f"runtime status command has an unresolved placeholder: {value}")
+        if index == 0 and value in {"python", "python3"}:
+            value = python_executable()
+        elif index == 1 and not Path(value).is_absolute():
+            candidate = (installed_skill / value).resolve()
+            try:
+                candidate.relative_to(installed_skill.resolve())
+            except ValueError as error:
+                raise ManagerError("runtime status script escapes the installed skill") from error
+            value = str(candidate)
+        command.append(value)
+    return command
+
+
+def runtime_artifact_exists(payload: dict[str, Any]) -> bool:
+    for key, value in payload.items():
+        if not isinstance(value, str) or not value:
+            continue
+        if key in {"config_file", "config_path", "policy_file", "path"} or key.endswith(
+            ("_file", "_path")
+        ):
+            try:
+                if Path(value).expanduser().exists():
+                    return True
+            except OSError:
+                continue
+    return False
+
+
+def deep_runtime_doctor(
+    project: Path,
+    state: dict[str, Any],
+    include_user_config: bool = False,
+    timeout: int = 30,
+    repository_root: Path | None = None,
+) -> tuple[list[dict[str, Any]], list[str], list[str]]:
+    root = (repository_root or REPOSITORY_ROOT).resolve()
+    catalog = load_object(root / "skill-catalog.json", "Skill catalog")
+    entries = {
+        item.get("name"): item
+        for item in catalog.get("skills", [])
+        if isinstance(item, dict) and isinstance(item.get("name"), str)
+    }
+    checks: list[dict[str, Any]] = []
+    problems: list[str] = []
+    warnings: list[str] = []
+    for installed in state["skills"]:
+        name = installed["name"]
+        catalog_entry = entries.get(name)
+        if not catalog_entry:
+            problems.append(f"{name} is missing from the collection catalog")
+            continue
+        configuration = catalog_entry.get("configuration")
+        if not isinstance(configuration, dict):
+            checks.append({"skill": name, "status": "not-applicable"})
+            continue
+        config_scope = configuration.get("scope")
+        if config_scope == "user" and not include_user_config:
+            checks.append(
+                {"skill": name, "status": "skipped", "reason": "user configuration not requested"}
+            )
+            continue
+        try:
+            command = runtime_status_command(
+                project, Path(installed["path"]), configuration.get("status")
+            )
+        except ManagerError as error:
+            problems.append(f"{name} runtime status declaration is invalid: {error}")
+            checks.append({"skill": name, "status": "invalid-declaration"})
+            continue
+        try:
+            result = subprocess.run(
+                command,
+                cwd=project.resolve(),
+                text=True,
+                capture_output=True,
+                timeout=timeout,
+                check=False,
+            )
+        except (OSError, subprocess.TimeoutExpired) as error:
+            problems.append(f"{name} runtime status failed to execute: {error}")
+            checks.append({"skill": name, "status": "error"})
+            continue
+        try:
+            payload = json.loads(result.stdout)
+        except json.JSONDecodeError:
+            payload = None
+        if not isinstance(payload, dict):
+            problems.append(f"{name} runtime status returned invalid JSON")
+            checks.append(
+                {"skill": name, "status": "error", "returncode": result.returncode}
+            )
+            continue
+        configured = payload.get("configured")
+        valid = payload.get("valid")
+        if valid is False:
+            runtime_status = "invalid"
+            problems.append(f"{name} runtime configuration is invalid")
+        elif configured is False:
+            if runtime_artifact_exists(payload):
+                runtime_status = "partial"
+                problems.append(f"{name} runtime configuration is only partially configured")
+            else:
+                runtime_status = "unconfigured"
+                warnings.append(f"{name} is installed but not configured")
+        elif result.returncode != 0:
+            runtime_status = "error"
+            problems.append(
+                f"{name} runtime status failed with exit code {result.returncode}"
+            )
+        else:
+            runtime_status = "healthy"
+        checks.append(
+            {
+                "skill": name,
+                "status": runtime_status,
+                "returncode": result.returncode,
+                "result": payload,
+            }
+        )
+    return checks, problems, warnings
 
 
 def print_portable(value: str) -> None:
@@ -631,6 +769,10 @@ def doctor(
     trusted_development_sources: dict[str, Path] | None = None,
     scope: str = "project",
     global_root: Path | None = None,
+    deep: bool = False,
+    include_user_config: bool = False,
+    runtime_timeout: int = 30,
+    repository_root: Path | None = None,
 ) -> dict[str, Any]:
     state = (
         read_project_state(project, trusted_development_sources)
@@ -665,8 +807,23 @@ def doctor(
             problems.append(f"{skill['name']} has an invalid lock hash")
     if len(versions) > 1:
         problems.append(f"installed skills use mixed collection versions: {sorted(versions)}")
+    warnings: list[str] = []
+    if deep:
+        if scope != "project":
+            raise ManagerError("--deep is supported only for project scope")
+        runtime_checks, runtime_problems, runtime_warnings = deep_runtime_doctor(
+            project,
+            state,
+            include_user_config=include_user_config,
+            timeout=runtime_timeout,
+            repository_root=repository_root,
+        )
+        state["runtime_checks"] = runtime_checks
+        problems.extend(runtime_problems)
+        warnings.extend(runtime_warnings)
     state["healthy"] = not problems
     state["problems"] = problems
+    state["warnings"] = warnings
     state["migration_candidates"] = (
         [name for name, _ in migration_commands(project, False)] if scope == "project" else []
     )
@@ -683,6 +840,10 @@ def build_parser() -> argparse.ArgumentParser:
         if name in {"status", "doctor"}:
             child.add_argument("--scope", choices=("project", "global"), default="project")
             child.add_argument("--global-root", type=Path)
+        if name == "doctor":
+            child.add_argument("--deep", action="store_true")
+            child.add_argument("--include-user-config", action="store_true")
+            child.add_argument("--runtime-timeout", type=int, default=30)
         if name == "migrate":
             child.add_argument("--include-user-config", action="store_true")
             child.add_argument("--timeout", type=int, default=120)
@@ -725,7 +886,12 @@ def main(argv: list[str] | None = None) -> int:
             return 0
         if args.command == "doctor":
             state = doctor(
-                args.project_path, scope=args.scope, global_root=args.global_root
+                args.project_path,
+                scope=args.scope,
+                global_root=args.global_root,
+                deep=args.deep,
+                include_user_config=args.include_user_config,
+                runtime_timeout=args.runtime_timeout,
             )
             print_state(state, args.json)
             if not args.json and state["problems"]:

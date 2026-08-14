@@ -2,6 +2,23 @@
 
 ## Unreleased
 
+## [1.6.0] - 2026-08-14
+
+### Added
+
+- Deep installed-skill runtime diagnosis that distinguishes unconfigured,
+  partial, invalid, and healthy configuration without reading user-scoped
+  configuration unless explicitly requested.
+- Exact ordered multi-skill composition evals and majority-vote ordering.
+- A deterministic two-machine acceptance harness and real-device stabilization
+  checklist for `sync-project-context`.
+- Read-only Git divergence classification for identical-tree and
+  patch-equivalent histories.
+- An experimental `release-skill-collection` skill for fail-closed release
+  planning and deterministic local gates without implicit publication.
+- A committed `verify-before-push` policy that binds collection validation,
+  security, unit, and consumer-smoke evidence to the exact release Git state.
+
 ## [1.5.0] - 2026-08-14
 
 ### Added

@@ -1,0 +1,88 @@
+{
+  "schema_version": 1,
+  "cases": [
+    {
+      "prompt": "Синхронизируй все связанные репозитории, затем выполни объявленные проверки, привяжи evidence к текущим SHA и подготовь безопасный push.",
+      "expected_skills": [
+        "synchronize-git-repositories",
+        "verify-before-push"
+      ],
+      "reason": "The protected-push composition requires repository freshness before state-bound verification."
+    },
+    {
+      "prompt": "Обнови репозитории fast-forward, проверь их перед push и запиши результаты и решения в журнал проекта.",
+      "expected_skills": [
+        "synchronize-git-repositories",
+        "verify-before-push",
+        "maintain-work-log"
+      ],
+      "reason": "The request enables the work-log option after the required protected-push steps."
+    },
+    {
+      "prompt": "Fetch and safely update the tracked repositories, run the protected pre-push gate, and notify me in Telegram when the long verification finishes.",
+      "expected_skills": [
+        "synchronize-git-repositories",
+        "verify-before-push",
+        "notify-via-telegram"
+      ],
+      "reason": "The protected push is combined with an explicit Telegram completion notification."
+    },
+    {
+      "prompt": "Сначала установи актуальность Git-репозиториев, затем выполни разрешённую операцию в Yandex Cloud по конфигурации проекта.",
+      "expected_skills": [
+        "synchronize-git-repositories",
+        "operate-yandex-cloud"
+      ],
+      "reason": "The cloud-operation composition requires repository freshness before the scoped cloud action."
+    },
+    {
+      "prompt": "Синхронизируй репозитории, выполни изменение в Yandex Cloud, проверь итог, запиши операцию в work log и пришли результат в Telegram.",
+      "expected_skills": [
+        "synchronize-git-repositories",
+        "operate-yandex-cloud",
+        "verify-before-push",
+        "maintain-work-log",
+        "notify-via-telegram"
+      ],
+      "reason": "The full cloud composition enables all declared optional integrations in catalog order."
+    },
+    {
+      "prompt": "Before deployment, fetch every task-relevant repository, preserve dirty work, run the configured verification suite, and append the observed outcome to the project log.",
+      "expected_skills": [
+        "synchronize-git-repositories",
+        "verify-before-push",
+        "maintain-work-log"
+      ],
+      "reason": "Deployment readiness combines safe freshness, declared verification, and an explicit durable log entry."
+    },
+    {
+      "prompt": "Синхронизируй репозиторий, подготовь и локально проверь релиз v1.6.0 коллекции навыков, затем привяжи pre-push evidence к итоговому Git state.",
+      "expected_skills": [
+        "synchronize-git-repositories",
+        "release-skill-collection",
+        "verify-before-push"
+      ],
+      "reason": "The collection release composition establishes freshness, runs release-specific gates, and finally binds push evidence."
+    },
+    {
+      "prompt": "Подготовь безопасный релиз skills collection: обнови Git без потери локальной работы, прогони release gates, проверь push и запиши результат в work log.",
+      "expected_skills": [
+        "synchronize-git-repositories",
+        "release-skill-collection",
+        "verify-before-push",
+        "maintain-work-log"
+      ],
+      "reason": "The release workflow enables its optional durable work log after required freshness, release, and push-verification steps."
+    },
+    {
+      "prompt": "Plan and verify the next agent-skill collection release from a fresh repository, bind evidence before push, and notify me in Telegram when the long checks finish.",
+      "expected_skills": [
+        "synchronize-git-repositories",
+        "release-skill-collection",
+        "verify-before-push",
+        "notify-via-telegram"
+      ],
+      "reason": "The release composition includes the explicitly requested completion notification."
+    }
+  ]
+}

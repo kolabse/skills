@@ -116,7 +116,7 @@ python bootstrap_update.py plan --json
 python bootstrap_update.py update --yes --migrate --json
 ```
 
-Use `--release v1.5.0` to pin a version. The bootstrap requires `gh` for
+Use `--release v1.6.0` to pin a version. The bootstrap requires `gh` for
 attestation verification and removes its temporary directory on completion.
 For an offline cache, provide both `--offline-archive` and
 `--offline-checksums`. Provenance verification remains required when `gh` can
@@ -178,23 +178,35 @@ Their project-facing configuration paths, safety boundaries, and documented
 command interfaces follow the compatibility policy in
 [CONTRIBUTING.md](CONTRIBUTING.md).
 
-Each catalog entry now declares its configuration scope, idempotent configure
-command, read-only JSON status command, capabilities, prerequisites, and
-optional integrations. Versioned JSON/YAML configurations also publish a JSON
-Schema and migration command next to the skill.
+Each catalog entry now declares its configuration scope, read-only JSON status
+command, capabilities, prerequisites, and optional integrations. Stateful
+skills also declare an idempotent configure command; versioned JSON/YAML
+configurations publish a JSON Schema and migration command next to the skill.
 
 ## Supported compositions
 
-The catalog defines two reusable ordered workflows:
+The catalog defines three reusable ordered workflows:
 
 - `protected-push`: synchronize repositories, then produce current
   verification evidence; work logging and Telegram notification are optional.
 - `yandex-cloud-operation`: synchronize repositories, then run the scoped cloud
   operation; verification, work logging, and Telegram notification are
   optional when project policy enables them.
+- `skill-collection-release`: synchronize the repository, plan and locally
+  verify the collection release, then bind pre-push evidence; work logging and
+  Telegram notification are optional.
 
 Required steps fail closed. Optional logging and notification report their own
 failure without changing the observed result of the primary operation.
+
+### `release-skill-collection` (experimental)
+
+Plan and locally verify deterministic skill-collection releases without
+implicitly committing, tagging, pushing, dispatching a workflow, or publishing
+assets. The skill checks version alignment, changelog readiness, repository
+state, structural and security gates, unit tests, release archives, and
+checksums while keeping model-backed holdout, consumer, supported-platform,
+and attested publication evidence explicit.
 
 ### `verify-before-push`
 

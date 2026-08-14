@@ -99,6 +99,18 @@ tracking branch, and preservation risks are known before any fetch or pull.
 4. A dirty worktree is an additional preservation constraint, not a divergence
    classification. Report it separately.
 
+After fetching, run the dependency-free classifier when available:
+
+```shell
+python <skill-root>/scripts/classify_repository.py \
+  --repository <repository-root> --json
+```
+
+For diverged branches, distinguish ordinary divergence from `identical-tree`,
+`patch-equivalent`, and one-sided patch representation. These equivalence
+signals show that content may already be represented under different commit
+IDs; they do not authorize rewriting a branch.
+
 Completion criterion: classification uses fetched remote state rather than a
 stale local tracking reference.
 
@@ -116,6 +128,9 @@ stale local tracking reference.
 - For **diverged**, **untracked**, detached, or **operation in progress** states,
   do not invent a repair. Report the commits and state needed for a deliberate
   decision.
+- For equivalent divergence, offer a separate explicit plan that first creates
+  a recoverable backup ref and then aligns the branch only after user approval.
+  Never perform that plan as part of ordinary synchronization.
 - Never run automatic `stash`, `reset`, `rebase`, `merge`, `checkout`, `switch`,
   `clean`, force-push, branch deletion, or submodule update as synchronization.
 

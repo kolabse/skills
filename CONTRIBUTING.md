@@ -70,15 +70,17 @@ Every configurable skill declares a `configuration` object in
   Schema describing its decoded document, and a fail-closed migration command;
 - managed text uses paired, skill-specific markers, rejects malformed or
   duplicate markers, and does not rewrite text outside its block.
+- stateless skills use format `none`, expose only a read-only status command,
+  and must not invent placeholder configuration artifacts.
 
 Commands are stored as arrays rather than shell strings. Use placeholders such
 as `<project-root>` for caller-supplied values and never put credentials in a
 catalog command. Keep migration steps incremental and idempotent; reject a
 newer unknown version instead of guessing how to downgrade it.
 
-Completion criterion: configure/configure produces byte-identical output,
-status performs no writes, migrations preserve supported input, and tests cover
-missing, malformed, current, and legacy configuration.
+Completion criterion: repeated configure produces byte-identical output where
+configuration exists, status performs no writes, migrations preserve supported
+input, and tests cover missing, malformed, current, and legacy configuration.
 
 ## Preserve the consumer update path
 

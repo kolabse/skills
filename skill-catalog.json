@@ -1,7 +1,8 @@
 {
   "schema_version": 1,
-  "collection_version": "1.5.0",
+  "collection_version": "1.6.0",
   "license": "Apache-2.0",
+  "composition_evals": "evals/compositions.json",
   "release_holdout": {
     "name": "release-holdout-v2",
     "path": "evals/release-holdout-v2.json",
@@ -19,6 +20,11 @@
       "name": "yandex-cloud-operation",
       "required_steps": ["synchronize-git-repositories", "operate-yandex-cloud"],
       "optional_steps": ["verify-before-push", "maintain-work-log", "notify-via-telegram"]
+    },
+    {
+      "name": "skill-collection-release",
+      "required_steps": ["synchronize-git-repositories", "release-skill-collection", "verify-before-push"],
+      "optional_steps": ["maintain-work-log", "notify-via-telegram"]
     }
   ],
   "skills": [
@@ -178,6 +184,34 @@
       "provenance": {
         "kind": "original",
         "source": "Derived from prior project experience where this workflow was successfully applied as a project rule",
+        "canonical_repository": "https://github.com/kolabse/skills"
+      }
+    },
+    {
+      "name": "release-skill-collection",
+      "path": "skills/release-skill-collection",
+      "status": "experimental",
+      "maintainers": [
+        "@kolabse"
+      ],
+      "platforms": [
+        "linux",
+        "macos",
+        "windows"
+      ],
+      "trigger_evals": "evals/release-skill-collection.json",
+      "license": "Apache-2.0",
+      "provides": ["skill-collection-release-planning", "deterministic-release-checks"],
+      "requires": ["repository-freshness"],
+      "optional_integrations": ["push-verification-evidence", "work-log", "task-notification"],
+      "configuration": {
+        "scope": "project",
+        "format": "none",
+        "status": ["python", "scripts/release_collection.py", "status", "--project-root", "<project-root>", "--json"]
+      },
+      "provenance": {
+        "kind": "original",
+        "source": "Created to encode this collection's established deterministic and immutable release gates",
         "canonical_repository": "https://github.com/kolabse/skills"
       }
     },

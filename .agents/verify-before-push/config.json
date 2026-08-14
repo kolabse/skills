@@ -1,0 +1,42 @@
+{
+  "version": 1,
+  "evidence_file": ".agents/verify-before-push/evidence.json",
+  "repositories": [
+    {
+      "name": "skill-collection",
+      "path": ".",
+      "require_clean": true,
+      "require_upstream_current": true
+    }
+  ],
+  "checks": [
+    {
+      "name": "structural-validation",
+      "cwd": ".",
+      "command": ["python", "scripts/validate_skills.py"],
+      "timeout_seconds": 120,
+      "required": true
+    },
+    {
+      "name": "security",
+      "cwd": ".",
+      "command": ["python", "scripts/security_checks.py"],
+      "timeout_seconds": 120,
+      "required": true
+    },
+    {
+      "name": "unit-tests",
+      "cwd": ".",
+      "command": ["python", "-m", "unittest", "discover", "-s", "tests", "-v"],
+      "timeout_seconds": 600,
+      "required": true
+    },
+    {
+      "name": "consumer-smoke",
+      "cwd": ".",
+      "command": ["python", "scripts/smoke_install.py"],
+      "timeout_seconds": 300,
+      "required": true
+    }
+  ]
+}
