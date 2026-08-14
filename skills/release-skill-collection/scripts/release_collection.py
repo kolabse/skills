@@ -21,6 +21,13 @@ REQUIRED_FILES = (
     "scripts/build_release.py",
     ".github/workflows/release.yml",
 )
+POST_PUBLICATION_STEPS = [
+    "verify the published release, assets, checksums, and attestations",
+    "fetch and prune remote refs after merge and publication",
+    "switch to the configured primary branch and make it current with its upstream",
+    "delete merged local and remote feature or release branches after proving their work is represented upstream",
+    "finish with a clean worktree on the current primary branch and report any retained branch",
+]
 
 
 def load_object(path: Path) -> dict[str, Any]:
@@ -125,6 +132,7 @@ def inspect(root: Path, tag: str | None = None) -> dict[str, Any]:
         "blockers": blockers,
         "warnings": warnings,
         "ready_for_local_checks": not blockers,
+        "post_publication_steps": POST_PUBLICATION_STEPS,
         "mutates_repository": False,
     }
 

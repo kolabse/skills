@@ -40,6 +40,13 @@ class ReleaseSkillCollectionTests(unittest.TestCase):
 
         self.assertFalse(result["blockers"])
         self.assertEqual("1.6.0", result["target_version"])
+        self.assertEqual(5, len(result["post_publication_steps"]))
+        self.assertTrue(
+            any("primary branch" in item for item in result["post_publication_steps"])
+        )
+        self.assertTrue(
+            any("delete merged" in item for item in result["post_publication_steps"])
+        )
 
     def test_check_refuses_dirty_candidate_and_repository_output(self) -> None:
         plan = release_collection.inspect(ROOT, "v1.6.0")
