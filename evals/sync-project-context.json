@@ -28,6 +28,18 @@
     {
       "prompt": "На этом компьютере нет Google Drive Desktop. Настрой приватный перенос контекста проекта через подключённый Google Drive plugin.",
       "reason": "The request explicitly selects the optional connector backend for a project handoff."
+    },
+    {
+      "prompt": "Сохрани состояние этого чата, чтобы вечером продолжить реализацию этой функции на другом компьютере.",
+      "reason": "The request asks for a per-chat continuation stream within the configured project handoff."
+    },
+    {
+      "prompt": "Восстанови состояние моих рабочих чатов по проекту и покажи, на чём остановились в каждом из них.",
+      "reason": "Restoring all independent project chat streams is a core cross-device workflow."
+    },
+    {
+      "prompt": "Снова сохрани состояние: после предыдущего checkpoint мы только обсудили варианты и приняли одно решение.",
+      "reason": "A short incremental delta is the intended repeated-save workflow for an existing chat stream."
     }
   ],
   "negative": [

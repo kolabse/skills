@@ -9,12 +9,17 @@
   approved synchronized folder or the optional Google Drive plugin, with
   repository fingerprinting, freshness reporting, verified connector
   readback, secret rejection, and metadata-only defaults.
+- Per-chat continuation streams with detailed first baselines, concise later
+  deltas, independent conflict detection, accumulated restore history, and an
+  all-streams overview for repeated work across multiple computers.
 
 ### Changed
 
 - `sync-project-context` configuration schema v2 records the storage backend
   explicitly and migrates existing local-folder configurations without
   changing their behavior.
+- `sync-project-context` checkpoint schema v2 adds opaque stream identities and
+  baseline/delta semantics while continuing to read version 1 checkpoints.
 - Release holdout validation now targets stable skills; experimental additions
   must pass ordinary trigger evals and receive a new independent holdout before
   promotion to stable.

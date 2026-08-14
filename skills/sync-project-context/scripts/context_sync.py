@@ -16,15 +16,21 @@ from urllib.parse import urlsplit
 
 
 CONFIG_VERSION = 2
-CHECKPOINT_VERSION = 1
+CHECKPOINT_VERSION = 2
+SUPPORTED_CHECKPOINT_VERSIONS = {1, CHECKPOINT_VERSION}
+DEFAULT_STREAM_ID = "project"
+STREAM_ID_PATTERN = re.compile(r"^stream-[0-9a-f]{16,64}$")
 PROJECT_ID_PATTERN = re.compile(r"^[a-z0-9][a-z0-9-]{2,63}$")
 MAX_SUMMARY = 8000
 MAX_ITEM = 2000
 MAX_ITEMS = 100
 CONTEXT_LIST_FIELDS = (
+    "rationale",
+    "discussions",
     "decisions",
     "actions",
     "verifications",
+    "blockers",
     "open_questions",
     "next_steps",
     "relevant_paths",
@@ -495,6 +501,25 @@ def checkpoint_digest(checkpoint: dict[str, Any]) -> str:
     return canonical_digest(unsigned)
 
 
+def checkpoint_stream_id(checkpoint: dict[str, Any]) -> str:
+    return str(checkpoint.get("stream_id", DEFAULT_STREAM_ID))
+
+
+def checkpoint_snapshot_kind(checkpoint: dict[str, Any]) -> str:
+    # Version 1 checkpoints always described a complete project handoff.
+    return str(checkpoint.get("snapshot_kind", "baseline"))
+
+
+def validate_stream_id(value: object) -> str:
+    if value == DEFAULT_STREAM_ID:
+        return DEFAULT_STREAM_ID
+    if not isinstance(value, str) or not STREAM_ID_PATTERN.fullmatch(value):
+        raise ContextSyncError(
+            "stream_id must be 'project' or stream- followed by 16-64 lowercase hex characters"
+        )
+    return value
+
+
 def load_checkpoint_file(
     path: Path, project_id: str, *, require_filename: bool = True
 ) -> dict[str, Any]:
@@ -504,9 +529,27 @@ def load_checkpoint_file(
         raise ContextSyncError(f"Checkpoint is invalid: {path}: {error}") from error
     if (
         not isinstance(value, dict)
-        or value.get("schema_version") != CHECKPOINT_VERSION
+        or value.get("schema_version") not in SUPPORTED_CHECKPOINT_VERSIONS
     ):
         raise ContextSyncError(f"Checkpoint version is unsupported: {path}")
+    allowed = {
+        "schema_version",
+        "checkpoint_id",
+        "project_id",
+        "machine_id",
+        "created_at",
+        "parent_checkpoint_ids",
+        "repository",
+        "context",
+        "content_sha256",
+    }
+    if value["schema_version"] == CHECKPOINT_VERSION:
+        allowed.update({"stream_id", "snapshot_kind"})
+    unexpected = set(value) - allowed
+    if unexpected:
+        raise ContextSyncError(
+            f"Checkpoint has unexpected fields: {sorted(unexpected)}: {path}"
+        )
     if value.get("project_id") != project_id:
         raise ContextSyncError(f"Checkpoint project_id mismatch: {path}")
     checkpoint_id = value.get("checkpoint_id")
@@ -527,6 +570,17 @@ def load_checkpoint_file(
         raise ContextSyncError(f"Checkpoint parents are invalid: {path}")
     if len(parents) != len(set(parents)):
         raise ContextSyncError(f"Checkpoint parents are duplicated: {path}")
+    if value["schema_version"] == CHECKPOINT_VERSION:
+        try:
+            validate_stream_id(value.get("stream_id"))
+        except ContextSyncError as error:
+            raise ContextSyncError(f"Checkpoint stream is invalid: {path}") from error
+        if value.get("snapshot_kind") not in {"baseline", "delta"}:
+            raise ContextSyncError(f"Checkpoint snapshot kind is invalid: {path}")
+    try:
+        validate_context(value.get("context"), "paths")
+    except ContextSyncError as error:
+        raise ContextSyncError(f"Checkpoint context is invalid: {path}: {error}") from error
     if value.get("content_sha256") != checkpoint_digest(value):
         raise ContextSyncError(f"Checkpoint digest does not match: {path}")
     if scan_secrets(value):
@@ -568,6 +622,22 @@ def validate_checkpoint_graph(checkpoints: list[dict[str, Any]]) -> None:
             "Checkpoint history is incomplete; missing parents: "
             + ", ".join(missing)
         )
+    for item in checkpoints:
+        stream_id = checkpoint_stream_id(item)
+        for parent_id in item["parent_checkpoint_ids"]:
+            if checkpoint_stream_id(by_id[parent_id]) != stream_id:
+                raise ContextSyncError(
+                    "Checkpoint history crosses stream boundaries: "
+                    f"{item['checkpoint_id']}"
+                )
+        if (
+            item.get("schema_version") == CHECKPOINT_VERSION
+            and not item["parent_checkpoint_ids"]
+            and checkpoint_snapshot_kind(item) != "baseline"
+        ):
+            raise ContextSyncError(
+                f"Checkpoint stream root must be a baseline: {item['checkpoint_id']}"
+            )
     visiting: set[str] = set()
     visited: set[str] = set()
 
@@ -588,15 +658,21 @@ def validate_checkpoint_graph(checkpoints: list[dict[str, Any]]) -> None:
 
 def checkpoint_heads(
     checkpoints: list[dict[str, Any]],
+    stream_id: str | None = None,
 ) -> list[dict[str, Any]]:
+    selected = [
+        item
+        for item in checkpoints
+        if stream_id is None or checkpoint_stream_id(item) == stream_id
+    ]
     referenced = {
         parent
-        for item in checkpoints
+        for item in selected
         for parent in item.get("parent_checkpoint_ids", [])
     }
     heads = [
         item
-        for item in checkpoints
+        for item in selected
         if item.get("checkpoint_id") not in referenced
     ]
     heads.sort(
@@ -606,6 +682,41 @@ def checkpoint_heads(
         )
     )
     return heads
+
+
+def checkpoint_stream_ids(checkpoints: list[dict[str, Any]]) -> list[str]:
+    return sorted({checkpoint_stream_id(item) for item in checkpoints})
+
+
+def checkpoint_history(
+    checkpoints: list[dict[str, Any]], latest: dict[str, Any]
+) -> list[dict[str, Any]]:
+    by_id = {item["checkpoint_id"]: item for item in checkpoints}
+    visited: set[str] = set()
+    history: list[dict[str, Any]] = []
+
+    def append_after_parents(item: dict[str, Any]) -> None:
+        checkpoint_id = item["checkpoint_id"]
+        if checkpoint_id in visited:
+            return
+        for parent_id in sorted(item["parent_checkpoint_ids"]):
+            append_after_parents(by_id[parent_id])
+        visited.add(checkpoint_id)
+        history.append(item)
+
+    append_after_parents(latest)
+    # A new full baseline supersedes earlier history on a linear stream. Keep
+    # the complete ancestry for merge histories, where one baseline may not
+    # dominate every parent branch.
+    if all(len(item["parent_checkpoint_ids"]) <= 1 for item in history):
+        baseline_indexes = [
+            index
+            for index, item in enumerate(history)
+            if checkpoint_snapshot_kind(item) == "baseline"
+        ]
+        if baseline_indexes:
+            history = history[baseline_indexes[-1] :]
+    return history
 
 
 def load_capture_input(
@@ -919,8 +1030,46 @@ def command_status(args: argparse.Namespace) -> dict[str, Any]:
         args
     )
     checkpoints = load_checkpoints(directory, entry["project_id"])
-    heads = checkpoint_heads(checkpoints)
-    latest = heads[-1] if len(heads) == 1 else None
+    requested_stream = getattr(args, "stream_id", None)
+    if requested_stream is not None:
+        requested_stream = validate_stream_id(requested_stream)
+    stream_ids = checkpoint_stream_ids(checkpoints)
+    if requested_stream is not None:
+        stream_ids = [
+            stream_id for stream_id in stream_ids if stream_id == requested_stream
+        ]
+    streams = []
+    all_heads: list[dict[str, Any]] = []
+    for stream_id in stream_ids:
+        stream_checkpoints = [
+            item for item in checkpoints if checkpoint_stream_id(item) == stream_id
+        ]
+        heads = checkpoint_heads(stream_checkpoints, stream_id)
+        all_heads.extend(heads)
+        latest = heads[-1] if len(heads) == 1 else None
+        recorded = latest.get("repository", {}) if latest else {}
+        streams.append(
+            {
+                "stream_id": stream_id,
+                "checkpoint_count": len(stream_checkpoints),
+                "head_checkpoint_ids": [item["checkpoint_id"] for item in heads],
+                "latest_checkpoint_id": latest.get("checkpoint_id") if latest else None,
+                "latest_created_at": latest.get("created_at") if latest else None,
+                "head_matches": bool(latest)
+                and recorded.get("head") == current.get("head"),
+                "worktree_matches": bool(latest)
+                and recorded.get("dirty") == current.get("dirty"),
+                "has_conflict": len(heads) > 1,
+            }
+        )
+    single = streams[0] if len(streams) == 1 else None
+    latest = None
+    if single and single["latest_checkpoint_id"]:
+        latest = next(
+            item
+            for item in checkpoints
+            if item["checkpoint_id"] == single["latest_checkpoint_id"]
+        )
     recorded = latest.get("repository", {}) if latest else {}
     return {
         "configured": True,
@@ -934,7 +1083,9 @@ def command_status(args: argparse.Namespace) -> dict[str, Any]:
             else f"google-drive:{entry['drive_project_folder_id']}"
         ),
         "checkpoint_count": len(checkpoints),
-        "head_checkpoint_ids": [item["checkpoint_id"] for item in heads],
+        "stream_count": len(streams),
+        "streams": streams,
+        "head_checkpoint_ids": [item["checkpoint_id"] for item in all_heads],
         "latest_checkpoint_id": (
             latest.get("checkpoint_id") if latest else None
         ),
@@ -943,7 +1094,7 @@ def command_status(args: argparse.Namespace) -> dict[str, Any]:
         and recorded.get("head") == current.get("head"),
         "worktree_matches": bool(latest)
         and recorded.get("dirty") == current.get("dirty"),
-        "has_conflict": len(heads) > 1,
+        "has_conflict": any(item["has_conflict"] for item in streams),
         "current_repository": current,
     }
 
@@ -954,7 +1105,13 @@ def command_capture(args: argparse.Namespace) -> dict[str, Any]:
         load_capture_input(args, project_root), entry["mode"]
     )
     checkpoints = load_checkpoints(directory, entry["project_id"])
-    heads = checkpoint_heads(checkpoints)
+    stream_id = validate_stream_id(
+        getattr(args, "stream_id", None) or DEFAULT_STREAM_ID
+    )
+    stream_checkpoints = [
+        item for item in checkpoints if checkpoint_stream_id(item) == stream_id
+    ]
+    heads = checkpoint_heads(stream_checkpoints, stream_id)
     if len(heads) > 1 and not getattr(args, "merge_heads", False):
         identifiers = ", ".join(item["checkpoint_id"] for item in heads)
         raise ContextSyncError(
@@ -962,11 +1119,21 @@ def command_capture(args: argparse.Namespace) -> dict[str, Any]:
             f"--merge-heads: {identifiers}"
         )
     parents = [item["checkpoint_id"] for item in heads]
+    requested_kind = getattr(args, "snapshot_kind", "auto") or "auto"
+    snapshot_kind = (
+        "baseline" if not stream_checkpoints else "delta"
+    ) if requested_kind == "auto" else requested_kind
+    if snapshot_kind not in {"baseline", "delta"}:
+        raise ContextSyncError("snapshot_kind must be auto, baseline, or delta")
+    if snapshot_kind == "delta" and not parents:
+        raise ContextSyncError("A delta checkpoint requires an existing stream baseline")
     checkpoint_id = f"checkpoint-{uuid.uuid4().hex}"
     checkpoint = {
         "schema_version": CHECKPOINT_VERSION,
         "checkpoint_id": checkpoint_id,
         "project_id": entry["project_id"],
+        "stream_id": stream_id,
+        "snapshot_kind": snapshot_kind,
         "machine_id": config["machine_id"],
         "created_at": utc_now(),
         "parent_checkpoint_ids": parents,
@@ -984,6 +1151,8 @@ def command_capture(args: argparse.Namespace) -> dict[str, Any]:
         "captured": True,
         "backend": entry["backend"],
         "checkpoint_id": checkpoint_id,
+        "stream_id": stream_id,
+        "snapshot_kind": snapshot_kind,
         "parent_checkpoint_ids": parents,
         "created_at": checkpoint["created_at"],
         "path": str(path),
@@ -1001,19 +1170,28 @@ def freshness(
     }
 
 
-def command_restore(args: argparse.Namespace) -> dict[str, Any]:
-    _root, _config_path, _config, entry, current, directory = configured_context(args)
-    checkpoints = load_checkpoints(directory, entry["project_id"])
-    if not checkpoints:
-        raise ContextSyncError("No checkpoints are available")
+def restore_stream(
+    checkpoints: list[dict[str, Any]],
+    stream_id: str,
+    current: dict[str, Any],
+    checkpoint_id: str | None = None,
+) -> dict[str, Any]:
     by_id = {item["checkpoint_id"]: item for item in checkpoints}
-    heads = checkpoint_heads(checkpoints)
-    checkpoint_id = getattr(args, "checkpoint_id", None)
+    stream_checkpoints = [
+        item for item in checkpoints if checkpoint_stream_id(item) == stream_id
+    ]
+    if not stream_checkpoints:
+        raise ContextSyncError(f"Checkpoint stream does not exist: {stream_id}")
+    heads = checkpoint_heads(stream_checkpoints, stream_id)
     if checkpoint_id:
         latest = by_id.get(checkpoint_id)
         if latest is None:
             raise ContextSyncError(
                 f"Checkpoint does not exist: {checkpoint_id}"
+            )
+        if checkpoint_stream_id(latest) != stream_id:
+            raise ContextSyncError(
+                f"Checkpoint does not belong to stream {stream_id}: {checkpoint_id}"
             )
     elif len(heads) > 1:
         identifiers = ", ".join(item["checkpoint_id"] for item in heads)
@@ -1023,9 +1201,11 @@ def command_restore(args: argparse.Namespace) -> dict[str, Any]:
         )
     else:
         latest = heads[0]
+    history = checkpoint_history(checkpoints, latest)
     return {
-        "project_id": entry["project_id"],
+        "stream_id": stream_id,
         "checkpoint_id": latest["checkpoint_id"],
+        "snapshot_kind": checkpoint_snapshot_kind(latest),
         "created_at": latest["created_at"],
         "machine_id": latest["machine_id"],
         "parent_checkpoint_ids": latest["parent_checkpoint_ids"],
@@ -1035,7 +1215,57 @@ def command_restore(args: argparse.Namespace) -> dict[str, Any]:
         "recorded_repository": latest["repository"],
         "current_repository": current,
         "context": latest["context"],
+        "history_count": len(history),
+        "history": [
+            {
+                "checkpoint_id": item["checkpoint_id"],
+                "created_at": item["created_at"],
+                "machine_id": item["machine_id"],
+                "snapshot_kind": checkpoint_snapshot_kind(item),
+                "repository": item["repository"],
+                "context": item["context"],
+            }
+            for item in history
+        ],
     }
+
+
+def command_restore(args: argparse.Namespace) -> dict[str, Any]:
+    _root, _config_path, _config, entry, current, directory = configured_context(args)
+    checkpoints = load_checkpoints(directory, entry["project_id"])
+    if not checkpoints:
+        raise ContextSyncError("No checkpoints are available")
+    checkpoint_id = getattr(args, "checkpoint_id", None)
+    requested_stream = getattr(args, "stream_id", None)
+    if checkpoint_id and requested_stream is None:
+        by_id = {item["checkpoint_id"]: item for item in checkpoints}
+        selected = by_id.get(checkpoint_id)
+        if selected is None:
+            raise ContextSyncError(f"Checkpoint does not exist: {checkpoint_id}")
+        requested_stream = checkpoint_stream_id(selected)
+    if getattr(args, "all_streams", False):
+        results = [
+            restore_stream(checkpoints, stream_id, current)
+            for stream_id in checkpoint_stream_ids(checkpoints)
+        ]
+        return {
+            "project_id": entry["project_id"],
+            "all_streams": True,
+            "stream_count": len(results),
+            "streams": results,
+            "current_repository": current,
+        }
+    stream_ids = checkpoint_stream_ids(checkpoints)
+    if requested_stream is None:
+        if len(stream_ids) != 1:
+            raise ContextSyncError(
+                "Multiple checkpoint streams are available; use --stream-id or --all-streams"
+            )
+        requested_stream = stream_ids[0]
+    requested_stream = validate_stream_id(requested_stream)
+    result = restore_stream(checkpoints, requested_stream, current, checkpoint_id)
+    result["project_id"] = entry["project_id"]
+    return result
 
 
 def command_audit(args: argparse.Namespace) -> dict[str, Any]:
@@ -1046,6 +1276,7 @@ def command_audit(args: argparse.Namespace) -> dict[str, Any]:
         "ok": True,
         "project_id": entry["project_id"],
         "checkpoint_count": len(checkpoints),
+        "stream_count": len(checkpoint_stream_ids(checkpoints)),
         "scanned_at": utc_now(),
         "findings": [],
     }
@@ -1066,10 +1297,32 @@ def command_migrate(args: argparse.Namespace) -> dict[str, Any]:
 
 
 def markdown_restore(result: dict[str, Any]) -> str:
+    if result.get("all_streams"):
+        lines = [
+            "# Project handoff streams",
+            "",
+            f"- Streams: `{result['stream_count']}`",
+        ]
+        for stream in result["streams"]:
+            lines.extend(
+                [
+                    "",
+                    f"## `{stream['stream_id']}`",
+                    "",
+                    f"- Checkpoint: `{stream['checkpoint_id']}`",
+                    f"- Updates in restored history: `{stream['history_count']}`",
+                    "",
+                    stream["context"]["summary"],
+                ]
+            )
+        return "\n".join(lines) + "\n"
     lines = [
         "# Project handoff",
         "",
+        f"- Stream: `{result['stream_id']}`",
         f"- Checkpoint: `{result['checkpoint_id']}`",
+        f"- Snapshot kind: `{result['snapshot_kind']}`",
+        f"- Updates in restored history: `{result['history_count']}`",
         f"- Created: `{result['created_at']}`",
         f"- Source machine: `{result['machine_id']}`",
     ]
@@ -1089,9 +1342,12 @@ def markdown_restore(result: dict[str, Any]) -> str:
     context = result["context"]
     lines.extend(["", "## Summary", "", context["summary"]])
     headings = (
+        ("rationale", "Rationale and considered options"),
+        ("discussions", "Discussion outcomes"),
         ("decisions", "Decisions"),
         ("actions", "Actions"),
         ("verifications", "Verification"),
+        ("blockers", "Blockers"),
         ("open_questions", "Open questions"),
         ("next_steps", "Next steps"),
         ("relevant_paths", "Relevant paths"),
@@ -1154,16 +1410,24 @@ def build_parser() -> argparse.ArgumentParser:
     hydrate.add_argument("--output-root", required=True)
     hydrate.add_argument("--json", action="store_true")
 
-    for name in ("status", "audit"):
-        child = subparsers.add_parser(name)
-        child.add_argument("--project-path", required=True)
-        child.add_argument("--snapshot-root")
-        child.add_argument("--json", action="store_true")
+    status = subparsers.add_parser("status")
+    status.add_argument("--project-path", required=True)
+    status.add_argument("--snapshot-root")
+    status.add_argument("--stream-id")
+    status.add_argument("--json", action="store_true")
+
+    audit = subparsers.add_parser("audit")
+    audit.add_argument("--project-path", required=True)
+    audit.add_argument("--snapshot-root")
+    audit.add_argument("--json", action="store_true")
 
     restore = subparsers.add_parser("restore")
     restore.add_argument("--project-path", required=True)
     restore.add_argument("--snapshot-root")
-    restore.add_argument("--checkpoint-id")
+    restore_selection = restore.add_mutually_exclusive_group()
+    restore_selection.add_argument("--checkpoint-id")
+    restore_selection.add_argument("--stream-id")
+    restore_selection.add_argument("--all-streams", action="store_true")
     restore.add_argument("--json", action="store_true")
 
     capture = subparsers.add_parser("capture")
@@ -1173,6 +1437,12 @@ def build_parser() -> argparse.ArgumentParser:
     source.add_argument("--input")
     source.add_argument("--stdin", action="store_true")
     capture.add_argument("--merge-heads", action="store_true")
+    capture.add_argument("--stream-id", default=DEFAULT_STREAM_ID)
+    capture.add_argument(
+        "--snapshot-kind",
+        choices=("auto", "baseline", "delta"),
+        default="auto",
+    )
     capture.add_argument("--json", action="store_true")
 
     migrate = subparsers.add_parser("migrate")

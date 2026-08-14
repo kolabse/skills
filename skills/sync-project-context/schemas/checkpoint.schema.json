@@ -1,14 +1,19 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://github.com/kolabse/skills/sync-project-context/checkpoint.schema.json",
-  "title": "Private project handoff checkpoint",
+  "title": "Private project or chat-stream handoff checkpoint",
   "type": "object",
   "additionalProperties": false,
   "required": ["schema_version", "checkpoint_id", "project_id", "machine_id", "created_at", "parent_checkpoint_ids", "repository", "context", "content_sha256"],
   "properties": {
-    "schema_version": {"const": 1},
+    "schema_version": {"enum": [1, 2]},
     "checkpoint_id": {"type": "string", "pattern": "^checkpoint-[0-9a-f]{32}$"},
     "project_id": {"type": "string", "pattern": "^[a-z0-9][a-z0-9-]{2,63}$"},
+    "stream_id": {
+      "type": "string",
+      "pattern": "^(project|stream-[0-9a-f]{16,64})$"
+    },
+    "snapshot_kind": {"enum": ["baseline", "delta"]},
     "machine_id": {"type": "string", "pattern": "^machine-[0-9a-f]{12}$"},
     "created_at": {"type": "string", "format": "date-time"},
     "parent_checkpoint_ids": {
@@ -19,5 +24,14 @@
     "repository": {"type": "object"},
     "context": {"type": "object"},
     "content_sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"}
-  }
+  },
+  "allOf": [
+    {
+      "if": {
+        "properties": {"schema_version": {"const": 2}},
+        "required": ["schema_version"]
+      },
+      "then": {"required": ["stream_id", "snapshot_kind"]}
+    }
+  ]
 }

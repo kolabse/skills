@@ -49,12 +49,239 @@ def namespace(**values: object) -> argparse.Namespace:
         "json": True,
         "merge_heads": False,
         "checkpoint_id": None,
+        "stream_id": None,
+        "all_streams": False,
+        "snapshot_kind": "auto",
     }
     defaults.update(values)
     return argparse.Namespace(**defaults)
 
 
 class SyncProjectContextTests(unittest.TestCase):
+    def test_chat_streams_restore_baseline_and_incremental_updates(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            project = root / "project"
+            storage = root / "storage"
+            config = root / "config.json"
+            payload = root / "payload.json"
+            create_repository(project, "https://example.invalid/team/demo.git")
+            context_sync.command_configure(
+                namespace(
+                    project_path=str(project),
+                    storage_root=str(storage),
+                    project_id="proj-chat-streams",
+                    mode="metadata-only",
+                    acknowledge_storage_policy=True,
+                    config_path=str(config),
+                )
+            )
+
+            def capture(stream_id: str, value: dict[str, object]) -> dict[str, object]:
+                payload.write_text(json.dumps(value), encoding="utf-8")
+                return context_sync.command_capture(
+                    namespace(
+                        project_path=str(project),
+                        config_path=str(config),
+                        input=str(payload),
+                        stdin=False,
+                        stream_id=stream_id,
+                    )
+                )
+
+            stream_a = "stream-" + "a" * 16
+            stream_b = "stream-" + "b" * 16
+            baseline = capture(
+                stream_a,
+                {
+                    "summary": "Designed the cache invalidation feature in detail.",
+                    "rationale": ["Preferred bounded invalidation over global eviction."],
+                    "decisions": ["Keep invalidation synchronous."],
+                },
+            )
+            delta = capture(
+                stream_a,
+                {
+                    "summary": "Implemented the agreed cache adapter changes.",
+                    "discussions": ["Reviewed the latency tradeoff."],
+                    "actions": ["Added targeted unit coverage."],
+                },
+            )
+            capture(
+                stream_b,
+                {"summary": "Started an independent authentication feature."},
+            )
+
+            status = context_sync.command_status(
+                namespace(project_path=str(project), config_path=str(config))
+            )
+            restored = context_sync.command_restore(
+                namespace(
+                    project_path=str(project),
+                    config_path=str(config),
+                    stream_id=stream_a,
+                )
+            )
+            restored_all = context_sync.command_restore(
+                namespace(
+                    project_path=str(project),
+                    config_path=str(config),
+                    all_streams=True,
+                )
+            )
+
+            self.assertEqual("baseline", baseline["snapshot_kind"])
+            self.assertEqual("delta", delta["snapshot_kind"])
+            self.assertEqual([baseline["checkpoint_id"]], delta["parent_checkpoint_ids"])
+            self.assertEqual(2, status["stream_count"])
+            self.assertFalse(status["has_conflict"])
+            self.assertEqual(2, restored["history_count"])
+            self.assertEqual(
+                ["baseline", "delta"],
+                [item["snapshot_kind"] for item in restored["history"]],
+            )
+            self.assertEqual(2, restored_all["stream_count"])
+            with self.assertRaisesRegex(
+                context_sync.ContextSyncError, "Multiple checkpoint streams"
+            ):
+                context_sync.command_restore(
+                    namespace(project_path=str(project), config_path=str(config))
+                )
+
+    def test_second_computer_appends_to_restored_chat_stream(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            first_project = root / "work-project"
+            second_project = root / "home-project"
+            storage = root / "storage"
+            first_config = root / "work-config.json"
+            second_config = root / "home-config.json"
+            payload = root / "payload.json"
+            remote = "https://example.invalid/team/demo.git"
+            create_repository(first_project, remote)
+            create_repository(second_project, remote)
+            stream_id = "stream-" + "c" * 16
+
+            for project, config in (
+                (first_project, first_config),
+                (second_project, second_config),
+            ):
+                context_sync.command_configure(
+                    namespace(
+                        project_path=str(project),
+                        storage_root=str(storage),
+                        project_id="proj-two-computers",
+                        mode="metadata-only",
+                        acknowledge_storage_policy=True,
+                        config_path=str(config),
+                    )
+                )
+
+            payload.write_text(
+                json.dumps(
+                    {
+                        "summary": "Completed the initial design and implementation plan.",
+                        "rationale": ["Chose an append-only state model."],
+                        "decisions": ["Use immutable checkpoints."],
+                    }
+                ),
+                encoding="utf-8",
+            )
+            first = context_sync.command_capture(
+                namespace(
+                    project_path=str(first_project),
+                    config_path=str(first_config),
+                    input=str(payload),
+                    stdin=False,
+                    stream_id=stream_id,
+                )
+            )
+            payload.write_text(
+                json.dumps(
+                    {
+                        "summary": "Implemented the first slice on the second computer.",
+                        "actions": ["Added the stream-aware restore path."],
+                        "decisions": ["Keep later saves concise."],
+                    }
+                ),
+                encoding="utf-8",
+            )
+            second = context_sync.command_capture(
+                namespace(
+                    project_path=str(second_project),
+                    config_path=str(second_config),
+                    input=str(payload),
+                    stdin=False,
+                    stream_id=stream_id,
+                )
+            )
+            restored = context_sync.command_restore(
+                namespace(
+                    project_path=str(first_project),
+                    config_path=str(first_config),
+                    stream_id=stream_id,
+                )
+            )
+
+            self.assertEqual([first["checkpoint_id"]], second["parent_checkpoint_ids"])
+            self.assertEqual(2, restored["history_count"])
+            self.assertEqual(
+                2, len({item["machine_id"] for item in restored["history"]})
+            )
+            self.assertEqual(
+                "Implemented the first slice on the second computer.",
+                restored["context"]["summary"],
+            )
+
+    def test_checkpoint_graph_rejects_cross_stream_parents(self) -> None:
+        parent_id = "checkpoint-" + "a" * 32
+        child_id = "checkpoint-" + "b" * 32
+        with self.assertRaisesRegex(
+            context_sync.ContextSyncError, "crosses stream boundaries"
+        ):
+            context_sync.validate_checkpoint_graph(
+                [
+                    {
+                        "schema_version": 2,
+                        "checkpoint_id": parent_id,
+                        "stream_id": "stream-" + "a" * 16,
+                        "snapshot_kind": "baseline",
+                        "parent_checkpoint_ids": [],
+                    },
+                    {
+                        "schema_version": 2,
+                        "checkpoint_id": child_id,
+                        "stream_id": "stream-" + "b" * 16,
+                        "snapshot_kind": "delta",
+                        "parent_checkpoint_ids": [parent_id],
+                    },
+                ]
+            )
+
+    def test_checkpoint_loader_rejects_embedded_transcript_field(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / ("checkpoint-" + "d" * 32 + ".json")
+            checkpoint = {
+                "schema_version": 2,
+                "checkpoint_id": "checkpoint-" + "d" * 32,
+                "project_id": "proj-private-context",
+                "stream_id": "stream-" + "d" * 16,
+                "snapshot_kind": "baseline",
+                "machine_id": "machine-000000000000",
+                "created_at": "2026-08-14T00:00:00Z",
+                "parent_checkpoint_ids": [],
+                "repository": {},
+                "context": {"summary": "Safe continuation summary."},
+                "transcript": ["raw chat content must not be accepted"],
+            }
+            checkpoint["content_sha256"] = context_sync.checkpoint_digest(checkpoint)
+            path.write_text(json.dumps(checkpoint), encoding="utf-8")
+
+            with self.assertRaisesRegex(
+                context_sync.ContextSyncError, "unexpected fields"
+            ):
+                context_sync.load_checkpoint_file(path, "proj-private-context")
+
     def test_google_drive_snapshot_capture_and_restore(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)

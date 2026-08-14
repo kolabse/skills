@@ -195,7 +195,7 @@
       ],
       "trigger_evals": "evals/sync-project-context.json",
       "license": "Apache-2.0",
-      "provides": ["private-project-handoff"],
+      "provides": ["private-project-handoff", "per-chat-continuation"],
       "requires": [],
       "optional_integrations": ["google-drive", "repository-freshness", "work-log"],
       "configuration": {
