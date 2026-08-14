@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+## [1.5.0] - 2026-08-14
+
 ### Added
 
 - An experimental `sync-project-context` skill that saves immutable, sanitized
@@ -250,6 +252,7 @@ First versioned release of the kolabse skill collection.
 - Tests for configuration migration, fake cloud and infrastructure CLIs,
   installation confirmation, and collection metadata.
 
+[1.5.0]: https://github.com/kolabse/skills/releases/tag/v1.5.0
 [1.4.0]: https://github.com/kolabse/skills/releases/tag/v1.4.0
 [1.3.0]: https://github.com/kolabse/skills/releases/tag/v1.3.0
 [1.2.2]: https://github.com/kolabse/skills/releases/tag/v1.2.2
