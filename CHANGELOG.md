@@ -2,6 +2,19 @@
 
 ## Unreleased
 
+### Added
+
+- An experimental `sync-project-context` skill that saves immutable, sanitized
+  cross-device handoff checkpoints in an approved synchronized folder outside
+  the team repository, with repository fingerprinting, freshness reporting,
+  secret rejection, and metadata-only defaults.
+
+### Changed
+
+- Release holdout validation now targets stable skills; experimental additions
+  must pass ordinary trigger evals and receive a new independent holdout before
+  promotion to stable.
+
 ## [1.4.0] - 2026-08-13
 
 ### Added

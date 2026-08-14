@@ -1,7 +1,7 @@
 {
   "name": "kolabse-skills",
   "version": "1.4.0",
-  "description": "Reusable Git, project, notification, and infrastructure workflows maintained by kolabse.",
+  "description": "Reusable Git, project, private context, notification, and infrastructure workflows maintained by kolabse.",
   "author": {
     "name": "kolabse",
     "url": "https://github.com/kolabse"
@@ -16,6 +16,7 @@
     "infrastructure",
     "logging",
     "notifications",
+    "project-handoff",
     "project-workflows",
     "repository-synchronization",
     "testing",
@@ -27,8 +28,8 @@
   "skills": "./skills/",
   "interface": {
     "displayName": "kolabse Skills",
-    "shortDescription": "Reusable Git, project, and cloud workflows",
-    "longDescription": "A maintained collection of workflows for safe Git synchronization, state-bound pre-push verification, project work logs, task notifications, and cloud infrastructure.",
+    "shortDescription": "Reusable Git, context, and cloud workflows",
+    "longDescription": "A maintained collection of workflows for safe Git synchronization, state-bound pre-push verification, private cross-device project handoffs, project work logs, task notifications, and cloud infrastructure.",
     "developerName": "kolabse",
     "category": "Developer Tools",
     "capabilities": [
@@ -39,6 +40,7 @@
     "defaultPrompt": [
       "Run project checks and verify evidence for this Git state before push.",
       "Safely synchronize every Git repository involved in this task.",
+      "Save or restore a private cross-device handoff for this project.",
       "Configure this project for reusable work logs, notifications, or Yandex Cloud operations."
     ]
   }

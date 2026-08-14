@@ -22,6 +22,7 @@ KNOWN_SKILLS = {
     "maintain-work-log",
     "notify-via-telegram",
     "operate-yandex-cloud",
+    "sync-project-context",
     "synchronize-git-repositories",
     "verify-before-push",
 }
@@ -468,6 +469,19 @@ def telegram_config_path(environment: dict[str, str] | None = None) -> Path:
     return Path(env.get("XDG_CONFIG_HOME", Path.home() / ".config")) / "codex" / "telegram-notify" / "config.json"
 
 
+def sync_project_context_config_path(environment: dict[str, str] | None = None) -> Path:
+    env = os.environ if environment is None else environment
+    if env.get("KOLABSE_SYNC_PROJECT_CONTEXT_CONFIG"):
+        return Path(env["KOLABSE_SYNC_PROJECT_CONTEXT_CONFIG"]).expanduser().resolve()
+    if os.name == "nt":
+        base = Path(env.get("APPDATA", Path.home() / "AppData/Roaming"))
+    elif sys.platform == "darwin":
+        base = Path.home() / "Library/Application Support"
+    else:
+        base = Path(env.get("XDG_CONFIG_HOME", Path.home() / ".config"))
+    return base / "kolabse" / "sync-project-context" / "config.json"
+
+
 def python_executable() -> str:
     return shutil.which("python") or sys.executable
 
@@ -502,6 +516,22 @@ def migration_commands(project: Path, include_user_config: bool) -> list[tuple[s
             (
                 "notify-via-telegram",
                 [python, str(telegram_script), "--config", str(telegram_config), "migrate", "--json"],
+            )
+        )
+    context_config = sync_project_context_config_path()
+    context_script = installed / "sync-project-context/scripts/context_sync.py"
+    if include_user_config and context_config.is_file() and context_script.is_file():
+        commands.append(
+            (
+                "sync-project-context",
+                [
+                    python,
+                    str(context_script),
+                    "--config-path",
+                    str(context_config),
+                    "migrate",
+                    "--json",
+                ],
             )
         )
     return commands

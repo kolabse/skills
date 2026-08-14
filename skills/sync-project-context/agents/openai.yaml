@@ -1,0 +1,4 @@
+interface:
+  display_name: "Sync Project Context"
+  short_description: "Sync private project handoff context"
+  default_prompt: "Use $sync-project-context to save or restore a private project handoff checkpoint."

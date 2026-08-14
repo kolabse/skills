@@ -180,6 +180,38 @@
         "source": "Derived from prior project experience where this workflow was successfully applied as a project rule",
         "canonical_repository": "https://github.com/kolabse/skills"
       }
+    },
+    {
+      "name": "sync-project-context",
+      "path": "skills/sync-project-context",
+      "status": "experimental",
+      "maintainers": [
+        "@kolabse"
+      ],
+      "platforms": [
+        "linux",
+        "macos",
+        "windows"
+      ],
+      "trigger_evals": "evals/sync-project-context.json",
+      "license": "Apache-2.0",
+      "provides": ["private-project-handoff"],
+      "requires": [],
+      "optional_integrations": ["repository-freshness", "work-log"],
+      "configuration": {
+        "scope": "user",
+        "format": "json",
+        "current_version": 1,
+        "schema": "schemas/config.schema.json",
+        "configure": ["python", "scripts/context_sync.py", "configure", "--project-path", "<project-root>", "--storage-root", "<approved-sync-folder>", "--acknowledge-storage-policy"],
+        "status": ["python", "scripts/context_sync.py", "status", "--project-path", "<project-root>", "--json"],
+        "migrate": ["python", "scripts/context_sync.py", "migrate", "--json"]
+      },
+      "provenance": {
+        "kind": "original",
+        "source": "Derived from prior project experience where this workflow was successfully applied as a project rule",
+        "canonical_repository": "https://github.com/kolabse/skills"
+      }
     }
   ]
 }

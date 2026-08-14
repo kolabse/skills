@@ -417,6 +417,46 @@ class ManageInstalledSkillsTests(unittest.TestCase):
             self.assertEqual([], manager.migration_commands(project, False))
             self.assertFalse((project / ".agents/verify-before-push").exists())
 
+    def test_sync_project_context_config_path_honors_override(self) -> None:
+        expected = (Path("private") / "context.json").resolve()
+        actual = manager.sync_project_context_config_path(
+            {"KOLABSE_SYNC_PROJECT_CONTEXT_CONFIG": str(expected)}
+        )
+        self.assertEqual(expected, actual)
+
+    def test_migration_discovers_existing_sync_project_context_config(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            project = self.make_project(root, {"sync-project-context": "1.4.0"})
+            script = project / ".agents/skills/sync-project-context/scripts/context_sync.py"
+            script.parent.mkdir(parents=True)
+            script.write_text("", encoding="utf-8")
+            config = root / "user-config/context.json"
+            config.parent.mkdir()
+            config.write_text("{}", encoding="utf-8")
+
+            with patch.object(
+                manager, "sync_project_context_config_path", return_value=config
+            ):
+                disabled = manager.migration_commands(project, False)
+                enabled = manager.migration_commands(project, True)
+
+            self.assertEqual([], disabled)
+            self.assertEqual(1, len(enabled))
+            name, command = enabled[0]
+            self.assertEqual("sync-project-context", name)
+            self.assertEqual(
+                [
+                    manager.python_executable(),
+                    str(script),
+                    "--config-path",
+                    str(config),
+                    "migrate",
+                    "--json",
+                ],
+                command,
+            )
+
 
 if __name__ == "__main__":
     unittest.main()
