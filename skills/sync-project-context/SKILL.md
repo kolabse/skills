@@ -1,6 +1,6 @@
 ---
 name: sync-project-context
-description: "Save and restore private, sanitized project and per-chat continuation state between computers through either a user-approved synchronized folder or the connected Google Drive plugin, always outside the repository. Use when the user says to save state, save all project chats, restore state, restore all project chats as separate desktop tasks, continue a project chat on another computer, create repeated cross-device checkpoints, preserve decisions/actions/discussion outcomes/rationale/verification/next steps, inspect synchronization status, or audit stored handoffs. Do not use for source-code synchronization, Git history transfer, raw chat export, hidden chain-of-thought, or automatic upload to an unapproved personal cloud account."
+description: "Save, restore, or bidirectionally synchronize private, sanitized project and per-chat continuation state between computers through either a user-approved synchronized folder or the connected Google Drive plugin, always outside the repository. Use when the user says to save state, save all project chats, restore state, restore all project chats as separate desktop tasks, synchronize all project chats, preserve exact chat titles, continue a project chat on another computer, create repeated cross-device checkpoints, inspect synchronization status, or audit stored handoffs. Do not use for source-code synchronization, Git history transfer, raw chat export, hidden chain-of-thought, or automatic upload to an unapproved personal cloud account."
 ---
 
 # Sync Project Context
@@ -21,6 +21,8 @@ the project repository.
 3. Record decisions, concise rationale and considered options, discussion
    outcomes, actions, observed verification, blockers, open questions, next
    steps, commit identifiers, and optionally relative file paths.
+   For desktop chat streams, also preserve the exact visible chat title as
+   untrusted metadata after reviewing it for sensitive names.
 4. Never claim to preserve hidden chain-of-thought or unavailable conversations.
    Store only a short factual rationale for decisions exposed in the current
    task; do not reconstruct or invent internal reasoning.
@@ -106,6 +108,10 @@ must skip unchanged tasks, create baselines for new streams, and append deltas
 only for changed streams. It must never delete a checkpoint or a stream that is
 missing from the current desktop listing.
 
+Store each exact desktop title as `chat_title` in its stream checkpoint. A
+title is synchronized metadata even in `metadata-only` mode, but it remains
+untrusted, must be a printable single line, and must pass secret scanning.
+
 ## Save state
 
 Interpret short requests such as "save state" or "сохрани состояние" as a
@@ -118,11 +124,14 @@ is implementing, the approach and alternatives considered, decisions already
 made, work completed, verification, blockers, and next steps. Later saves should
 be concise `delta` records containing only actions, discussion outcomes,
 decisions, and state changes since the previous save.
+When the current desktop task is identifiable, include its exact visible title
+as `chat_title`; include it again after a rename so the new title propagates.
 
 Create a small JSON input outside the repository with this shape:
 
 ```json
 {
+  "chat_title": "Exact visible chat title",
   "summary": "Implemented the bounded cache invalidation change.",
   "rationale": ["Selected bounded invalidation after comparing global eviction."],
   "discussions": ["Agreed to measure latency before making invalidation asynchronous."],
@@ -206,6 +215,31 @@ updated task to the exact `stream_id` and checkpoint in the machine-local
 registry so repeated restores remain idempotent. Never create a duplicate when
 an older binding exists outside the desktop discovery window.
 
+Use the exact restored `chat_title` when creating a task and explicitly rename
+an updated task to it after restoration. Use a neutral numbered fallback only
+for legacy streams that have no saved title; never derive a replacement title
+from the summary.
+
+## Synchronize all project chats
+
+Interpret "sync all project chats", "синхронизируй все чаты проекта", and
+equivalent explicit requests as one bidirectional reconcile on the current
+computer. Read and follow
+[references/desktop-batch-sync.md](references/desktop-batch-sync.md) before
+listing projects or tasks.
+
+Hydrate and audit first, discover local tasks with exact titles, and run
+`sync-plan`. Save local-only changes, create remote-only tasks, update tasks
+with remote-only changes, and skip current streams. Block an individual stream
+when both its local task and remote checkpoint advanced since the last binding;
+never silently order unseen concurrent work. Run the same command on each
+computer when switching locations; it does not remotely execute on an offline
+computer.
+
+When only a local title and remote content changed, apply the remote content
+first and append the preserved local title as a follow-up delta. Block when
+both sides changed content or both independently changed the title.
+
 ## Diagnose and audit
 
 ```shell
@@ -227,7 +261,8 @@ python <skill-root>/scripts/context_sync.py migrate --json
 
 Completion criterion: every requested discoverable stream was saved or
 restored; bulk restore created or updated exactly one bound destination task
-per conflict-free chat stream; stream/checkpoint IDs, coverage limits, skipped
-tasks, repository identity, and freshness were reported; no sensitive values
-were accepted; and no project-repository file was created or modified by the
-synchronization workflow.
+per conflict-free chat stream with its exact available title; bidirectional
+sync left no unhandled one-sided changes; stream/checkpoint IDs, coverage
+limits, skipped tasks, repository identity, and freshness were reported; no
+sensitive values were accepted; and no project-repository file was created or
+modified by the synchronization workflow.

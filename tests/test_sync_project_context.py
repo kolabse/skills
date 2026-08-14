@@ -83,8 +83,16 @@ class SyncProjectContextTests(unittest.TestCase):
                 json.dumps(
                     {
                         "threads": [
-                            {"thread_id": thread_a, "source_revision": 100},
-                            {"thread_id": thread_b, "source_revision": 200},
+                            {
+                                "thread_id": thread_a,
+                                "source_revision": 100,
+                                "title": "Exact feature A title",
+                            },
+                            {
+                                "thread_id": thread_b,
+                                "source_revision": 200,
+                                "title": "Exact feature B title",
+                            },
                         ]
                     }
                 ),
@@ -110,12 +118,14 @@ class SyncProjectContextTests(unittest.TestCase):
                                 "thread_id": thread_a,
                                 "source_revision": 100,
                                 "source_head_turn_id": "turn-a1",
+                                "title": "Exact feature A title",
                                 "context": {"summary": "Completed feature A."},
                             },
                             {
                                 "thread_id": thread_b,
                                 "source_revision": 200,
                                 "source_head_turn_id": "turn-b1",
+                                "title": "Exact feature B title",
                                 "context": {"summary": "Designed feature B."},
                             },
                         ]
@@ -135,6 +145,14 @@ class SyncProjectContextTests(unittest.TestCase):
             registry_text = Path(first["registry_path"]).read_text(encoding="utf-8")
             self.assertNotIn(thread_a, registry_text)
             self.assertNotIn(thread_b, registry_text)
+            restored = context_sync.command_restore(
+                namespace(
+                    project_path=str(project),
+                    config_path=str(config),
+                    stream_id=first["threads"][0]["stream_id"],
+                )
+            )
+            self.assertEqual("Exact feature A title", restored["chat_title"])
 
             unchanged_plan = context_sync.command_batch_plan(
                 namespace(
@@ -153,8 +171,16 @@ class SyncProjectContextTests(unittest.TestCase):
                 json.dumps(
                     {
                         "threads": [
-                            {"thread_id": thread_a, "source_revision": 101},
-                            {"thread_id": thread_b, "source_revision": 200},
+                            {
+                                "thread_id": thread_a,
+                                "source_revision": 101,
+                                "title": "Exact feature A title",
+                            },
+                            {
+                                "thread_id": thread_b,
+                                "source_revision": 200,
+                                "title": "Exact feature B title",
+                            },
                         ]
                     }
                 ),
@@ -181,6 +207,7 @@ class SyncProjectContextTests(unittest.TestCase):
                                 "thread_id": thread_a,
                                 "source_revision": 101,
                                 "source_head_turn_id": "turn-a2",
+                                "title": "Exact feature A title",
                                 "context": {
                                     "summary": "Verified the feature A follow-up.",
                                     "verifications": ["Targeted tests passed."],
@@ -283,6 +310,279 @@ class SyncProjectContextTests(unittest.TestCase):
             self.assertEqual("unchanged", plan["threads"][0]["action"])
             self.assertEqual(stream_id, plan["threads"][0]["stream_id"])
 
+    def test_title_only_change_creates_delta_and_restores_exact_title(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            project = root / "project"
+            storage = root / "storage"
+            config = root / "config.json"
+            batch = root / "batch.json"
+            discovery = root / "discovery.json"
+            create_repository(project, "https://example.invalid/team/demo.git")
+            context_sync.command_configure(
+                namespace(
+                    project_path=str(project),
+                    storage_root=str(storage),
+                    project_id="proj-title-sync",
+                    mode="metadata-only",
+                    acknowledge_storage_policy=True,
+                    config_path=str(config),
+                )
+            )
+
+            def capture(title: str, summary: str) -> dict[str, object]:
+                batch.write_text(
+                    json.dumps(
+                        {
+                            "threads": [
+                                {
+                                    "thread_id": "title-thread",
+                                    "source_revision": "same-revision",
+                                    "source_head_turn_id": "same-turn",
+                                    "title": title,
+                                    "context": {"summary": summary},
+                                }
+                            ]
+                        }
+                    ),
+                    encoding="utf-8",
+                )
+                return context_sync.command_batch_capture(
+                    namespace(
+                        project_path=str(project),
+                        config_path=str(config),
+                        input=str(batch),
+                        stdin=False,
+                    )
+                )
+
+            first = capture("Original exact title", "Created the baseline.")
+            discovery.write_text(
+                json.dumps(
+                    {
+                        "threads": [
+                            {
+                                "thread_id": "title-thread",
+                                "source_revision": "same-revision",
+                                "title": "Renamed exact title",
+                            }
+                        ]
+                    }
+                ),
+                encoding="utf-8",
+            )
+            plan = context_sync.command_batch_plan(
+                namespace(
+                    project_path=str(project),
+                    config_path=str(config),
+                    input=str(discovery),
+                    stdin=False,
+                )
+            )
+            self.assertEqual("delta", plan["threads"][0]["action"])
+            self.assertEqual("none", plan["threads"][0]["read_scope"])
+            self.assertTrue(plan["threads"][0]["title_changed"])
+
+            second = capture("Renamed exact title", "Renamed the project chat.")
+            self.assertEqual(1, second["checkpoint_count"])
+            restored = context_sync.command_restore(
+                namespace(
+                    project_path=str(project),
+                    config_path=str(config),
+                    stream_id=first["threads"][0]["stream_id"],
+                )
+            )
+            self.assertEqual("Renamed exact title", restored["chat_title"])
+            self.assertEqual(2, restored["history_count"])
+
+    def test_sync_plan_detects_direction_and_concurrent_changes(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            project = root / "project"
+            storage = root / "storage"
+            config = root / "config.json"
+            payload = root / "payload.json"
+            discovery = root / "discovery.json"
+            create_repository(project, "https://example.invalid/team/demo.git")
+            context_sync.command_configure(
+                namespace(
+                    project_path=str(project),
+                    storage_root=str(storage),
+                    project_id="proj-bidirectional-sync",
+                    mode="metadata-only",
+                    acknowledge_storage_policy=True,
+                    config_path=str(config),
+                )
+            )
+            stream_id = "stream-" + "9" * 32
+            payload.write_text(
+                json.dumps(
+                    {
+                        "summary": "Remote baseline.",
+                        "chat_title": "Remote exact title",
+                    }
+                ),
+                encoding="utf-8",
+            )
+            baseline = context_sync.command_capture(
+                namespace(
+                    project_path=str(project),
+                    config_path=str(config),
+                    input=str(payload),
+                    stdin=False,
+                    stream_id=stream_id,
+                )
+            )
+            discovery.write_text('{"threads": []}', encoding="utf-8")
+            remote_only = context_sync.command_sync_plan(
+                namespace(
+                    project_path=str(project),
+                    config_path=str(config),
+                    input=str(discovery),
+                    stdin=False,
+                )
+            )
+            self.assertEqual("create", remote_only["streams"][0]["action"])
+            self.assertEqual(
+                "Remote exact title", remote_only["streams"][0]["chat_title"]
+            )
+
+            context_sync.command_bind_thread(
+                namespace(
+                    project_path=str(project),
+                    config_path=str(config),
+                    thread_id="local-restored-thread",
+                    stream_id=stream_id,
+                    checkpoint_id=baseline["checkpoint_id"],
+                    source_revision="revision-1",
+                    source_head_turn_id="turn-1",
+                )
+            )
+            discovery.write_text(
+                json.dumps(
+                    {
+                        "threads": [
+                            {
+                                "thread_id": "local-restored-thread",
+                                "source_revision": "revision-1",
+                                "title": "Remote exact title",
+                            },
+                            {
+                                "thread_id": "new-local-thread",
+                                "source_revision": "new-revision",
+                                "title": "New local exact title",
+                            },
+                        ]
+                    }
+                ),
+                encoding="utf-8",
+            )
+            synchronized = context_sync.command_sync_plan(
+                namespace(
+                    project_path=str(project),
+                    config_path=str(config),
+                    input=str(discovery),
+                    stdin=False,
+                )
+            )
+            actions = {
+                item["stream_id"]: item["action"]
+                for item in synchronized["streams"]
+            }
+            self.assertEqual("unchanged", actions[stream_id])
+            self.assertIn("save", actions.values())
+
+            payload.write_text(
+                json.dumps({"summary": "Remote content-only delta."}),
+                encoding="utf-8",
+            )
+            context_sync.command_capture(
+                namespace(
+                    project_path=str(project),
+                    config_path=str(config),
+                    input=str(payload),
+                    stdin=False,
+                    stream_id=stream_id,
+                )
+            )
+            changed = json.loads(discovery.read_text(encoding="utf-8"))
+            changed["threads"][0]["title"] = "Preserved local exact title"
+            discovery.write_text(json.dumps(changed), encoding="utf-8")
+            compatible = context_sync.command_sync_plan(
+                namespace(
+                    project_path=str(project),
+                    config_path=str(config),
+                    input=str(discovery),
+                    stdin=False,
+                )
+            )
+            compatible_target = next(
+                item
+                for item in compatible["streams"]
+                if item["stream_id"] == stream_id
+            )
+            self.assertEqual("update", compatible_target["action"])
+            self.assertTrue(compatible_target["preserve_local_title"])
+            self.assertTrue(compatible_target["follow_up_save_title"])
+
+            changed["threads"][0]["source_revision"] = "revision-2"
+            discovery.write_text(json.dumps(changed), encoding="utf-8")
+            content_conflict = context_sync.command_sync_plan(
+                namespace(
+                    project_path=str(project),
+                    config_path=str(config),
+                    input=str(discovery),
+                    stdin=False,
+                )
+            )
+            content_target = next(
+                item
+                for item in content_conflict["streams"]
+                if item["stream_id"] == stream_id
+            )
+            self.assertEqual("blocked", content_target["action"])
+            self.assertEqual(
+                "concurrent_local_remote_content_changes",
+                content_target["reason"],
+            )
+            changed["threads"][0]["source_revision"] = "revision-1"
+
+            payload.write_text(
+                json.dumps(
+                    {
+                        "summary": "Remote delta.",
+                        "chat_title": "Remote renamed title",
+                    }
+                ),
+                encoding="utf-8",
+            )
+            context_sync.command_capture(
+                namespace(
+                    project_path=str(project),
+                    config_path=str(config),
+                    input=str(payload),
+                    stdin=False,
+                    stream_id=stream_id,
+                )
+            )
+            changed["threads"][0]["title"] = "Local renamed title"
+            discovery.write_text(json.dumps(changed), encoding="utf-8")
+            conflict = context_sync.command_sync_plan(
+                namespace(
+                    project_path=str(project),
+                    config_path=str(config),
+                    input=str(discovery),
+                    stdin=False,
+                )
+            )
+            target = next(
+                item for item in conflict["streams"] if item["stream_id"] == stream_id
+            )
+            self.assertEqual("blocked", target["action"])
+            self.assertEqual(
+                "concurrent_local_remote_title_changes", target["reason"]
+            )
+
     def test_materialize_plan_creates_then_updates_one_task_per_stream(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
@@ -335,6 +635,7 @@ class SyncProjectContextTests(unittest.TestCase):
                 )
             )
             self.assertEqual("create", initial["streams"][0]["action"])
+            self.assertFalse(initial["streams"][0]["title_available"])
             self.assertEqual(1, initial["stream_count"])
             self.assertEqual(
                 project_context["checkpoint_id"],
@@ -1025,6 +1326,27 @@ class SyncProjectContextTests(unittest.TestCase):
             context_sync.ContextSyncError, "possible secret"
         ):
             context_sync.validate_context(unsafe, "metadata-only")
+
+        with self.assertRaisesRegex(
+            context_sync.ContextSyncError, "possible secret"
+        ):
+            context_sync.validate_context(
+                {
+                    "summary": "Continue safely.",
+                    "chat_title": "Bearer abcdefghijklmnopqrstuvwxyz",
+                },
+                "metadata-only",
+            )
+        with self.assertRaisesRegex(
+            context_sync.ContextSyncError, "single printable line"
+        ):
+            context_sync.validate_context(
+                {
+                    "summary": "Continue safely.",
+                    "chat_title": "First line\nSecond line",
+                },
+                "metadata-only",
+            )
 
     def test_storage_inside_project_is_rejected(self) -> None:
         with tempfile.TemporaryDirectory() as directory:

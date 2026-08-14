@@ -314,12 +314,15 @@ duplicate streams without storing task titles or transcripts. The matching
 its canonical path, creates one project task per missing saved stream, updates
 an existing bound task when a newer delta arrives, and skips already-current
 tasks without importing raw transcripts. The connector backend validates a
-complete downloaded snapshot
-locally and reads uploads back before success. It records reviewed summaries,
+complete downloaded snapshot locally and reads uploads back before success.
+Exact visible chat titles are stored as scanned metadata and restored without
+semantic regeneration. The unified "sync all project chats" command plans
+local saves, remote creates or updates, unchanged skips, and explicit conflicts
+in one bidirectional pass on the active computer. It records reviewed summaries,
 factual rationale, discussion outcomes, decisions, actions, verification,
 questions, next steps, and Git fingerprints; it never copies source contents,
 diffs, raw transcripts, or hidden reasoning. Metadata-only mode also omits
-branch names and file paths.
+branch names and file paths; chat titles remain intentionally included.
 Configuration requires an explicit storage-policy acknowledgement, repository
 fingerprints prevent cross-project restore, and high-confidence secret patterns
 fail closed.

@@ -22,7 +22,17 @@
       "items": {"type": "string", "pattern": "^checkpoint-[0-9a-f]{32}$"}
     },
     "repository": {"type": "object"},
-    "context": {"type": "object"},
+    "context": {
+      "type": "object",
+      "properties": {
+        "chat_title": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 256,
+          "pattern": "^[^\\u0000-\\u001f\\u007f]+$"
+        }
+      }
+    },
     "content_sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"}
   },
   "allOf": [

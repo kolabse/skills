@@ -23,6 +23,7 @@ DEFAULT_STREAM_ID = "project"
 STREAM_ID_PATTERN = re.compile(r"^stream-[0-9a-f]{16,64}$")
 PROJECT_ID_PATTERN = re.compile(r"^[a-z0-9][a-z0-9-]{2,63}$")
 MAX_SUMMARY = 8000
+MAX_CHAT_TITLE = 256
 MAX_ITEM = 2000
 MAX_ITEMS = 100
 MAX_THREAD_ID = 512
@@ -404,7 +405,7 @@ def scan_secrets(
 def validate_context(value: object, mode: str) -> dict[str, Any]:
     if not isinstance(value, dict):
         raise ContextSyncError("Capture input must be a JSON object")
-    allowed = {"summary", *CONTEXT_LIST_FIELDS}
+    allowed = {"summary", "chat_title", *CONTEXT_LIST_FIELDS}
     unexpected = set(value) - allowed
     if unexpected:
         raise ContextSyncError(
@@ -420,6 +421,8 @@ def validate_context(value: object, mode: str) -> dict[str, Any]:
             f"summary must contain 1-{MAX_SUMMARY} characters"
         )
     context: dict[str, Any] = {"summary": summary.strip()}
+    if "chat_title" in value:
+        context["chat_title"] = normalize_chat_title(value["chat_title"])
     for field in CONTEXT_LIST_FIELDS:
         items = value.get(field, [])
         if not isinstance(items, list) or len(items) > MAX_ITEMS:
@@ -449,6 +452,24 @@ def validate_context(value: object, mode: str) -> dict[str, Any]:
             f"Capture rejected: possible secret at {locations}"
         )
     return context
+
+
+def normalize_chat_title(value: object) -> str:
+    if not isinstance(value, str):
+        raise ContextSyncError("chat_title must be a string")
+    title = value.strip()
+    if not title or len(title) > MAX_CHAT_TITLE:
+        raise ContextSyncError(
+            f"chat_title must contain 1-{MAX_CHAT_TITLE} characters"
+        )
+    if re.search(r"[\x00-\x1f\x7f]", title):
+        raise ContextSyncError("chat_title must be a single printable line")
+    findings = scan_secrets(title, "$.chat_title")
+    if findings:
+        raise ContextSyncError(
+            "Capture rejected: possible secret at $.chat_title"
+        )
+    return title
 
 
 def thread_registry_path(config_path: Path) -> Path:
@@ -848,6 +869,26 @@ def checkpoint_history(
         if baseline_indexes:
             history = history[baseline_indexes[-1] :]
     return history
+
+
+def effective_chat_title(
+    checkpoints: list[dict[str, Any]], latest: dict[str, Any]
+) -> str | None:
+    for item in reversed(checkpoint_history(checkpoints, latest)):
+        title = item.get("context", {}).get("chat_title")
+        if isinstance(title, str) and title:
+            return title
+    return None
+
+
+def stream_single_head(
+    checkpoints: list[dict[str, Any]], stream_id: str
+) -> dict[str, Any] | None:
+    selected = [
+        item for item in checkpoints if checkpoint_stream_id(item) == stream_id
+    ]
+    heads = checkpoint_heads(selected, stream_id)
+    return heads[0] if len(heads) == 1 else None
 
 
 def load_capture_input(
@@ -1311,18 +1352,23 @@ def command_capture(args: argparse.Namespace) -> dict[str, Any]:
 
 
 def load_batch_records(
-    args: argparse.Namespace, project_root: Path, *, include_context: bool
+    args: argparse.Namespace,
+    project_root: Path,
+    *,
+    include_context: bool,
+    allow_empty: bool = False,
 ) -> list[dict[str, Any]]:
     value = load_capture_input(args, project_root)
     if not isinstance(value, dict) or set(value) != {"threads"}:
         raise ContextSyncError("Batch input must contain only a threads array")
     records = value.get("threads")
-    if not isinstance(records, list) or not records:
-        raise ContextSyncError("Batch threads must be a non-empty array")
+    if not isinstance(records, list) or (not records and not allow_empty):
+        expectation = "an array" if allow_empty else "a non-empty array"
+        raise ContextSyncError(f"Batch threads must be {expectation}")
     normalized: list[dict[str, Any]] = []
     seen: set[str] = set()
     required = {"thread_id", "source_revision"}
-    optional = {"source_head_turn_id", "stream_id"}
+    optional = {"source_head_turn_id", "stream_id", "title"}
     if include_context:
         required.add("context")
     for index, record in enumerate(records):
@@ -1346,6 +1392,9 @@ def load_batch_records(
                 record.get("source_head_turn_id"), "source_head_turn_id"
             ),
         }
+        title = record.get("title")
+        if title is not None:
+            item["title"] = normalize_chat_title(title)
         supplied_stream = record.get("stream_id")
         if supplied_stream is not None:
             item["stream_id"] = validate_stream_id(supplied_stream)
@@ -1385,16 +1434,30 @@ def command_batch_plan(args: argparse.Namespace) -> dict[str, Any]:
                 f"indexes {planned_streams[stream_id]} and {index}"
             )
         planned_streams[stream_id] = index
-        if binding and binding["source_revision"] == record["source_revision"]:
+        latest = stream_single_head(checkpoints, stream_id)
+        stored_title = (
+            effective_chat_title(checkpoints, latest) if latest else None
+        )
+        title_changed = (
+            record.get("title") is not None
+            and record["title"] != stored_title
+        )
+        revision_changed = not (
+            binding and binding["source_revision"] == record["source_revision"]
+        )
+        if binding and not revision_changed and not title_changed:
             action = "unchanged"
             read_scope = "none"
         elif binding or stream_id in existing_streams:
             action = "delta"
-            read_scope = (
-                "after_previous_head"
-                if binding and binding["source_head_turn_id"]
-                else "full_review"
-            )
+            if not revision_changed and title_changed:
+                read_scope = "none"
+            else:
+                read_scope = (
+                    "after_previous_head"
+                    if binding and binding["source_head_turn_id"]
+                    else "full_review"
+                )
         else:
             action = "baseline"
             read_scope = "full_history"
@@ -1405,6 +1468,7 @@ def command_batch_plan(args: argparse.Namespace) -> dict[str, Any]:
                 "action": action,
                 "read_scope": read_scope,
                 "stream_id": stream_id,
+                "title_changed": title_changed,
                 "previous_source_revision": (
                     binding["source_revision"] if binding else None
                 ),
@@ -1429,6 +1493,7 @@ def command_batch_capture(args: argparse.Namespace) -> dict[str, Any]:
     registry_path = thread_registry_path(config_path)
     registry = load_thread_registry(registry_path, config["machine_id"])
     bindings = registry_threads(registry, entry["project_id"])
+    checkpoints = load_checkpoints(directory, entry["project_id"])
     prepared: list[
         tuple[
             int,
@@ -1458,7 +1523,23 @@ def command_batch_capture(args: argparse.Namespace) -> dict[str, Any]:
                 f"indexes {prepared_streams[stream_id]} and {index}"
             )
         prepared_streams[stream_id] = index
-        context = validate_context(record["context"], entry["mode"])
+        raw_context = record["context"]
+        if not isinstance(raw_context, dict):
+            raise ContextSyncError(
+                f"Batch threads[{index}] context must be an object"
+            )
+        raw_context = dict(raw_context)
+        if record.get("title") is not None:
+            supplied_context_title = raw_context.get("chat_title")
+            if (
+                supplied_context_title is not None
+                and supplied_context_title != record["title"]
+            ):
+                raise ContextSyncError(
+                    f"Batch threads[{index}] title conflicts with context chat_title"
+                )
+            raw_context["chat_title"] = record["title"]
+        context = validate_context(raw_context, entry["mode"])
         prepared.append((index, record, key, binding, context))
     results: list[dict[str, Any]] = []
     skipped = 0
@@ -1469,7 +1550,19 @@ def command_batch_capture(args: argparse.Namespace) -> dict[str, Any]:
             if binding
             else default_thread_stream_id(entry["project_id"], record["thread_id"])
         )
-        if binding and binding["source_revision"] == record["source_revision"]:
+        latest = stream_single_head(checkpoints, stream_id)
+        stored_title = (
+            effective_chat_title(checkpoints, latest) if latest else None
+        )
+        title_changed = (
+            record.get("title") is not None
+            and record["title"] != stored_title
+        )
+        if (
+            binding
+            and binding["source_revision"] == record["source_revision"]
+            and not title_changed
+        ):
             skipped += 1
             results.append(
                 {
@@ -1669,6 +1762,11 @@ def command_materialize_plan(args: argparse.Namespace) -> dict[str, Any]:
         latest_checkpoint_id = (
             heads[0]["checkpoint_id"] if len(heads) == 1 else None
         )
+        chat_title = (
+            effective_chat_title(checkpoints, heads[0])
+            if len(heads) == 1
+            else None
+        )
         all_targets = all_bindings_by_stream.get(stream_id, [])
         if len(heads) != 1:
             action = "blocked"
@@ -1698,6 +1796,8 @@ def command_materialize_plan(args: argparse.Namespace) -> dict[str, Any]:
                 "reason": reason,
                 "target_index": target_index,
                 "latest_checkpoint_id": latest_checkpoint_id,
+                "chat_title": chat_title,
+                "title_available": chat_title is not None,
                 "head_checkpoint_ids": [
                     item["checkpoint_id"] for item in heads
                 ],
@@ -1711,6 +1811,228 @@ def command_materialize_plan(args: argparse.Namespace) -> dict[str, Any]:
         "stream_count": len(plan),
         "counts": counts,
         "project_context_checkpoint_id": project_context_checkpoint_id,
+        "streams": plan,
+    }
+
+
+def command_sync_plan(args: argparse.Namespace) -> dict[str, Any]:
+    (
+        project_root,
+        config_path,
+        config,
+        entry,
+        _current,
+        directory,
+    ) = configured_context(args)
+    records = load_batch_records(
+        args, project_root, include_context=False, allow_empty=True
+    )
+    registry_path = thread_registry_path(config_path)
+    registry = load_thread_registry(registry_path, config["machine_id"])
+    bindings = registry_threads(registry, entry["project_id"])
+    checkpoints = load_checkpoints(directory, entry["project_id"])
+    by_id = {item["checkpoint_id"]: item for item in checkpoints}
+    all_bindings_by_stream: dict[str, list[dict[str, Any]]] = {}
+    for binding in bindings.values():
+        all_bindings_by_stream.setdefault(binding["stream_id"], []).append(
+            binding
+        )
+
+    local_by_stream: dict[str, list[tuple[int, dict[str, Any], dict[str, Any] | None]]] = {}
+    visible_keys: set[str] = set()
+    for index, record in enumerate(records):
+        key = thread_registry_key(entry["project_id"], record["thread_id"])
+        visible_keys.add(key)
+        binding = bindings.get(key)
+        supplied_stream = record.get("stream_id")
+        if binding and supplied_stream and supplied_stream != binding["stream_id"]:
+            raise ContextSyncError(
+                f"Batch threads[{index}] stream_id conflicts with the local registry"
+            )
+        stream_id = supplied_stream or (
+            binding["stream_id"]
+            if binding
+            else default_thread_stream_id(entry["project_id"], record["thread_id"])
+        )
+        local_by_stream.setdefault(stream_id, []).append((index, record, binding))
+
+    plan: list[dict[str, Any]] = []
+    counts = {
+        "save": 0,
+        "create": 0,
+        "update": 0,
+        "unchanged": 0,
+        "unavailable": 0,
+        "blocked": 0,
+    }
+    covered_streams: set[str] = set()
+    for stream_id, local_targets in sorted(local_by_stream.items()):
+        covered_streams.add(stream_id)
+        index, record, binding = local_targets[0]
+        stream_checkpoints = [
+            item
+            for item in checkpoints
+            if checkpoint_stream_id(item) == stream_id
+        ]
+        heads = checkpoint_heads(stream_checkpoints, stream_id)
+        latest = heads[0] if len(heads) == 1 else None
+        latest_id = latest["checkpoint_id"] if latest else None
+        remote_title = (
+            effective_chat_title(checkpoints, latest) if latest else None
+        )
+        read_scope = "none"
+        preserve_local_title = False
+        follow_up_save_title = False
+        if len(local_targets) > 1:
+            action = "blocked"
+            reason = "multiple_local_tasks_resolve_to_stream"
+        elif len(all_bindings_by_stream.get(stream_id, [])) > 1:
+            action = "blocked"
+            reason = "multiple_local_tasks_bound"
+        elif len(heads) > 1:
+            action = "blocked"
+            reason = "concurrent_checkpoint_heads"
+        elif binding is None:
+            if stream_checkpoints:
+                action = "blocked"
+                reason = "unbound_local_task_matches_remote_stream"
+            else:
+                action = "save"
+                reason = "new_local_task"
+                read_scope = "full_history"
+        elif latest is None:
+            action = "blocked"
+            reason = "bound_stream_missing_from_snapshot"
+        else:
+            last_checkpoint_id = binding["last_checkpoint_id"]
+            known = by_id.get(last_checkpoint_id) if last_checkpoint_id else None
+            if last_checkpoint_id and known is None:
+                action = "blocked"
+                reason = "binding_checkpoint_missing_from_snapshot"
+            elif known and checkpoint_stream_id(known) != stream_id:
+                action = "blocked"
+                reason = "binding_checkpoint_stream_mismatch"
+            else:
+                known_title = (
+                    effective_chat_title(checkpoints, known) if known else None
+                )
+                revision_changed = (
+                    binding["source_revision"] != record["source_revision"]
+                )
+                title_changed = (
+                    record.get("title") is not None
+                    and record["title"] != known_title
+                )
+                local_changed = revision_changed or title_changed
+                remote_changed = last_checkpoint_id != latest_id
+                remote_title_changed = remote_title != known_title
+                if remote_changed and revision_changed:
+                    action = "blocked"
+                    reason = "concurrent_local_remote_content_changes"
+                elif remote_changed and title_changed and remote_title_changed:
+                    action = "blocked"
+                    reason = "concurrent_local_remote_title_changes"
+                elif remote_changed:
+                    action = "update"
+                    reason = "remote_changes_available"
+                    preserve_local_title = title_changed
+                    follow_up_save_title = title_changed
+                elif local_changed:
+                    action = "save"
+                    reason = "local_changes_available"
+                    if revision_changed:
+                        read_scope = (
+                            "after_previous_head"
+                            if binding["source_head_turn_id"]
+                            else "full_review"
+                        )
+                else:
+                    action = "unchanged"
+                    reason = "already_synchronized"
+        counts[action] += 1
+        plan.append(
+            {
+                "stream_id": stream_id,
+                "action": action,
+                "reason": reason,
+                "target_index": index,
+                "read_scope": read_scope,
+                "latest_checkpoint_id": latest_id,
+                "chat_title": (
+                    record.get("title")
+                    if action == "save" or preserve_local_title
+                    else remote_title
+                ),
+                "title_available": bool(
+                    record.get("title")
+                    if action == "save" or preserve_local_title
+                    else remote_title
+                ),
+                "preserve_local_title": preserve_local_title,
+                "follow_up_save_title": follow_up_save_title,
+            }
+        )
+
+    hidden_streams = {
+        binding["stream_id"]
+        for key, binding in bindings.items()
+        if key not in visible_keys
+    }
+    for stream_id in checkpoint_stream_ids(checkpoints):
+        if stream_id == DEFAULT_STREAM_ID or stream_id in covered_streams:
+            continue
+        stream_checkpoints = [
+            item
+            for item in checkpoints
+            if checkpoint_stream_id(item) == stream_id
+        ]
+        heads = checkpoint_heads(stream_checkpoints, stream_id)
+        latest = heads[0] if len(heads) == 1 else None
+        if len(heads) != 1:
+            action = "blocked"
+            reason = "concurrent_checkpoint_heads"
+        elif len(all_bindings_by_stream.get(stream_id, [])) > 1:
+            action = "blocked"
+            reason = "multiple_local_tasks_bound"
+        elif stream_id in hidden_streams:
+            action = "unavailable"
+            reason = "bound_task_not_in_desktop_listing"
+        else:
+            action = "create"
+            reason = "remote_stream_missing_locally"
+        counts[action] += 1
+        chat_title = (
+            effective_chat_title(checkpoints, latest) if latest else None
+        )
+        plan.append(
+            {
+                "stream_id": stream_id,
+                "action": action,
+                "reason": reason,
+                "target_index": None,
+                "read_scope": "none",
+                "latest_checkpoint_id": (
+                    latest["checkpoint_id"] if latest else None
+                ),
+                "chat_title": chat_title,
+                "title_available": chat_title is not None,
+                "preserve_local_title": False,
+                "follow_up_save_title": False,
+            }
+        )
+
+    project_head = stream_single_head(checkpoints, DEFAULT_STREAM_ID)
+    return {
+        "planned": True,
+        "mode": "bidirectional",
+        "project_id": entry["project_id"],
+        "registry_path": str(registry_path),
+        "discoverable_thread_count": len(records),
+        "stream_count": len(plan),
+        "counts": counts,
+        "project_context_checkpoint_id": (
+            project_head["checkpoint_id"] if project_head else None
+        ),
         "streams": plan,
     }
 
@@ -1758,6 +2080,7 @@ def restore_stream(
     else:
         latest = heads[0]
     history = checkpoint_history(checkpoints, latest)
+    chat_title = effective_chat_title(checkpoints, latest)
     return {
         "stream_id": stream_id,
         "checkpoint_id": latest["checkpoint_id"],
@@ -1771,6 +2094,8 @@ def restore_stream(
         "recorded_repository": latest["repository"],
         "current_repository": current,
         "context": latest["context"],
+        "chat_title": chat_title,
+        "title_available": chat_title is not None,
         "history_count": len(history),
         "history": [
             {
@@ -1860,12 +2185,14 @@ def markdown_restore(result: dict[str, Any]) -> str:
             f"- Streams: `{result['stream_count']}`",
         ]
         for stream in result["streams"]:
+            title = stream.get("chat_title") or "title unavailable"
             lines.extend(
                 [
                     "",
                     f"## `{stream['stream_id']}`",
                     "",
                     f"- Checkpoint: `{stream['checkpoint_id']}`",
+                    f"- Chat title: {title}",
                     f"- Updates in restored history: `{stream['history_count']}`",
                     "",
                     stream["context"]["summary"],
@@ -1877,6 +2204,7 @@ def markdown_restore(result: dict[str, Any]) -> str:
         "",
         f"- Stream: `{result['stream_id']}`",
         f"- Checkpoint: `{result['checkpoint_id']}`",
+        f"- Chat title: {result.get('chat_title') or 'title unavailable'}",
         f"- Snapshot kind: `{result['snapshot_kind']}`",
         f"- Updates in restored history: `{result['history_count']}`",
         f"- Created: `{result['created_at']}`",
@@ -2046,6 +2374,17 @@ def build_parser() -> argparse.ArgumentParser:
     materialize_source.add_argument("--stdin", action="store_true")
     materialize_plan.add_argument("--json", action="store_true")
 
+    sync_plan = subparsers.add_parser(
+        "sync-plan",
+        help="Plan bidirectional save and restore work for project chats",
+    )
+    sync_plan.add_argument("--project-path", required=True)
+    sync_plan.add_argument("--snapshot-root")
+    sync_plan_source = sync_plan.add_mutually_exclusive_group(required=True)
+    sync_plan_source.add_argument("--input")
+    sync_plan_source.add_argument("--stdin", action="store_true")
+    sync_plan.add_argument("--json", action="store_true")
+
     migrate = subparsers.add_parser("migrate")
     migrate.add_argument("--json", action="store_true")
     return parser
@@ -2066,6 +2405,7 @@ def main() -> int:
             "batch-capture": command_batch_capture,
             "bind-thread": command_bind_thread,
             "materialize-plan": command_materialize_plan,
+            "sync-plan": command_sync_plan,
             "restore": command_restore,
             "audit": command_audit,
             "migrate": command_migrate,

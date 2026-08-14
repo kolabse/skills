@@ -18,6 +18,10 @@
 - A desktop-only `restore all project chats` workflow that independently
   resolves the destination project, creates missing tasks from sanitized
   streams, updates existing bound tasks, and avoids duplicate materialization.
+- Exact chat-title metadata in saved streams and deterministic title restore
+  for created and updated desktop tasks.
+- A bidirectional `sync all project chats` workflow that reconciles one-sided
+  changes and blocks streams changed independently on both computers.
 
 ### Changed
 
