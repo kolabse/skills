@@ -1,4 +1,4 @@
 interface:
   display_name: "Sync Project Context"
-  short_description: "Sync private project context across devices"
-  default_prompt: "Use $sync-project-context to save or restore a private project handoff through an approved local folder or connected Google Drive."
+  short_description: "Sync project chats with exact titles"
+  default_prompt: "Use $sync-project-context to bidirectionally synchronize all project chats with their exact titles."

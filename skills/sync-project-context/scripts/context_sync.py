@@ -16,15 +16,25 @@ from urllib.parse import urlsplit
 
 
 CONFIG_VERSION = 2
-CHECKPOINT_VERSION = 1
+CHECKPOINT_VERSION = 2
+THREAD_REGISTRY_VERSION = 1
+SUPPORTED_CHECKPOINT_VERSIONS = {1, CHECKPOINT_VERSION}
+DEFAULT_STREAM_ID = "project"
+STREAM_ID_PATTERN = re.compile(r"^stream-[0-9a-f]{16,64}$")
 PROJECT_ID_PATTERN = re.compile(r"^[a-z0-9][a-z0-9-]{2,63}$")
 MAX_SUMMARY = 8000
+MAX_CHAT_TITLE = 256
 MAX_ITEM = 2000
 MAX_ITEMS = 100
+MAX_THREAD_ID = 512
+MAX_SOURCE_MARKER = 512
 CONTEXT_LIST_FIELDS = (
+    "rationale",
+    "discussions",
     "decisions",
     "actions",
     "verifications",
+    "blockers",
     "open_questions",
     "next_steps",
     "relevant_paths",
@@ -395,7 +405,7 @@ def scan_secrets(
 def validate_context(value: object, mode: str) -> dict[str, Any]:
     if not isinstance(value, dict):
         raise ContextSyncError("Capture input must be a JSON object")
-    allowed = {"summary", *CONTEXT_LIST_FIELDS}
+    allowed = {"summary", "chat_title", *CONTEXT_LIST_FIELDS}
     unexpected = set(value) - allowed
     if unexpected:
         raise ContextSyncError(
@@ -411,6 +421,8 @@ def validate_context(value: object, mode: str) -> dict[str, Any]:
             f"summary must contain 1-{MAX_SUMMARY} characters"
         )
     context: dict[str, Any] = {"summary": summary.strip()}
+    if "chat_title" in value:
+        context["chat_title"] = normalize_chat_title(value["chat_title"])
     for field in CONTEXT_LIST_FIELDS:
         items = value.get(field, [])
         if not isinstance(items, list) or len(items) > MAX_ITEMS:
@@ -440,6 +452,152 @@ def validate_context(value: object, mode: str) -> dict[str, Any]:
             f"Capture rejected: possible secret at {locations}"
         )
     return context
+
+
+def normalize_chat_title(value: object) -> str:
+    if not isinstance(value, str):
+        raise ContextSyncError("chat_title must be a string")
+    title = value.strip()
+    if not title or len(title) > MAX_CHAT_TITLE:
+        raise ContextSyncError(
+            f"chat_title must contain 1-{MAX_CHAT_TITLE} characters"
+        )
+    if re.search(r"[\x00-\x1f\x7f]", title):
+        raise ContextSyncError("chat_title must be a single printable line")
+    findings = scan_secrets(title, "$.chat_title")
+    if findings:
+        raise ContextSyncError(
+            "Capture rejected: possible secret at $.chat_title"
+        )
+    return title
+
+
+def thread_registry_path(config_path: Path) -> Path:
+    return config_path.with_name(f"{config_path.stem}.thread-registry.json")
+
+
+def new_thread_registry(machine_id: str) -> dict[str, Any]:
+    return {
+        "schema_version": THREAD_REGISTRY_VERSION,
+        "machine_id": machine_id,
+        "projects": {},
+    }
+
+
+def validate_thread_registry(
+    value: object, machine_id: str
+) -> dict[str, Any]:
+    if not isinstance(value, dict) or set(value) != {
+        "schema_version",
+        "machine_id",
+        "projects",
+    }:
+        raise ContextSyncError("Thread registry root is invalid")
+    if value.get("schema_version") != THREAD_REGISTRY_VERSION:
+        raise ContextSyncError("Thread registry version is unsupported")
+    if value.get("machine_id") != machine_id:
+        raise ContextSyncError("Thread registry belongs to another machine")
+    projects = value.get("projects")
+    if not isinstance(projects, dict):
+        raise ContextSyncError("Thread registry projects must be an object")
+    for project_id, project in projects.items():
+        if not isinstance(project_id, str) or not PROJECT_ID_PATTERN.fullmatch(
+            project_id
+        ):
+            raise ContextSyncError("Thread registry project_id is invalid")
+        if not isinstance(project, dict) or set(project) != {"threads"}:
+            raise ContextSyncError("Thread registry project is invalid")
+        threads = project.get("threads")
+        if not isinstance(threads, dict):
+            raise ContextSyncError("Thread registry threads must be an object")
+        for key, binding in threads.items():
+            if not isinstance(key, str) or not re.fullmatch(r"[0-9a-f]{64}", key):
+                raise ContextSyncError("Thread registry key is invalid")
+            if not isinstance(binding, dict) or set(binding) != {
+                "stream_id",
+                "source_revision",
+                "source_head_turn_id",
+                "last_checkpoint_id",
+                "updated_at",
+            }:
+                raise ContextSyncError("Thread registry binding is invalid")
+            validate_stream_id(binding.get("stream_id"))
+            for field in ("source_revision", "source_head_turn_id"):
+                marker = binding.get(field)
+                if marker is not None and (
+                    not isinstance(marker, str)
+                    or not marker
+                    or len(marker) > MAX_SOURCE_MARKER
+                ):
+                    raise ContextSyncError(
+                        f"Thread registry {field} is invalid"
+                    )
+            checkpoint_id = binding.get("last_checkpoint_id")
+            if checkpoint_id is not None and (
+                not isinstance(checkpoint_id, str)
+                or not re.fullmatch(r"checkpoint-[0-9a-f]{32}", checkpoint_id)
+            ):
+                raise ContextSyncError(
+                    "Thread registry last_checkpoint_id is invalid"
+                )
+            if not isinstance(binding.get("updated_at"), str):
+                raise ContextSyncError("Thread registry updated_at is invalid")
+    return value
+
+
+def load_thread_registry(
+    path: Path, machine_id: str
+) -> dict[str, Any]:
+    if not path.is_file():
+        return new_thread_registry(machine_id)
+    try:
+        value = json.loads(path.read_text(encoding="utf-8"))
+    except (json.JSONDecodeError, UnicodeDecodeError) as error:
+        raise ContextSyncError(
+            f"Thread registry is invalid JSON: {error}"
+        ) from error
+    return validate_thread_registry(value, machine_id)
+
+
+def normalize_source_marker(value: object, label: str) -> str:
+    if isinstance(value, bool) or not isinstance(value, (str, int, float)):
+        raise ContextSyncError(f"{label} must be a string or number")
+    marker = str(value).strip()
+    if not marker or len(marker) > MAX_SOURCE_MARKER:
+        raise ContextSyncError(
+            f"{label} must contain 1-{MAX_SOURCE_MARKER} characters"
+        )
+    return marker
+
+
+def normalize_optional_source_marker(value: object, label: str) -> str | None:
+    if value is None:
+        return None
+    return normalize_source_marker(value, label)
+
+
+def thread_registry_key(project_id: str, thread_id: object) -> str:
+    if (
+        not isinstance(thread_id, str)
+        or not thread_id.strip()
+        or len(thread_id) > MAX_THREAD_ID
+    ):
+        raise ContextSyncError(
+            f"thread_id must contain 1-{MAX_THREAD_ID} characters"
+        )
+    encoded = f"{project_id}\0{thread_id.strip()}".encode("utf-8")
+    return hashlib.sha256(encoded).hexdigest()
+
+
+def default_thread_stream_id(project_id: str, thread_id: object) -> str:
+    return f"stream-{thread_registry_key(project_id, thread_id)[:32]}"
+
+
+def registry_threads(
+    registry: dict[str, Any], project_id: str
+) -> dict[str, Any]:
+    project = registry["projects"].setdefault(project_id, {"threads": {}})
+    return project["threads"]
 
 
 def project_directory(entry: dict[str, Any]) -> Path:
@@ -495,6 +653,25 @@ def checkpoint_digest(checkpoint: dict[str, Any]) -> str:
     return canonical_digest(unsigned)
 
 
+def checkpoint_stream_id(checkpoint: dict[str, Any]) -> str:
+    return str(checkpoint.get("stream_id", DEFAULT_STREAM_ID))
+
+
+def checkpoint_snapshot_kind(checkpoint: dict[str, Any]) -> str:
+    # Version 1 checkpoints always described a complete project handoff.
+    return str(checkpoint.get("snapshot_kind", "baseline"))
+
+
+def validate_stream_id(value: object) -> str:
+    if value == DEFAULT_STREAM_ID:
+        return DEFAULT_STREAM_ID
+    if not isinstance(value, str) or not STREAM_ID_PATTERN.fullmatch(value):
+        raise ContextSyncError(
+            "stream_id must be 'project' or stream- followed by 16-64 lowercase hex characters"
+        )
+    return value
+
+
 def load_checkpoint_file(
     path: Path, project_id: str, *, require_filename: bool = True
 ) -> dict[str, Any]:
@@ -504,9 +681,27 @@ def load_checkpoint_file(
         raise ContextSyncError(f"Checkpoint is invalid: {path}: {error}") from error
     if (
         not isinstance(value, dict)
-        or value.get("schema_version") != CHECKPOINT_VERSION
+        or value.get("schema_version") not in SUPPORTED_CHECKPOINT_VERSIONS
     ):
         raise ContextSyncError(f"Checkpoint version is unsupported: {path}")
+    allowed = {
+        "schema_version",
+        "checkpoint_id",
+        "project_id",
+        "machine_id",
+        "created_at",
+        "parent_checkpoint_ids",
+        "repository",
+        "context",
+        "content_sha256",
+    }
+    if value["schema_version"] == CHECKPOINT_VERSION:
+        allowed.update({"stream_id", "snapshot_kind"})
+    unexpected = set(value) - allowed
+    if unexpected:
+        raise ContextSyncError(
+            f"Checkpoint has unexpected fields: {sorted(unexpected)}: {path}"
+        )
     if value.get("project_id") != project_id:
         raise ContextSyncError(f"Checkpoint project_id mismatch: {path}")
     checkpoint_id = value.get("checkpoint_id")
@@ -527,6 +722,17 @@ def load_checkpoint_file(
         raise ContextSyncError(f"Checkpoint parents are invalid: {path}")
     if len(parents) != len(set(parents)):
         raise ContextSyncError(f"Checkpoint parents are duplicated: {path}")
+    if value["schema_version"] == CHECKPOINT_VERSION:
+        try:
+            validate_stream_id(value.get("stream_id"))
+        except ContextSyncError as error:
+            raise ContextSyncError(f"Checkpoint stream is invalid: {path}") from error
+        if value.get("snapshot_kind") not in {"baseline", "delta"}:
+            raise ContextSyncError(f"Checkpoint snapshot kind is invalid: {path}")
+    try:
+        validate_context(value.get("context"), "paths")
+    except ContextSyncError as error:
+        raise ContextSyncError(f"Checkpoint context is invalid: {path}: {error}") from error
     if value.get("content_sha256") != checkpoint_digest(value):
         raise ContextSyncError(f"Checkpoint digest does not match: {path}")
     if scan_secrets(value):
@@ -568,6 +774,22 @@ def validate_checkpoint_graph(checkpoints: list[dict[str, Any]]) -> None:
             "Checkpoint history is incomplete; missing parents: "
             + ", ".join(missing)
         )
+    for item in checkpoints:
+        stream_id = checkpoint_stream_id(item)
+        for parent_id in item["parent_checkpoint_ids"]:
+            if checkpoint_stream_id(by_id[parent_id]) != stream_id:
+                raise ContextSyncError(
+                    "Checkpoint history crosses stream boundaries: "
+                    f"{item['checkpoint_id']}"
+                )
+        if (
+            item.get("schema_version") == CHECKPOINT_VERSION
+            and not item["parent_checkpoint_ids"]
+            and checkpoint_snapshot_kind(item) != "baseline"
+        ):
+            raise ContextSyncError(
+                f"Checkpoint stream root must be a baseline: {item['checkpoint_id']}"
+            )
     visiting: set[str] = set()
     visited: set[str] = set()
 
@@ -588,15 +810,21 @@ def validate_checkpoint_graph(checkpoints: list[dict[str, Any]]) -> None:
 
 def checkpoint_heads(
     checkpoints: list[dict[str, Any]],
+    stream_id: str | None = None,
 ) -> list[dict[str, Any]]:
+    selected = [
+        item
+        for item in checkpoints
+        if stream_id is None or checkpoint_stream_id(item) == stream_id
+    ]
     referenced = {
         parent
-        for item in checkpoints
+        for item in selected
         for parent in item.get("parent_checkpoint_ids", [])
     }
     heads = [
         item
-        for item in checkpoints
+        for item in selected
         if item.get("checkpoint_id") not in referenced
     ]
     heads.sort(
@@ -606,6 +834,61 @@ def checkpoint_heads(
         )
     )
     return heads
+
+
+def checkpoint_stream_ids(checkpoints: list[dict[str, Any]]) -> list[str]:
+    return sorted({checkpoint_stream_id(item) for item in checkpoints})
+
+
+def checkpoint_history(
+    checkpoints: list[dict[str, Any]], latest: dict[str, Any]
+) -> list[dict[str, Any]]:
+    by_id = {item["checkpoint_id"]: item for item in checkpoints}
+    visited: set[str] = set()
+    history: list[dict[str, Any]] = []
+
+    def append_after_parents(item: dict[str, Any]) -> None:
+        checkpoint_id = item["checkpoint_id"]
+        if checkpoint_id in visited:
+            return
+        for parent_id in sorted(item["parent_checkpoint_ids"]):
+            append_after_parents(by_id[parent_id])
+        visited.add(checkpoint_id)
+        history.append(item)
+
+    append_after_parents(latest)
+    # A new full baseline supersedes earlier history on a linear stream. Keep
+    # the complete ancestry for merge histories, where one baseline may not
+    # dominate every parent branch.
+    if all(len(item["parent_checkpoint_ids"]) <= 1 for item in history):
+        baseline_indexes = [
+            index
+            for index, item in enumerate(history)
+            if checkpoint_snapshot_kind(item) == "baseline"
+        ]
+        if baseline_indexes:
+            history = history[baseline_indexes[-1] :]
+    return history
+
+
+def effective_chat_title(
+    checkpoints: list[dict[str, Any]], latest: dict[str, Any]
+) -> str | None:
+    for item in reversed(checkpoint_history(checkpoints, latest)):
+        title = item.get("context", {}).get("chat_title")
+        if isinstance(title, str) and title:
+            return title
+    return None
+
+
+def stream_single_head(
+    checkpoints: list[dict[str, Any]], stream_id: str
+) -> dict[str, Any] | None:
+    selected = [
+        item for item in checkpoints if checkpoint_stream_id(item) == stream_id
+    ]
+    heads = checkpoint_heads(selected, stream_id)
+    return heads[0] if len(heads) == 1 else None
 
 
 def load_capture_input(
@@ -919,8 +1202,46 @@ def command_status(args: argparse.Namespace) -> dict[str, Any]:
         args
     )
     checkpoints = load_checkpoints(directory, entry["project_id"])
-    heads = checkpoint_heads(checkpoints)
-    latest = heads[-1] if len(heads) == 1 else None
+    requested_stream = getattr(args, "stream_id", None)
+    if requested_stream is not None:
+        requested_stream = validate_stream_id(requested_stream)
+    stream_ids = checkpoint_stream_ids(checkpoints)
+    if requested_stream is not None:
+        stream_ids = [
+            stream_id for stream_id in stream_ids if stream_id == requested_stream
+        ]
+    streams = []
+    all_heads: list[dict[str, Any]] = []
+    for stream_id in stream_ids:
+        stream_checkpoints = [
+            item for item in checkpoints if checkpoint_stream_id(item) == stream_id
+        ]
+        heads = checkpoint_heads(stream_checkpoints, stream_id)
+        all_heads.extend(heads)
+        latest = heads[-1] if len(heads) == 1 else None
+        recorded = latest.get("repository", {}) if latest else {}
+        streams.append(
+            {
+                "stream_id": stream_id,
+                "checkpoint_count": len(stream_checkpoints),
+                "head_checkpoint_ids": [item["checkpoint_id"] for item in heads],
+                "latest_checkpoint_id": latest.get("checkpoint_id") if latest else None,
+                "latest_created_at": latest.get("created_at") if latest else None,
+                "head_matches": bool(latest)
+                and recorded.get("head") == current.get("head"),
+                "worktree_matches": bool(latest)
+                and recorded.get("dirty") == current.get("dirty"),
+                "has_conflict": len(heads) > 1,
+            }
+        )
+    single = streams[0] if len(streams) == 1 else None
+    latest = None
+    if single and single["latest_checkpoint_id"]:
+        latest = next(
+            item
+            for item in checkpoints
+            if item["checkpoint_id"] == single["latest_checkpoint_id"]
+        )
     recorded = latest.get("repository", {}) if latest else {}
     return {
         "configured": True,
@@ -934,7 +1255,9 @@ def command_status(args: argparse.Namespace) -> dict[str, Any]:
             else f"google-drive:{entry['drive_project_folder_id']}"
         ),
         "checkpoint_count": len(checkpoints),
-        "head_checkpoint_ids": [item["checkpoint_id"] for item in heads],
+        "stream_count": len(streams),
+        "streams": streams,
+        "head_checkpoint_ids": [item["checkpoint_id"] for item in all_heads],
         "latest_checkpoint_id": (
             latest.get("checkpoint_id") if latest else None
         ),
@@ -943,30 +1266,49 @@ def command_status(args: argparse.Namespace) -> dict[str, Any]:
         and recorded.get("head") == current.get("head"),
         "worktree_matches": bool(latest)
         and recorded.get("dirty") == current.get("dirty"),
-        "has_conflict": len(heads) > 1,
+        "has_conflict": any(item["has_conflict"] for item in streams),
         "current_repository": current,
     }
 
 
-def command_capture(args: argparse.Namespace) -> dict[str, Any]:
-    project_root, _config_path, config, entry, current, directory = configured_context(args)
-    context = validate_context(
-        load_capture_input(args, project_root), entry["mode"]
-    )
+def capture_context(
+    *,
+    config: dict[str, Any],
+    entry: dict[str, Any],
+    current: dict[str, Any],
+    directory: Path,
+    context: dict[str, Any],
+    stream_id: str,
+    requested_kind: str = "auto",
+    merge_heads: bool = False,
+) -> dict[str, Any]:
     checkpoints = load_checkpoints(directory, entry["project_id"])
-    heads = checkpoint_heads(checkpoints)
-    if len(heads) > 1 and not getattr(args, "merge_heads", False):
+    stream_id = validate_stream_id(stream_id)
+    stream_checkpoints = [
+        item for item in checkpoints if checkpoint_stream_id(item) == stream_id
+    ]
+    heads = checkpoint_heads(stream_checkpoints, stream_id)
+    if len(heads) > 1 and not merge_heads:
         identifiers = ", ".join(item["checkpoint_id"] for item in heads)
         raise ContextSyncError(
             "Concurrent checkpoint heads require explicit review and "
             f"--merge-heads: {identifiers}"
         )
     parents = [item["checkpoint_id"] for item in heads]
+    snapshot_kind = (
+        "baseline" if not stream_checkpoints else "delta"
+    ) if requested_kind == "auto" else requested_kind
+    if snapshot_kind not in {"baseline", "delta"}:
+        raise ContextSyncError("snapshot_kind must be auto, baseline, or delta")
+    if snapshot_kind == "delta" and not parents:
+        raise ContextSyncError("A delta checkpoint requires an existing stream baseline")
     checkpoint_id = f"checkpoint-{uuid.uuid4().hex}"
     checkpoint = {
         "schema_version": CHECKPOINT_VERSION,
         "checkpoint_id": checkpoint_id,
         "project_id": entry["project_id"],
+        "stream_id": stream_id,
+        "snapshot_kind": snapshot_kind,
         "machine_id": config["machine_id"],
         "created_at": utc_now(),
         "parent_checkpoint_ids": parents,
@@ -984,9 +1326,714 @@ def command_capture(args: argparse.Namespace) -> dict[str, Any]:
         "captured": True,
         "backend": entry["backend"],
         "checkpoint_id": checkpoint_id,
+        "stream_id": stream_id,
+        "snapshot_kind": snapshot_kind,
         "parent_checkpoint_ids": parents,
         "created_at": checkpoint["created_at"],
         "path": str(path),
+    }
+
+
+def command_capture(args: argparse.Namespace) -> dict[str, Any]:
+    project_root, _config_path, config, entry, current, directory = configured_context(args)
+    context = validate_context(
+        load_capture_input(args, project_root), entry["mode"]
+    )
+    return capture_context(
+        config=config,
+        entry=entry,
+        current=current,
+        directory=directory,
+        context=context,
+        stream_id=getattr(args, "stream_id", None) or DEFAULT_STREAM_ID,
+        requested_kind=getattr(args, "snapshot_kind", "auto") or "auto",
+        merge_heads=getattr(args, "merge_heads", False),
+    )
+
+
+def load_batch_records(
+    args: argparse.Namespace,
+    project_root: Path,
+    *,
+    include_context: bool,
+    allow_empty: bool = False,
+) -> list[dict[str, Any]]:
+    value = load_capture_input(args, project_root)
+    if not isinstance(value, dict) or set(value) != {"threads"}:
+        raise ContextSyncError("Batch input must contain only a threads array")
+    records = value.get("threads")
+    if not isinstance(records, list) or (not records and not allow_empty):
+        expectation = "an array" if allow_empty else "a non-empty array"
+        raise ContextSyncError(f"Batch threads must be {expectation}")
+    normalized: list[dict[str, Any]] = []
+    seen: set[str] = set()
+    required = {"thread_id", "source_revision"}
+    optional = {"source_head_turn_id", "stream_id", "title"}
+    if include_context:
+        required.add("context")
+    for index, record in enumerate(records):
+        if not isinstance(record, dict):
+            raise ContextSyncError(f"Batch threads[{index}] must be an object")
+        if not required.issubset(record) or set(record) - required - optional:
+            raise ContextSyncError(
+                f"Batch threads[{index}] has missing or unexpected fields"
+            )
+        thread_id = record.get("thread_id")
+        key = thread_registry_key("project-key-validation", thread_id)
+        if key in seen:
+            raise ContextSyncError("Batch input contains a duplicate thread_id")
+        seen.add(key)
+        item: dict[str, Any] = {
+            "thread_id": str(thread_id).strip(),
+            "source_revision": normalize_source_marker(
+                record.get("source_revision"), "source_revision"
+            ),
+            "source_head_turn_id": normalize_optional_source_marker(
+                record.get("source_head_turn_id"), "source_head_turn_id"
+            ),
+        }
+        title = record.get("title")
+        if title is not None:
+            item["title"] = normalize_chat_title(title)
+        supplied_stream = record.get("stream_id")
+        if supplied_stream is not None:
+            item["stream_id"] = validate_stream_id(supplied_stream)
+        if include_context:
+            item["context"] = record.get("context")
+        normalized.append(item)
+    return normalized
+
+
+def command_batch_plan(args: argparse.Namespace) -> dict[str, Any]:
+    project_root, config_path, config, entry, _current, directory = configured_context(args)
+    records = load_batch_records(args, project_root, include_context=False)
+    registry_path = thread_registry_path(config_path)
+    registry = load_thread_registry(registry_path, config["machine_id"])
+    bindings = registry_threads(registry, entry["project_id"])
+    checkpoints = load_checkpoints(directory, entry["project_id"])
+    existing_streams = set(checkpoint_stream_ids(checkpoints))
+    plan: list[dict[str, Any]] = []
+    counts = {"baseline": 0, "delta": 0, "unchanged": 0}
+    planned_streams: dict[str, int] = {}
+    for index, record in enumerate(records):
+        key = thread_registry_key(entry["project_id"], record["thread_id"])
+        binding = bindings.get(key)
+        supplied_stream = record.get("stream_id")
+        if binding and supplied_stream and supplied_stream != binding["stream_id"]:
+            raise ContextSyncError(
+                f"Batch threads[{index}] stream_id conflicts with the local registry"
+            )
+        stream_id = supplied_stream or (
+            binding["stream_id"]
+            if binding
+            else default_thread_stream_id(entry["project_id"], record["thread_id"])
+        )
+        if stream_id in planned_streams:
+            raise ContextSyncError(
+                "Multiple local threads resolve to the same stream: "
+                f"indexes {planned_streams[stream_id]} and {index}"
+            )
+        planned_streams[stream_id] = index
+        latest = stream_single_head(checkpoints, stream_id)
+        stored_title = (
+            effective_chat_title(checkpoints, latest) if latest else None
+        )
+        title_changed = (
+            record.get("title") is not None
+            and record["title"] != stored_title
+        )
+        revision_changed = not (
+            binding and binding["source_revision"] == record["source_revision"]
+        )
+        if binding and not revision_changed and not title_changed:
+            action = "unchanged"
+            read_scope = "none"
+        elif binding or stream_id in existing_streams:
+            action = "delta"
+            if not revision_changed and title_changed:
+                read_scope = "none"
+            else:
+                read_scope = (
+                    "after_previous_head"
+                    if binding and binding["source_head_turn_id"]
+                    else "full_review"
+                )
+        else:
+            action = "baseline"
+            read_scope = "full_history"
+        counts[action] += 1
+        plan.append(
+            {
+                "index": index,
+                "action": action,
+                "read_scope": read_scope,
+                "stream_id": stream_id,
+                "title_changed": title_changed,
+                "previous_source_revision": (
+                    binding["source_revision"] if binding else None
+                ),
+                "previous_source_head_turn_id": (
+                    binding["source_head_turn_id"] if binding else None
+                ),
+            }
+        )
+    return {
+        "planned": True,
+        "project_id": entry["project_id"],
+        "registry_path": str(registry_path),
+        "thread_count": len(plan),
+        "counts": counts,
+        "threads": plan,
+    }
+
+
+def command_batch_capture(args: argparse.Namespace) -> dict[str, Any]:
+    project_root, config_path, config, entry, current, directory = configured_context(args)
+    records = load_batch_records(args, project_root, include_context=True)
+    registry_path = thread_registry_path(config_path)
+    registry = load_thread_registry(registry_path, config["machine_id"])
+    bindings = registry_threads(registry, entry["project_id"])
+    checkpoints = load_checkpoints(directory, entry["project_id"])
+    prepared: list[
+        tuple[
+            int,
+            dict[str, Any],
+            str,
+            dict[str, Any] | None,
+            dict[str, Any],
+        ]
+    ] = []
+    prepared_streams: dict[str, int] = {}
+    for index, record in enumerate(records):
+        key = thread_registry_key(entry["project_id"], record["thread_id"])
+        binding = bindings.get(key)
+        supplied_stream = record.get("stream_id")
+        if binding and supplied_stream and supplied_stream != binding["stream_id"]:
+            raise ContextSyncError(
+                f"Batch threads[{index}] stream_id conflicts with the local registry"
+            )
+        stream_id = supplied_stream or (
+            binding["stream_id"]
+            if binding
+            else default_thread_stream_id(entry["project_id"], record["thread_id"])
+        )
+        if stream_id in prepared_streams:
+            raise ContextSyncError(
+                "Multiple local threads resolve to the same stream: "
+                f"indexes {prepared_streams[stream_id]} and {index}"
+            )
+        prepared_streams[stream_id] = index
+        raw_context = record["context"]
+        if not isinstance(raw_context, dict):
+            raise ContextSyncError(
+                f"Batch threads[{index}] context must be an object"
+            )
+        raw_context = dict(raw_context)
+        if record.get("title") is not None:
+            supplied_context_title = raw_context.get("chat_title")
+            if (
+                supplied_context_title is not None
+                and supplied_context_title != record["title"]
+            ):
+                raise ContextSyncError(
+                    f"Batch threads[{index}] title conflicts with context chat_title"
+                )
+            raw_context["chat_title"] = record["title"]
+        context = validate_context(raw_context, entry["mode"])
+        prepared.append((index, record, key, binding, context))
+    results: list[dict[str, Any]] = []
+    skipped = 0
+    for index, record, key, binding, context in prepared:
+        supplied_stream = record.get("stream_id")
+        stream_id = supplied_stream or (
+            binding["stream_id"]
+            if binding
+            else default_thread_stream_id(entry["project_id"], record["thread_id"])
+        )
+        latest = stream_single_head(checkpoints, stream_id)
+        stored_title = (
+            effective_chat_title(checkpoints, latest) if latest else None
+        )
+        title_changed = (
+            record.get("title") is not None
+            and record["title"] != stored_title
+        )
+        if (
+            binding
+            and binding["source_revision"] == record["source_revision"]
+            and not title_changed
+        ):
+            skipped += 1
+            results.append(
+                {
+                    "index": index,
+                    "stream_id": stream_id,
+                    "skipped": True,
+                    "reason": "unchanged",
+                }
+            )
+            continue
+        captured = capture_context(
+            config=config,
+            entry=entry,
+            current=current,
+            directory=directory,
+            context=context,
+            stream_id=stream_id,
+        )
+        bindings[key] = {
+            "stream_id": stream_id,
+            "source_revision": record["source_revision"],
+            "source_head_turn_id": record["source_head_turn_id"],
+            "last_checkpoint_id": captured["checkpoint_id"],
+            "updated_at": utc_now(),
+        }
+        atomic_write_json(registry_path, registry)
+        results.append({"index": index, "skipped": False, **captured})
+    return {
+        "captured": True,
+        "project_id": entry["project_id"],
+        "registry_path": str(registry_path),
+        "thread_count": len(records),
+        "checkpoint_count": len(records) - skipped,
+        "skipped_count": skipped,
+        "threads": results,
+    }
+
+
+def command_bind_thread(args: argparse.Namespace) -> dict[str, Any]:
+    _project_root, config_path, config, entry, _current, directory = configured_context(args)
+    stream_id = validate_stream_id(args.stream_id)
+    checkpoints = load_checkpoints(directory, entry["project_id"])
+    if stream_id not in checkpoint_stream_ids(checkpoints):
+        raise ContextSyncError(f"Checkpoint stream does not exist: {stream_id}")
+    stream_checkpoints = [
+        item for item in checkpoints if checkpoint_stream_id(item) == stream_id
+    ]
+    heads = checkpoint_heads(stream_checkpoints, stream_id)
+    requested_checkpoint = getattr(args, "checkpoint_id", None)
+    if requested_checkpoint is not None:
+        selected = next(
+            (
+                item
+                for item in stream_checkpoints
+                if item["checkpoint_id"] == requested_checkpoint
+            ),
+            None,
+        )
+        if selected is None:
+            raise ContextSyncError(
+                "Materialized checkpoint does not belong to the selected stream"
+            )
+        materialized_checkpoint_id = selected["checkpoint_id"]
+    elif len(heads) == 1:
+        materialized_checkpoint_id = heads[0]["checkpoint_id"]
+    else:
+        raise ContextSyncError(
+            "A conflicted stream requires an explicit --checkpoint-id binding"
+        )
+    key = thread_registry_key(entry["project_id"], args.thread_id)
+    registry_path = thread_registry_path(config_path)
+    registry = load_thread_registry(registry_path, config["machine_id"])
+    bindings = registry_threads(registry, entry["project_id"])
+    existing = bindings.get(key)
+    if existing and existing["stream_id"] != stream_id:
+        raise ContextSyncError("Thread is already bound to another stream")
+    duplicate = next(
+        (
+            binding
+            for other_key, binding in bindings.items()
+            if other_key != key and binding["stream_id"] == stream_id
+        ),
+        None,
+    )
+    if duplicate is not None:
+        raise ContextSyncError(
+            "Another local thread is already bound to this stream"
+        )
+    bindings[key] = {
+        "stream_id": stream_id,
+        "source_revision": normalize_optional_source_marker(
+            args.source_revision, "source_revision"
+        ),
+        "source_head_turn_id": normalize_optional_source_marker(
+            args.source_head_turn_id, "source_head_turn_id"
+        ),
+        "last_checkpoint_id": materialized_checkpoint_id,
+        "updated_at": utc_now(),
+    }
+    atomic_write_json(registry_path, registry)
+    return {
+        "bound": True,
+        "project_id": entry["project_id"],
+        "stream_id": stream_id,
+        "checkpoint_id": materialized_checkpoint_id,
+        "registry_path": str(registry_path),
+    }
+
+
+def load_materialization_threads(
+    args: argparse.Namespace, project_root: Path
+) -> list[dict[str, str]]:
+    value = load_capture_input(args, project_root)
+    if not isinstance(value, dict) or set(value) != {"threads"}:
+        raise ContextSyncError(
+            "Materialization input must contain only a threads array"
+        )
+    records = value.get("threads")
+    if not isinstance(records, list):
+        raise ContextSyncError("Materialization threads must be an array")
+    normalized: list[dict[str, str]] = []
+    seen: set[str] = set()
+    for index, record in enumerate(records):
+        if not isinstance(record, dict) or set(record) != {"thread_id"}:
+            raise ContextSyncError(
+                f"Materialization threads[{index}] must contain only thread_id"
+            )
+        thread_id = record.get("thread_id")
+        key = thread_registry_key("project-key-validation", thread_id)
+        if key in seen:
+            raise ContextSyncError(
+                "Materialization input contains a duplicate thread_id"
+            )
+        seen.add(key)
+        normalized.append({"thread_id": str(thread_id).strip()})
+    return normalized
+
+
+def command_materialize_plan(args: argparse.Namespace) -> dict[str, Any]:
+    (
+        project_root,
+        config_path,
+        config,
+        entry,
+        _current,
+        directory,
+    ) = configured_context(args)
+    records = load_materialization_threads(args, project_root)
+    registry_path = thread_registry_path(config_path)
+    registry = load_thread_registry(registry_path, config["machine_id"])
+    bindings = registry_threads(registry, entry["project_id"])
+    all_bindings_by_stream: dict[str, list[dict[str, Any]]] = {}
+    for binding in bindings.values():
+        all_bindings_by_stream.setdefault(binding["stream_id"], []).append(
+            binding
+        )
+    visible_by_stream: dict[str, list[tuple[int, dict[str, Any]]]] = {}
+    visible_keys: set[str] = set()
+    for index, record in enumerate(records):
+        key = thread_registry_key(entry["project_id"], record["thread_id"])
+        visible_keys.add(key)
+        binding = bindings.get(key)
+        if binding:
+            visible_by_stream.setdefault(binding["stream_id"], []).append(
+                (index, binding)
+            )
+    hidden_streams = {
+        binding["stream_id"]
+        for key, binding in bindings.items()
+        if key not in visible_keys
+    }
+    checkpoints = load_checkpoints(directory, entry["project_id"])
+    if not checkpoints:
+        raise ContextSyncError("No checkpoints are available")
+    plan: list[dict[str, Any]] = []
+    counts = {
+        "create": 0,
+        "update": 0,
+        "unchanged": 0,
+        "unavailable": 0,
+        "blocked": 0,
+    }
+    project_context_checkpoint_id = None
+    for stream_id in checkpoint_stream_ids(checkpoints):
+        stream_checkpoints = [
+            item
+            for item in checkpoints
+            if checkpoint_stream_id(item) == stream_id
+        ]
+        heads = checkpoint_heads(stream_checkpoints, stream_id)
+        if stream_id == DEFAULT_STREAM_ID:
+            if len(heads) == 1:
+                project_context_checkpoint_id = heads[0]["checkpoint_id"]
+            continue
+        targets = visible_by_stream.get(stream_id, [])
+        target_index = targets[0][0] if len(targets) == 1 else None
+        latest_checkpoint_id = (
+            heads[0]["checkpoint_id"] if len(heads) == 1 else None
+        )
+        chat_title = (
+            effective_chat_title(checkpoints, heads[0])
+            if len(heads) == 1
+            else None
+        )
+        all_targets = all_bindings_by_stream.get(stream_id, [])
+        if len(heads) != 1:
+            action = "blocked"
+            reason = "concurrent_checkpoint_heads"
+        elif len(all_targets) > 1:
+            action = "blocked"
+            reason = "multiple_local_tasks_bound"
+        elif len(targets) == 1:
+            last_checkpoint_id = targets[0][1]["last_checkpoint_id"]
+            if last_checkpoint_id == latest_checkpoint_id:
+                action = "unchanged"
+                reason = "already_materialized"
+            else:
+                action = "update"
+                reason = "new_checkpoint_available"
+        elif stream_id in hidden_streams:
+            action = "unavailable"
+            reason = "bound_task_not_in_desktop_listing"
+        else:
+            action = "create"
+            reason = "no_local_task_binding"
+        counts[action] += 1
+        plan.append(
+            {
+                "stream_id": stream_id,
+                "action": action,
+                "reason": reason,
+                "target_index": target_index,
+                "latest_checkpoint_id": latest_checkpoint_id,
+                "chat_title": chat_title,
+                "title_available": chat_title is not None,
+                "head_checkpoint_ids": [
+                    item["checkpoint_id"] for item in heads
+                ],
+            }
+        )
+    return {
+        "planned": True,
+        "project_id": entry["project_id"],
+        "registry_path": str(registry_path),
+        "discoverable_thread_count": len(records),
+        "stream_count": len(plan),
+        "counts": counts,
+        "project_context_checkpoint_id": project_context_checkpoint_id,
+        "streams": plan,
+    }
+
+
+def command_sync_plan(args: argparse.Namespace) -> dict[str, Any]:
+    (
+        project_root,
+        config_path,
+        config,
+        entry,
+        _current,
+        directory,
+    ) = configured_context(args)
+    records = load_batch_records(
+        args, project_root, include_context=False, allow_empty=True
+    )
+    registry_path = thread_registry_path(config_path)
+    registry = load_thread_registry(registry_path, config["machine_id"])
+    bindings = registry_threads(registry, entry["project_id"])
+    checkpoints = load_checkpoints(directory, entry["project_id"])
+    by_id = {item["checkpoint_id"]: item for item in checkpoints}
+    all_bindings_by_stream: dict[str, list[dict[str, Any]]] = {}
+    for binding in bindings.values():
+        all_bindings_by_stream.setdefault(binding["stream_id"], []).append(
+            binding
+        )
+
+    local_by_stream: dict[str, list[tuple[int, dict[str, Any], dict[str, Any] | None]]] = {}
+    visible_keys: set[str] = set()
+    for index, record in enumerate(records):
+        key = thread_registry_key(entry["project_id"], record["thread_id"])
+        visible_keys.add(key)
+        binding = bindings.get(key)
+        supplied_stream = record.get("stream_id")
+        if binding and supplied_stream and supplied_stream != binding["stream_id"]:
+            raise ContextSyncError(
+                f"Batch threads[{index}] stream_id conflicts with the local registry"
+            )
+        stream_id = supplied_stream or (
+            binding["stream_id"]
+            if binding
+            else default_thread_stream_id(entry["project_id"], record["thread_id"])
+        )
+        local_by_stream.setdefault(stream_id, []).append((index, record, binding))
+
+    plan: list[dict[str, Any]] = []
+    counts = {
+        "save": 0,
+        "create": 0,
+        "update": 0,
+        "unchanged": 0,
+        "unavailable": 0,
+        "blocked": 0,
+    }
+    covered_streams: set[str] = set()
+    for stream_id, local_targets in sorted(local_by_stream.items()):
+        covered_streams.add(stream_id)
+        index, record, binding = local_targets[0]
+        stream_checkpoints = [
+            item
+            for item in checkpoints
+            if checkpoint_stream_id(item) == stream_id
+        ]
+        heads = checkpoint_heads(stream_checkpoints, stream_id)
+        latest = heads[0] if len(heads) == 1 else None
+        latest_id = latest["checkpoint_id"] if latest else None
+        remote_title = (
+            effective_chat_title(checkpoints, latest) if latest else None
+        )
+        read_scope = "none"
+        preserve_local_title = False
+        follow_up_save_title = False
+        if len(local_targets) > 1:
+            action = "blocked"
+            reason = "multiple_local_tasks_resolve_to_stream"
+        elif len(all_bindings_by_stream.get(stream_id, [])) > 1:
+            action = "blocked"
+            reason = "multiple_local_tasks_bound"
+        elif len(heads) > 1:
+            action = "blocked"
+            reason = "concurrent_checkpoint_heads"
+        elif binding is None:
+            if stream_checkpoints:
+                action = "blocked"
+                reason = "unbound_local_task_matches_remote_stream"
+            else:
+                action = "save"
+                reason = "new_local_task"
+                read_scope = "full_history"
+        elif latest is None:
+            action = "blocked"
+            reason = "bound_stream_missing_from_snapshot"
+        else:
+            last_checkpoint_id = binding["last_checkpoint_id"]
+            known = by_id.get(last_checkpoint_id) if last_checkpoint_id else None
+            if last_checkpoint_id and known is None:
+                action = "blocked"
+                reason = "binding_checkpoint_missing_from_snapshot"
+            elif known and checkpoint_stream_id(known) != stream_id:
+                action = "blocked"
+                reason = "binding_checkpoint_stream_mismatch"
+            else:
+                known_title = (
+                    effective_chat_title(checkpoints, known) if known else None
+                )
+                revision_changed = (
+                    binding["source_revision"] != record["source_revision"]
+                )
+                title_changed = (
+                    record.get("title") is not None
+                    and record["title"] != known_title
+                )
+                local_changed = revision_changed or title_changed
+                remote_changed = last_checkpoint_id != latest_id
+                remote_title_changed = remote_title != known_title
+                if remote_changed and revision_changed:
+                    action = "blocked"
+                    reason = "concurrent_local_remote_content_changes"
+                elif remote_changed and title_changed and remote_title_changed:
+                    action = "blocked"
+                    reason = "concurrent_local_remote_title_changes"
+                elif remote_changed:
+                    action = "update"
+                    reason = "remote_changes_available"
+                    preserve_local_title = title_changed
+                    follow_up_save_title = title_changed
+                elif local_changed:
+                    action = "save"
+                    reason = "local_changes_available"
+                    if revision_changed:
+                        read_scope = (
+                            "after_previous_head"
+                            if binding["source_head_turn_id"]
+                            else "full_review"
+                        )
+                else:
+                    action = "unchanged"
+                    reason = "already_synchronized"
+        counts[action] += 1
+        plan.append(
+            {
+                "stream_id": stream_id,
+                "action": action,
+                "reason": reason,
+                "target_index": index,
+                "read_scope": read_scope,
+                "latest_checkpoint_id": latest_id,
+                "chat_title": (
+                    record.get("title")
+                    if action == "save" or preserve_local_title
+                    else remote_title
+                ),
+                "title_available": bool(
+                    record.get("title")
+                    if action == "save" or preserve_local_title
+                    else remote_title
+                ),
+                "preserve_local_title": preserve_local_title,
+                "follow_up_save_title": follow_up_save_title,
+            }
+        )
+
+    hidden_streams = {
+        binding["stream_id"]
+        for key, binding in bindings.items()
+        if key not in visible_keys
+    }
+    for stream_id in checkpoint_stream_ids(checkpoints):
+        if stream_id == DEFAULT_STREAM_ID or stream_id in covered_streams:
+            continue
+        stream_checkpoints = [
+            item
+            for item in checkpoints
+            if checkpoint_stream_id(item) == stream_id
+        ]
+        heads = checkpoint_heads(stream_checkpoints, stream_id)
+        latest = heads[0] if len(heads) == 1 else None
+        if len(heads) != 1:
+            action = "blocked"
+            reason = "concurrent_checkpoint_heads"
+        elif len(all_bindings_by_stream.get(stream_id, [])) > 1:
+            action = "blocked"
+            reason = "multiple_local_tasks_bound"
+        elif stream_id in hidden_streams:
+            action = "unavailable"
+            reason = "bound_task_not_in_desktop_listing"
+        else:
+            action = "create"
+            reason = "remote_stream_missing_locally"
+        counts[action] += 1
+        chat_title = (
+            effective_chat_title(checkpoints, latest) if latest else None
+        )
+        plan.append(
+            {
+                "stream_id": stream_id,
+                "action": action,
+                "reason": reason,
+                "target_index": None,
+                "read_scope": "none",
+                "latest_checkpoint_id": (
+                    latest["checkpoint_id"] if latest else None
+                ),
+                "chat_title": chat_title,
+                "title_available": chat_title is not None,
+                "preserve_local_title": False,
+                "follow_up_save_title": False,
+            }
+        )
+
+    project_head = stream_single_head(checkpoints, DEFAULT_STREAM_ID)
+    return {
+        "planned": True,
+        "mode": "bidirectional",
+        "project_id": entry["project_id"],
+        "registry_path": str(registry_path),
+        "discoverable_thread_count": len(records),
+        "stream_count": len(plan),
+        "counts": counts,
+        "project_context_checkpoint_id": (
+            project_head["checkpoint_id"] if project_head else None
+        ),
+        "streams": plan,
     }
 
 
@@ -1001,19 +2048,28 @@ def freshness(
     }
 
 
-def command_restore(args: argparse.Namespace) -> dict[str, Any]:
-    _root, _config_path, _config, entry, current, directory = configured_context(args)
-    checkpoints = load_checkpoints(directory, entry["project_id"])
-    if not checkpoints:
-        raise ContextSyncError("No checkpoints are available")
+def restore_stream(
+    checkpoints: list[dict[str, Any]],
+    stream_id: str,
+    current: dict[str, Any],
+    checkpoint_id: str | None = None,
+) -> dict[str, Any]:
     by_id = {item["checkpoint_id"]: item for item in checkpoints}
-    heads = checkpoint_heads(checkpoints)
-    checkpoint_id = getattr(args, "checkpoint_id", None)
+    stream_checkpoints = [
+        item for item in checkpoints if checkpoint_stream_id(item) == stream_id
+    ]
+    if not stream_checkpoints:
+        raise ContextSyncError(f"Checkpoint stream does not exist: {stream_id}")
+    heads = checkpoint_heads(stream_checkpoints, stream_id)
     if checkpoint_id:
         latest = by_id.get(checkpoint_id)
         if latest is None:
             raise ContextSyncError(
                 f"Checkpoint does not exist: {checkpoint_id}"
+            )
+        if checkpoint_stream_id(latest) != stream_id:
+            raise ContextSyncError(
+                f"Checkpoint does not belong to stream {stream_id}: {checkpoint_id}"
             )
     elif len(heads) > 1:
         identifiers = ", ".join(item["checkpoint_id"] for item in heads)
@@ -1023,9 +2079,12 @@ def command_restore(args: argparse.Namespace) -> dict[str, Any]:
         )
     else:
         latest = heads[0]
+    history = checkpoint_history(checkpoints, latest)
+    chat_title = effective_chat_title(checkpoints, latest)
     return {
-        "project_id": entry["project_id"],
+        "stream_id": stream_id,
         "checkpoint_id": latest["checkpoint_id"],
+        "snapshot_kind": checkpoint_snapshot_kind(latest),
         "created_at": latest["created_at"],
         "machine_id": latest["machine_id"],
         "parent_checkpoint_ids": latest["parent_checkpoint_ids"],
@@ -1035,7 +2094,59 @@ def command_restore(args: argparse.Namespace) -> dict[str, Any]:
         "recorded_repository": latest["repository"],
         "current_repository": current,
         "context": latest["context"],
+        "chat_title": chat_title,
+        "title_available": chat_title is not None,
+        "history_count": len(history),
+        "history": [
+            {
+                "checkpoint_id": item["checkpoint_id"],
+                "created_at": item["created_at"],
+                "machine_id": item["machine_id"],
+                "snapshot_kind": checkpoint_snapshot_kind(item),
+                "repository": item["repository"],
+                "context": item["context"],
+            }
+            for item in history
+        ],
     }
+
+
+def command_restore(args: argparse.Namespace) -> dict[str, Any]:
+    _root, _config_path, _config, entry, current, directory = configured_context(args)
+    checkpoints = load_checkpoints(directory, entry["project_id"])
+    if not checkpoints:
+        raise ContextSyncError("No checkpoints are available")
+    checkpoint_id = getattr(args, "checkpoint_id", None)
+    requested_stream = getattr(args, "stream_id", None)
+    if checkpoint_id and requested_stream is None:
+        by_id = {item["checkpoint_id"]: item for item in checkpoints}
+        selected = by_id.get(checkpoint_id)
+        if selected is None:
+            raise ContextSyncError(f"Checkpoint does not exist: {checkpoint_id}")
+        requested_stream = checkpoint_stream_id(selected)
+    if getattr(args, "all_streams", False):
+        results = [
+            restore_stream(checkpoints, stream_id, current)
+            for stream_id in checkpoint_stream_ids(checkpoints)
+        ]
+        return {
+            "project_id": entry["project_id"],
+            "all_streams": True,
+            "stream_count": len(results),
+            "streams": results,
+            "current_repository": current,
+        }
+    stream_ids = checkpoint_stream_ids(checkpoints)
+    if requested_stream is None:
+        if len(stream_ids) != 1:
+            raise ContextSyncError(
+                "Multiple checkpoint streams are available; use --stream-id or --all-streams"
+            )
+        requested_stream = stream_ids[0]
+    requested_stream = validate_stream_id(requested_stream)
+    result = restore_stream(checkpoints, requested_stream, current, checkpoint_id)
+    result["project_id"] = entry["project_id"]
+    return result
 
 
 def command_audit(args: argparse.Namespace) -> dict[str, Any]:
@@ -1046,6 +2157,7 @@ def command_audit(args: argparse.Namespace) -> dict[str, Any]:
         "ok": True,
         "project_id": entry["project_id"],
         "checkpoint_count": len(checkpoints),
+        "stream_count": len(checkpoint_stream_ids(checkpoints)),
         "scanned_at": utc_now(),
         "findings": [],
     }
@@ -1066,10 +2178,35 @@ def command_migrate(args: argparse.Namespace) -> dict[str, Any]:
 
 
 def markdown_restore(result: dict[str, Any]) -> str:
+    if result.get("all_streams"):
+        lines = [
+            "# Project handoff streams",
+            "",
+            f"- Streams: `{result['stream_count']}`",
+        ]
+        for stream in result["streams"]:
+            title = stream.get("chat_title") or "title unavailable"
+            lines.extend(
+                [
+                    "",
+                    f"## `{stream['stream_id']}`",
+                    "",
+                    f"- Checkpoint: `{stream['checkpoint_id']}`",
+                    f"- Chat title: {title}",
+                    f"- Updates in restored history: `{stream['history_count']}`",
+                    "",
+                    stream["context"]["summary"],
+                ]
+            )
+        return "\n".join(lines) + "\n"
     lines = [
         "# Project handoff",
         "",
+        f"- Stream: `{result['stream_id']}`",
         f"- Checkpoint: `{result['checkpoint_id']}`",
+        f"- Chat title: {result.get('chat_title') or 'title unavailable'}",
+        f"- Snapshot kind: `{result['snapshot_kind']}`",
+        f"- Updates in restored history: `{result['history_count']}`",
         f"- Created: `{result['created_at']}`",
         f"- Source machine: `{result['machine_id']}`",
     ]
@@ -1089,9 +2226,12 @@ def markdown_restore(result: dict[str, Any]) -> str:
     context = result["context"]
     lines.extend(["", "## Summary", "", context["summary"]])
     headings = (
+        ("rationale", "Rationale and considered options"),
+        ("discussions", "Discussion outcomes"),
         ("decisions", "Decisions"),
         ("actions", "Actions"),
         ("verifications", "Verification"),
+        ("blockers", "Blockers"),
         ("open_questions", "Open questions"),
         ("next_steps", "Next steps"),
         ("relevant_paths", "Relevant paths"),
@@ -1154,16 +2294,24 @@ def build_parser() -> argparse.ArgumentParser:
     hydrate.add_argument("--output-root", required=True)
     hydrate.add_argument("--json", action="store_true")
 
-    for name in ("status", "audit"):
-        child = subparsers.add_parser(name)
-        child.add_argument("--project-path", required=True)
-        child.add_argument("--snapshot-root")
-        child.add_argument("--json", action="store_true")
+    status = subparsers.add_parser("status")
+    status.add_argument("--project-path", required=True)
+    status.add_argument("--snapshot-root")
+    status.add_argument("--stream-id")
+    status.add_argument("--json", action="store_true")
+
+    audit = subparsers.add_parser("audit")
+    audit.add_argument("--project-path", required=True)
+    audit.add_argument("--snapshot-root")
+    audit.add_argument("--json", action="store_true")
 
     restore = subparsers.add_parser("restore")
     restore.add_argument("--project-path", required=True)
     restore.add_argument("--snapshot-root")
-    restore.add_argument("--checkpoint-id")
+    restore_selection = restore.add_mutually_exclusive_group()
+    restore_selection.add_argument("--checkpoint-id")
+    restore_selection.add_argument("--stream-id")
+    restore_selection.add_argument("--all-streams", action="store_true")
     restore.add_argument("--json", action="store_true")
 
     capture = subparsers.add_parser("capture")
@@ -1173,7 +2321,69 @@ def build_parser() -> argparse.ArgumentParser:
     source.add_argument("--input")
     source.add_argument("--stdin", action="store_true")
     capture.add_argument("--merge-heads", action="store_true")
+    capture.add_argument("--stream-id", default=DEFAULT_STREAM_ID)
+    capture.add_argument(
+        "--snapshot-kind",
+        choices=("auto", "baseline", "delta"),
+        default="auto",
+    )
     capture.add_argument("--json", action="store_true")
+
+    batch_plan = subparsers.add_parser(
+        "batch-plan", help="Plan baseline and delta work for discovered project chats"
+    )
+    batch_plan.add_argument("--project-path", required=True)
+    batch_plan.add_argument("--snapshot-root")
+    batch_plan_source = batch_plan.add_mutually_exclusive_group(required=True)
+    batch_plan_source.add_argument("--input")
+    batch_plan_source.add_argument("--stdin", action="store_true")
+    batch_plan.add_argument("--json", action="store_true")
+
+    batch_capture = subparsers.add_parser(
+        "batch-capture", help="Capture sanitized project chat summaries in one batch"
+    )
+    batch_capture.add_argument("--project-path", required=True)
+    batch_capture.add_argument("--snapshot-root")
+    batch_capture_source = batch_capture.add_mutually_exclusive_group(required=True)
+    batch_capture_source.add_argument("--input")
+    batch_capture_source.add_argument("--stdin", action="store_true")
+    batch_capture.add_argument("--json", action="store_true")
+
+    bind_thread = subparsers.add_parser(
+        "bind-thread", help="Bind a local Codex chat to a restored stream"
+    )
+    bind_thread.add_argument("--project-path", required=True)
+    bind_thread.add_argument("--snapshot-root")
+    bind_thread.add_argument("--thread-id", required=True)
+    bind_thread.add_argument("--stream-id", required=True)
+    bind_thread.add_argument("--checkpoint-id")
+    bind_thread.add_argument("--source-revision")
+    bind_thread.add_argument("--source-head-turn-id")
+    bind_thread.add_argument("--json", action="store_true")
+
+    materialize_plan = subparsers.add_parser(
+        "materialize-plan",
+        help="Plan creation or update of restored streams as desktop tasks",
+    )
+    materialize_plan.add_argument("--project-path", required=True)
+    materialize_plan.add_argument("--snapshot-root")
+    materialize_source = materialize_plan.add_mutually_exclusive_group(
+        required=True
+    )
+    materialize_source.add_argument("--input")
+    materialize_source.add_argument("--stdin", action="store_true")
+    materialize_plan.add_argument("--json", action="store_true")
+
+    sync_plan = subparsers.add_parser(
+        "sync-plan",
+        help="Plan bidirectional save and restore work for project chats",
+    )
+    sync_plan.add_argument("--project-path", required=True)
+    sync_plan.add_argument("--snapshot-root")
+    sync_plan_source = sync_plan.add_mutually_exclusive_group(required=True)
+    sync_plan_source.add_argument("--input")
+    sync_plan_source.add_argument("--stdin", action="store_true")
+    sync_plan.add_argument("--json", action="store_true")
 
     migrate = subparsers.add_parser("migrate")
     migrate.add_argument("--json", action="store_true")
@@ -1191,6 +2401,11 @@ def main() -> int:
             "hydrate-drive": command_hydrate_drive,
             "status": command_status,
             "capture": command_capture,
+            "batch-plan": command_batch_plan,
+            "batch-capture": command_batch_capture,
+            "bind-thread": command_bind_thread,
+            "materialize-plan": command_materialize_plan,
+            "sync-plan": command_sync_plan,
             "restore": command_restore,
             "audit": command_audit,
             "migrate": command_migrate,

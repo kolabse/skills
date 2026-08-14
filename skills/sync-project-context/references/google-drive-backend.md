@@ -66,7 +66,9 @@ Drive URLs, account email addresses, or sharing links in a checkpoint.
    Repeat `--checkpoint-file` for each file. Zero checkpoints is valid. The
    helper rejects wrong repository identities, secrets, invalid IDs, duplicate
    checkpoints, missing parents, cyclic history, and digest corruption before
-   materializing canonical names.
+   materializing canonical names. Version 2 checkpoints may represent
+   independent chat streams; download all streams, not only the most recently
+   modified files.
 
 ## Status, capture, restore, and audit
 
@@ -76,17 +78,21 @@ Pass the hydrated directory to the ordinary commands with `--snapshot-root`:
 python <skill-root>/scripts/context_sync.py status \
   --project-path <project-root> --snapshot-root <snapshot> --json
 python <skill-root>/scripts/context_sync.py restore \
-  --project-path <project-root> --snapshot-root <snapshot> --json
+  --project-path <project-root> --snapshot-root <snapshot> \
+  --all-streams --json
 python <skill-root>/scripts/context_sync.py audit \
   --project-path <project-root> --snapshot-root <snapshot> --json
 ```
 
 For capture, hydrate immediately before creating the checkpoint. Upload only
-the exact `path` returned by the helper to the stored checkpoints folder:
+the exact `path` returned by the helper to the stored checkpoints folder. A
+desktop batch may return several paths; apply the same exact-name upload and
+readback verification to every path:
 
 ```shell
 python <skill-root>/scripts/context_sync.py capture \
   --project-path <project-root> --snapshot-root <snapshot> \
+  --stream-id <stream-id> --snapshot-kind auto \
   --input <reviewed-json-outside-repository> --json
 ```
 

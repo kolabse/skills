@@ -116,7 +116,7 @@ python bootstrap_update.py plan --json
 python bootstrap_update.py update --yes --migrate --json
 ```
 
-Use `--release v1.4.0` to pin a version. The bootstrap requires `gh` for
+Use `--release v1.5.0` to pin a version. The bootstrap requires `gh` for
 attestation verification and removes its temporary directory on completion.
 For an offline cache, provide both `--offline-archive` and
 `--offline-checksums`. Provenance verification remains required when `gh` can
@@ -288,9 +288,10 @@ Windows compatibility.
 
 ### `sync-project-context`
 
-Save and restore a private, sanitized project handoff between computers without
-adding context files to the team repository. This skill is experimental while
-its cross-device trigger and storage behavior is evaluated independently.
+Save and restore private, sanitized project and per-chat continuation state
+between computers without adding context files to the team repository. This
+skill is experimental while its cross-device trigger and storage behavior is
+evaluated independently.
 
 After installing it on each computer, invoke it first with:
 
@@ -300,12 +301,28 @@ $sync-project-context Configure this clone in metadata-only mode using my approv
 
 The dependency-free helper stores machine-local configuration in the user's
 configuration directory and immutable checkpoints through either an approved
-local synchronized folder or the optional Google Drive plugin. The connector
-backend validates a complete downloaded snapshot locally and reads uploads back
-before success. It records
-reviewed summaries, decisions, actions, verification, questions, next steps,
-and Git fingerprints; it never copies source contents, diffs, raw transcripts,
-or hidden reasoning. Metadata-only mode also omits branch names and file paths.
+local synchronized folder or the optional Google Drive plugin. Independent
+opaque streams let each project chat keep a detailed first baseline followed by
+short incremental updates, so repeated "save state" and "restore state"
+requests can continue several implementation tracks across computers without
+mixing them. In the desktop app, an explicit "save all project chats" command
+can discover the 50 most recent non-pinned tasks plus all pinned tasks, create
+baselines for new workstreams, append deltas only to changed workstreams, and
+skip unchanged or active tasks. A machine-local hashed registry prevents
+duplicate streams without storing task titles or transcripts. The matching
+"restore all project chats" command resolves the destination local project by
+its canonical path, creates one project task per missing saved stream, updates
+an existing bound task when a newer delta arrives, and skips already-current
+tasks without importing raw transcripts. The connector backend validates a
+complete downloaded snapshot locally and reads uploads back before success.
+Exact visible chat titles are stored as scanned metadata and restored without
+semantic regeneration. The unified "sync all project chats" command plans
+local saves, remote creates or updates, unchanged skips, and explicit conflicts
+in one bidirectional pass on the active computer. It records reviewed summaries,
+factual rationale, discussion outcomes, decisions, actions, verification,
+questions, next steps, and Git fingerprints; it never copies source contents,
+diffs, raw transcripts, or hidden reasoning. Metadata-only mode also omits
+branch names and file paths; chat titles remain intentionally included.
 Configuration requires an explicit storage-policy acknowledgement, repository
 fingerprints prevent cross-project restore, and high-confidence secret patterns
 fail closed.

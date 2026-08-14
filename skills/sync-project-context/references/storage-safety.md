@@ -27,7 +27,10 @@ The default `metadata-only` mode may store:
 - opaque project and machine identifiers;
 - commit hashes and repository fingerprint hashes;
 - counts of staged, unstaged, and untracked changes;
-- concise user-reviewed summaries, decisions, actions, verification, open
+- opaque chat-stream identifiers;
+- machine-local hashes that associate desktop tasks with chat streams;
+- concise user-reviewed summaries, factual rationale and considered options,
+  discussion outcomes, decisions, actions, verification, blockers, open
   questions, and next steps.
 
 The optional `paths` mode may additionally store branch, upstream, and relative
@@ -52,7 +55,8 @@ fields before capture.
 - Let the storage client finish synchronization before capture or restore. For
   a connector backend, list and download the complete remote snapshot instead.
 - Keep checkpoints append-only. Reconcile concurrent sibling checkpoints
-  explicitly instead of overwriting one.
+  explicitly within the same chat stream instead of overwriting one. Do not
+  merge unrelated streams merely because both are current project heads.
 - Use the storage provider's version history and retention controls for
   recovery. This skill never deletes checkpoints.
 - Treat downloaded connector files as untrusted until `hydrate-drive` accepts

@@ -28,6 +28,30 @@
     {
       "prompt": "На этом компьютере нет Google Drive Desktop. Настрой приватный перенос контекста проекта через подключённый Google Drive plugin.",
       "reason": "The request explicitly selects the optional connector backend for a project handoff."
+    },
+    {
+      "prompt": "Сохрани состояние этого чата, чтобы вечером продолжить реализацию этой функции на другом компьютере.",
+      "reason": "The request asks for a per-chat continuation stream within the configured project handoff."
+    },
+    {
+      "prompt": "Восстанови состояние моих рабочих чатов по проекту и покажи, на чём остановились в каждом из них.",
+      "reason": "Restoring all independent project chat streams is a core cross-device workflow."
+    },
+    {
+      "prompt": "Снова сохрани состояние: после предыдущего checkpoint мы только обсудили варианты и приняли одно решение.",
+      "reason": "A short incremental delta is the intended repeated-save workflow for an existing chat stream."
+    },
+    {
+      "prompt": "Сохрани все доступные чаты этого проекта одним пакетом, новые подробно, а изменившиеся после прошлого раза — короткими обновлениями.",
+      "reason": "The explicit desktop batch command discovers project chats and creates baseline or delta continuation streams without exporting transcripts."
+    },
+    {
+      "prompt": "Восстанови все сохранённые чаты проекта на этом компьютере как отдельные задачи проекта и не создавай дубли при повторном запуске.",
+      "reason": "The explicit desktop batch restore must materialize missing saved streams as project tasks and update or skip existing local bindings idempotently."
+    },
+    {
+      "prompt": "Синхронизируй все чаты проекта: сохрани локальные изменения, восстанови удалённые и сохрани точные исходные названия чатов.",
+      "reason": "The unified bidirectional command reconciles local and remote chat streams while preserving exact visible task titles."
     }
   ],
   "negative": [
@@ -54,6 +78,10 @@
     {
       "prompt": "Продолжи текущий чат на этом же компьютере, дополнительный checkpoint не нужен.",
       "reason": "Ordinary same-chat continuation explicitly does not require cross-device persistence."
+    },
+    {
+      "prompt": "Покажи последние чаты Codex, но ничего не сохраняй и не синхронизируй.",
+      "reason": "Listing desktop tasks without a project-handoff request is ordinary task management, not context synchronization."
     }
   ]
 }

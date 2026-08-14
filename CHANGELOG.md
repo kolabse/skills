@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+## [1.5.0] - 2026-08-14
+
 ### Added
 
 - An experimental `sync-project-context` skill that saves immutable, sanitized
@@ -9,12 +11,27 @@
   approved synchronized folder or the optional Google Drive plugin, with
   repository fingerprinting, freshness reporting, verified connector
   readback, secret rejection, and metadata-only defaults.
+- Per-chat continuation streams with detailed first baselines, concise later
+  deltas, independent conflict detection, accumulated restore history, and an
+  all-streams overview for repeated work across multiple computers.
+- A desktop-only `save all project chats` workflow with project-aware task
+  discovery, baseline/delta planning, unchanged-task skips, a hashed local
+  thread registry, restored-stream binding, and explicit discovery limits.
+- A desktop-only `restore all project chats` workflow that independently
+  resolves the destination project, creates missing tasks from sanitized
+  streams, updates existing bound tasks, and avoids duplicate materialization.
+- Exact chat-title metadata in saved streams and deterministic title restore
+  for created and updated desktop tasks.
+- A bidirectional `sync all project chats` workflow that reconciles one-sided
+  changes and blocks streams changed independently on both computers.
 
 ### Changed
 
 - `sync-project-context` configuration schema v2 records the storage backend
   explicitly and migrates existing local-folder configurations without
   changing their behavior.
+- `sync-project-context` checkpoint schema v2 adds opaque stream identities and
+  baseline/delta semantics while continuing to read version 1 checkpoints.
 - Release holdout validation now targets stable skills; experimental additions
   must pass ordinary trigger evals and receive a new independent holdout before
   promotion to stable.
@@ -235,6 +252,7 @@ First versioned release of the kolabse skill collection.
 - Tests for configuration migration, fake cloud and infrastructure CLIs,
   installation confirmation, and collection metadata.
 
+[1.5.0]: https://github.com/kolabse/skills/releases/tag/v1.5.0
 [1.4.0]: https://github.com/kolabse/skills/releases/tag/v1.4.0
 [1.3.0]: https://github.com/kolabse/skills/releases/tag/v1.3.0
 [1.2.2]: https://github.com/kolabse/skills/releases/tag/v1.2.2
