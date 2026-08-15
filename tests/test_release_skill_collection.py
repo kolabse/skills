@@ -21,10 +21,10 @@ class ReleaseSkillCollectionTests(unittest.TestCase):
         self.assertEqual("status", result["mode"])
         self.assertFalse(result["mutates_repository"])
         self.assertFalse(result["blockers"])
-        self.assertEqual("1.6.0", result["versions"]["catalog"])
-        self.assertEqual("1.6.0", result["versions"]["plugin"])
+        self.assertEqual("1.7.0", result["versions"]["catalog"])
+        self.assertEqual("1.7.0", result["versions"]["plugin"])
         self.assertEqual(
-            "1.6.0", result["versions"]["skill:release-skill-collection"]
+            "1.7.0", result["versions"]["skill:release-skill-collection"]
         )
 
     def test_plan_rejects_an_invalid_tag_without_running_checks(self) -> None:
@@ -36,10 +36,10 @@ class ReleaseSkillCollectionTests(unittest.TestCase):
         self.assertFalse(result["mutates_repository"])
 
     def test_current_version_is_a_complete_release_candidate(self) -> None:
-        result = release_collection.inspect(ROOT, "v1.6.0")
+        result = release_collection.inspect(ROOT, "v1.7.0")
 
         self.assertFalse(result["blockers"])
-        self.assertEqual("1.6.0", result["target_version"])
+        self.assertEqual("1.7.0", result["target_version"])
         self.assertEqual(5, len(result["post_publication_steps"]))
         self.assertTrue(
             any("primary branch" in item for item in result["post_publication_steps"])
@@ -49,10 +49,10 @@ class ReleaseSkillCollectionTests(unittest.TestCase):
         )
 
     def test_check_refuses_dirty_candidate_and_repository_output(self) -> None:
-        plan = release_collection.inspect(ROOT, "v1.6.0")
+        plan = release_collection.inspect(ROOT, "v1.7.0")
         plan["repository"]["dirty"] = True
         with patch.object(release_collection, "inspect", return_value=plan):
-            result = release_collection.check(ROOT, "v1.6.0", ROOT / "dist")
+            result = release_collection.check(ROOT, "v1.7.0", ROOT / "dist")
 
         self.assertFalse(result["passed"])
         self.assertFalse(result["checks"])

@@ -33,7 +33,7 @@ Create a reviewed input outside the project:
     {"id": "project-rules", "path": "AGENTS.md", "scope": "project"}
   ],
   "skills": [
-    {"id": "sync-project-context", "source": "kolabse-skills", "version": "1.6.0", "required": true, "declaration_path": "plugin.json"}
+    {"id": "sync-project-context", "source": "kolabse-skills", "version": "1.7.0", "required": true, "declaration_path": "plugin.json"}
   ],
   "plugins": [
     {"id": "google-drive", "version": "0.1.11", "required": true}
