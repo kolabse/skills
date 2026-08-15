@@ -321,11 +321,16 @@ Send lifecycle updates for long-running agent tasks through Telegram.
 - provides a masked, paste-friendly first-use form for Codex Desktop on Windows;
 - stores credentials in the user configuration directory and sends a test
   notification during setup;
+- supports a separate chat or forum topic per project, with an explicit choice
+  between global-plus-project delivery and project-only delivery;
+- exports secret-free project routing values for reconciliation through
+  `sync-project-context`;
 - runs with the Python 3 standard library on Windows, macOS, and Linux.
 
 **What it does not do:**
 
 - place the bot token in the conversation, shell history, or repository;
+- copy the global bot token or Telegram authentication state between computers;
 - send notifications when the user asks to keep progress in the current task;
 - act as a general Telegram bot-development framework.
 
@@ -333,6 +338,7 @@ Send lifecycle updates for long-running agent tasks through Telegram.
 
 ```text
 $notify-via-telegram Configure Telegram notifications for long tasks.
+$notify-via-telegram Configure this project to notify its team chat only, instead of the global destination.
 ```
 
 ### `operate-yandex-cloud`

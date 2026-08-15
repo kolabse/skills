@@ -1,6 +1,6 @@
 ---
 name: notify-via-telegram
-description: "Send Telegram notifications about long-running agent tasks. Use when a task is expected to take several minutes or span multiple stages, waits, deployments, builds, migrations, research passes, or other lengthy work that benefits from start, progress, milestone, problem, blocked, and completion updates; also use whenever the user asks to be notified or kept updated in Telegram."
+description: "Send Telegram notifications about long-running agent tasks through a global destination or a project-specific chat or topic. Use when a task is expected to take several minutes or span multiple stages, waits, deployments, builds, migrations, research passes, or other lengthy work that benefits from start, progress, milestone, problem, blocked, and completion updates; also use whenever the user asks to be notified or kept updated in Telegram or to configure notification routing for a project."
 ---
 
 # Notify via Telegram
@@ -55,6 +55,37 @@ After updating the skill, run `migrate --json`; legacy unversioned configuration
 is upgraded to version 1, while unknown newer versions fail closed. Use
 `status --json` for read-only automation; it never emits the token.
 
+## Configure a project destination
+
+Use the global bot identity on the computer, but allow each project to select a
+separate chat or forum topic. Confirm that the organization permits task
+updates in that destination, then choose the routing mode explicitly:
+
+- `global-and-project` sends each update to both configured destinations;
+- `project-only` suppresses the global destination for that project.
+
+```shell
+python <skill-root>/scripts/telegram_notify.py project-configure \
+  --project-path <project-root> \
+  --delivery-mode <global-and-project-or-project-only> \
+  --chat-id <project-chat-id> [--thread-id <topic-id>]
+```
+
+Omit `--chat-id` to discover a recent project chat interactively. The command
+sends a test unless `--skip-test` is explicitly selected. Check the effective
+profile without exposing credentials:
+
+```shell
+python <skill-root>/scripts/telegram_notify.py project-status \
+  --project-path <project-root> --json
+```
+
+The profile is stored in the user's configuration directory under a hash of the
+canonical project path, never in the repository. It contains only the routing
+mode, chat ID, and optional topic ID; the bot token remains global and
+machine-local. A project without a profile continues to use only the global
+destination.
+
 ## Plan notification points
 
 Before starting substantive work, identify only the meaningful notification
@@ -79,8 +110,12 @@ would care now, and no notification exists solely to report activity.
 Send plain-text messages with:
 
 ```shell
-python <skill-root>/scripts/telegram_notify.py send "<message>"
+python <skill-root>/scripts/telegram_notify.py send \
+  --project-path <project-root> "<message>"
 ```
+
+Always pass `--project-path` while operating in a project so its routing profile
+is honored. Omit it only for work that is not associated with a project.
 
 Use these compact shapes and omit empty fields:
 
@@ -131,3 +166,30 @@ misreported as task failures.
   large raw output.
 - Obtain confirmation before changing the configured destination or sending a
   test message to a newly supplied chat ID.
+
+## Synchronize a project profile
+
+Only synchronize the project routing values after confirming that the selected
+storage may contain the chat and topic identifiers; they can reveal team or
+organization structure. Export a reviewed, secret-free environment input:
+
+```shell
+python <skill-root>/scripts/telegram_notify.py project-export \
+  --project-path <project-root> > <temporary-json-outside-project>
+```
+
+Use `$sync-project-context` to inspect and capture that input as a project
+environment setting. On another computer, its read-only environment plan will
+report `manual_apply_required`. Recreate the destination with
+`project-configure`, then export observed state for verification:
+
+```shell
+python <skill-root>/scripts/telegram_notify.py project-export \
+  --project-path <project-root> --local-state \
+  > <temporary-local-state-outside-project>
+```
+
+Pass that file to `environment_sync.py plan --local-state`. Delete both
+temporary files afterward. The bot token and Telegram authentication state are
+never exported or synchronized; configure the global sender independently on
+each computer.

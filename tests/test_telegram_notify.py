@@ -8,7 +8,7 @@ import shutil
 import subprocess
 import tempfile
 import unittest
-from contextlib import redirect_stderr
+from contextlib import redirect_stderr, redirect_stdout
 from pathlib import Path
 from unittest.mock import patch
 
@@ -27,6 +27,65 @@ SPEC.loader.exec_module(telegram_notify)
 
 
 class TelegramNotifyTests(unittest.TestCase):
+    def test_project_profile_is_outside_project_and_contains_no_token(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            project = root / "project"
+            project.mkdir()
+            global_config = root / "user-config" / "config.json"
+            profile_path = telegram_notify.project_config_path(global_config, project)
+            telegram_notify.save_config(
+                profile_path,
+                {
+                    "version": 1,
+                    "delivery_mode": "project-only",
+                    "chat_id": "-1001",
+                },
+            )
+            profile = telegram_notify.load_project_config(profile_path)
+            self.assertEqual("project-only", profile["delivery_mode"])
+            self.assertEqual("-1001", profile["chat_id"])
+            self.assertNotIn("bot_token", profile)
+            self.assertNotEqual(project, profile_path.parent)
+            self.assertNotIn(project, profile_path.parents)
+
+    def test_project_export_matches_environment_setting_contract(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            project = root / "project"
+            project.mkdir()
+            global_config = root / "user-config" / "config.json"
+            profile_path = telegram_notify.project_config_path(global_config, project)
+            telegram_notify.save_config(
+                profile_path,
+                {
+                    "version": 1,
+                    "delivery_mode": "global-and-project",
+                    "chat_id": "-1002",
+                    "message_thread_id": "7",
+                },
+            )
+            output = io.StringIO()
+            with redirect_stdout(output):
+                telegram_notify.command_project_export(
+                    type("Args", (), {"project_path": str(project), "local_state": False})(),
+                    global_config,
+                )
+            exported = json.loads(output.getvalue())
+            setting = exported["settings"][0]
+            self.assertEqual("notify-via-telegram", setting["id"])
+            self.assertEqual("global-and-project", setting["preferences"]["delivery_mode"])
+            self.assertEqual("-1002", setting["preferences"]["chat_id"])
+            self.assertNotIn("token", json.dumps(exported).lower())
+
+    def test_project_config_schema_declares_both_delivery_modes(self) -> None:
+        schema_path = SCRIPT.parent.parent / "schemas" / "project-config.schema.json"
+        schema = json.loads(schema_path.read_text(encoding="utf-8"))
+        self.assertEqual(
+            ["global-and-project", "project-only"],
+            schema["properties"]["delivery_mode"]["enum"],
+        )
+
     def test_bot_token_normalization_accepts_telegram_shape(self) -> None:
         self.assertEqual(
             "123456789:abc_DEF-",

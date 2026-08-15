@@ -1,0 +1,14 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/kolabse/skills/notify-via-telegram/project-config.schema.json",
+  "title": "Project Telegram notification profile",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["version", "delivery_mode", "chat_id"],
+  "properties": {
+    "version": {"const": 1},
+    "delivery_mode": {"enum": ["global-and-project", "project-only"]},
+    "chat_id": {"type": "string", "pattern": "^-?[0-9]+$"},
+    "message_thread_id": {"type": "string", "pattern": "^[0-9]+$"}
+  }
+}

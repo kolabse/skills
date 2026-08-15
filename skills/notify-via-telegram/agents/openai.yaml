@@ -1,4 +1,4 @@
 interface:
   display_name: "Telegram Task Notifications"
-  short_description: "Telegram updates for long-running tasks"
-  default_prompt: "Use $notify-via-telegram to keep me updated in Telegram while you run this long task."
+  short_description: "Global or project-specific Telegram task updates"
+  default_prompt: "Use $notify-via-telegram to route updates for this long task to the configured global and project Telegram destinations."

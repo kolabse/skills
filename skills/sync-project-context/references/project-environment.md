@@ -23,6 +23,9 @@ system and organization policy. A plugin connection is recreated interactively
 on every computer. Settings are materialized only through the owning
 component's schema-aware interface; this helper never writes them directly.
 
+Chat and topic identifiers can reveal team or organization structure. Obtain
+explicit approval for the chosen storage before capturing notification routing.
+
 ## Inspect and capture
 
 Create a reviewed input outside the project:
@@ -71,6 +74,22 @@ python <skill-root>/scripts/environment_sync.py capture \
 Concurrent manifest heads require separate review and a reconciled capture
 with `--merge-heads`. Never select one merely by timestamp.
 
+### Project Telegram routing
+
+`notify-via-telegram` exports a known version 1 project setting containing only
+`delivery_mode`, `chat_id`, and optional `message_thread_id`. Generate the input
+outside the repository instead of transcribing it:
+
+```shell
+python <notify-skill-root>/scripts/telegram_notify.py project-export \
+  --project-path <project-root> > <reviewed-json-outside-project>
+```
+
+Inspect and capture that file through the commands above. The environment
+helper validates both supported modes (`global-and-project` and `project-only`)
+and rejects extra fields, including `bot_token`. Never synchronize the global
+sender token or Telegram authentication state.
+
 ## Plan and apply on another computer
 
 After Git and the storage snapshot are current, run:
@@ -101,6 +120,12 @@ python <skill-root>/scripts/environment_sync.py apply \
 The helper creates only absent, untracked `AGENTS.md` files with exclusive
 creation. It never overwrites an existing or Git-owned rule. Re-run `plan`
 after installing skills, plugins, or settings through their own tools.
+
+For project Telegram routing, run `project-configure` from the notification
+skill with the planned chat, topic, and mode. Then export observed state with
+`project-export --local-state` and pass it to `plan --local-state`; the setting
+must change from `manual_apply_required` to `satisfied_locally` before treating
+the destination as reconciled.
 
 ## Google Drive transport
 
