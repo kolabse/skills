@@ -29,6 +29,34 @@
   ],
   "skills": [
     {
+      "name": "discover-skill-candidates",
+      "path": "skills/discover-skill-candidates",
+      "status": "experimental",
+      "maintainers": [
+        "@kolabse"
+      ],
+      "platforms": [
+        "linux",
+        "macos",
+        "windows"
+      ],
+      "trigger_evals": "evals/discover-skill-candidates.json",
+      "license": "Apache-2.0",
+      "provides": ["skill-candidate-discovery", "rule-provenance-inventory", "portable-skill-candidate-contribution"],
+      "requires": [],
+      "optional_integrations": [],
+      "configuration": {
+        "scope": "project",
+        "format": "none",
+        "status": ["python", "scripts/discover_candidates.py", "inventory", "--project-path", "<project-root>", "--json"]
+      },
+      "provenance": {
+        "kind": "original",
+        "source": "Created to turn recurring local project rules into reviewed reusable-skill ideas without silently authoring skills",
+        "canonical_repository": "https://github.com/kolabse/skills"
+      }
+    },
+    {
       "name": "verify-before-push",
       "path": "skills/verify-before-push",
       "status": "stable",

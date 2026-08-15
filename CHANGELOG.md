@@ -2,6 +2,13 @@
 
 ## Unreleased
 
+### Added
+
+- An experimental `discover-skill-candidates` workflow that inventories
+  project `AGENTS.md` rules, ranks reusable skill ideas against the existing
+  catalog, and exports selected ideas as sanitized, digest-bound contribution
+  packages with independent validation and maintainer intake guidance.
+
 ### Changed
 
 - `release-skill-collection` now requires verified post-publication branch

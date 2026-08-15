@@ -199,6 +199,32 @@ The catalog defines three reusable ordered workflows:
 Required steps fail closed. Optional logging and notification report their own
 failure without changing the observed result of the primary operation.
 
+### `discover-skill-candidates` (experimental)
+
+Analyze project-relative `AGENTS.md` rules and produce a read-only ranked
+backlog of reusable skill ideas without scaffolding or modifying any skill.
+The dependency-free helper inventories bounded rule files, records Git and
+line-level provenance, rejects detected secrets, validates candidate evidence
+against current block hashes, and compares proposed names and capabilities
+with existing skill catalogs. A deterministic rubric separates recommended,
+investigate, and rejected ideas while treating existing skills, policy-only
+requirements, single commands, volatile procedures, sensitive dependencies,
+and one-off project conventions as disqualifiers or review flags.
+
+A selected non-rejected idea can be exported as a portable, digest-bound
+contribution package. The exporter replaces raw rules and local paths with
+contributor-approved summaries, requires redistribution and confidentiality
+attestations, and rejects secrets, URLs, email addresses, and absolute paths.
+Maintainers can validate the package independently before ordinary provenance,
+license, overlap, implementation, review, and release gates; submission never
+publishes a skill automatically.
+
+After installing it, invoke it with:
+
+```text
+$discover-skill-candidates Analyze this project's local rules and prepare an evidence-backed backlog of reusable skill ideas without creating anything.
+```
+
 ### `release-skill-collection` (experimental)
 
 Plan and locally verify deterministic skill-collection releases without
