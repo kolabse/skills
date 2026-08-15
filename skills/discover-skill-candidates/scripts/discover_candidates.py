@@ -458,6 +458,10 @@ def observation_record(
     recurrence_count: int = 1,
     user_confirmed: bool = False,
 ) -> dict[str, Any]:
+    if contains_secret(
+        {"source_type": source_type, "source_ref": source_ref, "summary": summary}
+    ):
+        raise DiscoveryError("Observation metadata contains a possible secret")
     source_type = safe_string(source_type, "Observation source type", 64)
     source_ref = safe_string(source_ref, "Observation source reference", 128)
     summary = safe_string(summary, "Observation summary", MAX_BLOCK_CHARS)

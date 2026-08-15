@@ -335,6 +335,25 @@ class DiscoverSkillCandidatesTests(unittest.TestCase):
         base["observations"][0]["summary"] = "See https://internal.example.invalid/runbook"
         with self.assertRaisesRegex(discover_candidates.DiscoveryError, "URL"):
             discover_candidates.normalize_observation_input(base, "Observations")
+        base["observations"][0]["summary"] = "Use api_key=supersecretvalue for access."
+        with self.assertRaisesRegex(discover_candidates.DiscoveryError, "secret"):
+            discover_candidates.normalize_observation_input(base, "Observations")
+
+    def test_git_history_rejects_secret_bearing_subject(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            project = Path(directory) / "project"
+            initialize_project(project, "# Rules\n\nRun checks.\n")
+            marker = project / "marker.txt"
+            marker.write_text("marker\n", encoding="utf-8")
+            git(project, "add", "marker.txt")
+            git(project, "commit", "-qm", "Use access_token=supersecretvalue")
+
+            with self.assertRaisesRegex(discover_candidates.DiscoveryError, "secret"):
+                discover_candidates.inventory(
+                    project.resolve(),
+                    set(discover_candidates.DEFAULT_EXCLUDED_DIRECTORIES),
+                    git_history_limit=1,
+                )
 
     def test_strong_multi_block_candidate_is_recommended(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
