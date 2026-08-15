@@ -37,9 +37,21 @@ The optional `paths` mode may additionally store branch, upstream, and relative
 file names. File names can reveal unreleased features, customer names, incident
 identifiers, or internal architecture; enable this mode only when permitted.
 
+The separate project environment manifest may additionally store only:
+
+- explicitly selected, untracked project-relative `AGENTS.md` text after
+  review, limited to 32 KiB per file;
+- Git coverage records for tracked rules, without their contents;
+- skill and plugin identifiers, versions, canonical source identifiers, and
+  verification digests;
+- small schema-versioned scalar preferences with credential-like keys rejected.
+
+This exception does not permit arbitrary project files or configuration. Read
+[project-environment.md](project-environment.md) before capturing it.
+
 Never store:
 
-- source code, patches, diffs, file contents, or database rows;
+- source code, patches, diffs, arbitrary file contents, or database rows;
 - prompts, full chat transcripts, hidden reasoning, or raw terminal logs;
 - passwords, tokens, private keys, cookies, connection strings, or credential
   identifiers;
@@ -54,9 +66,10 @@ fields before capture.
 
 - Let the storage client finish synchronization before capture or restore. For
   a connector backend, list and download the complete remote snapshot instead.
-- Keep checkpoints append-only. Reconcile concurrent sibling checkpoints
-  explicitly within the same chat stream instead of overwriting one. Do not
-  merge unrelated streams merely because both are current project heads.
+- Keep checkpoints and environment manifests append-only. Reconcile concurrent
+  sibling checkpoints explicitly within the same chat stream instead of
+  overwriting one. Do not merge unrelated streams merely because both are
+  current project heads.
 - Use the storage provider's version history and retention controls for
   recovery. This skill never deletes checkpoints.
 - Treat downloaded connector files as untrusted until `hydrate-drive` accepts

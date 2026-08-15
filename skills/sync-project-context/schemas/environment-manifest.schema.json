@@ -1,0 +1,153 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/kolabse/skills/sync-project-context/environment-manifest.schema.json",
+  "title": "Sanitized project environment reconciliation manifest",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "manifest_id",
+    "project_id",
+    "machine_id",
+    "created_at",
+    "parent_manifest_ids",
+    "repository",
+    "rules",
+    "skills",
+    "plugins",
+    "settings",
+    "git_coverage",
+    "content_sha256"
+  ],
+  "properties": {
+    "schema_version": {"const": 1},
+    "manifest_id": {"type": "string", "pattern": "^environment-[0-9a-f]{32}$"},
+    "project_id": {"type": "string", "pattern": "^[a-z0-9][a-z0-9-]{2,63}$"},
+    "machine_id": {"type": "string", "pattern": "^machine-[0-9a-f]{12}$"},
+    "created_at": {"type": "string", "format": "date-time"},
+    "parent_manifest_ids": {
+      "type": "array",
+      "uniqueItems": true,
+      "items": {"type": "string", "pattern": "^environment-[0-9a-f]{32}$"}
+    },
+    "repository": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["fingerprint", "head"],
+      "properties": {
+        "fingerprint": {"type": ["string", "null"]},
+        "head": {"type": ["string", "null"]}
+      }
+    },
+    "rules": {
+      "type": "array",
+      "maxItems": 100,
+      "items": {
+        "oneOf": [
+          {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["id", "path", "scope", "classification", "git"],
+            "properties": {
+              "id": {"type": "string"},
+              "path": {"type": "string"},
+              "scope": {"enum": ["project", "subtree"]},
+              "classification": {"const": "satisfied_by_git"},
+              "git": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": ["blob_oid", "head"],
+                "properties": {
+                  "blob_oid": {"type": ["string", "null"]},
+                  "head": {"type": ["string", "null"]}
+                }
+              }
+            }
+          },
+          {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["id", "path", "scope", "classification", "ignored", "content", "content_sha256"],
+            "properties": {
+              "id": {"type": "string"},
+              "path": {"type": "string"},
+              "scope": {"enum": ["project", "subtree"]},
+              "classification": {"const": "local_portable"},
+              "ignored": {"type": "boolean"},
+              "content": {"type": "string", "minLength": 1},
+              "content_sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"}
+            }
+          }
+        ]
+      }
+    },
+    "skills": {
+      "type": "array",
+      "maxItems": 100,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["id", "version", "required"],
+        "properties": {
+          "id": {"type": "string"},
+          "version": {"type": "string"},
+          "required": {"type": "boolean"},
+          "source": {"type": "string"},
+          "digest": {"type": "string", "pattern": "^[0-9a-f]{64}$"}
+        }
+      }
+    },
+    "plugins": {
+      "type": "array",
+      "maxItems": 100,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["id", "version", "required"],
+        "properties": {
+          "id": {"type": "string"},
+          "version": {"type": "string"},
+          "required": {"type": "boolean"}
+        }
+      }
+    },
+    "settings": {
+      "type": "array",
+      "maxItems": 100,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["id", "scope", "schema_version", "preferences", "preferences_sha256", "required", "materialization"],
+        "properties": {
+          "id": {"type": "string"},
+          "scope": {"enum": ["project", "user"]},
+          "schema_version": {"type": "string"},
+          "preferences": {
+            "type": "object",
+            "additionalProperties": {"type": ["string", "number", "boolean", "null"]}
+          },
+          "preferences_sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+          "required": {"type": "boolean"},
+          "materialization": {"const": "manual"}
+        }
+      }
+    },
+    "git_coverage": {
+      "type": "array",
+      "maxItems": 100,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["category", "id", "path", "blob_oid", "head"],
+        "properties": {
+          "category": {"enum": ["skills", "plugins", "settings"]},
+          "id": {"type": "string"},
+          "path": {"type": "string"},
+          "blob_oid": {"type": ["string", "null"], "pattern": "^[0-9a-f]{40,64}$"},
+          "head": {"type": ["string", "null"], "pattern": "^[0-9a-f]{40,64}$"}
+        }
+      }
+    },
+    "content_sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"}
+  }
+}

@@ -9,11 +9,15 @@ Run the dependency-free two-machine simulation:
 
 ```shell
 python <skill-root>/scripts/context_sync_acceptance.py --streams 20 --json
+python -m unittest discover -s tests -p 'test_sync_project_environment.py' -v
 ```
 
 Require exact title restoration, ordered baseline-plus-delta history,
 idempotent repeated restore, unique checkpoint identifiers, no unexpected
 conflict, and a valid audit from both simulated machines.
+For environment reconciliation, require Git coverage without duplicated
+content, portable untracked-rule capture, no-overwrite apply, declarative
+skill/plugin/setting plans, secret rejection, and tamper detection.
 
 ## Real-device acceptance
 
@@ -28,6 +32,13 @@ On two physical computers using the approved Google Drive account:
 6. Interrupt one upload after creation, retry by exact checkpoint name, and
    verify readback plus audit.
 7. Exercise a paginated Drive folder and report the desktop discovery limit.
+8. Capture one Git-owned rule, one untracked rule, and Git-owned plus portable
+   dependency declarations. On computer B, verify the plan, create only the
+   missing untracked rule, install requirements through their canonical tools,
+   and reconnect the plugin interactively.
+9. Create a different destination rule and verify that reconciliation blocks
+   without overwriting it. Tamper with one downloaded environment manifest and
+   verify that hydration or audit rejects it.
 
 Record only sanitized counts, opaque IDs, pass/fail outcomes, and product/tool
 versions. Do not copy account identities, Drive links, transcripts, paths,

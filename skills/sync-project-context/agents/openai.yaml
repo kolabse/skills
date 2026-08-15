@@ -1,4 +1,4 @@
 interface:
   display_name: "Sync Project Context"
-  short_description: "Sync project chats with exact titles"
-  default_prompt: "Use $sync-project-context to bidirectionally synchronize all project chats with their exact titles."
+  short_description: "Sync project chats and portable requirements"
+  default_prompt: "Use $sync-project-context to synchronize project chats and reconcile portable project rules, skills, plugins, and safe settings without duplicating Git-owned state."

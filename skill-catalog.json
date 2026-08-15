@@ -229,7 +229,7 @@
       ],
       "trigger_evals": "evals/sync-project-context.json",
       "license": "Apache-2.0",
-      "provides": ["private-project-handoff", "per-chat-continuation", "desktop-batch-chat-save", "desktop-batch-chat-restore", "desktop-bidirectional-chat-sync", "exact-chat-title-restore"],
+      "provides": ["private-project-handoff", "per-chat-continuation", "desktop-batch-chat-save", "desktop-batch-chat-restore", "desktop-bidirectional-chat-sync", "exact-chat-title-restore", "git-first-project-environment-reconciliation"],
       "requires": [],
       "optional_integrations": ["google-drive", "repository-freshness", "work-log"],
       "configuration": {

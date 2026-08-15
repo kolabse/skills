@@ -1,6 +1,6 @@
 ---
 name: sync-project-context
-description: "Save, restore, or bidirectionally synchronize private, sanitized project and per-chat continuation state between computers through either a user-approved synchronized folder or the connected Google Drive plugin, always outside the repository. Use when the user says to save state, save all project chats, restore state, restore all project chats as separate desktop tasks, synchronize all project chats, preserve exact chat titles, continue a project chat on another computer, create repeated cross-device checkpoints, inspect synchronization status, or audit stored handoffs. Do not use for source-code synchronization, Git history transfer, raw chat export, hidden chain-of-thought, or automatic upload to an unapproved personal cloud account."
+description: "Save, restore, or bidirectionally synchronize private, sanitized project and per-chat continuation state between computers, and reconcile explicitly declared project rules, skills, plugins, and safe settings that Git does not already provide. Use when the user asks to save or restore state, synchronize project chats, preserve exact chat titles, continue work on another computer, check whether project rules or dependencies are portable, or audit stored handoffs. Use either an approved synchronized folder or the connected Google Drive plugin, always outside the repository. Do not use for source-code or Git transfer, raw chat export, hidden chain-of-thought, credential or OAuth transfer, or upload to an unapproved account."
 ---
 
 # Sync Project Context
@@ -18,6 +18,8 @@ the project repository.
    allowed for work information.
 2. Never include source text, diffs, prompts, full transcripts, credentials,
    personal data, customer data, private URLs, or raw logs in a checkpoint.
+   The separate environment manifest may contain only explicitly selected,
+   bounded `AGENTS.md` text that Git does not track and typed safe preferences.
 3. Record decisions, concise rationale and considered options, discussion
    outcomes, actions, observed verification, blockers, open questions, next
    steps, commit identifiers, and optionally relative file paths.
@@ -240,6 +242,26 @@ When only a local title and remote content changed, apply the remote content
 first and append the preserved local title as a follow-up delta. Block when
 both sides changed content or both independently changed the title.
 
+## Reconcile project environment
+
+When the user asks whether rules, skills, plugins, or settings also move to
+another computer, read and follow
+[references/project-environment.md](references/project-environment.md).
+
+Keep environment state in a separate append-only manifest graph. Inspect Git
+before capture: omit clean tracked rule content, reject unpublished tracked
+rules, and capture only explicitly selected untracked `AGENTS.md` files after
+review. Synchronize skill and plugin declarations, versions, sources, and
+digests rather than installed copies. Synchronize plugin connection
+requirements but never OAuth state or credentials. Transfer safe scalar
+preferences only as manual, schema-aware materialization requests.
+
+Always run the read-only `environment_sync.py plan` before applying anything.
+Git is authoritative, an existing destination rule is preserved, and
+`apply --approve-local-rules` may create only a missing untracked `AGENTS.md`.
+Install skills and plugins through their canonical managers and reconnect
+plugins interactively.
+
 ## Diagnose and audit
 
 ```shell
@@ -247,6 +269,8 @@ python <skill-root>/scripts/context_sync.py status --project-path <project-root>
 python <skill-root>/scripts/context_sync.py restore --project-path <project-root> --all-streams --json
 python <skill-root>/scripts/context_sync.py audit --project-path <project-root> --json
 python <skill-root>/scripts/context_sync.py migrate --json
+python <skill-root>/scripts/environment_sync.py status --project-path <project-root> --json
+python <skill-root>/scripts/environment_sync.py audit --project-path <project-root> --json
 ```
 
 - Stop when the repository fingerprint differs; do not bypass the mismatch.
@@ -269,5 +293,6 @@ restored; bulk restore created or updated exactly one bound destination task
 per conflict-free chat stream with its exact available title; bidirectional
 sync left no unhandled one-sided changes; stream/checkpoint IDs, coverage
 limits, skipped tasks, repository identity, and freshness were reported; no
-sensitive values were accepted; and no project-repository file was created or
-modified by the synchronization workflow.
+sensitive values were accepted; ordinary context synchronization created no
+project file; and environment apply created only explicitly approved missing,
+untracked `AGENTS.md` files without overwriting Git or destination state.
