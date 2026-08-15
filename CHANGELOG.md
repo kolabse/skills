@@ -2,6 +2,22 @@
 
 ## Unreleased
 
+### Added
+
+- `release-skill-collection` now verifies a strict, commit-bound five-gate
+  evidence document, audits immutable GitHub release assets and attestations,
+  and produces read-only branch cleanup plans based on merged, identical-tree,
+  or patch-equivalent history.
+- Stable versioned JSON schemas and fixture-driven failure tests cover release
+  state, local checks, evidence verification, publication audits, timeouts,
+  redaction, unsafe output paths, and cleanup decisions.
+
+### Changed
+
+- Release checks now use bounded timeouts and redacted output summaries, reject
+  detached or in-progress Git states and unsafe catalog paths, and avoid any
+  repository mutation in every command mode.
+
 ## [1.7.0] - 2026-08-15
 
 ### Added

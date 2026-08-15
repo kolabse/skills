@@ -1,0 +1,38 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/kolabse/skills/release-skill-collection/release-evidence.schema.json",
+  "title": "Release gate evidence input",
+  "type": "object",
+  "required": ["schema_version", "tag", "commit", "gates", "evidence_sha256"],
+  "properties": {
+    "schema_version": {"const": 1},
+    "tag": {"type": "string", "pattern": "^v[0-9]+\\.[0-9]+\\.[0-9]+$"},
+    "commit": {"type": "string", "pattern": "^[0-9a-f]{40}$"},
+    "gates": {
+      "type": "object",
+      "required": ["local_release_check", "locked_holdout", "consumer_smoke", "supported_platform_ci", "review"],
+      "properties": {
+        "local_release_check": {"$ref": "#/$defs/gate"},
+        "locked_holdout": {"$ref": "#/$defs/gate"},
+        "consumer_smoke": {"$ref": "#/$defs/gate"},
+        "supported_platform_ci": {"$ref": "#/$defs/gate"},
+        "review": {"$ref": "#/$defs/gate"}
+      },
+      "additionalProperties": false
+    },
+    "evidence_sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"}
+  },
+  "additionalProperties": false,
+  "$defs": {
+    "gate": {
+      "type": "object",
+      "required": ["passed", "commit", "evidence_sha256"],
+      "properties": {
+        "passed": {"const": true},
+        "commit": {"type": "string", "pattern": "^[0-9a-f]{40}$"},
+        "evidence_sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"}
+      },
+      "additionalProperties": true
+    }
+  }
+}

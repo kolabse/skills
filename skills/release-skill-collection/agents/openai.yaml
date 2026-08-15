@@ -1,4 +1,4 @@
 interface:
   display_name: "Release Skill Collection"
-  short_description: "Plan and verify safe skill collection releases"
-  default_prompt: "Use $release-skill-collection to plan and verify this skill collection release."
+  short_description: "Plan, verify, audit, and clean up collection releases"
+  default_prompt: "Use $release-skill-collection to plan and verify this skill collection release, audit its immutable publication, and prove any post-release branch cleanup is safe."

@@ -229,7 +229,7 @@
       ],
       "trigger_evals": "evals/release-skill-collection.json",
       "license": "Apache-2.0",
-      "provides": ["skill-collection-release-planning", "deterministic-release-checks"],
+      "provides": ["skill-collection-release-planning", "deterministic-release-checks", "release-evidence-verification", "release-publication-audit", "release-branch-cleanup-planning"],
       "requires": ["repository-freshness"],
       "optional_integrations": ["push-verification-evidence", "work-log", "task-notification"],
       "configuration": {

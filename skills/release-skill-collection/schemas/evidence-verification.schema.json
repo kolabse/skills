@@ -1,0 +1,19 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/kolabse/skills/release-skill-collection/evidence-verification.schema.json",
+  "title": "Verified release evidence result",
+  "type": "object",
+  "required": ["schema_version", "mode", "valid", "tag", "commit", "evidence_sha256", "mutates_repository", "report_sha256"],
+  "properties": {
+    "schema_version": {"const": 2},
+    "mode": {"const": "verify-evidence"},
+    "valid": {"const": true},
+    "tag": {"type": "string"},
+    "commit": {"type": "string", "pattern": "^[0-9a-f]{40}$"},
+    "gates": {"type": "array", "minItems": 5, "maxItems": 5, "items": {"type": "string"}},
+    "evidence_sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "mutates_repository": {"const": false},
+    "report_sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"}
+  },
+  "additionalProperties": false
+}
