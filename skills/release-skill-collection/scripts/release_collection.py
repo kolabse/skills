@@ -693,6 +693,133 @@ def cleanup_plan(root: Path, tag: str, primary: str, branches: list[str]) -> dic
     return result
 
 
+def cleanup_apply(
+    root: Path,
+    plan_value: object,
+    audit_value: object,
+    confirmation: str,
+    remote: str,
+) -> dict[str, Any]:
+    root = root.resolve()
+    if not isinstance(plan_value, dict) or not isinstance(audit_value, dict):
+        raise ReleaseError("cleanup plan and release audit must be JSON objects")
+    plan = dict(plan_value)
+    audit = dict(audit_value)
+    verify_digest(plan, "report_sha256", "cleanup plan")
+    verify_digest(audit, "report_sha256", "release audit")
+    if (
+        plan.get("schema_version") != SCHEMA_VERSION
+        or plan.get("mode") != "cleanup-plan"
+        or plan.get("safe_to_delete") is not True
+        or plan.get("mutates_repository") is not False
+    ):
+        raise ReleaseError("cleanup plan is not an approved all-safe plan")
+    tag = plan.get("tag")
+    primary = plan.get("primary")
+    primary_commit = plan.get("primary_commit")
+    branches = plan.get("branches")
+    if confirmation != tag:
+        raise ReleaseError("cleanup confirmation must exactly match the release tag")
+    if (
+        not isinstance(primary, str)
+        or run_git(root, "check-ref-format", "--branch", primary).returncode != 0
+        or not isinstance(branches, list)
+        or not branches
+    ):
+        raise ReleaseError("cleanup plan must name a local primary branch and branches")
+    branch_names = [item.get("branch") for item in branches if isinstance(item, dict)]
+    if len(branch_names) != len(branches) or primary in branch_names:
+        raise ReleaseError("cleanup plan branches are malformed or include the primary branch")
+    if (
+        audit.get("schema_version") != SCHEMA_VERSION
+        or audit.get("mode") != "audit-release"
+        or audit.get("passed") is not True
+        or audit.get("attestation_verified") is not True
+        or audit.get("mutates_repository") is not False
+        or audit.get("tag") != tag
+        or audit.get("commit") != primary_commit
+    ):
+        raise ReleaseError("release audit does not authorize this cleanup plan")
+    assets = audit.get("assets")
+    if (
+        not REPOSITORY_PATTERN.fullmatch(str(audit.get("repository", "")))
+        or not isinstance(audit.get("release_url"), str)
+        or not audit["release_url"].startswith("https://github.com/")
+        or not isinstance(assets, list)
+        or len(assets) != 4
+        or len({item.get("name") for item in assets if isinstance(item, dict)}) != 4
+        or any(
+            not isinstance(item, dict)
+            or set(item) != {"name", "sha256"}
+            or not isinstance(item["name"], str)
+            or not SHA256_PATTERN.fullmatch(str(item["sha256"]))
+            for item in assets
+        )
+    ):
+        raise ReleaseError("release audit asset or repository evidence is malformed")
+    state = repository_state(root)
+    if state.get("dirty") or state.get("operation"):
+        raise ReleaseError("cleanup requires a clean repository with no operation in progress")
+    upstream = git_text(
+        root, "for-each-ref", "--format=%(upstream:short)", f"refs/heads/{primary}"
+    )
+    if upstream != f"{remote}/{primary}":
+        raise ReleaseError("primary branch must track the selected remote primary branch")
+    fetched = run_git(root, "fetch", "--prune", remote)
+    if fetched.returncode != 0:
+        raise ReleaseError(f"cleanup fetch failed: {redact_output(fetched.stderr)[-500:]}")
+    if git_text(root, "rev-parse", f"{remote}/{primary}") != primary_commit:
+        raise ReleaseError("remote primary no longer matches the audited release commit")
+    refreshed = cleanup_plan(root, str(tag), primary, [str(name) for name in branch_names])
+    if refreshed["report_sha256"] != plan["report_sha256"]:
+        raise ReleaseError("cleanup plan is stale; generate and review a new plan")
+    for item in branches:
+        branch = str(item["branch"])
+        remote_commit = git_text(root, "rev-parse", f"refs/remotes/{remote}/{branch}")
+        if remote_commit and remote_commit != item.get("commit"):
+            raise ReleaseError(f"remote branch changed after planning: {branch}")
+    switched = run_git(root, "switch", primary)
+    if switched.returncode != 0:
+        raise ReleaseError(f"cannot switch to primary branch: {redact_output(switched.stderr)[-500:]}")
+    pulled = run_git(root, "pull", "--ff-only")
+    if pulled.returncode != 0 or git_text(root, "rev-parse", "HEAD") != primary_commit:
+        raise ReleaseError("primary branch cannot be fast-forwarded to the audited release commit")
+    deleted_remote: list[str] = []
+    deleted_local: list[str] = []
+    for item in branches:
+        branch = str(item["branch"])
+        if git_text(root, "rev-parse", f"refs/remotes/{remote}/{branch}"):
+            deletion = run_git(root, "push", remote, "--delete", branch)
+            if deletion.returncode != 0:
+                raise ReleaseError(f"remote branch deletion failed for {branch}: {redact_output(deletion.stderr)[-500:]}")
+            deleted_remote.append(branch)
+        deletion = run_git(root, "branch", "-D", branch)
+        if deletion.returncode != 0:
+            raise ReleaseError(f"local branch deletion failed for {branch}: {redact_output(deletion.stderr)[-500:]}")
+        deleted_local.append(branch)
+    final_state = repository_state(root)
+    if (
+        final_state.get("branch") != primary
+        or final_state.get("dirty")
+        or final_state.get("ahead") != 0
+        or final_state.get("behind") != 0
+    ):
+        raise ReleaseError("cleanup did not finish on a clean current primary branch")
+    result = {
+        "schema_version": SCHEMA_VERSION,
+        "mode": "cleanup-apply",
+        "passed": True,
+        "tag": tag,
+        "primary": primary,
+        "commit": primary_commit,
+        "deleted_local": deleted_local,
+        "deleted_remote": deleted_remote,
+        "mutates_repository": True,
+    }
+    result["report_sha256"] = canonical_digest(result)
+    return result
+
+
 def emit(result: dict[str, Any], as_json: bool) -> None:
     if as_json:
         print(json.dumps(result, ensure_ascii=False, indent=2, sort_keys=True))
@@ -737,6 +864,13 @@ def main(argv: list[str] | None = None) -> int:
     cleanup.add_argument("--primary", default="origin/main")
     cleanup.add_argument("--branch", action="append", required=True)
     cleanup.add_argument("--json", action="store_true")
+    apply_cleanup = subparsers.add_parser("cleanup-apply")
+    apply_cleanup.add_argument("--project-root", type=Path, required=True)
+    apply_cleanup.add_argument("--plan", type=Path, required=True)
+    apply_cleanup.add_argument("--audit", type=Path, required=True)
+    apply_cleanup.add_argument("--confirm", required=True)
+    apply_cleanup.add_argument("--remote", default="origin")
+    apply_cleanup.add_argument("--json", action="store_true")
     args = parser.parse_args(argv)
     try:
         root = args.project_root.resolve()
@@ -750,8 +884,16 @@ def main(argv: list[str] | None = None) -> int:
             result = verify_evidence(root, args.tag, args.evidence)
         elif args.command == "audit-release":
             result = audit_release(root, args.tag, args.repository)
-        else:
+        elif args.command == "cleanup-plan":
             result = cleanup_plan(root, args.tag, args.primary, args.branch)
+        else:
+            result = cleanup_apply(
+                root,
+                load_object(args.plan.resolve(), "cleanup plan"),
+                load_object(args.audit.resolve(), "release audit"),
+                args.confirm,
+                args.remote,
+            )
         emit(result, args.json)
         passed = result.get("passed", result.get("valid", not result.get("blockers")))
         return 0 if passed else 1

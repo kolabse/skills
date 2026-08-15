@@ -3,6 +3,8 @@
   "collection_version": "1.8.0",
   "license": "Apache-2.0",
   "composition_evals": "evals/compositions.json",
+  "composition_evidence_schema": "schemas/composition-evidence.schema.json",
+  "composition_result_schema": "schemas/composition-result.schema.json",
   "release_holdout": {
     "name": "release-holdout-v3",
     "path": "evals/release-holdout-v3.json",
@@ -230,7 +232,7 @@
       ],
       "trigger_evals": "evals/release-skill-collection.json",
       "license": "Apache-2.0",
-      "provides": ["skill-collection-release-planning", "deterministic-release-checks", "release-evidence-verification", "release-publication-audit", "release-branch-cleanup-planning"],
+      "provides": ["skill-collection-release-planning", "deterministic-release-checks", "release-evidence-verification", "release-publication-audit", "release-branch-cleanup-planning", "release-branch-cleanup-application"],
       "requires": ["repository-freshness"],
       "optional_integrations": ["push-verification-evidence", "work-log", "task-notification"],
       "configuration": {

@@ -1,0 +1,33 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/kolabse/skills/composition-result.schema.json",
+  "title": "Verified skill composition result",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "mode", "composition", "plan_sha256", "passed", "required_failures", "optional_failures", "steps", "report_sha256"],
+  "properties": {
+    "schema_version": {"const": 1},
+    "mode": {"const": "verify-composition"},
+    "composition": {"type": "string", "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$"},
+    "plan_sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "passed": {"type": "boolean"},
+    "required_failures": {"type": "array", "items": {"type": "string"}, "uniqueItems": true},
+    "optional_failures": {"type": "array", "items": {"type": "string"}, "uniqueItems": true},
+    "steps": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["skill", "status", "evidence_sha256", "required"],
+        "properties": {
+          "skill": {"type": "string"},
+          "status": {"enum": ["passed", "failed", "skipped"]},
+          "evidence_sha256": {"type": ["string", "null"]},
+          "required": {"type": "boolean"}
+        }
+      }
+    },
+    "report_sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"}
+  }
+}

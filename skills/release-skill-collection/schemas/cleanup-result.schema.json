@@ -1,0 +1,20 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/kolabse/skills/release-skill-collection/cleanup-result.schema.json",
+  "title": "Applied post-release branch cleanup result",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "mode", "passed", "tag", "primary", "commit", "deleted_local", "deleted_remote", "mutates_repository", "report_sha256"],
+  "properties": {
+    "schema_version": {"const": 2},
+    "mode": {"const": "cleanup-apply"},
+    "passed": {"const": true},
+    "tag": {"type": "string"},
+    "primary": {"type": "string"},
+    "commit": {"type": "string", "pattern": "^[0-9a-f]{40,64}$"},
+    "deleted_local": {"type": "array", "items": {"type": "string"}, "uniqueItems": true},
+    "deleted_remote": {"type": "array", "items": {"type": "string"}, "uniqueItems": true},
+    "mutates_repository": {"const": true},
+    "report_sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"}
+  }
+}

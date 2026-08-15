@@ -7,6 +7,13 @@
 - The README skill catalog now uses a consistent purpose, capabilities,
   exclusions, and invocation structure; the `sync-project-context` overview is
   split into scannable lists instead of one dense implementation paragraph.
+- Experimental skill stabilization now has explicit contributor-intake and
+  sanitized real-device evidence gates.
+- Skill compositions can validate digest-bound ordered execution evidence.
+- Release cleanup can explicitly apply an unchanged safe plan after a verified
+  published-release audit, then finish on a clean current primary branch.
+- Documentation validation now guards catalog ordering and release-link
+  completeness.
 
 ## [1.8.0] - 2026-08-15
 
@@ -314,6 +321,9 @@ First versioned release of the kolabse skill collection.
 - Tests for configuration migration, fake cloud and infrastructure CLIs,
   installation confirmation, and collection metadata.
 
+[1.8.0]: https://github.com/kolabse/skills/releases/tag/v1.8.0
+[1.7.0]: https://github.com/kolabse/skills/releases/tag/v1.7.0
+[1.6.0]: https://github.com/kolabse/skills/releases/tag/v1.6.0
 [1.5.0]: https://github.com/kolabse/skills/releases/tag/v1.5.0
 [1.4.0]: https://github.com/kolabse/skills/releases/tag/v1.4.0
 [1.3.0]: https://github.com/kolabse/skills/releases/tag/v1.3.0

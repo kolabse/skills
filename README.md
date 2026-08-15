@@ -183,22 +183,6 @@ command, capabilities, prerequisites, and optional integrations. Stateful
 skills also declare an idempotent configure command; versioned JSON/YAML
 configurations publish a JSON Schema and migration command next to the skill.
 
-## Supported compositions
-
-The catalog defines three reusable ordered workflows:
-
-- `protected-push`: synchronize repositories, then produce current
-  verification evidence; work logging and Telegram notification are optional.
-- `yandex-cloud-operation`: synchronize repositories, then run the scoped cloud
-  operation; verification, work logging, and Telegram notification are
-  optional when project policy enables them.
-- `skill-collection-release`: synchronize the repository, plan and locally
-  verify the collection release, then bind pre-push evidence; work logging and
-  Telegram notification are optional.
-
-Required steps fail closed. Optional logging and notification report their own
-failure without changing the observed result of the primary operation.
-
 ### `discover-skill-candidates` (experimental)
 
 Find reusable skill ideas in project rules without creating a skill.
@@ -237,13 +221,15 @@ Plan, verify, audit, and clean up deterministic skill-collection releases.
   evidence;
 - audits immutable GitHub assets, manifests, checksums, and attestations;
 - proves whether temporary branches are merged, identical-tree, or
-  patch-equivalent before cleanup.
+  patch-equivalent before cleanup;
+- applies an explicitly confirmed cleanup only from an unchanged safe plan and
+  a digest-valid audit of the published release.
 
 **What it does not do:**
 
 - infer permission to commit, tag, push, dispatch workflows, or publish assets;
 - move an existing tag or replace published assets;
-- delete branches itself or accept branch names as proof that deletion is safe.
+- delete branches from names alone, a stale plan, or an unaudited release.
 
 **How to invoke it:**
 
@@ -420,6 +406,26 @@ $sync-project-context Save the current task state.
 $sync-project-context Restore all project tasks on this computer.
 $sync-project-context Synchronize all project tasks bidirectionally and show conflicts before applying changes.
 ```
+
+## Supported compositions
+
+The catalog defines three reusable ordered workflows:
+
+- `protected-push`: synchronize repositories, then produce current
+  verification evidence; work logging and Telegram notification are optional.
+- `yandex-cloud-operation`: synchronize repositories, then run the scoped cloud
+  operation; verification, work logging, and Telegram notification are
+  optional when project policy enables them.
+- `skill-collection-release`: synchronize the repository, plan and locally
+  verify the collection release, then bind pre-push evidence; work logging and
+  Telegram notification are optional.
+
+Required steps fail closed. Optional logging and notification report their own
+failure without changing the observed result of the primary operation. Resolve
+an exact plan with `scripts/compose_skills.py`; pass `--evidence` with a
+digest-bound document matching `schemas/composition-evidence.schema.json` to
+verify step order, required results, and non-blocking optional failures. The
+verified result follows `schemas/composition-result.schema.json`.
 
 ## Add a skill
 

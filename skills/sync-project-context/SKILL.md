@@ -285,8 +285,10 @@ python <skill-root>/scripts/environment_sync.py audit --project-path <project-ro
 
 Before proposing stable status or after changing checkpoint, Drive, batch, or
 conflict behavior, read [references/stabilization-checklist.md](references/stabilization-checklist.md)
-and run its deterministic two-machine acceptance. Do not substitute the
-simulation for the required real-device Google Drive procedure.
+and run its deterministic two-machine acceptance. Seal real-device results
+with `scripts/real_device_acceptance.py` and require two passing records for
+the same candidate version. Do not substitute the simulation for the required
+real-device Google Drive procedure.
 
 Completion criterion: every requested discoverable stream was saved or
 restored; bulk restore created or updated exactly one bound destination task

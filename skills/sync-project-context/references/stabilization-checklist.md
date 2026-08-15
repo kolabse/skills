@@ -44,6 +44,27 @@ Record only sanitized counts, opaque IDs, pass/fail outcomes, and product/tool
 versions. Do not copy account identities, Drive links, transcripts, paths,
 source, or raw logs into the repository.
 
+Record each completed run with the bundled evidence helper. Start with a JSON
+draft matching `schemas/real-device-acceptance.schema.json` but omit
+`record_sha256`, then seal and validate it:
+
+```shell
+python <skill-root>/scripts/real_device_acceptance.py seal --input <draft.json>
+python <skill-root>/scripts/real_device_acceptance.py validate --input <sealed.json>
+```
+
+After two independent runs of the same candidate version, verify the promotion
+gate:
+
+```shell
+python <skill-root>/scripts/real_device_acceptance.py verify-promotion \
+  --evidence <run-one.json> --evidence <run-two.json>
+```
+
+The record intentionally has no free-text field. Keep diagnostic details
+outside the repository and publish only the sealed sanitized evidence when a
+release review requires it.
+
 ## Promotion gate
 
 Keep the skill experimental until deterministic acceptance passes on all CI
