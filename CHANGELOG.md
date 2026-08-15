@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+## [1.9.0] - 2026-08-15
+
 ### Changed
 
 - `notify-via-telegram` now validates bot tokens before constructing a request
@@ -324,6 +326,7 @@ First versioned release of the kolabse skill collection.
 - Tests for configuration migration, fake cloud and infrastructure CLIs,
   installation confirmation, and collection metadata.
 
+[1.9.0]: https://github.com/kolabse/skills/releases/tag/v1.9.0
 [1.8.0]: https://github.com/kolabse/skills/releases/tag/v1.8.0
 [1.7.0]: https://github.com/kolabse/skills/releases/tag/v1.7.0
 [1.6.0]: https://github.com/kolabse/skills/releases/tag/v1.6.0

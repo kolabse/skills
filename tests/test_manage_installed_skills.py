@@ -416,7 +416,7 @@ class ManageInstalledSkillsTests(unittest.TestCase):
             before = (project / "skills-lock.json").read_bytes()
             plan = manager.build_update_plan(project, [], "project")
             self.assertFalse(plan["mutates"])
-            self.assertEqual("1.8.0", plan["target_version"])
+            self.assertEqual("1.9.0", plan["target_version"])
             self.assertEqual("update", plan["outcomes"][0]["action"])
             self.assertEqual(["verify-before-push"], plan["migration_candidates"])
             self.assertEqual(before, (project / "skills-lock.json").read_bytes())
