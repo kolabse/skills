@@ -1,0 +1,19 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/kolabse/skills/release-skill-collection/check.schema.json",
+  "title": "Local release check result",
+  "type": "object",
+  "required": ["schema_version", "mode", "checks", "passed", "evidence", "external_gates_remaining", "post_check_repository", "mutates_repository", "report_sha256"],
+  "properties": {
+    "schema_version": {"const": 2},
+    "mode": {"const": "check"},
+    "checks": {"type": "array", "items": {"type": "object", "required": ["name", "passed", "timed_out", "output_sha256", "output_tail"]}},
+    "passed": {"type": "boolean"},
+    "evidence": {"type": "object", "required": ["tag", "commit", "checks_sha256"]},
+    "external_gates_remaining": {"type": "array", "items": {"type": "string"}},
+    "post_check_repository": {"type": "object"},
+    "mutates_repository": {"const": false},
+    "report_sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"}
+  },
+  "additionalProperties": true
+}

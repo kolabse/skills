@@ -227,12 +227,13 @@ $discover-skill-candidates Analyze this project's local rules and prepare an evi
 
 ### `release-skill-collection` (experimental)
 
-Plan and locally verify deterministic skill-collection releases without
+Plan, locally verify, audit, and safely clean up deterministic skill-collection releases without
 implicitly committing, tagging, pushing, dispatching a workflow, or publishing
 assets. The skill checks version alignment, changelog readiness, repository
 state, structural and security gates, unit tests, release archives, and
-checksums while keeping model-backed holdout, consumer, supported-platform,
-and attested publication evidence explicit.
+checksums; verifies a digest-bound five-gate evidence document; audits published
+GitHub assets and attestations; and produces non-mutating cleanup plans that
+require merged, identical-tree, or patch-equivalent branch evidence.
 
 ### `verify-before-push`
 

@@ -1,0 +1,16 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/kolabse/skills/release-skill-collection/cleanup-plan.schema.json",
+  "title": "Post-release branch cleanup plan",
+  "type": "object",
+  "required": ["schema_version", "mode", "tag", "primary", "primary_commit", "safe_to_delete", "branches", "mutates_repository", "report_sha256"],
+  "properties": {
+    "schema_version": {"const": 2},
+    "mode": {"const": "cleanup-plan"},
+    "safe_to_delete": {"type": "boolean"},
+    "branches": {"type": "array", "items": {"type": "object", "required": ["branch", "safe_to_delete", "reason"]}},
+    "mutates_repository": {"const": false},
+    "report_sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"}
+  },
+  "additionalProperties": true
+}

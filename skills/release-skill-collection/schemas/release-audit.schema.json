@@ -1,0 +1,17 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/kolabse/skills/release-skill-collection/release-audit.schema.json",
+  "title": "Published release audit result",
+  "type": "object",
+  "required": ["schema_version", "mode", "passed", "repository", "tag", "commit", "release_url", "assets", "attestation_verified", "mutates_repository", "report_sha256"],
+  "properties": {
+    "schema_version": {"const": 2},
+    "mode": {"const": "audit-release"},
+    "passed": {"const": true},
+    "assets": {"type": "array", "minItems": 4, "maxItems": 4},
+    "attestation_verified": {"const": true},
+    "mutates_repository": {"const": false},
+    "report_sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"}
+  },
+  "additionalProperties": true
+}

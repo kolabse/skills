@@ -7,7 +7,10 @@
     {"prompt": "Составь fail-closed план выпуска agent skills с holdout, smoke tests и immutable tag.", "reason": "The requested gates are specific to releasing a skill collection."},
     {"prompt": "Можно ли уже публиковать новую версию kolabse-skills? Проверь changelog, тесты и источник тега.", "reason": "This is a collection release-readiness assessment."},
     {"prompt": "Повтори workflow релиза навыков, не заменяя уже существующие assets и не двигая тег.", "reason": "Immutable tags and assets are explicit collection release safety boundaries."},
-    {"prompt": "Выпусти новую версию коллекции навыков, а после успешной публикации удали слитые release-ветки и закончи на актуальной main.", "reason": "Post-publication branch cleanup and returning to the current primary branch are part of the collection release lifecycle."}
+    {"prompt": "Выпусти новую версию коллекции навыков, а после успешной публикации удали слитые release-ветки и закончи на актуальной main.", "reason": "Post-publication branch cleanup and returning to the current primary branch are part of the collection release lifecycle."},
+    {"prompt": "Проверь, что holdout, consumer smoke, review и CI для трех ОС относятся к тому же SHA релиза skills.", "reason": "Exact commit-bound external gate evidence is part of release verification."},
+    {"prompt": "После публикации коллекции скачай release assets, сверь checksums, manifest и GitHub attestation.", "reason": "Immutable publication audit is a collection release responsibility."},
+    {"prompt": "Докажи, какие feature-ветки выпуска полностью представлены в main и могут быть удалены.", "reason": "Evidence-backed post-release cleanup planning belongs to the collection release lifecycle."}
   ],
   "negative": [
     {"prompt": "Опубликуй новую версию npm-пакета веб-приложения.", "reason": "An ordinary application package release is outside this skill."},
@@ -15,6 +18,7 @@
     {"prompt": "Сделай git fetch и безопасно синхронизируй ветку.", "reason": "Repository synchronization alone belongs to the Git synchronization skill."},
     {"prompt": "Запусти тесты перед push и привяжи evidence к SHA.", "reason": "State-bound push verification alone belongs to verify-before-push."},
     {"prompt": "Создай новый навык из шаблона.", "reason": "Skill authoring is not collection release management."},
-    {"prompt": "Покажи последние GitHub Releases репозитория, ничего не проверяя локально.", "reason": "Release browsing alone does not invoke the local release workflow."}
+    {"prompt": "Покажи последние GitHub Releases репозитория, ничего не проверяя локально.", "reason": "Release browsing alone does not invoke the local release workflow."},
+    {"prompt": "Удали локальные ветки, которые выглядят старыми.", "reason": "Branch deletion without completed-release representation proof is outside this skill's safe workflow."}
   ]
 }
