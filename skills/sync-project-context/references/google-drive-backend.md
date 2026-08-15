@@ -50,7 +50,8 @@ Drive URLs, account email addresses, or sharing links in a checkpoint.
    stored project folder. Download it as a raw file.
 3. List the stored checkpoints folder completely. Use paginated Drive search
    when a single folder listing is partial. Accept only regular files named
-   `checkpoint-<32 lowercase hex>.json`; fail on duplicate names, unexpected
+   `checkpoint-<32 lowercase hex>.json` or
+   `environment-<32 lowercase hex>.json`; fail on duplicate names, unexpected
    children, shortcuts, native Google files, or an incomplete listing.
 4. Download every checkpoint as a raw file without inline base64. Pass the
    materialized paths to the helper:
@@ -69,6 +70,11 @@ Drive URLs, account email addresses, or sharing links in a checkpoint.
    materializing canonical names. Version 2 checkpoints may represent
    independent chat streams; download all streams, not only the most recently
    modified files.
+
+5. When environment manifests are present, hydrate them into the validated
+   snapshot with `environment_sync.py hydrate` as documented in
+   [project-environment.md](project-environment.md). Download the complete
+   manifest graph; missing parents are a stop condition.
 
 ## Status, capture, restore, and audit
 
@@ -102,7 +108,7 @@ that exactly one file with that name exists under the stored folder, fetch it,
 and run hydration plus audit again. Report capture complete only after this
 readback succeeds.
 
-Never update, replace, move, share, or delete a marker or checkpoint. Connector
-errors leave an inspectable local snapshot; retry by exact checkpoint ID after
-checking whether the upload already completed. Remove temporary local files
-only after successful verification.
+Never update, replace, move, share, or delete a marker, checkpoint, or
+environment manifest. Connector errors leave an inspectable local snapshot;
+retry by exact immutable ID after checking whether the upload already
+completed. Remove temporary local files only after successful verification.

@@ -52,6 +52,14 @@
     {
       "prompt": "Синхронизируй все чаты проекта: сохрани локальные изменения, восстанови удалённые и сохрани точные исходные названия чатов.",
       "reason": "The unified bidirectional command reconciles local and remote chat streams while preserving exact visible task titles."
+    },
+    {
+      "prompt": "Перенеси на второй компьютер правила AGENTS.md только если они не отслеживаются Git, а Git-версию не дублируй.",
+      "reason": "The project environment workflow classifies Git coverage and transfers only reviewed portable local rules."
+    },
+    {
+      "prompt": "Проверь, какие навыки и плагины проекта уже объявлены в репозитории, а для остальных подготовь безопасный план установки на другом ПК.",
+      "reason": "The environment manifest reconciles Git-owned declarations and portable skill or plugin requirements without copying installations."
     }
   ],
   "negative": [
@@ -82,6 +90,10 @@
     {
       "prompt": "Покажи последние чаты Codex, но ничего не сохраняй и не синхронизируй.",
       "reason": "Listing desktop tasks without a project-handoff request is ordinary task management, not context synchronization."
+    },
+    {
+      "prompt": "Скопируй OAuth-токены подключённых плагинов на второй компьютер, чтобы не входить повторно.",
+      "reason": "Credentials, sessions, and connector authorization are explicitly nonportable and must never enter an environment manifest."
     }
   ]
 }

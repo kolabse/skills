@@ -301,8 +301,10 @@ Windows compatibility.
 ### `sync-project-context`
 
 Save and restore private, sanitized project and per-chat continuation state
-between computers without adding context files to the team repository. This
-skill is experimental while its cross-device trigger and storage behavior is
+between computers without adding context files to the team repository. It can
+also reconcile explicitly declared project rules, skills, plugins, and safe
+settings that are not already carried by Git. The skill is experimental while
+its cross-device trigger and storage behavior is
 evaluated independently.
 
 After installing it on each computer, invoke it first with:
@@ -333,7 +335,12 @@ local saves, remote creates or updates, unchanged skips, and explicit conflicts
 in one bidirectional pass on the active computer. It records reviewed summaries,
 factual rationale, discussion outcomes, decisions, actions, verification,
 questions, next steps, and Git fingerprints; it never copies source contents,
-diffs, raw transcripts, or hidden reasoning. Metadata-only mode also omits
+diffs, raw transcripts, or hidden reasoning. A separate immutable environment
+manifest records Git coverage without duplicating tracked content, may carry
+only reviewed untracked `AGENTS.md` text and scalar preferences, and declares
+skill/plugin versions without copying installations or credentials. Its
+read-only plan preserves Git and existing destination rules; explicit apply
+can create only a missing untracked `AGENTS.md`. Metadata-only mode also omits
 branch names and file paths; chat titles remain intentionally included.
 Configuration requires an explicit storage-policy acknowledgement, repository
 fingerprints prevent cross-project restore, and high-confidence secret patterns
