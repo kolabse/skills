@@ -13,6 +13,9 @@
 
 ### Changed
 
+- Release holdout reports now omit skills without locked assertions, allowing
+  experimental additions to remain visible to selectors without creating
+  false baseline skill-set mismatches.
 - `release-skill-collection` now requires verified post-publication branch
   cleanup and completion on a clean, current primary branch, while preserving
   divergent work behind an explicit backup-and-approval boundary.

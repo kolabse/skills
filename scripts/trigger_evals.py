@@ -285,9 +285,10 @@ def score_suite(
     suite: dict[str, Any], assertions: list[dict[str, Any]], predictions: Any
 ) -> dict[str, Any]:
     indexed = validate_predictions(suite, predictions)
+    asserted_skills = {item["target_skill"] for item in assertions}
     metrics: dict[str, dict[str, int]] = {
-        item["name"]: {"tp": 0, "fn": 0, "fp": 0, "tn": 0}
-        for item in suite["skills"]
+        name: {"tp": 0, "fn": 0, "fp": 0, "tn": 0}
+        for name in sorted(asserted_skills)
     }
     failures: list[dict[str, Any]] = []
     for assertion in assertions:
