@@ -5,10 +5,11 @@ experimental to stable.
 
 ## Deterministic acceptance
 
-Require the full unit suite to prove bounded rule discovery, symlink and size
-limits, Git provenance, secret rejection, deterministic scoring, catalog
-deduplication, contribution digest binding, portability filtering, and atomic
-output outside the analyzed project.
+Require the full unit suite to prove bounded rule and opt-in evidence discovery,
+symlink and size limits, Git provenance, observation confirmation, chat and
+handoff sanitization, observation-only promotion limits, secret rejection,
+deterministic scoring, catalog deduplication, contribution digest binding,
+portability filtering, and atomic output outside the analyzed project.
 
 Exercise a fixture that represents a contributor repository separate from this
 collection. Export a recommended or investigate candidate, copy only the

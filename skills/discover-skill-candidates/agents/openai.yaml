@@ -1,4 +1,4 @@
 interface:
   display_name: "Discover Skill Candidates"
-  short_description: "Find reusable skills in project rules"
-  default_prompt: "Use $discover-skill-candidates to analyze applicable project rules and produce a ranked, evidence-backed backlog of reusable skill ideas."
+  short_description: "Find reusable skills across project evidence"
+  default_prompt: "Use $discover-skill-candidates to analyze approved project and contextual evidence and produce a ranked backlog of reusable skill ideas."

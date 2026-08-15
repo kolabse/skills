@@ -37,9 +37,14 @@ Prefer composition when existing skills already own the individual steps.
 
 ## Scored evidence
 
+Count validated file blocks and confirmed observations as evidence, but inspect
+their source types. An observation-only candidate remains `investigate` even
+when its raw score is high; corroborate it with a durable rule, document,
+selected project file, or Git-history signal before recommendation.
+
 The helper derives a maximum score of 20:
 
-- distinct source blocks: 1-3;
+- distinct source blocks or observations: 1-3;
 - portability scope: 0-3;
 - workflow depth: 0-3;
 - trigger clarity: 1-2;

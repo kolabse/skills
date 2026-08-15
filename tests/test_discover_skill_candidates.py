@@ -115,11 +115,15 @@ class DiscoverSkillCandidatesTests(unittest.TestCase):
 
     @staticmethod
     def block_ids(inventory: dict[str, object]) -> list[str]:
-        return [
+        file_blocks = [
             block["block_id"]
             for file in inventory["files"]
             for block in file["blocks"]
         ]
+        observation_blocks = [
+            item["block"]["block_id"] for item in inventory.get("observations", [])
+        ]
+        return file_blocks + observation_blocks
 
     def test_inventory_is_read_only_and_records_git_provenance(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
@@ -183,6 +187,173 @@ class DiscoverSkillCandidatesTests(unittest.TestCase):
 
             with self.assertRaisesRegex(discover_candidates.DiscoveryError, "Possible secret"):
                 self.inventory(project)
+
+    def test_project_documents_and_explicit_files_require_opt_in(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            project = Path(directory) / "project"
+            initialize_project(project, "# Rules\n\nRun the declared checks.\n")
+            (project / "README.md").write_text(
+                "# Release workflow\n\nBuild and verify archives before publication.\n",
+                encoding="utf-8",
+            )
+            config = project / ".github" / "workflows" / "validate.yml"
+            config.parent.mkdir(parents=True)
+            config.write_text("name: validate\n", encoding="utf-8")
+
+            default = self.inventory(project)
+            expanded = discover_candidates.inventory(
+                project.resolve(),
+                set(discover_candidates.DEFAULT_EXCLUDED_DIRECTORIES),
+                include_project_docs=True,
+                include_files=[".github/workflows/validate.yml"],
+            )
+
+            self.assertEqual(["AGENTS.md"], [item["path"] for item in default["files"]])
+            self.assertEqual(
+                ["explicit-project-file", "project-document", "project-rule"],
+                sorted(item["source_type"] for item in expanded["files"]),
+            )
+            self.assertEqual(3, expanded["evidence_file_count"])
+
+    def test_explicit_file_rejects_symlink_traversal(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            project = Path(directory) / "project"
+            initialize_project(project, "# Rules\n\nRun checks.\n")
+            target = project / "target.md"
+            target.write_text("# Target\n", encoding="utf-8")
+            link = project / "linked.md"
+            try:
+                link.symlink_to(target)
+            except OSError as error:
+                self.skipTest(f"Symlinks are unavailable: {error}")
+
+            with self.assertRaisesRegex(
+                discover_candidates.DiscoveryError, "must not traverse a symlink"
+            ):
+                discover_candidates.inventory(
+                    project.resolve(),
+                    set(discover_candidates.DEFAULT_EXCLUDED_DIRECTORIES),
+                    include_files=["linked.md"],
+                )
+
+    def test_structure_and_git_history_are_bounded_metadata_sources(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            project = Path(directory) / "project"
+            initialize_project(project, "# Rules\n\nRun checks.\n")
+            source = project / "src" / "app.py"
+            source.parent.mkdir()
+            source.write_text("print('ok')\n", encoding="utf-8")
+            git(project, "add", "src/app.py")
+            git(project, "commit", "-qm", "Add repeatable validation helper")
+            before = git(project, "status", "--porcelain=v1", "--untracked-files=all")
+
+            result = discover_candidates.inventory(
+                project.resolve(),
+                set(discover_candidates.DEFAULT_EXCLUDED_DIRECTORIES),
+                include_project_structure=True,
+                git_history_limit=2,
+            )
+
+            after = git(project, "status", "--porcelain=v1", "--untracked-files=all")
+            self.assertEqual(before, after)
+            source_types = [item["source_type"] for item in result["observations"]]
+            self.assertEqual(2, source_types.count("git-history"))
+            self.assertIn("project-structure", source_types)
+            structure = next(
+                item for item in result["observations"] if item["source_type"] == "project-structure"
+            )
+            self.assertIn('".py":1', structure["block"]["text"])
+            self.assertNotIn("print('ok')", structure["block"]["text"])
+
+    def test_confirmed_context_observations_are_imported_but_not_promoted_alone(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            project = root / "project"
+            initialize_project(project, "# Rules\n\nKeep project rules current.\n")
+            observations = root / "observations.json"
+            observations.write_text(
+                json.dumps(
+                    {
+                        "schema_version": 1,
+                        "observations": [
+                            {
+                                "source_type": "current-chat",
+                                "source_ref": "task-session-a",
+                                "summary": "The user repeatedly requests cleanup after each release.",
+                                "recurrence_count": 3,
+                                "user_confirmed": True,
+                            },
+                            {
+                                "source_type": "project-practice",
+                                "source_ref": "release-practice-a",
+                                "summary": "Completed releases repeatedly end on a clean primary branch.",
+                                "recurrence_count": 4,
+                                "user_confirmed": True,
+                            },
+                        ],
+                    }
+                ),
+                encoding="utf-8",
+            )
+            inventory = discover_candidates.inventory(
+                project.resolve(),
+                set(discover_candidates.DEFAULT_EXCLUDED_DIRECTORIES),
+                observation_inputs=[str(observations)],
+            )
+            ids = [item["block"]["block_id"] for item in inventory["observations"]]
+            candidates = discover_candidates.normalize_candidate_input(
+                {"candidates": [candidate(ids)]}, set(ids)
+            )
+
+            report = discover_candidates.score_candidates(candidates, inventory, [])
+
+            item = report["candidates"][0]
+            self.assertEqual("investigate", item["classification"])
+            self.assertIn("observation-only-evidence", item["review_flags"])
+            self.assertEqual(
+                {"current-chat", "project-practice"},
+                {source["source_type"] for source in item["source_evidence"]},
+            )
+            self.assertNotIn("text", item["source_evidence"][0])
+
+    def test_context_observations_require_confirmation_and_portable_summaries(self) -> None:
+        base = {
+            "schema_version": 1,
+            "observations": [
+                {
+                    "source_type": "chat-export",
+                    "source_ref": "chat-a",
+                    "summary": "A repeated workflow was observed.",
+                    "recurrence_count": 2,
+                    "user_confirmed": False,
+                }
+            ],
+        }
+        with self.assertRaisesRegex(discover_candidates.DiscoveryError, "confirmation"):
+            discover_candidates.normalize_observation_input(base, "Observations")
+        base["observations"][0]["user_confirmed"] = True
+        base["observations"][0]["summary"] = "See https://internal.example.invalid/runbook"
+        with self.assertRaisesRegex(discover_candidates.DiscoveryError, "URL"):
+            discover_candidates.normalize_observation_input(base, "Observations")
+        base["observations"][0]["summary"] = "Use api_key=supersecretvalue for access."
+        with self.assertRaisesRegex(discover_candidates.DiscoveryError, "secret"):
+            discover_candidates.normalize_observation_input(base, "Observations")
+
+    def test_git_history_rejects_secret_bearing_subject(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            project = Path(directory) / "project"
+            initialize_project(project, "# Rules\n\nRun checks.\n")
+            marker = project / "marker.txt"
+            marker.write_text("marker\n", encoding="utf-8")
+            git(project, "add", "marker.txt")
+            git(project, "commit", "-qm", "Use access_token=supersecretvalue")
+
+            with self.assertRaisesRegex(discover_candidates.DiscoveryError, "secret"):
+                discover_candidates.inventory(
+                    project.resolve(),
+                    set(discover_candidates.DEFAULT_EXCLUDED_DIRECTORIES),
+                    git_history_limit=1,
+                )
 
     def test_strong_multi_block_candidate_is_recommended(self) -> None:
         with tempfile.TemporaryDirectory() as directory:

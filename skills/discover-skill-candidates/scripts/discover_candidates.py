@@ -14,6 +14,10 @@ from typing import Any
 
 MAX_RULE_FILES = 100
 MAX_RULE_BYTES = 64 * 1024
+MAX_EVIDENCE_FILES = 100
+MAX_OBSERVATIONS = 100
+MAX_GIT_HISTORY = 200
+MAX_STRUCTURE_FILES = 5000
 MAX_BLOCK_CHARS = 8000
 MAX_CANDIDATES = 100
 MAX_ITEMS = 20
@@ -30,6 +34,14 @@ DEFAULT_EXCLUDED_DIRECTORIES = {
     "build",
     "__pycache__",
 }
+PROJECT_DOCUMENT_EXTENSIONS = {".md", ".rst", ".txt", ".adoc"}
+OBSERVATION_SOURCE_TYPES = {
+    "current-chat",
+    "chat-export",
+    "sync-project-context",
+    "project-practice",
+}
+OBSERVATIONAL_SOURCE_TYPES = OBSERVATION_SOURCE_TYPES | {"project-structure"}
 NAME_PATTERN = re.compile(r"^[a-z0-9]+(?:-[a-z0-9]+)*$")
 SKILL_REFERENCE_PATTERN = re.compile(r"(?<![A-Za-z0-9_-])\$([a-z0-9]+(?:-[a-z0-9]+)*)")
 SECRET_PATTERNS = (
@@ -164,6 +176,64 @@ def discover_rule_paths(root: Path, excluded: set[str]) -> list[Path]:
     return sorted(paths, key=lambda path: path.relative_to(root).as_posix())
 
 
+def discover_document_paths(root: Path, excluded: set[str]) -> list[Path]:
+    paths: list[Path] = []
+    docs_root = root / "docs"
+    root_candidates = [
+        path
+        for path in root.iterdir()
+        if path.is_file()
+        and not path.is_symlink()
+        and path.name != "AGENTS.md"
+        and (
+            path.name.lower().startswith("readme")
+            or path.name.lower().startswith("contributing")
+        )
+        and path.suffix.lower() in PROJECT_DOCUMENT_EXTENSIONS
+    ]
+    paths.extend(root_candidates)
+    if docs_root.is_dir() and not docs_root.is_symlink():
+        for directory, names, files in os.walk(docs_root, followlinks=False):
+            names[:] = sorted(
+                name
+                for name in names
+                if name not in excluded and not (Path(directory) / name).is_symlink()
+            )
+            for name in sorted(files):
+                path = Path(directory) / name
+                if (
+                    name != "AGENTS.md"
+                    and path.suffix.lower() in PROJECT_DOCUMENT_EXTENSIONS
+                    and not path.is_symlink()
+                ):
+                    paths.append(path.resolve())
+                    if len(paths) > MAX_EVIDENCE_FILES:
+                        raise DiscoveryError(
+                            f"Project contains more than {MAX_EVIDENCE_FILES} documentation files"
+                        )
+    return sorted(set(paths), key=lambda path: path.relative_to(root).as_posix())
+
+
+def resolve_explicit_files(root: Path, values: list[str]) -> list[Path]:
+    paths: list[Path] = []
+    for index, value in enumerate(values):
+        relative = PurePosixPath(value.replace("\\", "/"))
+        if relative.is_absolute() or ".." in relative.parts or not relative.parts:
+            raise DiscoveryError(f"include-file[{index}] must be a project-relative path")
+        unresolved = root
+        for part in relative.parts:
+            unresolved /= part
+            if unresolved.is_symlink():
+                raise DiscoveryError(f"Included path must not traverse a symlink: {value}")
+        path = unresolved.resolve()
+        if not is_within(path, root) or not path.is_file():
+            raise DiscoveryError(f"Included path is not a regular project file: {value}")
+        paths.append(path)
+    if len(set(paths)) > MAX_EVIDENCE_FILES:
+        raise DiscoveryError(f"At most {MAX_EVIDENCE_FILES} explicit files may be included")
+    return sorted(set(paths), key=lambda path: path.relative_to(root).as_posix())
+
+
 def git_provenance(root: Path, path: Path) -> dict[str, Any]:
     git_root_value = run_git(root, ["rev-parse", "--show-toplevel"])
     if not git_root_value:
@@ -249,7 +319,7 @@ def split_blocks(relative: str, content: str) -> list[dict[str, Any]]:
             continue
         if len(text) > MAX_BLOCK_CHARS:
             raise DiscoveryError(
-                f"Rule block exceeds {MAX_BLOCK_CHARS} characters: "
+                f"Evidence block exceeds {MAX_BLOCK_CHARS} characters: "
                 f"{relative}:{start_line}"
             )
         seed = f"{relative}\0{start_line}\0{end_line}\0{text}"
@@ -266,44 +336,276 @@ def split_blocks(relative: str, content: str) -> list[dict[str, Any]]:
     return blocks
 
 
-def inventory(project_root: Path, excluded: set[str]) -> dict[str, Any]:
-    if not project_root.is_dir():
-        raise DiscoveryError(f"Project directory does not exist: {project_root}")
-    files: list[dict[str, Any]] = []
-    block_count = 0
-    for path in discover_rule_paths(project_root, excluded):
-        if path.is_symlink() or not path.is_file() or not is_within(path, project_root):
-            raise DiscoveryError(f"Rule path is not a regular project file: {path}")
-        if path.stat().st_size > MAX_RULE_BYTES:
+def read_evidence_file(
+    project_root: Path, path: Path, source_type: str
+) -> dict[str, Any]:
+    if path.is_symlink() or not path.is_file() or not is_within(path, project_root):
+        raise DiscoveryError(f"Evidence path is not a regular project file: {path}")
+    if path.stat().st_size > MAX_RULE_BYTES:
+        raise DiscoveryError(
+            f"Evidence file exceeds {MAX_RULE_BYTES} bytes: {path.relative_to(project_root)}"
+        )
+    try:
+        content = path.read_text(encoding="utf-8")
+    except UnicodeDecodeError as error:
+        raise DiscoveryError(f"Evidence file must be UTF-8: {path}") from error
+    relative = path.relative_to(project_root).as_posix()
+    if contains_secret(content):
+        raise DiscoveryError(f"Possible secret detected in evidence file: {relative}")
+    return {
+        "path": relative,
+        "source_type": source_type,
+        "scope": (
+            "project"
+            if path.parent == project_root
+            else f"subtree:{path.parent.relative_to(project_root).as_posix()}"
+        ),
+        "sha256": digest_text(content),
+        "git": git_provenance(project_root, path),
+        "blocks": split_blocks(relative, content),
+    }
+
+
+def normalize_observation_input(value: object, label: str) -> list[dict[str, Any]]:
+    if not isinstance(value, dict) or set(value) != {"schema_version", "observations"}:
+        raise DiscoveryError(f"{label} must contain schema_version and observations")
+    if value["schema_version"] != 1:
+        raise DiscoveryError(f"{label} schema_version is unsupported")
+    raw_observations = value["observations"]
+    if (
+        not isinstance(raw_observations, list)
+        or not raw_observations
+        or len(raw_observations) > MAX_OBSERVATIONS
+    ):
+        raise DiscoveryError(f"{label} observations must contain 1-{MAX_OBSERVATIONS} items")
+    observations: list[dict[str, Any]] = []
+    seen: set[tuple[str, str]] = set()
+    required = {
+        "source_type",
+        "source_ref",
+        "summary",
+        "recurrence_count",
+        "user_confirmed",
+    }
+    for index, raw in enumerate(raw_observations):
+        if not isinstance(raw, dict) or set(raw) != required:
+            raise DiscoveryError(f"{label} observations[{index}] has unexpected fields")
+        source_type = safe_string(
+            raw["source_type"], f"{label} observations[{index}].source_type", 64
+        )
+        if source_type not in OBSERVATION_SOURCE_TYPES:
+            raise DiscoveryError(f"{label} observations[{index}].source_type is invalid")
+        source_ref = safe_string(
+            raw["source_ref"], f"{label} observations[{index}].source_ref", 128
+        )
+        summary = safe_string(
+            raw["summary"], f"{label} observations[{index}].summary", 4000
+        )
+        if contains_share_unsafe({"source_ref": source_ref, "summary": summary}):
             raise DiscoveryError(
-                f"Rule file exceeds {MAX_RULE_BYTES} bytes: {path.relative_to(project_root)}"
+                f"{label} observations[{index}] contains a URL, email, or absolute path"
             )
-        try:
-            content = path.read_text(encoding="utf-8")
-        except UnicodeDecodeError as error:
-            raise DiscoveryError(f"Rule file must be UTF-8: {path}") from error
-        relative = path.relative_to(project_root).as_posix()
-        if contains_secret(content):
-            raise DiscoveryError(f"Possible secret detected in rule file: {relative}")
-        blocks = split_blocks(relative, content)
-        block_count += len(blocks)
-        files.append(
+        recurrence = raw["recurrence_count"]
+        if not isinstance(recurrence, int) or isinstance(recurrence, bool) or not 1 <= recurrence <= 1000:
+            raise DiscoveryError(
+                f"{label} observations[{index}].recurrence_count must be 1-1000"
+            )
+        if raw["user_confirmed"] is not True:
+            raise DiscoveryError(
+                f"{label} observations[{index}] requires explicit user confirmation"
+            )
+        identity = (source_type, source_ref)
+        if identity in seen:
+            raise DiscoveryError(f"{label} contains a duplicate observation source")
+        seen.add(identity)
+        observations.append(
             {
-                "path": relative,
-                "scope": "project" if relative == "AGENTS.md" else f"subtree:{path.parent.relative_to(project_root).as_posix()}",
-                "sha256": digest_text(content),
-                "git": git_provenance(project_root, path),
-                "blocks": blocks,
+                "source_type": source_type,
+                "source_ref": source_ref,
+                "summary": summary,
+                "recurrence_count": recurrence,
+                "user_confirmed": True,
             }
         )
+    return observations
+
+
+def load_observations(values: list[str]) -> list[dict[str, Any]]:
+    observations: list[dict[str, Any]] = []
+    for index, value in enumerate(values):
+        path = resolved(value)
+        if path.is_symlink() or not path.is_file() or path.stat().st_size > MAX_RULE_BYTES:
+            raise DiscoveryError(f"Observation input is not a bounded regular file: {path}")
+        observations.extend(
+            normalize_observation_input(
+                load_json_file(str(path), f"Observation input {index + 1}"),
+                f"Observation input {index + 1}",
+            )
+        )
+    if len(observations) > MAX_OBSERVATIONS:
+        raise DiscoveryError(f"At most {MAX_OBSERVATIONS} observations may be included")
+    identities = [(item["source_type"], item["source_ref"]) for item in observations]
+    if len(identities) != len(set(identities)):
+        raise DiscoveryError("Observation inputs contain duplicate sources")
+    return observations
+
+
+def observation_record(
+    source_type: str,
+    source_ref: str,
+    summary: str,
+    *,
+    recurrence_count: int = 1,
+    user_confirmed: bool = False,
+) -> dict[str, Any]:
+    if contains_secret(
+        {"source_type": source_type, "source_ref": source_ref, "summary": summary}
+    ):
+        raise DiscoveryError("Observation metadata contains a possible secret")
+    source_type = safe_string(source_type, "Observation source type", 64)
+    source_ref = safe_string(source_ref, "Observation source reference", 128)
+    summary = safe_string(summary, "Observation summary", MAX_BLOCK_CHARS)
+    seed = f"{source_type}\0{source_ref}\0{summary}"
+    return {
+        "source_type": source_type,
+        "source_ref": source_ref,
+        "recurrence_count": recurrence_count,
+        "user_confirmed": user_confirmed,
+        "sha256": digest_text(summary),
+        "block": {
+            "block_id": f"block-{digest_text(seed)[:16]}",
+            "sha256": digest_text(summary),
+            "text": summary,
+            "skill_references": sorted(set(SKILL_REFERENCE_PATTERN.findall(summary))),
+        },
+    }
+
+
+def project_structure_observation(
+    project_root: Path, excluded: set[str]
+) -> dict[str, Any]:
+    extension_counts: dict[str, int] = {}
+    top_level_directories: set[str] = set()
+    file_count = 0
+    for directory, names, files in os.walk(project_root, followlinks=False):
+        names[:] = sorted(
+            name
+            for name in names
+            if name not in excluded and not (Path(directory) / name).is_symlink()
+        )
+        relative_directory = Path(directory).resolve().relative_to(project_root)
+        if relative_directory.parts:
+            top_level_directories.add(relative_directory.parts[0])
+        for name in files:
+            path = Path(directory) / name
+            if path.is_symlink():
+                continue
+            file_count += 1
+            if file_count > MAX_STRUCTURE_FILES:
+                raise DiscoveryError(
+                    f"Project structure contains more than {MAX_STRUCTURE_FILES} files"
+                )
+            extension = path.suffix.lower() or "[no-extension]"
+            extension_counts[extension] = extension_counts.get(extension, 0) + 1
+    summary = json.dumps(
+        {
+            "file_count": file_count,
+            "extensions": dict(sorted(extension_counts.items())),
+            "top_level_directories": sorted(top_level_directories),
+        },
+        ensure_ascii=False,
+        sort_keys=True,
+        separators=(",", ":"),
+    )
+    return observation_record("project-structure", "project-tree", summary)
+
+
+def git_history_observations(project_root: Path, limit: int) -> list[dict[str, Any]]:
+    if not 0 <= limit <= MAX_GIT_HISTORY:
+        raise DiscoveryError(f"git-history-limit must be 0-{MAX_GIT_HISTORY}")
+    if limit == 0:
+        return []
+    history = run_git(project_root, ["log", f"-n{limit}", "--format=%H%x1f%s"])
+    if history is None:
+        raise DiscoveryError("Git history was requested but is unavailable")
+    observations: list[dict[str, Any]] = []
+    for index, line in enumerate(history.splitlines()):
+        commit, separator, subject = line.partition("\x1f")
+        if not separator or not re.fullmatch(r"[0-9a-f]{40}", commit):
+            raise DiscoveryError("Git history output is malformed")
+        subject = safe_string(subject, f"Git history subject {index + 1}", 1000)
+        observations.append(
+            observation_record("git-history", f"commit:{commit[:12]}", subject)
+        )
+    return observations
+
+
+def inventory(
+    project_root: Path,
+    excluded: set[str],
+    *,
+    include_project_docs: bool = False,
+    include_files: list[str] | None = None,
+    include_project_structure: bool = False,
+    git_history_limit: int = 0,
+    observation_inputs: list[str] | None = None,
+) -> dict[str, Any]:
+    if not project_root.is_dir():
+        raise DiscoveryError(f"Project directory does not exist: {project_root}")
+    files_by_path: dict[Path, dict[str, Any]] = {}
+    rule_paths = discover_rule_paths(project_root, excluded)
+    for path in rule_paths:
+        files_by_path[path] = read_evidence_file(project_root, path, "project-rule")
+    if include_project_docs:
+        for path in discover_document_paths(project_root, excluded):
+            files_by_path.setdefault(
+                path, read_evidence_file(project_root, path, "project-document")
+            )
+    for path in resolve_explicit_files(project_root, include_files or []):
+        files_by_path.setdefault(
+            path, read_evidence_file(project_root, path, "explicit-project-file")
+        )
+    files = [
+        files_by_path[path]
+        for path in sorted(
+            files_by_path,
+            key=lambda item: item.relative_to(project_root).as_posix(),
+        )
+    ]
+    observations = git_history_observations(project_root, git_history_limit)
+    if include_project_structure:
+        observations.append(project_structure_observation(project_root, excluded))
+    for item in load_observations(observation_inputs or []):
+        observations.append(
+            observation_record(
+                item["source_type"],
+                item["source_ref"],
+                item["summary"],
+                recurrence_count=item["recurrence_count"],
+                user_confirmed=True,
+            )
+        )
+    observations.sort(key=lambda item: (item["source_type"], item["source_ref"]))
+    block_count = sum(len(file["blocks"]) for file in files) + len(observations)
+    source_counts: dict[str, int] = {}
+    for file in files:
+        source_counts[file["source_type"]] = source_counts.get(
+            file["source_type"], 0
+        ) + len(file["blocks"])
+    for observation in observations:
+        source_counts[observation["source_type"]] = source_counts.get(observation["source_type"], 0) + 1
     result = {
-        "schema_version": 1,
+        "schema_version": 2,
         "read_only": True,
         "project_root": str(project_root),
-        "rule_file_count": len(files),
+        "rule_file_count": len(rule_paths),
+        "evidence_file_count": len(files),
+        "observation_count": len(observations),
         "block_count": block_count,
+        "source_counts": dict(sorted(source_counts.items())),
         "excluded_directories": sorted(excluded),
         "files": files,
+        "observations": observations,
     }
     result["inventory_sha256"] = canonical_digest(result)
     return result
@@ -525,14 +827,34 @@ def score_candidates(
 ) -> dict[str, Any]:
     block_index = {
         block["block_id"]: {
+            "source_type": file["source_type"],
+            "locator": file["path"],
             "path": file["path"],
             "start_line": block["start_line"],
             "end_line": block["end_line"],
             "sha256": block["sha256"],
+            "strength": "durable",
         }
         for file in rules["files"]
         for block in file["blocks"]
     }
+    block_index.update(
+        {
+            observation["block"]["block_id"]: {
+                "source_type": observation["source_type"],
+                "locator": observation["source_ref"],
+                "sha256": observation["sha256"],
+                "strength": (
+                    "observed"
+                    if observation["source_type"] in OBSERVATIONAL_SOURCE_TYPES
+                    else "durable"
+                ),
+                "recurrence_count": observation["recurrence_count"],
+                "user_confirmed": observation["user_confirmed"],
+            }
+            for observation in rules["observations"]
+        }
+    )
     scored = [
         score_candidate(candidate, existing_overlap(candidate, skills))
         for candidate in candidates
@@ -547,6 +869,15 @@ def score_candidates(
                 )
                 break
         candidate["source_evidence"] = [block_index[item] for item in candidate["source_block_ids"]]
+        source_types = {
+            item["source_type"] for item in candidate["source_evidence"]
+        }
+        if source_types and source_types <= OBSERVATIONAL_SOURCE_TYPES:
+            candidate["review_flags"] = sorted(
+                set(candidate["review_flags"] + ["observation-only-evidence"])
+            )
+            if candidate["classification"] == "recommended":
+                candidate["classification"] = "investigate"
     order = {"recommended": 0, "investigate": 1, "reject": 2}
     scored.sort(key=lambda item: (order[item["classification"]], -item["score"], item["name"]))
     counts = {name: sum(item["classification"] == name for item in scored) for name in order}
@@ -837,15 +1168,37 @@ def validate_contribution(value: object) -> dict[str, Any]:
 
 def command_inventory(args: argparse.Namespace) -> dict[str, Any]:
     excluded = DEFAULT_EXCLUDED_DIRECTORIES | set(args.exclude_directory)
-    return inventory(resolved(args.project_path), excluded)
+    return inventory_from_args(args, excluded)
+
+
+def inventory_from_args(
+    args: argparse.Namespace, excluded: set[str]
+) -> dict[str, Any]:
+    return inventory(
+        resolved(args.project_path),
+        excluded,
+        include_project_docs=args.include_project_docs,
+        include_files=args.include_file,
+        include_project_structure=args.include_project_structure,
+        git_history_limit=args.git_history_limit,
+        observation_inputs=args.observation_input,
+    )
+
+
+def inventory_block_ids(value: dict[str, Any]) -> set[str]:
+    return {
+        block["block_id"]
+        for file in value["files"]
+        for block in file["blocks"]
+    } | {item["block"]["block_id"] for item in value["observations"]}
 
 
 def command_score(args: argparse.Namespace) -> dict[str, Any]:
     root = resolved(args.project_path)
-    rules = inventory(root, DEFAULT_EXCLUDED_DIRECTORIES | set(args.exclude_directory))
-    valid_blocks = {
-        block["block_id"] for file in rules["files"] for block in file["blocks"]
-    }
+    rules = inventory_from_args(
+        args, DEFAULT_EXCLUDED_DIRECTORIES | set(args.exclude_directory)
+    )
+    valid_blocks = inventory_block_ids(rules)
     candidates = normalize_candidate_input(load_json_input(args), valid_blocks)
     return score_candidates(candidates, rules, load_catalogs(root, args.catalog))
 
@@ -893,12 +1246,12 @@ def write_explicit_output(args: argparse.Namespace, result: dict[str, Any]) -> N
 
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
-        description="Discover evidence-backed reusable skill candidates from local project rules"
+        description="Discover reusable skill candidates from bounded project evidence"
     )
     subparsers = parser.add_subparsers(dest="command", required=True)
     inventory_parser = subparsers.add_parser("inventory")
     inventory_parser.add_argument("--project-path", required=True)
-    inventory_parser.add_argument("--exclude-directory", action="append", default=[])
+    add_inventory_arguments(inventory_parser)
     inventory_parser.add_argument("--json", action="store_true")
     score_parser = subparsers.add_parser("score")
     score_parser.add_argument("--project-path", required=True)
@@ -906,7 +1259,7 @@ def build_parser() -> argparse.ArgumentParser:
     source.add_argument("--input")
     source.add_argument("--stdin", action="store_true")
     score_parser.add_argument("--catalog", action="append", default=[])
-    score_parser.add_argument("--exclude-directory", action="append", default=[])
+    add_inventory_arguments(score_parser)
     score_parser.add_argument("--output")
     score_parser.add_argument("--json", action="store_true")
     export_parser = subparsers.add_parser("export-contribution")
@@ -924,6 +1277,17 @@ def build_parser() -> argparse.ArgumentParser:
     validate_parser.add_argument("--output")
     validate_parser.add_argument("--json", action="store_true")
     return parser
+
+
+def add_inventory_arguments(parser: argparse.ArgumentParser) -> None:
+    parser.add_argument("--exclude-directory", action="append", default=[])
+    parser.add_argument("--include-project-docs", action="store_true")
+    parser.add_argument("--include-file", action="append", default=[])
+    parser.add_argument("--include-project-structure", action="store_true")
+    parser.add_argument(
+        "--git-history-limit", type=int, default=0, metavar=f"0-{MAX_GIT_HISTORY}"
+    )
+    parser.add_argument("--observation-input", action="append", default=[])
 
 
 def main() -> int:
