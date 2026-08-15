@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+## [1.7.0] - 2026-08-15
+
 ### Added
 
 - An experimental `discover-skill-candidates` workflow that inventories
