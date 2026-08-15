@@ -1,0 +1,27 @@
+name: Skill candidate contribution
+description: Propose a sanitized candidate produced by discover-skill-candidates
+title: "[Skill candidate]: "
+labels:
+  - enhancement
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Export the selected candidate with `discover_candidates.py export-contribution`, inspect the generated JSON, and attach it below. Do not attach inventory output, AGENTS.md files, raw private rules, secrets, internal URLs, email addresses, or absolute workstation paths. Submission starts maintainer review and does not guarantee implementation or publication.
+  - type: textarea
+    id: package
+    attributes:
+      label: Contribution package
+      description: Attach the generated JSON file or paste its complete contents.
+      placeholder: Drag the contribution-package.json file here, or paste the validated JSON.
+    validations:
+      required: true
+  - type: checkboxes
+    id: confirmation
+    attributes:
+      label: Contributor confirmation
+      options:
+        - label: I validated the package with `validate-contribution` and reviewed it for private information.
+          required: true
+        - label: I understand that maintainers will independently review provenance, licensing, overlap, safety, and general usefulness.
+          required: true

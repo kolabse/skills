@@ -1,0 +1,42 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/kolabse/skills/discover-skill-candidates/report.schema.json",
+  "title": "Ranked skill candidate discovery report",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "read_only", "inventory_sha256", "catalog_skill_count", "counts", "candidates", "report_sha256"],
+  "properties": {
+    "schema_version": {"const": 1},
+    "read_only": {"const": true},
+    "inventory_sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "catalog_skill_count": {"type": "integer", "minimum": 0},
+    "counts": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["recommended", "investigate", "reject"],
+      "properties": {
+        "recommended": {"type": "integer", "minimum": 0},
+        "investigate": {"type": "integer", "minimum": 0},
+        "reject": {"type": "integer", "minimum": 0}
+      }
+    },
+    "candidates": {
+      "type": "array",
+      "maxItems": 100,
+      "items": {
+        "type": "object",
+        "required": ["name", "score", "classification", "score_breakdown", "source_evidence", "review_flags", "rejection_reasons"],
+        "properties": {
+          "name": {"type": "string"},
+          "score": {"type": "integer"},
+          "classification": {"enum": ["recommended", "investigate", "reject"]},
+          "score_breakdown": {"type": "object"},
+          "source_evidence": {"type": "array"},
+          "review_flags": {"type": "array", "items": {"type": "string"}},
+          "rejection_reasons": {"type": "array", "items": {"type": "string"}}
+        }
+      }
+    },
+    "report_sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"}
+  }
+}

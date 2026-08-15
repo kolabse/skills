@@ -1,0 +1,67 @@
+{
+  "skill": "discover-skill-candidates",
+  "positive": [
+    {
+      "prompt": "Проанализируй локальные правила AGENTS.md и предложи, какие повторяемые процессы стоит оформить как новые навыки.",
+      "reason": "The request explicitly asks to mine local project rules for reusable skill candidates."
+    },
+    {
+      "prompt": "Составь read-only backlog идей навыков из правил проекта, сохрани provenance до строк и ничего пока не создавай.",
+      "reason": "A provenance-bound read-only candidate backlog is the core workflow."
+    },
+    {
+      "prompt": "Проверь, не дублируют ли наши идеи существующие skills, и ранжируй только переносимые и тестируемые workflow.",
+      "reason": "Existing-skill comparison and deterministic ranking are core candidate qualification steps."
+    },
+    {
+      "prompt": "Какие инструкции из вложенных AGENTS.md можно переиспользовать в других репозиториях как отдельные навыки?",
+      "reason": "The skill inventories subtree-scoped project rules and evaluates portability."
+    },
+    {
+      "prompt": "Найди в правилах проекта идеи для helper-скриптов и safety-контрактов будущих навыков, но исключи разовые соглашения.",
+      "reason": "The rubric distinguishes deterministic reusable resources from one-off project conventions."
+    },
+    {
+      "prompt": "Перед использованием skill-creator подготовь evidence-backed brief лучшего кандидата из наших project rules.",
+      "reason": "The workflow prepares a selected candidate brief before a separately authorized authoring step."
+    },
+    {
+      "prompt": "Экспортируй выбранную идею discover-skill-candidates в безопасный пакет, который я смогу отправить авторам коллекции.",
+      "reason": "A sanitized portable contribution package is an explicit output of the discovery workflow."
+    },
+    {
+      "prompt": "Проверь полученный JSON-пакет идеи навыка перед тем, как рассматривать его для общей коллекции.",
+      "reason": "Independent validation of received contribution packages belongs to this skill."
+    }
+  ],
+  "negative": [
+    {
+      "prompt": "Создай новый навык обработки PDF по этому подробному техническому заданию.",
+      "reason": "The user already supplied a concrete skill brief; direct authoring belongs to skill-creator."
+    },
+    {
+      "prompt": "Добавь новое обязательное правило тестирования в AGENTS.md.",
+      "reason": "Editing project policy is not read-only candidate discovery."
+    },
+    {
+      "prompt": "Покажи, какие правила проекта не переносятся через Git, и синхронизируй их на второй компьютер.",
+      "reason": "Git-first rule portability and transfer belong to sync-project-context."
+    },
+    {
+      "prompt": "Просканируй весь исходный код и автоматически создай по навыку на каждый модуль.",
+      "reason": "Broad source scanning and automatic skill creation are outside the bounded rule-analysis workflow."
+    },
+    {
+      "prompt": "Сделай из корпоративной политики доступа персональный навык и включи в него токены.",
+      "reason": "Policy-only and sensitive material are explicit disqualifiers."
+    },
+    {
+      "prompt": "Проверь установленные навыки и обнови их до текущей версии коллекции.",
+      "reason": "Consumer installation and update management are not candidate discovery."
+    },
+    {
+      "prompt": "Без review немедленно опубликуй присланную идею навыка всем пользователям.",
+      "reason": "Contribution validation never bypasses maintainer review or the collection release workflow."
+    }
+  ]
+}
