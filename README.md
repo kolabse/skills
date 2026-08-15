@@ -201,25 +201,25 @@ failure without changing the observed result of the primary operation.
 
 ### `discover-skill-candidates` (experimental)
 
-Analyze project-relative `AGENTS.md` rules and produce a read-only ranked
-backlog of reusable skill ideas without scaffolding or modifying any skill.
-The dependency-free helper inventories bounded rule files, records Git and
-line-level provenance, rejects detected secrets, validates candidate evidence
-against current block hashes, and compares proposed names and capabilities
-with existing skill catalogs. A deterministic rubric separates recommended,
-investigate, and rejected ideas while treating existing skills, policy-only
-requirements, single commands, volatile procedures, sensitive dependencies,
-and one-off project conventions as disqualifiers or review flags.
+Find reusable skill ideas in project rules without creating a skill.
 
-A selected non-rejected idea can be exported as a portable, digest-bound
-contribution package. The exporter replaces raw rules and local paths with
-contributor-approved summaries, requires redistribution and confidentiality
-attestations, and rejects secrets, URLs, email addresses, and absolute paths.
-Maintainers can validate the package independently before ordinary provenance,
-license, overlap, implementation, review, and release gates; submission never
-publishes a skill automatically.
+**What it does:**
 
-After installing it, invoke it with:
+- inventories bounded project-relative `AGENTS.md` files with Git and
+  line-level provenance;
+- ranks candidates as recommended, investigate, or rejected and compares them
+  with existing catalogs;
+- exports a selected idea as a sanitized, digest-bound contribution package
+  that maintainers can validate independently.
+
+**What it does not do:**
+
+- modify project rules or scaffold, publish, or install a skill;
+- export raw rules, local paths, secrets, URLs, or email addresses;
+- promote policy-only, volatile, sensitive, or one-off conventions as reusable
+  workflows without review.
+
+**How to invoke it:**
 
 ```text
 $discover-skill-candidates Analyze this project's local rules and prepare an evidence-backed backlog of reusable skill ideas without creating anything.
@@ -227,151 +227,199 @@ $discover-skill-candidates Analyze this project's local rules and prepare an evi
 
 ### `release-skill-collection`
 
-Plan, locally verify, audit, and safely clean up deterministic skill-collection releases without
-implicitly committing, tagging, pushing, dispatching a workflow, or publishing
-assets. The skill checks version alignment, changelog readiness, repository
-state, structural and security gates, unit tests, release archives, and
-checksums; verifies a digest-bound five-gate evidence document; audits published
-GitHub assets and attestations; and produces non-mutating cleanup plans that
-require merged, identical-tree, or patch-equivalent branch evidence.
+Plan, verify, audit, and clean up deterministic skill-collection releases.
+
+**What it does:**
+
+- checks versions, changelog readiness, repository state, tests, security,
+  deterministic archives, and checksums;
+- validates commit-bound holdout, consumer, platform, review, and local-check
+  evidence;
+- audits immutable GitHub assets, manifests, checksums, and attestations;
+- proves whether temporary branches are merged, identical-tree, or
+  patch-equivalent before cleanup.
+
+**What it does not do:**
+
+- infer permission to commit, tag, push, dispatch workflows, or publish assets;
+- move an existing tag or replace published assets;
+- delete branches itself or accept branch names as proof that deletion is safe.
+
+**How to invoke it:**
+
+```text
+$release-skill-collection Plan and verify release vX.Y.Z of this skill collection, but do not publish it yet.
+```
 
 ### `verify-before-push`
 
-Run project-declared checks and record evidence bound to the exact Git commits,
-worktrees, upstream state, and verification configuration being pushed.
+Bind project-declared checks to the exact Git state being pushed.
 
-After installing it in a project, invoke it once with:
+**What it does:**
+
+- configures a repository-owned verification policy outside the installed
+  skill folder;
+- runs declared checks and records evidence for exact commits, worktrees,
+  upstream state, and verification configuration;
+- fails closed when protected evidence is missing, failed, malformed, or stale.
+
+**What it does not do:**
+
+- block unrelated repositories that are not covered by the policy;
+- parse arbitrary shell commands or install an IDE- or agent-specific hook;
+- treat a successful check from an older Git state as current evidence.
+
+**How to invoke it:**
 
 ```text
 $verify-before-push Configure this project's verification policy and checks.
 ```
 
-The skill stores committed configuration outside its installed folder, keeps
-generated evidence ignored, supports multiple repositories and commands, and
-fails closed for configured repositories when evidence is missing, malformed,
-failed, or stale. Its gate mode leaves unrelated repositories unaffected and
-does not attempt to parse shell commands or install a product-specific hook.
-
 ### `synchronize-git-repositories`
 
-Safely synchronize every Git repository involved in a task without overwriting
-local work or rewriting history.
+Establish current remote state without overwriting local work.
 
-After installing it in a project, invoke it once with:
+**What it does:**
+
+- discovers only task-relevant repositories and fetches their tracked remotes;
+- fast-forwards clean behind-only branches;
+- reports dirty, ahead, diverged, detached, untracked, and in-progress states;
+- publishes an authorized feature branch from verified current `main` before
+  the first edit when project policy requires it.
+
+**What it does not do:**
+
+- automatically stash, reset, rebase, merge, clean, switch, or force-push;
+- hide divergence or treat a successful fetch as proof that the local branch
+  was updated;
+- scan or update unrelated repositories.
+
+**How to invoke it:**
 
 ```text
 $synchronize-git-repositories Configure this project's repository synchronization policy.
 ```
 
-The skill preserves existing `AGENTS.md` instructions, discovers only
-task-relevant repositories, fetches their tracked remotes, applies clean
-fast-forward updates, and reports dirty, ahead, diverged, detached, or
-untracked states without automatically stashing, resetting, rebasing, merging,
-cleaning, switching branches, or force-pushing.
-
 ### `maintain-work-log`
 
-Maintain a dated, chronological record of project changes, operations,
-diagnostics, discussions, decisions, verification, blockers, and rollback
-results in `docs/reports/work-log.md`.
+Maintain the canonical dated project journal at `docs/reports/work-log.md`.
 
-After installing it in a project, invoke it once with:
+**What it does:**
+
+- records material changes, operations, diagnostics, decisions, verification,
+  blockers, and rollback results;
+- preserves the project's existing journal format;
+- reconstructs missing history from available Git and project-task evidence.
+
+**What it does not do:**
+
+- activate for ordinary work unless project policy or the user requires it;
+- write secrets, application logs, time tracking, or personal notes;
+- claim events that cannot be supported by available evidence.
+
+**How to invoke it:**
 
 ```text
 $maintain-work-log Configure this project to maintain its dated work log.
 ```
 
-The skill adds or preserves a repository-level `AGENTS.md` policy so future
-tasks invoke it, follows the project's existing journal format, keeps secrets
-out of entries, and offers evidence-based reconstruction for non-empty projects
-with missing history. Reconstruction uses Git and only the project conversation
-history that is actually available to the agent.
-
 ### `notify-via-telegram`
 
-Send concise Telegram notifications when long-running agent tasks start,
-advance, produce intermediate results, encounter problems, become blocked, or
-finish.
+Send lifecycle updates for long-running agent tasks through Telegram.
 
-After installing it, invoke it once with:
+**What it does:**
+
+- reports starts, milestones, intermediate results, problems, blockers, and
+  completion;
+- interactively validates the bot and helps discover a destination chat;
+- stores credentials in the user configuration directory and sends a test
+  notification during setup;
+- runs with the Python 3 standard library on Windows, macOS, and Linux.
+
+**What it does not do:**
+
+- place the bot token in the conversation, shell history, or repository;
+- send notifications when the user asks to keep progress in the current task;
+- act as a general Telegram bot-development framework.
+
+**How to invoke it:**
 
 ```text
 $notify-via-telegram Configure Telegram notifications for long tasks.
 ```
 
-The skill opens an interactive first-run setup so the bot token does not enter
-the conversation or shell history. It validates the bot, helps discover the
-destination chat from a recent `/start` or group command, stores credentials in
-the user's configuration directory outside the installed skill, and sends a
-test notification. Its Python 3 helper uses only the standard library and runs
-on Windows, macOS, and Linux.
-
 ### `operate-yandex-cloud`
 
-Safely operate project-scoped Yandex Cloud infrastructure.
+Operate explicitly configured, project-scoped Yandex Cloud infrastructure.
 
-After installing it in a project, invoke it once with:
+**What it does:**
+
+- stores shared Cloud/Folder IDs in project configuration and the workstation
+  `yc` profile in ignored local configuration;
+- detects required toolsets, checks minimum versions, and runs a read-only
+  context preflight;
+- supports scoped CLI, SSH, Terraform, Ansible, Helm, Kubernetes, deployment,
+  database, storage, DNS, monitoring, backup, and incident workflows;
+- provides JSON output and cross-platform Python helpers.
+
+**What it does not do:**
+
+- infer Yandex Cloud from generic SSH, Kubernetes, Terraform, or deployment
+  requests without provider context;
+- store credentials in shared project configuration;
+- apply a mutation before target, context, and authorization are established.
+
+**How to invoke it:**
 
 ```text
 $operate-yandex-cloud Configure this project for Yandex Cloud operations.
 ```
 
-The skill asks for the project's Cloud ID, optional default Folder ID and
-optional `yc` profile. It stores shared Cloud/Folder IDs in
-`.agents/operate-yandex-cloud/project.yaml` and the workstation-specific
-profile in an ignored `local.yaml`. It detects required toolsets from the
-project, checks minimum tool versions, offers supported installations, and runs
-a read-only cloud-context preflight. The scripts support JSON output and run on
-Windows, macOS, and Linux with Python 3; PowerShell wrappers are included for
-Windows compatibility.
-
 ### `sync-project-context`
 
-Save and restore private, sanitized project and per-chat continuation state
-between computers without adding context files to the team repository. It can
-also reconcile explicitly declared project rules, skills, plugins, and safe
-settings that are not already carried by Git. The skill is experimental while
-its cross-device trigger and storage behavior is
+Synchronize private, sanitized project and per-chat continuation state between
+computers. The skill remains experimental while its cross-device behavior is
 evaluated independently.
 
-After installing it on each computer, invoke it first with:
+**What it does:**
+
+- stores immutable checkpoints in an approved synchronized folder or connected
+  Google Drive, with machine-local configuration outside the repository;
+- keeps one opaque stream per project task: a detailed baseline followed by
+  short deltas, exact visible titles, decisions, verification, open questions,
+  next steps, and Git fingerprints;
+- saves, restores, or bidirectionally plans all recent and pinned project tasks,
+  while skipping unchanged/active tasks and surfacing conflicts explicitly;
+- validates downloaded snapshots, reads uploads back, prevents cross-project
+  restore, and rejects high-confidence secret patterns;
+- records a separate environment manifest for declared rules, skills, plugins,
+  and safe scalar settings that Git does not already provide.
+
+**What it does not do:**
+
+- copy source files, diffs, raw transcripts, hidden reasoning, credentials,
+  OAuth tokens, or skill/plugin installations;
+- duplicate rules or dependencies already carried by Git;
+- silently overwrite Git-owned destination rules: apply may only create a
+  missing untracked `AGENTS.md` after an explicit plan;
+- include branch names or file paths in metadata-only mode; visible task titles
+  remain intentionally included.
+
+**How to invoke it:**
+
+Configure each computer once:
 
 ```text
 $sync-project-context Configure this clone in metadata-only mode using my approved local synchronized folder or connected Google Drive.
 ```
 
-The dependency-free helper stores machine-local configuration in the user's
-configuration directory and immutable checkpoints through either an approved
-local synchronized folder or the optional Google Drive plugin. Independent
-opaque streams let each project chat keep a detailed first baseline followed by
-short incremental updates, so repeated "save state" and "restore state"
-requests can continue several implementation tracks across computers without
-mixing them. In the desktop app, an explicit "save all project chats" command
-can discover the 50 most recent non-pinned tasks plus all pinned tasks, create
-baselines for new workstreams, append deltas only to changed workstreams, and
-skip unchanged or active tasks. A machine-local hashed registry prevents
-duplicate streams without storing task titles or transcripts. The matching
-"restore all project chats" command resolves the destination local project by
-its canonical path, creates one project task per missing saved stream, updates
-an existing bound task when a newer delta arrives, and skips already-current
-tasks without importing raw transcripts. The connector backend validates a
-complete downloaded snapshot locally and reads uploads back before success.
-Exact visible chat titles are stored as scanned metadata and restored without
-semantic regeneration. The unified "sync all project chats" command plans
-local saves, remote creates or updates, unchanged skips, and explicit conflicts
-in one bidirectional pass on the active computer. It records reviewed summaries,
-factual rationale, discussion outcomes, decisions, actions, verification,
-questions, next steps, and Git fingerprints; it never copies source contents,
-diffs, raw transcripts, or hidden reasoning. A separate immutable environment
-manifest records Git coverage without duplicating tracked content, may carry
-only reviewed untracked `AGENTS.md` text and scalar preferences, and declares
-skill/plugin versions without copying installations or credentials. Its
-read-only plan preserves Git and existing destination rules; explicit apply
-can create only a missing untracked `AGENTS.md`. Metadata-only mode also omits
-branch names and file paths; chat titles remain intentionally included.
-Configuration requires an explicit storage-policy acknowledgement, repository
-fingerprints prevent cross-project restore, and high-confidence secret patterns
-fail closed.
+Then use task-level or batch commands, for example:
+
+```text
+$sync-project-context Save the current task state.
+$sync-project-context Restore all project tasks on this computer.
+$sync-project-context Synchronize all project tasks bidirectionally and show conflicts before applying changes.
+```
 
 ## Add a skill
 
