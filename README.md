@@ -116,7 +116,7 @@ python bootstrap_update.py plan --json
 python bootstrap_update.py update --yes --migrate --json
 ```
 
-Use `--release v1.7.0` to pin a version. The bootstrap requires `gh` for
+Use `--release v1.8.0` to pin a version. The bootstrap requires `gh` for
 attestation verification and removes its temporary directory on completion.
 For an offline cache, provide both `--offline-archive` and
 `--offline-checksums`. Provenance verification remains required when `gh` can
@@ -225,7 +225,7 @@ After installing it, invoke it with:
 $discover-skill-candidates Analyze this project's local rules and prepare an evidence-backed backlog of reusable skill ideas without creating anything.
 ```
 
-### `release-skill-collection` (experimental)
+### `release-skill-collection`
 
 Plan, locally verify, audit, and safely clean up deterministic skill-collection releases without
 implicitly committing, tagging, pushing, dispatching a workflow, or publishing
