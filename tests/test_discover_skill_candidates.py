@@ -215,6 +215,24 @@ class DiscoverSkillCandidatesTests(unittest.TestCase):
             )
             self.assertEqual(3, expanded["evidence_file_count"])
 
+    def test_root_project_documents_respect_the_combined_file_limit(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            project = Path(directory) / "project"
+            initialize_project(project, "# Rules\n\nRun checks.\n")
+            for index in range(discover_candidates.MAX_EVIDENCE_FILES + 1):
+                (project / f"README-{index:03d}.md").write_text(
+                    f"# Document {index}\n", encoding="utf-8"
+                )
+
+            with self.assertRaisesRegex(
+                discover_candidates.DiscoveryError, "documentation files"
+            ):
+                discover_candidates.inventory(
+                    project.resolve(),
+                    set(discover_candidates.DEFAULT_EXCLUDED_DIRECTORIES),
+                    include_project_docs=True,
+                )
+
     def test_explicit_file_rejects_symlink_traversal(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
             project = Path(directory) / "project"
