@@ -16,14 +16,25 @@ credentials, private reasoning, raw logs, and unnecessary implementation detail.
    python <skill-root>/scripts/telegram_notify.py status
    ```
 
-2. When configuration is missing, explain that the bot token must be entered in
-   an interactive terminal rather than pasted into the conversation or command
-   arguments. Open an interactive terminal when the environment supports it;
-   otherwise ask the user to run:
+2. When configuration is missing in Codex Desktop on Windows, launch the bundled
+   visible, masked, paste-friendly form. Do not use an internal PTY or `getpass`
+   for this path:
+
+   ```powershell
+   powershell -NoProfile -ExecutionPolicy Bypass -File <skill-root>/scripts/configure_windows.ps1
+   ```
+
+   The form validates the token locally before any network request and passes it
+   to the child Python process only through its environment. It never places the
+   token in command arguments or output. On macOS, Linux, or a normal visible
+   interactive terminal, run:
 
    ```shell
    python <skill-root>/scripts/telegram_notify.py configure
    ```
+
+   Never ask the user to paste the token into the conversation or command
+   arguments.
 
 3. Guide the user to create or select a bot with `@BotFather`. For a direct chat,
    have the user open the bot and send `/start`. For a group, add the bot and send
@@ -110,7 +121,8 @@ misreported as task failures.
 ## Protect the channel
 
 - Read credentials only through the script's interactive prompt, its user-local
-  config, or `TELEGRAM_BOT_TOKEN`, `TELEGRAM_CHAT_ID`, and optional
+  config, the bundled Windows form, or `TELEGRAM_BOT_TOKEN`,
+  `TELEGRAM_CHAT_ID`, and optional
   `TELEGRAM_MESSAGE_THREAD_ID` environment variables.
 - Keep secrets, personal data, customer data, internal URLs, stack traces, and
   sensitive filenames out of notifications unless the user explicitly defines

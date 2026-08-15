@@ -318,6 +318,7 @@ Send lifecycle updates for long-running agent tasks through Telegram.
 - reports starts, milestones, intermediate results, problems, blockers, and
   completion;
 - interactively validates the bot and helps discover a destination chat;
+- provides a masked, paste-friendly first-use form for Codex Desktop on Windows;
 - stores credentials in the user configuration directory and sends a test
   notification during setup;
 - runs with the Python 3 standard library on Windows, macOS, and Linux.
