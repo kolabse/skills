@@ -330,6 +330,8 @@ class TriggerEvalTests(unittest.TestCase):
                 [item["name"] for item in suite["skills"]],
             )
             self.assertEqual({"demo"}, {item["target_skill"] for item in assertions})
+            report = score_suite(suite, assertions, self.predictions(suite, {}))
+            self.assertEqual(["demo"], [item["skill"] for item in report["per_skill"]])
 
     def test_compares_reports_and_fails_on_regression(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
