@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+## [1.10.0] - 2026-08-15
+
 ### Added
 
 - `notify-via-telegram` supports secret-free per-project chat or topic profiles
@@ -334,6 +336,7 @@ First versioned release of the kolabse skill collection.
 - Tests for configuration migration, fake cloud and infrastructure CLIs,
   installation confirmation, and collection metadata.
 
+[1.10.0]: https://github.com/kolabse/skills/releases/tag/v1.10.0
 [1.9.0]: https://github.com/kolabse/skills/releases/tag/v1.9.0
 [1.8.0]: https://github.com/kolabse/skills/releases/tag/v1.8.0
 [1.7.0]: https://github.com/kolabse/skills/releases/tag/v1.7.0

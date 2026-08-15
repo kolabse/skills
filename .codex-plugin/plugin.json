@@ -1,6 +1,6 @@
 {
   "name": "kolabse-skills",
-  "version": "1.9.0",
+  "version": "1.10.0",
   "description": "Reusable Git, project, skill discovery, private context, notification, and infrastructure workflows maintained by kolabse.",
   "author": {
     "name": "kolabse",
