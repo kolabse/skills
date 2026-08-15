@@ -1,14 +1,14 @@
 {
   "schema_version": 1,
-  "collection_version": "1.7.0",
+  "collection_version": "1.8.0",
   "license": "Apache-2.0",
   "composition_evals": "evals/compositions.json",
   "release_holdout": {
-    "name": "release-holdout-v2",
-    "path": "evals/release-holdout-v2.json",
-    "sha256": "70e6e9dea8105c1e3d61a22e4d6d73816a2aad4309680698360edb5be25184d9",
-    "baseline_release": "v1.0.0",
-    "baseline_report": "evals/baselines/release-holdout-v2-v1.0.0.json"
+    "name": "release-holdout-v3",
+    "path": "evals/release-holdout-v3.json",
+    "sha256": "36a3f7426c1552d92d824a8e07259241d2466aa7a19785b4ef63ee050f7a7a3d",
+    "baseline_release": "v1.8.0",
+    "baseline_report": "evals/baselines/release-holdout-v3-v1.8.0.json"
   },
   "compositions": [
     {
@@ -218,7 +218,8 @@
     {
       "name": "release-skill-collection",
       "path": "skills/release-skill-collection",
-      "status": "experimental",
+      "status": "stable",
+      "stable_since": "1.8.0",
       "maintainers": [
         "@kolabse"
       ],

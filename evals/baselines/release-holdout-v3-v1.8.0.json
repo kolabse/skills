@@ -1,0 +1,111 @@
+{
+  "assertion_digest": "d5cbfb5eb841273aa25b82911aaf28d71369f733acdd3755541849119ab5269f",
+  "composition_failures": [],
+  "corpus": "release-holdout",
+  "failures": [],
+  "per_skill": [
+    {
+      "fn": 0,
+      "fp": 0,
+      "precision": 1.0,
+      "recall": 1.0,
+      "skill": "maintain-work-log",
+      "specificity": 1.0,
+      "tn": 4,
+      "tp": 4
+    },
+    {
+      "fn": 0,
+      "fp": 0,
+      "precision": 1.0,
+      "recall": 1.0,
+      "skill": "notify-via-telegram",
+      "specificity": 1.0,
+      "tn": 4,
+      "tp": 4
+    },
+    {
+      "fn": 0,
+      "fp": 0,
+      "precision": 1.0,
+      "recall": 1.0,
+      "skill": "operate-yandex-cloud",
+      "specificity": 1.0,
+      "tn": 4,
+      "tp": 4
+    },
+    {
+      "fn": 0,
+      "fp": 0,
+      "precision": 1.0,
+      "recall": 1.0,
+      "skill": "release-skill-collection",
+      "specificity": 1.0,
+      "tn": 4,
+      "tp": 4
+    },
+    {
+      "fn": 0,
+      "fp": 0,
+      "precision": 1.0,
+      "recall": 1.0,
+      "skill": "synchronize-git-repositories",
+      "specificity": 1.0,
+      "tn": 4,
+      "tp": 4
+    },
+    {
+      "fn": 0,
+      "fp": 0,
+      "precision": 1.0,
+      "recall": 1.0,
+      "skill": "verify-before-push",
+      "specificity": 1.0,
+      "tn": 4,
+      "tp": 4
+    }
+  ],
+  "schema_version": 1,
+  "selector": {
+    "method": "majority-vote",
+    "run_count": 3,
+    "runs": [
+      {
+        "configuration": "release-holdout-v1.8.0",
+        "model": "independent-agent",
+        "provider": "Codex",
+        "run": "1"
+      },
+      {
+        "configuration": "release-holdout-v3",
+        "model": "independent-agent",
+        "provider": "Codex",
+        "run": "2"
+      },
+      {
+        "configuration": "release-holdout-v1.8.0",
+        "model": "independent-agent",
+        "provider": "Codex",
+        "run": "3"
+      }
+    ],
+    "threshold": 2
+  },
+  "suite_digest": "b4637be6a1f39a6c2ac10872ea77f495621b961c833a53a1723ea6b19e60b2b3",
+  "summary": {
+    "accuracy": 1.0,
+    "assertions": 48,
+    "composition_accuracy": 0.0,
+    "composition_cases": 0,
+    "composition_failed": 0,
+    "composition_passed": 0,
+    "failed": 0,
+    "fn": 0,
+    "fp": 0,
+    "passed": 48,
+    "precision": 1.0,
+    "recall": 1.0,
+    "tn": 24,
+    "tp": 24
+  }
+}

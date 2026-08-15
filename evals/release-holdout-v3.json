@@ -1,0 +1,234 @@
+{
+  "schema_version": 1,
+  "name": "release-holdout-v3",
+  "skills": {
+    "maintain-work-log": {
+      "positive": [
+        {
+          "prompt": "Проектное правило требует журнал работ. Запиши туда итог сегодняшней проверки и принятое решение.",
+          "reason": "An applicable policy explicitly requires the canonical project work log."
+        },
+        {
+          "prompt": "По истории Git восстанови в docs/reports/work-log.md пропущенные записи за неделю.",
+          "reason": "The request explicitly asks to reconstruct the canonical work log."
+        },
+        {
+          "prompt": "Перед завершением задачи добавь в обязательный журнал проекта выполненные изменения, проверки и открытый риск.",
+          "reason": "The task explicitly requires material outcomes in the configured project work log."
+        },
+        {
+          "prompt": "В docs/reports/work-log.md уже ведётся хронология. Зафиксируй под текущей датой решение команды без изменения кода.",
+          "reason": "The existing canonical log must record a material project decision."
+        }
+      ],
+      "negative": [
+        {
+          "prompt": "Добавь на страницу форму ежедневного отчёта сотрудников о проделанной работе.",
+          "reason": "A product feature is not the repository's canonical work log."
+        },
+        {
+          "prompt": "Прочитай journalctl сервиса и кратко объясни причину рестарта.",
+          "reason": "Reading a system journal does not imply maintaining the project work log."
+        },
+        {
+          "prompt": "Создай личный markdown-дневник с моими планами на неделю.",
+          "reason": "Personal notes are outside the canonical project work-log workflow."
+        },
+        {
+          "prompt": "Добавь в интерфейс таблицу аудита действий пользователей.",
+          "reason": "An application audit-log feature is not maintenance of the repository work log."
+        }
+      ]
+    },
+    "notify-via-telegram": {
+      "positive": [
+        {
+          "prompt": "Миграция долгая; сообщай мне в Telegram о начале, каждом блокере и результате.",
+          "reason": "The user explicitly requests Telegram lifecycle notifications."
+        },
+        {
+          "prompt": "Пока идёт многоэтапное восстановление, держи меня в курсе удалённо через Телеграм.",
+          "reason": "A lengthy multi-stage task explicitly needs Telegram progress updates."
+        },
+        {
+          "prompt": "Запусти двухчасовую сборку и отправь мне в Telegram старт, смену этапа и финальный статус.",
+          "reason": "A long phased build explicitly requires Telegram lifecycle updates."
+        },
+        {
+          "prompt": "Если длительный импорт заблокируется или завершится, немедленно уведомь меня через Телеграм.",
+          "reason": "The user explicitly requests remote Telegram problem and completion notifications."
+        }
+      ],
+      "negative": [
+        {
+          "prompt": "Добавь кнопку «Поделиться в Telegram» в карточку новости.",
+          "reason": "A Telegram product integration is not agent task notification."
+        },
+        {
+          "prompt": "Эта проверка займёт минуту; просто покажи результат в текущем чате.",
+          "reason": "A short task with local-only reporting does not need Telegram notifications."
+        },
+        {
+          "prompt": "Объясни ограничения Telegram Bot API на размер сообщения.",
+          "reason": "Technical documentation is not a request for task lifecycle notifications."
+        },
+        {
+          "prompt": "Не отправляй уведомления наружу; весь прогресс оставляй только здесь.",
+          "reason": "The user explicitly prohibits external notifications."
+        }
+      ]
+    },
+    "operate-yandex-cloud": {
+      "positive": [
+        {
+          "prompt": "Инвентарь указывает на Yandex Cloud. Проверь read-only состояние балансировщика проекта.",
+          "reason": "Project inventory explicitly establishes Yandex Cloud context."
+        },
+        {
+          "prompt": "Подготовь план изменения DNS-зоны проекта в Yandex Cloud, но пока ничего не применяй.",
+          "reason": "An explicitly named Yandex Cloud DNS preview is in scope."
+        },
+        {
+          "prompt": "В конфигурации проекта задан cloud_id Yandex Cloud. Проверь бэкапы managed database.",
+          "reason": "Project configuration explicitly establishes the provider and target context."
+        },
+        {
+          "prompt": "Через yc найди причину ошибки доступа к Object Storage в папке проекта.",
+          "reason": "The Yandex Cloud CLI and project folder are explicitly named."
+        }
+      ],
+      "negative": [
+        {
+          "prompt": "Сделай kubectl diff для кластера, провайдер которого пока неизвестен.",
+          "reason": "Generic Kubernetes work without provider context must not imply Yandex Cloud."
+        },
+        {
+          "prompt": "Проверь бакет проекта в Amazon S3 и настрой lifecycle policy.",
+          "reason": "An explicitly different provider is outside Yandex Cloud operations."
+        },
+        {
+          "prompt": "Подготовь Terraform plan для локального Docker-окружения.",
+          "reason": "Generic local Terraform work has no Yandex Cloud context."
+        },
+        {
+          "prompt": "Диагностируй виртуальную машину проекта в Microsoft Azure.",
+          "reason": "An explicitly different cloud provider is outside Yandex Cloud operations."
+        }
+      ]
+    },
+    "synchronize-git-repositories": {
+      "positive": [
+        {
+          "prompt": "Перед изменениями fetch tracking remote и безопасно fast-forward текущую чистую ветку.",
+          "reason": "The request explicitly requires remote freshness and a safe update."
+        },
+        {
+          "prompt": "Сравни HEAD двух репозиториев с их upstream после fetch и сохрани все локальные изменения.",
+          "reason": "Fetched upstream classification across repositories is the core workflow."
+        },
+        {
+          "prompt": "Проверь после fetch, не отстают ли код и инфраструктура от своих remote tracking branches.",
+          "reason": "The task explicitly requires remote freshness across related repositories."
+        },
+        {
+          "prompt": "Рабочее дерево грязное: обнови remote refs и сообщи ahead/behind, ничего не stash и не reset.",
+          "reason": "The request combines fetched-state classification with local-work preservation."
+        }
+      ],
+      "negative": [
+        {
+          "prompt": "Создай локальную ветку experiment от текущего HEAD; сеть не используй.",
+          "reason": "An explicitly local-only branch operation does not require synchronization."
+        },
+        {
+          "prompt": "Удалённый репозиторий не настроен. Покажи diff последнего локального коммита.",
+          "reason": "A local inspection without any remote or upstream has no freshness operation."
+        },
+        {
+          "prompt": "Создай локальный annotated tag на текущем коммите и больше ничего не делай.",
+          "reason": "A local tag operation does not depend on remote freshness."
+        },
+        {
+          "prompt": "Собери git bundle из локальной ветки без обращения к remote.",
+          "reason": "An explicitly offline bundle operation does not require synchronization."
+        }
+      ]
+    },
+    "verify-before-push": {
+      "positive": [
+        {
+          "prompt": "Запусти обязательные проверки и свяжи результат с точным состоянием ветки перед push.",
+          "reason": "The request explicitly asks for state-bound pre-push evidence."
+        },
+        {
+          "prompt": "После изменения документации проверь, не устарела ли SHA-привязанная отметка pre-push для набора репозиториев.",
+          "reason": "The prompt explicitly names state-bound pre-push evidence that may have become stale."
+        },
+        {
+          "prompt": "Перед отправкой ветки подтверди, что lint и smoke checks прошли именно для текущих HEAD и worktree.",
+          "reason": "The request binds declared checks to the exact state being pushed."
+        },
+        {
+          "prompt": "Настрой fail-closed gate: без актуального evidence для кода и документации push должен завершаться ошибкой.",
+          "reason": "A stale-sensitive multi-repository push gate is the core workflow."
+        }
+      ],
+      "negative": [
+        {
+          "prompt": "Покажи документацию команды git push --dry-run, не выполняя команд.",
+          "reason": "Conceptual Git documentation does not require a verification gate."
+        },
+        {
+          "prompt": "Запусти линтер как часть локальной диагностики; коммит и push не планируются.",
+          "reason": "A diagnostic lint run explicitly outside a push workflow is not pre-push evidence."
+        },
+        {
+          "prompt": "Проверь статус последнего CI workflow на GitHub и ничего локально не запускай.",
+          "reason": "Remote CI status alone is not local state-bound push verification."
+        },
+        {
+          "prompt": "Исправь падающий unit-тест и остановись после показа diff.",
+          "reason": "Fixing a test without a push gate request is outside state-bound verification."
+        }
+      ]
+    },
+    "release-skill-collection": {
+      "positive": [
+        {
+          "prompt": "Подготовь и проверь релиз v1.8.0 коллекции навыков, но пока не создавай тег и ничего не публикуй.",
+          "reason": "This explicitly requests fail-closed collection release planning and verification."
+        },
+        {
+          "prompt": "Проверь SHA-привязанные holdout, smoke, review и CI evidence перед публикацией набора skills.",
+          "reason": "Commit-bound external gate evidence is part of collection release verification."
+        },
+        {
+          "prompt": "Аудируй опубликованные assets коллекции: checksums, manifest и GitHub attestation должны относиться к одному тегу.",
+          "reason": "Immutable publication audit is a collection release responsibility."
+        },
+        {
+          "prompt": "После успешного выпуска докажи, какие временные release-ветки представлены в main и безопасны для удаления.",
+          "reason": "Evidence-backed post-release cleanup planning belongs to the release lifecycle."
+        }
+      ],
+      "negative": [
+        {
+          "prompt": "Опубликуй новую версию npm-пакета веб-приложения.",
+          "reason": "An ordinary application release is outside this skill."
+        },
+        {
+          "prompt": "Покажи последние GitHub Releases репозитория, ничего не проверяя локально.",
+          "reason": "Release browsing alone does not invoke the collection release workflow."
+        },
+        {
+          "prompt": "Удали локальные ветки, которые выглядят старыми.",
+          "reason": "Branch deletion without completed-release representation proof is unsafe and outside the workflow."
+        },
+        {
+          "prompt": "Запусти один unit-тест для диагностики и остановись после результата.",
+          "reason": "A standalone diagnostic test is not collection release orchestration."
+        }
+      ]
+    }
+  }
+}

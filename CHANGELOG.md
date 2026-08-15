@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+## [1.8.0] - 2026-08-15
+
 ### Added
 
 - `release-skill-collection` now verifies a strict, commit-bound five-gate
