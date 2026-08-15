@@ -55,7 +55,7 @@ class TelegramIntegrationTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as directory:
             config = Path(directory) / "config.json"
             endpoint = f"http://127.0.0.1:{self.server.server_port}"
-            environment = {"TELEGRAM_BOT_TOKEN": "fixture-token"}
+            environment = {"TELEGRAM_BOT_TOKEN": "123456:fixture-token"}
             with patch.dict(os.environ, environment, clear=False), patch.object(
                 telegram, "API_ROOT", endpoint
             ):

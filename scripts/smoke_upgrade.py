@@ -85,7 +85,7 @@ def write_legacy_configuration(project: Path, telegram_path: Path, python: str) 
     )
     telegram_path.parent.mkdir(parents=True)
     telegram_path.write_text(
-        '{"bot_token":"fixture-token","chat_id":"123"}\n', encoding="utf-8"
+        '{"bot_token":"123456:fixture-token","chat_id":"123"}\n', encoding="utf-8"
     )
 
 

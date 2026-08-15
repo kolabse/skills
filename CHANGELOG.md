@@ -4,6 +4,9 @@
 
 ### Changed
 
+- `notify-via-telegram` now validates bot tokens before constructing a request
+  and provides a visible, masked, paste-friendly Windows setup form, preventing
+  malformed pasted tokens from reaching the network or producing tracebacks.
 - The README skill catalog now uses a consistent purpose, capabilities,
   exclusions, and invocation structure; the `sync-project-context` overview is
   split into scannable lists instead of one dense implementation paragraph.

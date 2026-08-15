@@ -4,6 +4,7 @@ import argparse
 import getpass
 import json
 import os
+import re
 import sys
 import tempfile
 import urllib.error
@@ -19,10 +20,35 @@ CONFIG_ENV = "TELEGRAM_NOTIFY_CONFIG"
 TOKEN_ENV = "TELEGRAM_BOT_TOKEN"
 CHAT_ENV = "TELEGRAM_CHAT_ID"
 THREAD_ENV = "TELEGRAM_MESSAGE_THREAD_ID"
+TOKEN_PATTERN = re.compile(r"^[0-9]+:[A-Za-z0-9_-]+$", re.ASCII)
 
 
 class TelegramError(RuntimeError):
     pass
+
+
+def normalize_bot_token(value: str) -> str:
+    token = value.strip()
+    if not token:
+        raise TelegramError("Telegram bot token is empty")
+    if not token.isascii() or TOKEN_PATTERN.fullmatch(token) is None:
+        raise TelegramError(
+            "Telegram bot token has an invalid format; copy the complete token "
+            "from BotFather"
+        )
+    return token
+
+
+def prompt_bot_token() -> str:
+    while True:
+        try:
+            value = getpass.getpass("Telegram bot token (input hidden): ")
+        except (EOFError, KeyboardInterrupt) as error:
+            raise TelegramError("Telegram bot token entry was cancelled") from error
+        try:
+            return normalize_bot_token(value)
+        except TelegramError as error:
+            print(f"ERROR: {error}", file=sys.stderr)
 
 
 def default_config_path(environ: dict[str, str] | None = None) -> Path:
@@ -83,11 +109,13 @@ def save_config(path: Path, config: dict[str, Any]) -> None:
 def api_call(
     token: str, method: str, payload: dict[str, str] | None = None
 ) -> Any:
-    if not token:
-        raise TelegramError("Bot token is not configured")
-    url = f"{API_ROOT}/bot{token}/{method}"
-    data = urllib.parse.urlencode(payload or {}).encode("utf-8")
-    request = urllib.request.Request(url, data=data, method="POST")
+    token = normalize_bot_token(token)
+    try:
+        url = f"{API_ROOT}/bot{token}/{method}"
+        data = urllib.parse.urlencode(payload or {}).encode("utf-8")
+        request = urllib.request.Request(url, data=data, method="POST")
+    except (UnicodeError, ValueError) as error:
+        raise TelegramError(f"Telegram {method} request could not be constructed") from error
     try:
         with urllib.request.urlopen(request, timeout=30) as response:
             body = response.read().decode("utf-8")
@@ -100,6 +128,8 @@ def api_call(
         raise TelegramError(f"Telegram {method} failed: {detail}") from error
     except urllib.error.URLError as error:
         raise TelegramError(f"Telegram {method} failed: {error.reason}") from error
+    except UnicodeDecodeError as error:
+        raise TelegramError(f"Telegram {method} returned a non-UTF-8 response") from error
     try:
         result = json.loads(body)
     except json.JSONDecodeError as error:
@@ -246,7 +276,9 @@ def command_configure(args: argparse.Namespace, path: Path) -> None:
     config = load_config(path)
     token, existing_chat, existing_thread = resolve_credentials(config)
     if not token:
-        token = getpass.getpass("Telegram bot token (input hidden): ").strip()
+        token = prompt_bot_token()
+    else:
+        token = normalize_bot_token(token)
     identity = api_call(token, "getMe")
     if not isinstance(identity, dict):
         raise TelegramError("Telegram getMe returned an unexpected result")
@@ -282,7 +314,9 @@ def command_configure(args: argparse.Namespace, path: Path) -> None:
 def command_discover(path: Path) -> None:
     token, _, _ = resolve_credentials(load_config(path))
     if not token:
-        token = getpass.getpass("Telegram bot token (input hidden): ").strip()
+        token = prompt_bot_token()
+    else:
+        token = normalize_bot_token(token)
     candidates = discover_chats(token)
     if not candidates:
         raise TelegramError(
@@ -295,6 +329,8 @@ def command_discover(path: Path) -> None:
 def command_status(args: argparse.Namespace, path: Path) -> bool:
     config = load_config(path)
     token, chat_id, thread_id = resolve_credentials(config)
+    if token:
+        token = normalize_bot_token(token)
     state = {
         "skill": "notify-via-telegram",
         "scope": "user",
@@ -329,6 +365,7 @@ def command_migrate(path: Path, as_json: bool) -> None:
     previous = path.read_bytes() if path.is_file() else None
     if not config.get("bot_token") or not config.get("chat_id"):
         raise TelegramError("Bot token and chat ID are required before migration")
+    config["bot_token"] = normalize_bot_token(str(config["bot_token"]))
     config["version"] = 1
     save_config(path, config)
     state = {
