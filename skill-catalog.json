@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "collection_version": "1.8.0",
+  "collection_version": "1.9.0",
   "license": "Apache-2.0",
   "composition_evals": "evals/compositions.json",
   "composition_evidence_schema": "schemas/composition-evidence.schema.json",
