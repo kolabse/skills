@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import argparse
 import getpass
+import hashlib
 import json
 import os
 import re
@@ -21,6 +22,10 @@ TOKEN_ENV = "TELEGRAM_BOT_TOKEN"
 CHAT_ENV = "TELEGRAM_CHAT_ID"
 THREAD_ENV = "TELEGRAM_MESSAGE_THREAD_ID"
 TOKEN_PATTERN = re.compile(r"^[0-9]+:[A-Za-z0-9_-]+$", re.ASCII)
+CHAT_ID_PATTERN = re.compile(r"^-?[0-9]+$", re.ASCII)
+THREAD_ID_PATTERN = re.compile(r"^[0-9]+$", re.ASCII)
+PROJECT_DELIVERY_MODES = ("global-and-project", "project-only")
+PROJECT_SETTING_ID = "notify-via-telegram"
 
 
 class TelegramError(RuntimeError):
@@ -51,6 +56,27 @@ def prompt_bot_token() -> str:
             print(f"ERROR: {error}", file=sys.stderr)
 
 
+def normalize_chat_id(value: str, label: str = "Telegram chat ID") -> str:
+    result = value.strip()
+    if CHAT_ID_PATTERN.fullmatch(result) is None:
+        raise TelegramError(f"{label} must be a numeric Telegram chat ID")
+    return result
+
+
+def normalize_thread_id(value: str, label: str = "Telegram thread ID") -> str:
+    result = value.strip()
+    if THREAD_ID_PATTERN.fullmatch(result) is None:
+        raise TelegramError(f"{label} must be a positive numeric Telegram topic ID")
+    return result
+
+
+def canonical_digest(value: object) -> str:
+    encoded = json.dumps(
+        value, ensure_ascii=False, sort_keys=True, separators=(",", ":")
+    ).encode("utf-8")
+    return hashlib.sha256(encoded).hexdigest()
+
+
 def default_config_path(environ: dict[str, str] | None = None) -> Path:
     env = os.environ if environ is None else environ
     if env.get(CONFIG_ENV):
@@ -59,6 +85,25 @@ def default_config_path(environ: dict[str, str] | None = None) -> Path:
         return Path(env["LOCALAPPDATA"]) / "codex" / "telegram-notify" / "config.json"
     base = Path(env.get("XDG_CONFIG_HOME", Path.home() / ".config"))
     return base / "codex" / "telegram-notify" / "config.json"
+
+
+def resolve_project_path(value: str | Path) -> Path:
+    project = Path(value).expanduser().resolve()
+    if not project.is_dir():
+        raise TelegramError(f"Project directory does not exist: {project}")
+    return project
+
+
+def project_config_path(global_config_path: Path, project_path: str | Path) -> Path:
+    project = resolve_project_path(project_path)
+    canonical = os.path.normcase(str(project))
+    identifier = hashlib.sha256(canonical.encode("utf-8")).hexdigest()
+    target = global_config_path.expanduser().resolve().parent / "projects" / f"{identifier}.json"
+    try:
+        target.relative_to(project)
+    except ValueError:
+        return target
+    raise TelegramError("Project notification configuration must stay outside the project")
 
 
 def load_config(path: Path) -> dict[str, Any]:
@@ -104,6 +149,47 @@ def save_config(path: Path, config: dict[str, Any]) -> None:
     finally:
         if temporary.exists():
             temporary.unlink()
+
+
+def load_project_config(path: Path) -> dict[str, str]:
+    if not path.is_file():
+        return {}
+    try:
+        value = json.loads(path.read_text(encoding="utf-8"))
+    except (json.JSONDecodeError, OSError, UnicodeDecodeError) as error:
+        raise TelegramError(f"Cannot read project configuration at {path}: {error}") from error
+    if not isinstance(value, dict) or set(value) - {
+        "version",
+        "delivery_mode",
+        "chat_id",
+        "message_thread_id",
+    }:
+        raise TelegramError(f"Project configuration at {path} is invalid")
+    if value.get("version") != 1:
+        raise TelegramError(f"Unsupported project configuration version at {path}")
+    mode = value.get("delivery_mode")
+    if mode not in PROJECT_DELIVERY_MODES:
+        raise TelegramError(f"Project delivery mode at {path} is invalid")
+    result = {
+        "version": "1",
+        "delivery_mode": str(mode),
+        "chat_id": normalize_chat_id(str(value.get("chat_id", "")), "Project chat ID"),
+    }
+    if value.get("message_thread_id") is not None:
+        result["message_thread_id"] = normalize_thread_id(
+            str(value["message_thread_id"]), "Project thread ID"
+        )
+    return result
+
+
+def project_preferences(profile: dict[str, str]) -> dict[str, str]:
+    preferences = {
+        "delivery_mode": profile["delivery_mode"],
+        "chat_id": profile["chat_id"],
+    }
+    if profile.get("message_thread_id"):
+        preferences["message_thread_id"] = profile["message_thread_id"]
+    return preferences
 
 
 def api_call(
@@ -260,6 +346,9 @@ def send_message(
 ) -> int:
     if not chat_id:
         raise TelegramError("Chat ID is not configured")
+    chat_id = normalize_chat_id(str(chat_id))
+    if thread_id:
+        thread_id = normalize_thread_id(str(thread_id))
     count = 0
     for chunk in chunk_text(text):
         payload = {"chat_id": chat_id, "text": chunk}
@@ -270,6 +359,131 @@ def send_message(
         api_call(token, "sendMessage", payload)
         count += 1
     return count
+
+
+def command_project_configure(args: argparse.Namespace, path: Path) -> None:
+    global_config = load_config(path)
+    token, _global_chat, _global_thread = resolve_credentials(global_config)
+    if not token:
+        raise TelegramError("Configure the global Telegram sender before a project profile")
+    token = normalize_bot_token(token)
+    identity = api_call(token, "getMe")
+    if not isinstance(identity, dict):
+        raise TelegramError("Telegram getMe returned an unexpected result")
+
+    profile_path = project_config_path(path, args.project_path)
+    existing = load_project_config(profile_path)
+    chat_id = args.chat_id or existing.get("chat_id", "")
+    thread_id = args.thread_id or existing.get("message_thread_id", "")
+    if (
+        args.chat_id
+        and args.chat_id != existing.get("chat_id")
+        and args.thread_id is None
+    ):
+        thread_id = ""
+    if not chat_id:
+        input(
+            "Send a command to the bot in the project chat, then press Enter..."
+        )
+        selected = select_candidate(discover_chats(token))
+        chat_id = selected["chat_id"]
+        thread_id = args.thread_id or selected.get("thread_id", "")
+    chat_id = normalize_chat_id(str(chat_id), "Project chat ID")
+    if thread_id:
+        thread_id = normalize_thread_id(str(thread_id), "Project thread ID")
+
+    stored: dict[str, Any] = {
+        "version": 1,
+        "delivery_mode": args.delivery_mode,
+        "chat_id": chat_id,
+    }
+    if thread_id:
+        stored["message_thread_id"] = thread_id
+    save_config(profile_path, stored)
+    username = identity.get("username", "unknown")
+    print(
+        f"Configured @{username} for project chat {chat_id} "
+        f"with mode {args.delivery_mode}."
+    )
+    print(f"Project configuration saved to {profile_path}.")
+    if not args.skip_test:
+        send_message(
+            token,
+            chat_id,
+            "✅ Project Telegram notifications configured.",
+            thread_id,
+        )
+        print("Project test notification sent.")
+
+
+def command_project_status(args: argparse.Namespace, path: Path) -> bool:
+    token, global_chat, global_thread = resolve_credentials(load_config(path))
+    if token:
+        token = normalize_bot_token(token)
+    if global_chat:
+        global_chat = normalize_chat_id(str(global_chat))
+    if global_thread:
+        global_thread = normalize_thread_id(str(global_thread))
+    profile_path = project_config_path(path, args.project_path)
+    profile = load_project_config(profile_path)
+    mode = profile.get("delivery_mode", "global-only")
+    global_enabled = mode in {"global-only", "global-and-project"}
+    project_enabled = bool(profile)
+    configured = bool(token) and (
+        (global_enabled and bool(global_chat)) or (project_enabled and bool(profile.get("chat_id")))
+    )
+    state = {
+        "skill": "notify-via-telegram",
+        "scope": "project",
+        "configured": configured,
+        "project_profile": bool(profile),
+        "delivery_mode": mode,
+        "global_destination": "enabled" if global_enabled else "disabled",
+        "project_chat_id": profile.get("chat_id", "not configured"),
+        "project_thread_id": profile.get("message_thread_id", "not configured"),
+        "project_config_file": str(profile_path),
+        "bot_token": "configured" if token else "missing",
+    }
+    if args.json:
+        print(json.dumps(state, ensure_ascii=False, sort_keys=True))
+    else:
+        print(f"Delivery mode: {mode}")
+        print(f"Global destination: {state['global_destination']}")
+        print(f"Project chat ID: {state['project_chat_id']}")
+        print(f"Project thread ID: {state['project_thread_id']}")
+        print(f"Project config: {profile_path}")
+    return configured
+
+
+def command_project_export(args: argparse.Namespace, path: Path) -> None:
+    profile_path = project_config_path(path, args.project_path)
+    profile = load_project_config(profile_path)
+    if not profile:
+        raise TelegramError("Project notification profile is not configured")
+    preferences = project_preferences(profile)
+    if args.local_state:
+        result = {
+            "settings": [
+                {
+                    "id": PROJECT_SETTING_ID,
+                    "schema_version": "1",
+                    "preferences_sha256": canonical_digest(preferences),
+                }
+            ]
+        }
+    else:
+        result = {
+            "settings": [
+                {
+                    "id": PROJECT_SETTING_ID,
+                    "scope": "project",
+                    "schema_version": "1",
+                    "preferences": preferences,
+                    "required": True,
+                }
+            ]
+        }
+    print(json.dumps(result, ensure_ascii=False, indent=2, sort_keys=True))
 
 
 def command_configure(args: argparse.Namespace, path: Path) -> None:
@@ -331,6 +545,10 @@ def command_status(args: argparse.Namespace, path: Path) -> bool:
     token, chat_id, thread_id = resolve_credentials(config)
     if token:
         token = normalize_bot_token(token)
+    if chat_id:
+        chat_id = normalize_chat_id(str(chat_id))
+    if thread_id:
+        thread_id = normalize_thread_id(str(thread_id))
     state = {
         "skill": "notify-via-telegram",
         "scope": "user",
@@ -366,6 +584,11 @@ def command_migrate(path: Path, as_json: bool) -> None:
     if not config.get("bot_token") or not config.get("chat_id"):
         raise TelegramError("Bot token and chat ID are required before migration")
     config["bot_token"] = normalize_bot_token(str(config["bot_token"]))
+    config["chat_id"] = normalize_chat_id(str(config["chat_id"]))
+    if config.get("message_thread_id"):
+        config["message_thread_id"] = normalize_thread_id(
+            str(config["message_thread_id"])
+        )
     config["version"] = 1
     save_config(path, config)
     state = {
@@ -385,14 +608,35 @@ def command_send(args: argparse.Namespace, path: Path) -> None:
         message = sys.stdin.read()
     else:
         message = args.message or ""
-    count = send_message(
-        token,
-        chat_id,
-        message,
-        args.thread_id or configured_thread,
-        args.silent,
+    destinations: list[tuple[str, str]] = []
+    if args.project_path:
+        if args.thread_id:
+            raise TelegramError(
+                "Use project-configure to set a project topic; --thread-id is ambiguous "
+                "with --project-path"
+            )
+        profile = load_project_config(project_config_path(path, args.project_path))
+        if profile:
+            if profile["delivery_mode"] == "global-and-project":
+                destinations.append((str(chat_id), str(configured_thread)))
+            destinations.append(
+                (profile["chat_id"], profile.get("message_thread_id", ""))
+            )
+        else:
+            destinations.append((str(chat_id), str(configured_thread)))
+    else:
+        destinations.append((str(chat_id), str(args.thread_id or configured_thread)))
+    unique_destinations = list(dict.fromkeys(destinations))
+    count = sum(
+        send_message(token, destination_chat, message, destination_thread, args.silent)
+        for destination_chat, destination_thread in unique_destinations
     )
-    print(f"Sent {count} message{'s' if count != 1 else ''}.")
+    suffix = (
+        f" to {len(unique_destinations)} destinations"
+        if len(unique_destinations) != 1
+        else ""
+    )
+    print(f"Sent {count} message{'s' if count != 1 else ''}{suffix}.")
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -411,6 +655,33 @@ def build_parser() -> argparse.ArgumentParser:
 
     subparsers.add_parser("discover", help="List chats from recent bot updates")
 
+    project_configure = subparsers.add_parser(
+        "project-configure", help="Configure a project-specific destination"
+    )
+    project_configure.add_argument("--project-path", required=True)
+    project_configure.add_argument(
+        "--delivery-mode", choices=PROJECT_DELIVERY_MODES, required=True
+    )
+    project_configure.add_argument("--chat-id", help="Use a known project chat ID")
+    project_configure.add_argument("--thread-id", help="Use a project forum topic ID")
+    project_configure.add_argument(
+        "--skip-test", action="store_true", help="Do not send a project test notification"
+    )
+
+    project_status = subparsers.add_parser(
+        "project-status", help="Show effective project notification routing"
+    )
+    project_status.add_argument("--project-path", required=True)
+    project_status.add_argument("--json", action="store_true")
+
+    project_export = subparsers.add_parser(
+        "project-export", help="Export sanitized project settings for synchronization"
+    )
+    project_export.add_argument("--project-path", required=True)
+    project_export.add_argument(
+        "--local-state", action="store_true", help="Export local-state evidence"
+    )
+
     status = subparsers.add_parser("status", help="Show configuration presence")
     status.add_argument("--verify", action="store_true", help="Verify the bot token")
     status.add_argument("--json", action="store_true", help="Print machine-readable status")
@@ -422,6 +693,7 @@ def build_parser() -> argparse.ArgumentParser:
     send.add_argument("message", nargs="?", help="Notification text")
     send.add_argument("--stdin", action="store_true", help="Read notification from stdin")
     send.add_argument("--thread-id", help="Override the configured topic ID")
+    send.add_argument("--project-path", help="Use routing configured for this project")
     send.add_argument("--silent", action="store_true", help="Send without an alert")
     return parser
 
@@ -434,6 +706,13 @@ def main(argv: list[str] | None = None) -> int:
             command_configure(args, path)
         elif args.command == "discover":
             command_discover(path)
+        elif args.command == "project-configure":
+            command_project_configure(args, path)
+        elif args.command == "project-status":
+            if not command_project_status(args, path):
+                return 1
+        elif args.command == "project-export":
+            command_project_export(args, path)
         elif args.command == "status":
             if not command_status(args, path):
                 return 1

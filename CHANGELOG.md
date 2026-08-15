@@ -2,6 +2,14 @@
 
 ## Unreleased
 
+### Added
+
+- `notify-via-telegram` supports secret-free per-project chat or topic profiles
+  with explicit `global-and-project` and `project-only` routing, while keeping
+  the bot token global and machine-local.
+- `sync-project-context` validates and transfers project notification routing
+  as a schema-aware setting for manual materialization on another computer.
+
 ## [1.9.0] - 2026-08-15
 
 ### Changed

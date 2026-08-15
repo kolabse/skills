@@ -77,6 +77,108 @@ class TelegramIntegrationTests(unittest.TestCase):
                 TelegramHandler.calls[-1][1]["text"][0],
             )
 
+    def test_project_delivery_mode_routes_to_one_or_both_destinations(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            project = root / "project"
+            project.mkdir()
+            config = root / "config.json"
+            endpoint = f"http://127.0.0.1:{self.server.server_port}"
+            environment = {"TELEGRAM_BOT_TOKEN": "123456:fixture-token"}
+            with patch.dict(os.environ, environment, clear=False), patch.object(
+                telegram, "API_ROOT", endpoint
+            ):
+                self.assertEqual(
+                    0,
+                    telegram.main(
+                        [
+                            "--config",
+                            str(config),
+                            "configure",
+                            "--chat-id",
+                            "100",
+                            "--skip-test",
+                        ]
+                    ),
+                )
+                self.assertEqual(
+                    0,
+                    telegram.main(
+                        [
+                            "--config",
+                            str(config),
+                            "project-configure",
+                            "--project-path",
+                            str(project),
+                            "--delivery-mode",
+                            "project-only",
+                            "--chat-id",
+                            "-200",
+                            "--skip-test",
+                        ]
+                    ),
+                )
+                TelegramHandler.calls = []
+                self.assertEqual(
+                    0,
+                    telegram.main(
+                        [
+                            "--config",
+                            str(config),
+                            "send",
+                            "project only",
+                            "--project-path",
+                            str(project),
+                        ]
+                    ),
+                )
+                project_only = [
+                    payload["chat_id"][0]
+                    for path, payload in TelegramHandler.calls
+                    if path.endswith("/sendMessage")
+                ]
+                self.assertEqual(["-200"], project_only)
+
+                self.assertEqual(
+                    0,
+                    telegram.main(
+                        [
+                            "--config",
+                            str(config),
+                            "project-configure",
+                            "--project-path",
+                            str(project),
+                            "--delivery-mode",
+                            "global-and-project",
+                            "--skip-test",
+                        ]
+                    ),
+                )
+                TelegramHandler.calls = []
+                self.assertEqual(
+                    0,
+                    telegram.main(
+                        [
+                            "--config",
+                            str(config),
+                            "send",
+                            "both destinations",
+                            "--project-path",
+                            str(project),
+                        ]
+                    ),
+                )
+                both = [
+                    payload["chat_id"][0]
+                    for path, payload in TelegramHandler.calls
+                    if path.endswith("/sendMessage")
+                ]
+                self.assertEqual(["100", "-200"], both)
+
+            profile_path = telegram.project_config_path(config, project)
+            stored = json.loads(profile_path.read_text(encoding="utf-8"))
+            self.assertNotIn("bot_token", stored)
+
 
 if __name__ == "__main__":
     unittest.main()

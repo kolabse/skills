@@ -83,6 +83,14 @@
         "notify-via-telegram"
       ],
       "reason": "The release composition includes the explicitly requested completion notification."
+    },
+    {
+      "prompt": "Настрой отдельный Telegram-чат команды только для этого проекта и сохрани его безопасные настройки для восстановления на втором компьютере без переноса токена бота.",
+      "expected_skills": [
+        "notify-via-telegram",
+        "sync-project-context"
+      ],
+      "reason": "The notification skill owns destination materialization, while project context synchronization transfers only the approved secret-free routing values."
     }
   ]
 }

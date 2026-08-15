@@ -255,6 +255,10 @@ review. Synchronize skill and plugin declarations, versions, sources, and
 digests rather than installed copies. Synchronize plugin connection
 requirements but never OAuth state or credentials. Transfer safe scalar
 preferences only as manual, schema-aware materialization requests.
+Treat a `notify-via-telegram` project profile as a known schema-aware setting:
+synchronize only its delivery mode, chat ID, and optional topic ID after storage
+approval. Never include the global bot token; recreate and verify the profile
+through the notification skill on each computer.
 
 Always run the read-only `environment_sync.py plan` before applying anything.
 Git is authoritative, an existing destination rule is preserved, and

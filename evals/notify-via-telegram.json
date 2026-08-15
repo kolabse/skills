@@ -24,6 +24,14 @@
     {
       "prompt": "Настрой уведомления этой многоэтапной задачи в Телеграм и затем начинай выполнение.",
       "reason": "Explicit Telegram setup for a multi-stage task is a core workflow."
+    },
+    {
+      "prompt": "Для этого проекта отправляй уведомления только в Telegram-чат команды, не дублируй их в мой глобальный чат.",
+      "reason": "The user explicitly requests project-specific Telegram routing in project-only mode."
+    },
+    {
+      "prompt": "Настрой для клиентского проекта отдельный Telegram topic, но продолжай присылать те же обновления и в глобальный канал.",
+      "reason": "The user requests a project topic combined with the global destination."
     }
   ],
   "negative": [
@@ -50,6 +58,10 @@
     {
       "prompt": "Выполни быструю локальную команду и покажи результат здесь, уведомления не нужны.",
       "reason": "A short local command with notifications explicitly excluded should not trigger the skill."
+    },
+    {
+      "prompt": "Добавь в приложение экран выбора рабочего пространства и командного канала.",
+      "reason": "A product UI feature is unrelated to configuring agent task notifications."
     }
   ]
 }

@@ -61,6 +61,130 @@ def write_json(path: Path, value: object) -> None:
 
 
 class EnvironmentSyncTests(unittest.TestCase):
+    def test_notify_project_setting_is_captured_and_planned_without_token(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            source = root / "source"
+            destination = root / "destination"
+            initialize_repository(source)
+            initialize_repository(destination)
+            storage = root / "storage"
+            config = root / "config.json"
+            self.configure(source, storage, config, "proj-notify-setting")
+            self.configure(destination, storage, config, "proj-notify-setting")
+            preferences = {
+                "delivery_mode": "project-only",
+                "chat_id": "-100123",
+                "message_thread_id": "42",
+            }
+            input_path = root / "input.json"
+            write_json(
+                input_path,
+                {
+                    "settings": [
+                        {
+                            "id": "notify-via-telegram",
+                            "scope": "project",
+                            "schema_version": "1",
+                            "preferences": preferences,
+                            "required": True,
+                        }
+                    ]
+                },
+            )
+            captured = environment_sync.command_capture(
+                namespace(
+                    project_path=str(source),
+                    input=str(input_path),
+                    config_path=str(config),
+                    acknowledge_environment_policy=True,
+                )
+            )
+            manifest = json.loads(Path(captured["path"]).read_text(encoding="utf-8"))
+            self.assertEqual(preferences, manifest["settings"][0]["preferences"])
+            self.assertNotIn("token", json.dumps(manifest).lower())
+
+            planned = environment_sync.command_plan(
+                namespace(project_path=str(destination), config_path=str(config))
+            )
+            action = planned["actions"][0]
+            self.assertEqual("manual_apply_required", action["status"])
+            self.assertEqual(preferences, action["preferences"])
+
+            local_state = root / "local-state.json"
+            write_json(
+                local_state,
+                {
+                    "settings": [
+                        {
+                            "id": "notify-via-telegram",
+                            "schema_version": "1",
+                            "preferences_sha256": context_sync.canonical_digest(
+                                preferences
+                            ),
+                        }
+                    ]
+                },
+            )
+            satisfied = environment_sync.command_plan(
+                namespace(
+                    project_path=str(destination),
+                    config_path=str(config),
+                    local_state=str(local_state),
+                )
+            )
+            self.assertEqual("satisfied_locally", satisfied["actions"][0]["status"])
+
+    def test_notify_project_setting_rejects_invalid_mode_and_secret_key(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            project = root / "project"
+            initialize_repository(project)
+            input_path = root / "input.json"
+            base = {
+                "id": "notify-via-telegram",
+                "scope": "project",
+                "schema_version": "1",
+                "required": True,
+            }
+            for preferences in (
+                {"delivery_mode": "unknown", "chat_id": "123"},
+                {
+                    "delivery_mode": "project-only",
+                    "chat_id": "123",
+                    "bot_token": "123456:fixture-token",
+                },
+            ):
+                with self.subTest(preferences=preferences):
+                    write_json(
+                        input_path,
+                        {"settings": [{**base, "preferences": preferences}]},
+                    )
+                    with self.assertRaises(context_sync.ContextSyncError):
+                        environment_sync.command_inspect(
+                            namespace(project_path=str(project), input=str(input_path))
+                        )
+
+            write_json(
+                input_path,
+                {
+                    "settings": [
+                        {
+                            **base,
+                            "scope": "user",
+                            "preferences": {
+                                "delivery_mode": "project-only",
+                                "chat_id": "123",
+                            },
+                        }
+                    ]
+                },
+            )
+            with self.assertRaises(context_sync.ContextSyncError):
+                environment_sync.command_inspect(
+                    namespace(project_path=str(project), input=str(input_path))
+                )
+
     def configure(
         self, project: Path, storage: Path, config: Path, project_id: str
     ) -> None:

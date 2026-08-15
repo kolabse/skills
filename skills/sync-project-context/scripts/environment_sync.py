@@ -22,6 +22,8 @@ SENSITIVE_KEY = re.compile(
     r"(?:password|passwd|secret|token|credential|cookie|session|private[_-]?key|connection[_-]?string)",
     re.I,
 )
+NOTIFY_SETTING_ID = "notify-via-telegram"
+NOTIFY_DELIVERY_MODES = {"global-and-project", "project-only"}
 
 
 def sha256_text(value: str) -> str:
@@ -183,6 +185,44 @@ def validate_preferences(value: object, label: str) -> dict[str, Any]:
     return dict(sorted(value.items()))
 
 
+def validate_known_setting(
+    identifier: str, scope: str, schema_version: str, preferences: dict[str, Any]
+) -> None:
+    if identifier != NOTIFY_SETTING_ID:
+        return
+    if schema_version != "1":
+        raise context_sync.ContextSyncError(
+            "notify-via-telegram project settings require schema version 1"
+        )
+    if scope != "project":
+        raise context_sync.ContextSyncError(
+            "notify-via-telegram synchronized settings require project scope"
+        )
+    required = {"delivery_mode", "chat_id"}
+    optional = {"message_thread_id"}
+    if not required.issubset(preferences) or set(preferences) - required - optional:
+        raise context_sync.ContextSyncError(
+            "notify-via-telegram project settings have missing or unexpected fields"
+        )
+    if preferences["delivery_mode"] not in NOTIFY_DELIVERY_MODES:
+        raise context_sync.ContextSyncError(
+            "notify-via-telegram delivery_mode is invalid"
+        )
+    if not isinstance(preferences["chat_id"], str) or not re.fullmatch(
+        r"-?[0-9]+", preferences["chat_id"]
+    ):
+        raise context_sync.ContextSyncError(
+            "notify-via-telegram chat_id must be numeric"
+        )
+    thread_id = preferences.get("message_thread_id")
+    if thread_id is not None and (
+        not isinstance(thread_id, str) or not re.fullmatch(r"[0-9]+", thread_id)
+    ):
+        raise context_sync.ContextSyncError(
+            "notify-via-telegram message_thread_id must be numeric"
+        )
+
+
 def normalize_environment_input(value: object, project_root: Path) -> dict[str, Any]:
     root = require_exact_fields(
         value,
@@ -323,6 +363,10 @@ def normalize_environment_input(value: object, project_root: Path) -> dict[str, 
         preferences = validate_preferences(
             item["preferences"], f"settings[{index}].preferences"
         )
+        schema_version = safe_string(
+            item["schema_version"], f"settings[{index}].schema_version"
+        )
+        validate_known_setting(identifier, scope, schema_version, preferences)
         key = ("settings", identifier)
         if key in seen:
             raise context_sync.ContextSyncError(f"Duplicate environment id: {identifier}")
@@ -351,9 +395,7 @@ def normalize_environment_input(value: object, project_root: Path) -> dict[str, 
             {
                 "id": identifier,
                 "scope": scope,
-                "schema_version": safe_string(
-                    item["schema_version"], f"settings[{index}].schema_version"
-                ),
+                "schema_version": schema_version,
                 "preferences": preferences,
                 "preferences_sha256": context_sync.canonical_digest(preferences),
                 "required": item["required"],
@@ -537,12 +579,16 @@ def load_manifest_file(
         seen.add(("settings", identifier))
         if setting["scope"] not in {"project", "user"} or setting["materialization"] != "manual":
             raise context_sync.ContextSyncError("Environment manifest setting policy is invalid")
-        safe_string(setting["schema_version"], f"Environment manifest settings[{index}].schema_version")
+        schema_version = safe_string(
+            setting["schema_version"],
+            f"Environment manifest settings[{index}].schema_version",
+        )
         if not isinstance(setting["required"], bool):
             raise context_sync.ContextSyncError("Environment manifest setting required flag is invalid")
         preferences = validate_preferences(
             setting["preferences"], f"Environment manifest settings[{index}].preferences"
         )
+        validate_known_setting(identifier, setting["scope"], schema_version, preferences)
         if setting["preferences_sha256"] != context_sync.canonical_digest(preferences):
             raise context_sync.ContextSyncError("Environment setting digest does not match")
     if manifest.get("content_sha256") != manifest_digest(manifest):
