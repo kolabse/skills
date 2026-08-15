@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "collection_version": "1.10.0",
+  "collection_version": "1.11.0",
   "license": "Apache-2.0",
   "composition_evals": "evals/compositions.json",
   "composition_evidence_schema": "schemas/composition-evidence.schema.json",
@@ -44,9 +44,9 @@
       ],
       "trigger_evals": "evals/discover-skill-candidates.json",
       "license": "Apache-2.0",
-      "provides": ["skill-candidate-discovery", "rule-provenance-inventory", "portable-skill-candidate-contribution"],
+      "provides": ["skill-candidate-discovery", "multi-source-project-evidence-inventory", "rule-provenance-inventory", "portable-skill-candidate-contribution"],
       "requires": [],
-      "optional_integrations": [],
+      "optional_integrations": ["private-project-handoff"],
       "configuration": {
         "scope": "project",
         "format": "none",

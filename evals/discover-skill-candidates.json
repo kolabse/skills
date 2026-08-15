@@ -32,6 +32,14 @@
     {
       "prompt": "Проверь полученный JSON-пакет идеи навыка перед тем, как рассматривать его для общей коллекции.",
       "reason": "Independent validation of received contribution packages belongs to this skill."
+    },
+    {
+      "prompt": "Изучи AGENTS.md, архитектурные документы и историю Git и найди повторяемые процессы, которые стоит оформить как навыки.",
+      "reason": "Opt-in project documentation and bounded Git history are supported evidence sources alongside project rules."
+    },
+    {
+      "prompt": "Я подтверждаю эту обезличенную сводку повторяющихся действий из текущего чата; учти ее при поиске кандидатов в навыки.",
+      "reason": "User-confirmed sanitized contextual observations can supplement durable project evidence."
     }
   ],
   "negative": [
@@ -62,6 +70,10 @@
     {
       "prompt": "Без review немедленно опубликуй присланную идею навыка всем пользователям.",
       "reason": "Contribution validation never bypasses maintainer review or the collection release workflow."
+    },
+    {
+      "prompt": "Без моего участия получи доступ ко всем чатам проекта и сохрани их полные тексты в отчет.",
+      "reason": "The workflow neither enumerates chats implicitly nor ingests raw transcripts; contextual evidence must be supplied, sanitized, and user-confirmed."
     }
   ]
 }

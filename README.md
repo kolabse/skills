@@ -116,7 +116,7 @@ python bootstrap_update.py plan --json
 python bootstrap_update.py update --yes --migrate --json
 ```
 
-Use `--release v1.10.0` to pin a version. The bootstrap requires `gh` for
+Use `--release v1.11.0` to pin a version. The bootstrap requires `gh` for
 attestation verification and removes its temporary directory on completion.
 For an offline cache, provide both `--offline-archive` and
 `--offline-checksums`. Provenance verification remains required when `gh` can
@@ -185,12 +185,16 @@ configurations publish a JSON Schema and migration command next to the skill.
 
 ### `discover-skill-candidates` (experimental)
 
-Find reusable skill ideas in project rules without creating a skill.
+Find reusable skill ideas in bounded project and contextual evidence without
+creating a skill.
 
 **What it does:**
 
 - inventories bounded project-relative `AGENTS.md` files with Git and
   line-level provenance;
+- optionally inventories project documentation, selected files, bounded Git
+  history, structure metadata, and user-confirmed summaries from available
+  chats or `sync-project-context` handoffs;
 - ranks candidates as recommended, investigate, or rejected and compares them
   with existing catalogs;
 - exports a selected idea as a sanitized, digest-bound contribution package
@@ -199,6 +203,7 @@ Find reusable skill ideas in project rules without creating a skill.
 **What it does not do:**
 
 - modify project rules or scaffold, publish, or install a skill;
+- enumerate chats, ingest raw transcripts, or broadly scan source code;
 - export raw rules, local paths, secrets, URLs, or email addresses;
 - promote policy-only, volatile, sensitive, or one-off conventions as reusable
   workflows without review.

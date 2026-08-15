@@ -1,7 +1,7 @@
 {
   "schema_version": 2,
   "collection": "kolabse-skills",
-  "version": "1.10.0",
+  "version": "1.11.0",
   "skill": "discover-skill-candidates",
   "source": "https://github.com/kolabse/skills",
   "canonical_repository": "https://github.com/kolabse/skills"

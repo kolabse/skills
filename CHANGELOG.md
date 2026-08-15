@@ -2,6 +2,20 @@
 
 ## Unreleased
 
+## [1.11.0] - 2026-08-15
+
+### Changed
+
+- `discover-skill-candidates` can now opt into bounded project documentation,
+  explicitly selected files, project-structure metadata, and Git commit
+  subjects in addition to its default `AGENTS.md` inventory.
+- Sanitized, user-confirmed observations derived from the current task,
+  supplied chat exports, project practices, or `sync-project-context`
+  handoffs can supplement durable evidence without exposing raw transcripts.
+- Observation-only candidates remain investigative until durable project
+  evidence corroborates them, and expanded inputs retain secret, path,
+  symlink, size, and provenance safeguards.
+
 ## [1.10.0] - 2026-08-15
 
 ### Added
@@ -336,6 +350,7 @@ First versioned release of the kolabse skill collection.
 - Tests for configuration migration, fake cloud and infrastructure CLIs,
   installation confirmation, and collection metadata.
 
+[1.11.0]: https://github.com/kolabse/skills/releases/tag/v1.11.0
 [1.10.0]: https://github.com/kolabse/skills/releases/tag/v1.10.0
 [1.9.0]: https://github.com/kolabse/skills/releases/tag/v1.9.0
 [1.8.0]: https://github.com/kolabse/skills/releases/tag/v1.8.0
