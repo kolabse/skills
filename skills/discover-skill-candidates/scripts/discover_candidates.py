@@ -211,7 +211,12 @@ def discover_document_paths(root: Path, excluded: set[str]) -> list[Path]:
                         raise DiscoveryError(
                             f"Project contains more than {MAX_EVIDENCE_FILES} documentation files"
                         )
-    return sorted(set(paths), key=lambda path: path.relative_to(root).as_posix())
+    unique_paths = set(paths)
+    if len(unique_paths) > MAX_EVIDENCE_FILES:
+        raise DiscoveryError(
+            f"Project contains more than {MAX_EVIDENCE_FILES} documentation files"
+        )
+    return sorted(unique_paths, key=lambda path: path.relative_to(root).as_posix())
 
 
 def resolve_explicit_files(root: Path, values: list[str]) -> list[Path]:
