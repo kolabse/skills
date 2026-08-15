@@ -153,6 +153,11 @@ the collection contribution policy before invoking `$skill-creator`. Accepting
 a package never grants automatic publication. Users receive an accepted skill
 only after maintainer review and a new collection release.
 
+Use the repository's **Skill candidate contribution** issue form for public intake.
+Attach only the exported package, never the inventory, raw rules, or scored
+report. Before promoting this skill to stable, complete
+[references/stabilization-checklist.md](references/stabilization-checklist.md).
+
 Completion criterion: the current project rules were inventoried without
 mutation, every idea is traceable to validated blocks, existing skill overlap
 was considered, sensitive or policy-only material was excluded, and the user

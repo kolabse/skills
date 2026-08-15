@@ -428,6 +428,39 @@ class DiscoverSkillCandidatesTests(unittest.TestCase):
             ):
                 discover_candidates.validate_contribution(package)
 
+    def test_contributor_package_validates_in_clean_maintainer_boundary(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            contributor = root / "contributor"
+            maintainer = root / "maintainer"
+            maintainer.mkdir()
+            initialize_project(
+                contributor,
+                "# Before release\n\nVerify identities.\n\n# On mismatch\n\nFail closed.\n",
+            )
+            rules = self.inventory(contributor)
+            ids = self.block_ids(rules)
+            report = discover_candidates.score_candidates(
+                discover_candidates.normalize_candidate_input(
+                    {"candidates": [candidate(ids)]}, set(ids)
+                ),
+                rules,
+                [],
+            )
+            package = discover_candidates.export_contribution(
+                report, contribution_details(ids), "verify-deployment-context"
+            )
+            transferred = maintainer / "contribution-package.json"
+            transferred.write_text(json.dumps(package), encoding="utf-8")
+
+            validation = discover_candidates.validate_contribution(
+                json.loads(transferred.read_text(encoding="utf-8"))
+            )
+
+            self.assertTrue(validation["valid"])
+            self.assertFalse((maintainer / "AGENTS.md").exists())
+            self.assertNotIn(str(contributor), transferred.read_text(encoding="utf-8"))
+
     def test_explicit_output_is_written_and_cannot_mutate_project(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)

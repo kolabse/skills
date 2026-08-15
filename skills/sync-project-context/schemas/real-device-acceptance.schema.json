@@ -1,0 +1,19 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/kolabse/skills/sync-project-context/real-device-acceptance.schema.json",
+  "title": "Sanitized sync-project-context real-device acceptance evidence",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "kind", "run_id", "skill_version", "backend", "machine_ids", "product_versions", "scenarios", "record_sha256"],
+  "properties": {
+    "schema_version": {"const": 1},
+    "kind": {"const": "sync-project-context-real-device"},
+    "run_id": {"type": "string", "pattern": "^[a-z0-9]+(?:-[a-z0-9]+){1,7}$"},
+    "skill_version": {"type": "string", "pattern": "^[0-9A-Za-z][0-9A-Za-z.+_-]{0,63}$"},
+    "backend": {"const": "google-drive"},
+    "machine_ids": {"type": "array", "minItems": 2, "maxItems": 2, "uniqueItems": true},
+    "product_versions": {"type": "object"},
+    "scenarios": {"type": "array", "minItems": 9, "maxItems": 9},
+    "record_sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"}
+  }
+}

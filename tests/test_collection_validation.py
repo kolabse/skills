@@ -12,7 +12,12 @@ SCRIPTS_DIRECTORY = Path(__file__).resolve().parents[1] / "scripts"
 sys.dont_write_bytecode = True
 sys.path.insert(0, str(SCRIPTS_DIRECTORY))
 
-from validate_skills import canonical_digest, validate, validate_release_holdout  # noqa: E402
+from validate_skills import (  # noqa: E402
+    canonical_digest,
+    validate,
+    validate_documentation,
+    validate_release_holdout,
+)
 
 
 class CollectionValidationTests(unittest.TestCase):
@@ -186,6 +191,21 @@ class CollectionValidationTests(unittest.TestCase):
             path.write_text(json.dumps(data), encoding="utf-8")
             errors = validate_release_holdout(repository, catalog, {"demo-skill"})
             self.assertTrue(any("digest does not match" in error for error in errors))
+
+    def test_documentation_requires_catalog_before_compositions_and_release_links(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            repository = Path(directory)
+            (repository / "README.md").write_text(
+                "## Available skills\n\n## Supported compositions\n\n"
+                "### `demo-skill`\n\n## Add a skill\n",
+                encoding="utf-8",
+            )
+            (repository / "CHANGELOG.md").write_text(
+                "## [1.2.3] - 2030-01-01\n", encoding="utf-8"
+            )
+            errors = validate_documentation(repository, {"demo-skill"})
+            self.assertTrue(any("Supported compositions" in error for error in errors))
+            self.assertTrue(any("1.2.3" in error for error in errors))
 
 
 if __name__ == "__main__":

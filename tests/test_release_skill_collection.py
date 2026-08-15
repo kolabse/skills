@@ -103,12 +103,32 @@ def signed_gate(commit: str, **fields: object) -> dict[str, object]:
     return gate
 
 
+def release_audit(tag: str, commit: str) -> dict[str, object]:
+    value: dict[str, object] = {
+        "schema_version": 2,
+        "mode": "audit-release",
+        "passed": True,
+        "repository": "kolabse/skills",
+        "tag": tag,
+        "commit": commit,
+        "release_url": f"https://github.com/kolabse/skills/releases/tag/{tag}",
+        "assets": [
+            {"name": name, "sha256": "a" * 64}
+            for name in ("archive.zip", "archive.tar.gz", "release-manifest.json", "SHA256SUMS")
+        ],
+        "attestation_verified": True,
+        "mutates_repository": False,
+    }
+    value["report_sha256"] = release_collection.canonical_digest(value)
+    return value
+
+
 class ReleaseSkillCollectionTests(unittest.TestCase):
     def test_public_json_schemas_are_well_formed(self) -> None:
         schemas = ROOT / "skills/release-skill-collection/schemas"
         documents = [json.loads(path.read_text(encoding="utf-8")) for path in schemas.glob("*.json")]
 
-        self.assertEqual(6, len(documents))
+        self.assertEqual(7, len(documents))
         self.assertTrue(all(document.get("$schema") for document in documents))
 
     def test_status_is_read_only_and_reports_aligned_fixture_versions(self) -> None:
@@ -317,6 +337,40 @@ class ReleaseSkillCollectionTests(unittest.TestCase):
 
             with self.assertRaisesRegex(release_collection.ReleaseError, "annotated"):
                 release_collection.audit_release(fixture.root, fixture.tag, "kolabse/skills")
+
+    def test_cleanup_apply_requires_audited_plan_and_removes_proven_branches(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            fixture = ReleaseFixture(Path(directory))
+            git(fixture.root, "switch", "-c", "feature")
+            (fixture.root / "feature.txt").write_text("done\n", encoding="utf-8")
+            git(fixture.root, "add", "feature.txt")
+            git(fixture.root, "commit", "-qm", "feature")
+            git(fixture.root, "push", "-qu", "origin", "feature")
+            git(fixture.root, "switch", "main")
+            git(fixture.root, "merge", "--ff-only", "feature")
+            git(fixture.root, "push", "-q", "origin", "main")
+            git(fixture.root, "tag", "-am", "release", fixture.tag)
+            plan = release_collection.cleanup_plan(fixture.root, fixture.tag, "main", ["feature"])
+            audit = release_audit(fixture.tag, str(plan["primary_commit"]))
+
+            result = release_collection.cleanup_apply(
+                fixture.root, plan, audit, fixture.tag, "origin"
+            )
+
+            self.assertTrue(result["passed"])
+            self.assertEqual(["feature"], result["deleted_local"])
+            self.assertEqual(["feature"], result["deleted_remote"])
+            self.assertEqual("main", git(fixture.root, "branch", "--show-current"))
+
+    def test_cleanup_apply_rejects_missing_exact_confirmation(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            fixture = ReleaseFixture(Path(directory))
+            git(fixture.root, "tag", "-am", "release", fixture.tag)
+            git(fixture.root, "branch", "feature")
+            plan = release_collection.cleanup_plan(fixture.root, fixture.tag, "main", ["feature"])
+            audit = release_audit(fixture.tag, str(plan["primary_commit"]))
+            with self.assertRaisesRegex(release_collection.ReleaseError, "confirmation"):
+                release_collection.cleanup_apply(fixture.root, plan, audit, "wrong", "origin")
 
 
 if __name__ == "__main__":

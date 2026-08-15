@@ -335,6 +335,15 @@ def validate_compositions(
                 errors.append(f"{location}.{field} references unknown skills {sorted(unknown)}")
         if len(all_steps) != len(set(all_steps)):
             errors.append(f"{location} contains duplicate steps")
+    evidence_schema = catalog.get("composition_evidence_schema")
+    if evidence_schema != "schemas/composition-evidence.schema.json":
+        errors.append(
+            "skill-catalog.json: composition_evidence_schema must be schemas/composition-evidence.schema.json"
+        )
+    if catalog.get("composition_result_schema") != "schemas/composition-result.schema.json":
+        errors.append(
+            "skill-catalog.json: composition_result_schema must be schemas/composition-result.schema.json"
+        )
     eval_path = catalog.get("composition_evals")
     if not isinstance(eval_path, str) or not eval_path:
         errors.append("skill-catalog.json: composition_evals must be a path string")
@@ -387,7 +396,12 @@ def validate_manager_contract(repository_root: Path, collection_version: str) ->
     match = re.search(r'^COLLECTION_VERSION = "([^"]+)"$', manager_text, re.MULTILINE)
     if not match or match.group(1) != collection_version:
         errors.append(f"{manager_path}: COLLECTION_VERSION must match the catalog")
-    for name in ("manager-plan.schema.json", "manager-result.schema.json"):
+    for name in (
+        "manager-plan.schema.json",
+        "manager-result.schema.json",
+        "composition-evidence.schema.json",
+        "composition-result.schema.json",
+    ):
         path = repository_root / "schemas" / name
         try:
             schema = json.loads(path.read_text(encoding="utf-8"))
@@ -396,6 +410,40 @@ def validate_manager_contract(repository_root: Path, collection_version: str) ->
             continue
         if not isinstance(schema, dict) or schema.get("$schema") != "https://json-schema.org/draft/2020-12/schema":
             errors.append(f"{path}: expected a JSON Schema Draft 2020-12 object")
+    return errors
+
+
+def validate_documentation(repository_root: Path, skill_names: set[str]) -> list[str]:
+    errors: list[str] = []
+    readme_path = repository_root / "README.md"
+    changelog_path = repository_root / "CHANGELOG.md"
+    try:
+        readme = readme_path.read_text(encoding="utf-8")
+        changelog = changelog_path.read_text(encoding="utf-8")
+    except (OSError, UnicodeError) as error:
+        return [f"documentation is missing or unreadable: {error}"]
+    available = readme.find("\n## Available skills\n")
+    compositions = readme.find("\n## Supported compositions\n")
+    add_skill = readme.find("\n## Add a skill\n")
+    headings = [readme.find(f"\n### `{name}`") for name in skill_names]
+    if (
+        available < 0
+        or compositions < 0
+        or add_skill < 0
+        or not headings
+        or any(position < 0 for position in headings)
+        or not (available < max(headings) < compositions < add_skill)
+    ):
+        errors.append(
+            f"{readme_path}: Supported compositions must follow the complete Available skills catalog"
+        )
+    versions = re.findall(r"^## \[([0-9]+\.[0-9]+\.[0-9]+)\] - ", changelog, re.MULTILINE)
+    definitions = set(
+        re.findall(r"^\[([0-9]+\.[0-9]+\.[0-9]+)\]: https://github\.com/kolabse/skills/releases/tag/v\1$", changelog, re.MULTILINE)
+    )
+    missing = [version for version in versions if version not in definitions]
+    if missing:
+        errors.append(f"{changelog_path}: missing release link definitions for {missing}")
     return errors
 
 
@@ -610,6 +658,7 @@ def validate(repository_root: Path = REPOSITORY_ROOT) -> list[str]:
     errors.extend(validate_release_holdout(repository_root, catalog, stable_names))
     errors.extend(validate_compositions(repository_root, catalog, entries))
     errors.extend(validate_manager_contract(repository_root, collection_version))
+    errors.extend(validate_documentation(repository_root, catalog_names))
     return errors
 
 

@@ -40,13 +40,30 @@ Use the collection's declared policies and scripts as the source of truth. Keep 
    python scripts/release_collection.py audit-release --project-root <project-root> --tag vX.Y.Z --repository owner/repository --json
    ```
 
-10. Before deleting any temporary branch, generate a read-only cleanup plan:
+10. Before deleting any temporary branch, generate a read-only cleanup plan
+    against the local primary branch:
 
    ```shell
    python scripts/release_collection.py cleanup-plan --project-root <project-root> --tag vX.Y.Z --primary main --branch <branch> --json
    ```
 
-   It accepts only branches proven merged, identical-tree, or patch-equivalent to the primary ref. It never deletes them. After that proof, clean up Git state:
+   It accepts only branches proven merged, identical-tree, or patch-equivalent
+   to the primary ref. It never deletes them.
+11. After a successful `audit-release`, save both JSON results outside the
+    repository, review the exact branch list, and ask the user for explicit
+    cleanup authorization. Apply only with the exact release tag as the
+    confirmation value:
+
+   ```shell
+   python scripts/release_collection.py cleanup-apply \
+     --project-root <project-root> --plan <cleanup-plan.json> \
+     --audit <release-audit.json> --confirm vX.Y.Z --json
+   ```
+
+   The command revalidates both digests, fetches the remote, rejects stale or
+   changed refs, switches to the tracked primary branch, fast-forwards it, and
+   removes only the proved local and matching remote branches. After that
+   proof, clean up Git state:
    - fetch and prune remote refs;
    - prove each temporary feature or release branch is merged, has an identical tree, or has every patch represented upstream;
    - switch to the configured primary branch, normally `main`, and make it current with its tracked upstream;
@@ -57,7 +74,13 @@ Use the collection's declared policies and scripts as the source of truth. Keep 
 
 ## Safety boundaries
 
-- All commands leave the repository unchanged and return digest-bound JSON with `mutates_repository: false`. `check` writes artifacts only to an automatically removed temporary directory or an explicitly named, absent/empty directory outside the repository. Output tails are bounded and redact common credential forms.
+- Planning, checking, evidence verification, auditing, and `cleanup-plan` leave
+  the repository unchanged and return digest-bound JSON with
+  `mutates_repository: false`. `cleanup-apply` is the sole mutating command and
+  requires an exact tag confirmation plus digest-valid plan and release audit.
+  `check` writes artifacts only to an automatically removed temporary directory
+  or an explicitly named, absent/empty directory outside the repository.
+  Output tails are bounded and redact common credential forms.
 - `audit-release` performs authenticated, read-only GitHub inspection and downloads assets only into an automatically removed temporary directory.
 - Never infer permission to commit, tag, push, create a GitHub release, or upload an asset from a request to plan or verify a release.
 - Do not expose the active holdout to the selector while tuning descriptions. Require matching assertion digests when comparing reports.
@@ -74,6 +97,9 @@ python scripts/release_collection.py check --project-root <project-root> --tag v
 python scripts/release_collection.py verify-evidence --project-root <project-root> --tag vX.Y.Z --evidence <release-evidence.json> --json
 python scripts/release_collection.py audit-release --project-root <project-root> --tag vX.Y.Z --repository owner/repository --json
 python scripts/release_collection.py cleanup-plan --project-root <project-root> --tag vX.Y.Z --primary main --branch <branch> --json
+python scripts/release_collection.py cleanup-apply --project-root <project-root> --plan <cleanup-plan.json> --audit <release-audit.json> --confirm vX.Y.Z --json
 ```
 
-Human-readable output is the default. Machine-readable contracts are under `schemas/`; JSON results use schema version 2 and include a canonical `report_sha256` plus `mutates_repository: false`.
+Human-readable output is the default. Machine-readable contracts are under
+`schemas/`; JSON results use schema version 2 and include a canonical
+`report_sha256` plus an explicit `mutates_repository` value.
