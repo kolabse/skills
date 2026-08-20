@@ -405,13 +405,16 @@ def verify_completion(project_root: Path, plan_path: Path, input_path: Path) -> 
     current_production = resolve_ref(project_root, remote_ref(config, config["branches"]["production"]))
     if current_production != production_commit:
         blockers.append("production_commit does not match the current remote production identity")
+    source_reached_production = False
+    planned_production_preserved = False
     if isinstance(production_commit, str) and COMMIT_RE.fullmatch(production_commit):
         production_ancestry = git(
             project_root, "merge-base", "--is-ancestor",
             plan["source_commit"], production_commit,
             check=False,
         )
-        if production_ancestry.returncode != 0:
+        source_reached_production = production_ancestry.returncode == 0
+        if not source_reached_production:
             blockers.append("remote production does not contain the planned source commit")
         planned_production = plan["remote_identities"].get("production")
         if isinstance(planned_production, str):
@@ -420,7 +423,8 @@ def verify_completion(project_root: Path, plan_path: Path, input_path: Path) -> 
                 planned_production, production_commit,
                 check=False,
             )
-            if preserved_production.returncode != 0:
+            planned_production_preserved = preserved_production.returncode == 0
+            if not planned_production_preserved:
                 blockers.append("remote production discarded the planned production history")
     deployment = evidence.get("deployment")
     if not isinstance(deployment, dict) or set(deployment) != {"status", "production_commit", "evidence_sha256"}:
@@ -490,6 +494,8 @@ def verify_completion(project_root: Path, plan_path: Path, input_path: Path) -> 
             and COMMIT_RE.fullmatch(production_commit)
             and isinstance(current_production, str)
             and current_production == production_commit
+            and source_reached_production
+            and planned_production_preserved
         ),
         "reintegration_status": reintegration_status if reintegration_status in {"passed", "blocked", "not-required"} else None,
         "blockers": sorted(set(blockers)),

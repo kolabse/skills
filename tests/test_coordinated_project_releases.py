@@ -446,6 +446,28 @@ class ConfiguredGitFlowTests(unittest.TestCase):
         self.assertTrue(result["passed"])
         self.assertTrue(result["production_published"])
 
+    def test_unmerged_source_is_not_reported_as_published(self) -> None:
+        plan = self.route_plan({
+            "release_id": "not-published",
+            "source_branch": "development",
+            "explicit_hotfix": False,
+        }, "not-published-plan.json")
+        production_commit = plan["remote_identities"]["production"]
+        evidence = self.evidence(plan, reintegration={
+            "status": "not-required", "target_branch": "development",
+            "commit": None, "evidence_sha256": None,
+        })
+        value = json.loads(evidence.read_text(encoding="utf-8"))
+        value["production_commit"] = production_commit
+        value["deployment"]["production_commit"] = production_commit
+        write_json(evidence, value)
+
+        result = GITFLOW.verify_completion(
+            self.repository, self.parent / "not-published-plan.json", evidence
+        )
+        self.assertFalse(result["passed"])
+        self.assertFalse(result["production_published"])
+
     def test_hotfix_requires_intent_ancestry_and_reintegration(self) -> None:
         self.publish_to_production("development")
         git(self.repository, "switch", "-c", "hotfix/urgent")
