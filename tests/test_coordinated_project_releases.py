@@ -468,6 +468,29 @@ class ConfiguredGitFlowTests(unittest.TestCase):
         self.assertFalse(result["passed"])
         self.assertFalse(result["production_published"])
 
+    def test_unchanged_production_is_not_reported_as_new_publication(self) -> None:
+        self.publish_to_production("development")
+        git(self.repository, "switch", "development")
+        plan = self.route_plan({
+            "release_id": "already-published",
+            "source_branch": "development",
+            "explicit_hotfix": False,
+        }, "already-published-plan.json")
+        evidence = self.evidence(plan, reintegration={
+            "status": "not-required", "target_branch": "development",
+            "commit": None, "evidence_sha256": None,
+        })
+
+        result = GITFLOW.verify_completion(
+            self.repository, self.parent / "already-published-plan.json", evidence
+        )
+        self.assertFalse(result["passed"])
+        self.assertFalse(result["production_published"])
+        self.assertIn(
+            "remote production did not advance from the planned identity",
+            result["blockers"],
+        )
+
     def test_hotfix_requires_intent_ancestry_and_reintegration(self) -> None:
         self.publish_to_production("development")
         git(self.repository, "switch", "-c", "hotfix/urgent")
@@ -525,6 +548,36 @@ class ConfiguredGitFlowTests(unittest.TestCase):
         )
         self.assertFalse(result["passed"])
         self.assertTrue(any("reintegration is blocked" in item for item in result["blockers"]))
+
+    def test_hotfix_reintegration_requires_development_to_advance(self) -> None:
+        self.publish_to_production("development")
+        git(self.repository, "switch", "-c", "hotfix/already-in-development")
+        (self.repository / "service.txt").write_text("fixed early\n", encoding="utf-8")
+        git(self.repository, "add", "--", "service.txt")
+        git(self.repository, "commit", "-m", "Early hotfix")
+        git(self.repository, "push", "-u", "origin", "hotfix/already-in-development")
+        git(self.repository, "switch", "development")
+        git(self.repository, "merge", "--ff-only", "hotfix/already-in-development")
+        git(self.repository, "push")
+        git(self.repository, "switch", "hotfix/already-in-development")
+        plan = self.route_plan({
+            "release_id": "already-reintegrated", "route": "hotfix",
+            "source_branch": "hotfix/already-in-development", "explicit_hotfix": True,
+        }, "already-reintegrated-plan.json")
+        self.publish_to_production("hotfix/already-in-development")
+        evidence = self.evidence(plan, reintegration={
+            "status": "passed", "target_branch": "development",
+            "commit": plan["source_commit"], "evidence_sha256": "d" * 64,
+        })
+
+        result = GITFLOW.verify_completion(
+            self.repository, self.parent / "already-reintegrated-plan.json", evidence
+        )
+        self.assertFalse(result["passed"])
+        self.assertIn(
+            "remote development did not advance during hotfix reintegration",
+            result["blockers"],
+        )
 
     def test_verification_requires_production_to_contain_planned_source(self) -> None:
         plan = self.route_plan({
