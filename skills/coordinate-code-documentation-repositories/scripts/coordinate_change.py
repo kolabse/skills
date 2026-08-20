@@ -383,12 +383,22 @@ def verify_completion(project_root: Path, plan_path: Path, input_path: Path) -> 
             blockers.append(f"{role} repository did not change from the plan")
         if current.get("head") != commit:
             blockers.append(f"{role} final commit does not match local HEAD")
+        if current.get("upstream") != plan["repositories"][role]["upstream"]:
+            blockers.append(f"{role} tracked upstream changed after the plan")
         if current.get("upstream_sha") != commit:
             blockers.append(f"{role} final commit is not the tracked upstream identity")
         if roots[role].is_dir() and current.get("head") is not None:
             ancestry = git(roots[role], "merge-base", "--is-ancestor", planned, commit, check=False)
             if ancestry.returncode != 0:
                 blockers.append(f"{role} final commit does not descend from the planned commit")
+            if role == "implementation":
+                content_change = git(
+                    roots[role], "diff", "--quiet", planned, commit, "--", check=False
+                )
+                if content_change.returncode == 0:
+                    blockers.append("implementation content did not change from the plan")
+                elif content_change.returncode != 1:
+                    blockers.append("implementation content could not be compared")
     planned_targets = set(plan["documentation_targets"])
     documentation_commit = evidence.get("documentation_commit")
     if (

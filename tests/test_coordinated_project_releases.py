@@ -272,6 +272,53 @@ class CoordinateRepositoriesTests(unittest.TestCase):
             result["blockers"],
         )
 
+    def test_verification_rejects_empty_implementation_commit(self) -> None:
+        plan = self.plan()
+        git(self.application, "commit", "--allow-empty", "-m", "Empty implementation marker")
+        git(self.application, "push")
+        implementation_commit = git(self.application, "rev-parse", "HEAD")
+        (self.documentation / "canonical/contract.md").write_text(
+            "Requirement: updated.\nValidation: passed.\n", encoding="utf-8"
+        )
+        git(self.documentation, "add", "--", "canonical/contract.md")
+        git(self.documentation, "commit", "-m", "Document change")
+        git(self.documentation, "push")
+        documentation_commit = git(self.documentation, "rev-parse", "HEAD")
+
+        result = COORDINATE.verify_completion(
+            self.application,
+            self.parent / "paired-plan.json",
+            self.evidence(plan, implementation_commit, documentation_commit),
+        )
+        self.assertFalse(result["passed"])
+        self.assertIn("implementation content did not change from the plan", result["blockers"])
+
+    def test_verification_rejects_retargeted_upstream(self) -> None:
+        plan = self.plan()
+        (self.application / "app.txt").write_text("implemented\n", encoding="utf-8")
+        git(self.application, "add", "--", "app.txt")
+        git(self.application, "commit", "-m", "Implement change")
+        git(self.application, "push")
+        implementation_commit = git(self.application, "rev-parse", "HEAD")
+        git(self.application, "push", "origin", "HEAD:alternate")
+        git(self.application, "branch", "--set-upstream-to", "origin/alternate")
+
+        (self.documentation / "canonical/contract.md").write_text(
+            "Requirement: updated.\nValidation: passed.\n", encoding="utf-8"
+        )
+        git(self.documentation, "add", "--", "canonical/contract.md")
+        git(self.documentation, "commit", "-m", "Document change")
+        git(self.documentation, "push")
+        documentation_commit = git(self.documentation, "rev-parse", "HEAD")
+
+        result = COORDINATE.verify_completion(
+            self.application,
+            self.parent / "paired-plan.json",
+            self.evidence(plan, implementation_commit, documentation_commit),
+        )
+        self.assertFalse(result["passed"])
+        self.assertIn("implementation tracked upstream changed after the plan", result["blockers"])
+
     def test_verification_reports_repository_that_disappeared_after_plan(self) -> None:
         plan = self.plan()
         moved = self.parent / "documentation-moved"
