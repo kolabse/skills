@@ -1,6 +1,22 @@
 # Changelog
 
-## Unreleased
+## [1.13.0] - 2026-08-20
+
+### Added
+
+- Experimental `coordinate-code-documentation-repositories` skill for
+  digest-bound planning and joint verification of implementation and canonical
+  documentation changes across separate Git repositories.
+- Experimental `execute-configured-gitflow-releases` skill for project-declared
+  standard and hotfix routes, shared release gates, remote production evidence,
+  and mandatory hotfix reintegration.
+
+### Fixed
+
+- Candidate contribution guidance now prevents malformed ```` ```json{ ````
+  fences when a package is pasted into the GitHub Issue form.
+- Model-backed development trigger evaluation now batches large blind suites
+  while preserving the original suite digest and complete case-ID validation.
 
 ## [1.12.1] - 2026-08-20
 
@@ -368,6 +384,7 @@ First versioned release of the kolabse skill collection.
 - Tests for configuration migration, fake cloud and infrastructure CLIs,
   installation confirmation, and collection metadata.
 
+[1.13.0]: https://github.com/kolabse/skills/releases/tag/v1.13.0
 [1.12.1]: https://github.com/kolabse/skills/releases/tag/v1.12.1
 [1.12.0]: https://github.com/kolabse/skills/releases/tag/v1.12.0
 [1.11.0]: https://github.com/kolabse/skills/releases/tag/v1.11.0

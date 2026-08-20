@@ -1,0 +1,19 @@
+{
+  "skill": "execute-configured-gitflow-releases",
+  "positive": [
+    {"prompt": "Выполни стандартный релиз из объявленной development-ветки в защищённую production-ветку по GitFlow-конфигурации проекта.", "reason": "The request explicitly invokes the declared standard GitFlow route."},
+    {"prompt": "Выпусти срочный hotfix из настроенного hotfix namespace, проверь production и верни исправление в development.", "reason": "An explicit hotfix with mandatory reintegration is a core route."},
+    {"prompt": "Составь read-only план GitFlow-релиза по ролям веток проекта и перечисли common и route-specific gates.", "reason": "Configured role resolution and route gate planning belong to this skill."},
+    {"prompt": "Проверь, что опубликованный production SHA, deployment evidence и reviewed source/target соответствуют плану standard release.", "reason": "Remote outcome verification is part of the configured release lifecycle."},
+    {"prompt": "Hotfix уже попал в production, но не возвращён в development. Проверь, можно ли считать релиз полностью завершённым.", "reason": "The skill must report hotfix reintegration as an incomplete state."},
+    {"prompt": "Проект использует постоянные integration и stable ветки вместо conventional names; выполни маршрут по объявленным ролям, не угадывая названия.", "reason": "Provider-neutral configured branch roles are explicitly required."}
+  ],
+  "negative": [
+    {"prompt": "Подготовь и выпусти новую версию коллекции kolabse skills.", "reason": "Skill collection releases belong to release-skill-collection."},
+    {"prompt": "Приложение использует trunk-based delivery из main; задеплой текущий commit.", "reason": "Trunk-based delivery is explicitly outside configured GitFlow."},
+    {"prompt": "Объясни, что такое GitFlow и чем feature branch отличается от release branch.", "reason": "Conceptual Git education does not execute a configured route."},
+    {"prompt": "Запусти pre-push tests и проверь evidence для текущего SHA.", "reason": "Generic push verification belongs to verify-before-push."},
+    {"prompt": "Синхронизируй production и development ветки, но ничего не выпускай.", "reason": "Freshness alone belongs to synchronize-git-repositories."},
+    {"prompt": "Опубликуй npm-пакет из текущей ветки; проект не объявляет branch roles или GitFlow.", "reason": "An undeclared release model must not trigger configured GitFlow execution."}
+  ]
+}

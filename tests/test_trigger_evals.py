@@ -123,6 +123,29 @@ class TriggerEvalTests(unittest.TestCase):
             report = score_suite(suite, assertions, predictions)
             self.assertEqual(2, report["summary"]["assertions"])
 
+    def test_runs_large_external_selector_in_digest_bound_batches(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            self.make_repository(root)
+            suite, assertions = prepare_suite(root)
+            python = shutil.which("python") or shutil.which("python3")
+            self.assertIsNotNone(python)
+            program = (
+                "import hashlib,json,sys; s=json.load(sys.stdin); d=s.pop('suite_digest'); "
+                "assert d==hashlib.sha256(json.dumps(s,sort_keys=True,separators=(',',':')).encode()).hexdigest(); "
+                "s['suite_digest']=d; "
+                "json.dump({'schema_version':1,'suite_digest':s['suite_digest'],"
+                "'selector':{'batch':s['batch']['index']},'predictions':[{'id':c['id'],"
+                "'selected_skills':[],'reason':'fixture'} for c in s['cases']]},sys.stdout)"
+            )
+            predictions = run_selector(
+                [python, "-c", program], suite, timeout=10, batch_size=1
+            )
+            report = score_suite(suite, assertions, predictions)
+            self.assertEqual(2, report["summary"]["assertions"])
+            self.assertEqual("batched-external-selector", predictions["selector"]["method"])
+            self.assertEqual(2, predictions["selector"]["batch_count"])
+
     def test_rejects_stale_or_incomplete_predictions(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)

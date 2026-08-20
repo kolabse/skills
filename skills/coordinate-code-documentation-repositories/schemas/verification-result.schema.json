@@ -1,0 +1,13 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/kolabse/skills/coordinate-code-documentation-repositories/verification-result.schema.json",
+  "type": "object", "additionalProperties": false,
+  "required": ["schema_version", "mode", "plan_sha256", "commits", "blockers", "passed", "mutates_repositories", "report_sha256"],
+  "properties": {
+    "schema_version": {"const": 1}, "mode": {"const": "verify"},
+    "plan_sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "commits": {"type": "object", "additionalProperties": false, "required": ["implementation", "documentation"], "properties": {"implementation": {"type": ["string", "null"]}, "documentation": {"type": ["string", "null"]}}},
+    "blockers": {"type": "array", "items": {"type": "string"}}, "passed": {"type": "boolean"},
+    "mutates_repositories": {"const": false}, "report_sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"}
+  }
+}

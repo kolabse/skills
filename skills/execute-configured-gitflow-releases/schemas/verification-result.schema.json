@@ -1,0 +1,14 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/kolabse/skills/execute-configured-gitflow-releases/verification-result.schema.json",
+  "type": "object", "additionalProperties": false,
+  "required": ["schema_version", "mode", "release_id", "route", "source_commit", "production_commit", "production_published", "reintegration_status", "blockers", "passed", "mutates_repository", "report_sha256"],
+  "properties": {
+    "schema_version": {"const": 1}, "mode": {"const": "verify"}, "release_id": {"type": "string"},
+    "route": {"enum": ["standard", "hotfix"]}, "source_commit": {"type": "string"},
+    "production_commit": {"type": ["string", "null"]}, "production_published": {"type": "boolean"},
+    "reintegration_status": {"type": ["string", "null"]}, "blockers": {"type": "array", "items": {"type": "string"}},
+    "passed": {"type": "boolean"}, "mutates_repository": {"const": false},
+    "report_sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"}
+  }
+}

@@ -1,0 +1,12 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/kolabse/skills/coordinate-code-documentation-repositories/change-input.schema.json",
+  "type": "object", "additionalProperties": false,
+  "required": ["outcome", "documentation_sources", "documentation_targets", "topics"],
+  "properties": {
+    "outcome": {"type": "string", "minLength": 1, "maxLength": 1000},
+    "documentation_sources": {"type": "array", "minItems": 1, "uniqueItems": true, "items": {"type": "string", "minLength": 1}},
+    "documentation_targets": {"type": "array", "minItems": 1, "uniqueItems": true, "items": {"type": "string", "minLength": 1}},
+    "topics": {"type": "array", "minItems": 1, "uniqueItems": true, "items": {"enum": ["requirement", "decision", "behavior", "operational-impact", "validation", "limitations"]}}
+  }
+}

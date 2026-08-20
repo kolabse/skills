@@ -74,7 +74,7 @@ def run_smoke(source: Path, tag: str, timeout: int) -> None:
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description="Smoke-test the standalone release bootstrap.")
     parser.add_argument("--source", type=Path, default=ROOT)
-    parser.add_argument("--tag", default="v1.12.1")
+    parser.add_argument("--tag", default="v1.13.0")
     parser.add_argument("--timeout", type=int, default=120)
     args = parser.parse_args(argv)
     try:

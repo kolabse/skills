@@ -225,7 +225,8 @@ def prepare_suite(
             "For each case, select every skill whose description should trigger for the "
             "user prompt. Return strict JSON with schema_version, suite_digest, optional "
             "selector metadata, and predictions containing id, selected_skills, and a "
-            "short reason. Select no skills when none apply."
+            "short reason. Select no skills when none apply. When several skills form a "
+            "workflow, return them in their intended execution order."
         ),
         "skills": skills,
         "cases": list(
@@ -612,7 +613,7 @@ def write_json(path: Path, value: Any) -> None:
     path.write_text(json.dumps(value, indent=2, sort_keys=True) + "\n", encoding="utf-8")
 
 
-def run_selector(command: list[str], suite: dict[str, Any], timeout: int) -> Any:
+def invoke_selector(command: list[str], suite: dict[str, Any], timeout: int) -> Any:
     if not command:
         raise EvalError("Selector command is required after --")
     try:
@@ -632,6 +633,46 @@ def run_selector(command: list[str], suite: dict[str, Any], timeout: int) -> Any
         return json.loads(result.stdout.decode("utf-8"))
     except (json.JSONDecodeError, UnicodeDecodeError) as error:
         raise EvalError(f"Selector did not return strict JSON: {error}") from error
+
+
+def run_selector(
+    command: list[str], suite: dict[str, Any], timeout: int, batch_size: int = 0
+) -> Any:
+    cases = suite.get("cases")
+    if not isinstance(cases, list):
+        raise EvalError("Suite cases must be a list")
+    if batch_size <= 0 or len(cases) <= batch_size:
+        return invoke_selector(command, suite, timeout)
+    predictions: list[dict[str, Any]] = []
+    selectors: list[dict[str, Any]] = []
+    batch_count = (len(cases) + batch_size - 1) // batch_size
+    for index in range(batch_count):
+        batch_suite = dict(suite)
+        parent_suite_digest = batch_suite.pop("suite_digest")
+        batch_suite["cases"] = cases[index * batch_size : (index + 1) * batch_size]
+        batch_suite["batch"] = {
+            "index": index + 1,
+            "count": batch_count,
+            "case_count": len(batch_suite["cases"]),
+            "parent_suite_digest": parent_suite_digest,
+        }
+        batch_suite["suite_digest"] = sha256(batch_suite)
+        batch_predictions = invoke_selector(command, batch_suite, timeout)
+        validate_predictions(batch_suite, batch_predictions)
+        predictions.extend(batch_predictions["predictions"])
+        selector = batch_predictions.get("selector", {})
+        selectors.append(selector if isinstance(selector, dict) else {})
+    return {
+        "schema_version": SCHEMA_VERSION,
+        "suite_digest": suite["suite_digest"],
+        "selector": {
+            "method": "batched-external-selector",
+            "batch_size": batch_size,
+            "batch_count": batch_count,
+            "batches": selectors,
+        },
+        "predictions": predictions,
+    }
 
 
 def add_common(parser: argparse.ArgumentParser) -> None:
@@ -663,6 +704,7 @@ def main(argv: list[str] | None = None) -> int:
     run.add_argument("--json-output", type=Path)
     run.add_argument("--markdown-output", type=Path)
     run.add_argument("--timeout", type=int, default=600)
+    run.add_argument("--batch-size", type=int, default=64)
     run.add_argument("--min-accuracy", type=float, default=0.0)
     run.add_argument("selector_command", nargs=argparse.REMAINDER)
     aggregate = commands.add_parser("aggregate")
@@ -724,6 +766,8 @@ def main(argv: list[str] | None = None) -> int:
             raise EvalError("min-accuracy must be between 0 and 1")
         if hasattr(args, "timeout") and args.timeout <= 0:
             raise EvalError("timeout must be positive")
+        if hasattr(args, "batch_size") and args.batch_size <= 0:
+            raise EvalError("batch-size must be positive")
         root = args.repository_root.resolve()
         suite, assertions = prepare_suite(root, args.corpus)
         if args.command == "prepare":
@@ -734,7 +778,7 @@ def main(argv: list[str] | None = None) -> int:
             command = args.selector_command
             if command[:1] == ["--"]:
                 command = command[1:]
-            predictions = run_selector(command, suite, args.timeout)
+            predictions = run_selector(command, suite, args.timeout, args.batch_size)
             validate_predictions(suite, predictions)
             write_json(args.predictions_output, predictions)
         elif args.command == "aggregate":

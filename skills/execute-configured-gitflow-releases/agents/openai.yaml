@@ -1,0 +1,4 @@
+interface:
+  display_name: "Execute Configured GitFlow Releases"
+  short_description: "Run declared standard and hotfix release routes"
+  default_prompt: "Use $execute-configured-gitflow-releases to plan and execute this release through the project-declared GitFlow route."

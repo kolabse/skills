@@ -12,7 +12,7 @@ from urllib.parse import urlparse
 
 
 COLLECTION = "kolabse-skills"
-COLLECTION_VERSION = "1.12.1"
+COLLECTION_VERSION = "1.13.0"
 SKILLS_CLI_VERSION = "1.5.22"
 LOCK_FILE = "skills-lock.json"
 METADATA_FILE = "collection-metadata.json"
@@ -20,6 +20,8 @@ CANONICAL_REPOSITORY = "https://github.com/kolabse/skills"
 CANONICAL_SLUG = "kolabse/skills"
 REPOSITORY_ROOT = Path(__file__).resolve().parents[1]
 KNOWN_SKILLS = {
+    "coordinate-code-documentation-repositories",
+    "execute-configured-gitflow-releases",
     "maintain-work-log",
     "notify-via-telegram",
     "operate-yandex-cloud",
@@ -629,6 +631,23 @@ def migration_commands(project: Path, include_user_config: bool) -> list[tuple[s
     installed = project_install_root(root)
     python = python_executable()
     commands: list[tuple[str, list[str]]] = []
+    coordinated_migrations = (
+        (
+            "coordinate-code-documentation-repositories",
+            root / ".agents/coordinate-code-documentation-repositories/config.json",
+            installed / "coordinate-code-documentation-repositories/scripts/coordinate_change.py",
+        ),
+        (
+            "execute-configured-gitflow-releases",
+            root / ".agents/execute-configured-gitflow-releases/config.json",
+            installed / "execute-configured-gitflow-releases/scripts/gitflow_release.py",
+        ),
+    )
+    for name, config_path, script_path in coordinated_migrations:
+        if config_path.is_file() and script_path.is_file():
+            commands.append(
+                (name, [python, str(script_path), "migrate", "--project-root", str(root), "--json"])
+            )
     verify_config = root / ".agents/verify-before-push/config.json"
     verify_script = installed / "verify-before-push/scripts/verify_before_push.py"
     if verify_config.is_file() and verify_script.is_file():

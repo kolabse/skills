@@ -116,7 +116,7 @@ python bootstrap_update.py plan --json
 python bootstrap_update.py update --yes --migrate --json
 ```
 
-Use `--release v1.12.1` to pin a version. The bootstrap requires `gh` for
+Use `--release v1.13.0` to pin a version. The bootstrap requires `gh` for
 attestation verification and removes its temporary directory on completion.
 For an offline cache, provide both `--offline-archive` and
 `--offline-checksums`. Provenance verification remains required when `gh` can
@@ -214,6 +214,65 @@ creating a skill.
 
 ```text
 $discover-skill-candidates Analyze this project's local rules and prepare an evidence-backed backlog of reusable skill ideas without creating anything.
+```
+
+### `coordinate-code-documentation-repositories` (experimental)
+
+Coordinate one auditable project change when implementation and canonical
+documentation live in separate Git repositories.
+
+**What it does:**
+
+- resolves project-declared implementation and documentation repository roles;
+- creates a read-only plan bound to both starting commits and the authoritative
+  documentation sources;
+- requires documentation evidence for configured topics such as requirements,
+  behavior, validation, operational impact, and limitations;
+- verifies both published commit identities, validation evidence, and
+  cross-repository traceability before reporting joint completion.
+
+**What it does not do:**
+
+- infer repository roles from directory or repository names;
+- replace canonical documentation with a daily digest;
+- edit, commit, push, merge, or repair dirty and divergent repositories by
+  itself;
+- claim semantic agreement merely because expected documentation files exist.
+
+**How to invoke it:**
+
+```text
+$coordinate-code-documentation-repositories Implement this change across the declared code and canonical documentation repositories and verify both published outcomes.
+```
+
+### `execute-configured-gitflow-releases` (experimental)
+
+Execute standard and hotfix release routes from a project-declared GitFlow
+contract.
+
+**What it does:**
+
+- resolves development, production, hotfix namespace, remote, gates, and
+  default-route policy from versioned project configuration;
+- freezes a read-only plan bound to the source commit and remote branch
+  identities;
+- applies the same declared common gates to standard and hotfix routes;
+- verifies reviewed production publication, deployment evidence, and mandatory
+  hotfix reintegration into the development line.
+
+**What it does not do:**
+
+- infer conventional branch names or use hotfix as a default route;
+- support trunk-based delivery or this collection's specialized release chain;
+- push directly to protected production, bypass gates, rewrite history, or
+  silently repair divergence;
+- treat a production hotfix as fully complete before reintegration is verified.
+
+**How to invoke it:**
+
+```text
+$execute-configured-gitflow-releases Run the standard release route declared by this project and verify the resulting production identity.
+$execute-configured-gitflow-releases Run an explicit hotfix release and verify its reintegration into the declared development line.
 ```
 
 ### `release-skill-collection`
@@ -463,7 +522,6 @@ The catalog defines three reusable ordered workflows:
 - `skill-collection-release`: synchronize the repository, plan and locally
   verify the collection release, then bind pre-push evidence; work logging and
   Telegram notification are optional.
-
 Required steps fail closed. Optional logging and notification report their own
 failure without changing the observed result of the primary operation. Resolve
 an exact plan with `scripts/compose_skills.py`; pass `--evidence` with a
@@ -514,6 +572,9 @@ Use `run` with a command after `--` to invoke a selector that reads the suite
 from standard input and writes predictions to standard output. Keep provider
 credentials outside command arguments. The ignored `.trigger-evals/` directory
 keeps generated suites, predictions, and reports out of commits by default.
+Large development suites are sent in digest-bound batches of 64 cases by
+default so long strict-JSON responses do not truncate opaque case IDs. Adjust
+the limit with `--batch-size` without exposing expected labels to the selector.
 
 Before a release, run the separately versioned and digest-locked holdout without
 using it to tune descriptions during development:

@@ -197,7 +197,10 @@ Use the repository's
 issue form for public intake. When GitHub access is available, offer to create
 the issue after explicit submission authorization; otherwise provide the
 validated package and link. Attach only the exported package, never the
-inventory, raw rules, or scored report. Before promoting this skill to stable, complete
+inventory, raw rules, or scored report. Prefer attaching the JSON file or
+pasting its raw contents. If a Markdown fence is used, put a newline after
+```` ```json ```` and before the opening `{`; never produce ```` ```json{ ````.
+Before promoting this skill to stable, complete
 [references/stabilization-checklist.md](references/stabilization-checklist.md).
 
 Completion criterion: the selected project evidence was inventoried without

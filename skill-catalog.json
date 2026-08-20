@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "collection_version": "1.12.1",
+  "collection_version": "1.13.0",
   "license": "Apache-2.0",
   "composition_evals": "evals/compositions.json",
   "composition_evidence_schema": "schemas/composition-evidence.schema.json",
@@ -55,6 +55,70 @@
       "provenance": {
         "kind": "original",
         "source": "Created to turn recurring local project rules into reviewed reusable-skill ideas without silently authoring skills",
+        "canonical_repository": "https://github.com/kolabse/skills"
+      }
+    },
+    {
+      "name": "coordinate-code-documentation-repositories",
+      "path": "skills/coordinate-code-documentation-repositories",
+      "status": "experimental",
+      "maintainers": [
+        "@kolabse"
+      ],
+      "platforms": [
+        "linux",
+        "macos",
+        "windows"
+      ],
+      "trigger_evals": "evals/coordinate-code-documentation-repositories.json",
+      "license": "Apache-2.0",
+      "provides": ["cross-repository-code-documentation-coordination"],
+      "requires": ["repository-freshness", "push-verification-evidence"],
+      "optional_integrations": ["user-facing-project-digest", "work-log", "task-notification"],
+      "configuration": {
+        "scope": "project",
+        "format": "json",
+        "current_version": 1,
+        "schema": "schemas/config.schema.json",
+        "configure": ["python", "scripts/coordinate_change.py", "configure", "--project-root", "<project-root>"],
+        "status": ["python", "scripts/coordinate_change.py", "status", "--project-root", "<project-root>", "--json"],
+        "migrate": ["python", "scripts/coordinate_change.py", "migrate", "--project-root", "<project-root>", "--json"]
+      },
+      "provenance": {
+        "kind": "original",
+        "source": "Contributed through https://github.com/kolabse/skills/issues/50 and independently reviewed for collection use",
+        "canonical_repository": "https://github.com/kolabse/skills"
+      }
+    },
+    {
+      "name": "execute-configured-gitflow-releases",
+      "path": "skills/execute-configured-gitflow-releases",
+      "status": "experimental",
+      "maintainers": [
+        "@kolabse"
+      ],
+      "platforms": [
+        "linux",
+        "macos",
+        "windows"
+      ],
+      "trigger_evals": "evals/execute-configured-gitflow-releases.json",
+      "license": "Apache-2.0",
+      "provides": ["configured-gitflow-release", "gitflow-hotfix-reintegration"],
+      "requires": ["repository-freshness", "push-verification-evidence"],
+      "optional_integrations": ["cross-repository-code-documentation-coordination", "work-log", "task-notification"],
+      "configuration": {
+        "scope": "project",
+        "format": "json",
+        "current_version": 1,
+        "schema": "schemas/config.schema.json",
+        "configure": ["python", "scripts/gitflow_release.py", "configure", "--project-root", "<project-root>"],
+        "status": ["python", "scripts/gitflow_release.py", "status", "--project-root", "<project-root>", "--json"],
+        "migrate": ["python", "scripts/gitflow_release.py", "migrate", "--project-root", "<project-root>", "--json"]
+      },
+      "provenance": {
+        "kind": "original",
+        "source": "Contributed through https://github.com/kolabse/skills/issues/51 and independently reviewed for collection use",
         "canonical_repository": "https://github.com/kolabse/skills"
       }
     },
