@@ -40,6 +40,14 @@
     {
       "prompt": "Я подтверждаю эту обезличенную сводку повторяющихся действий из текущего чата; учти ее при поиске кандидатов в навыки.",
       "reason": "User-confirmed sanitized contextual observations can supplement durable project evidence."
+    },
+    {
+      "prompt": "Найди подходящие идеи навыков и предложи безопасно передать лучшие из них авторам kolabse/skills.",
+      "reason": "Discovery should proactively route eligible candidates into the collection contribution workflow."
+    },
+    {
+      "prompt": "Проанализируй правила проекта, а после ранжирования дай выбрать: отправить идею в общую коллекцию, создать локально или отложить.",
+      "reason": "The required post-ranking handoff options belong to candidate discovery."
     }
   ],
   "negative": [

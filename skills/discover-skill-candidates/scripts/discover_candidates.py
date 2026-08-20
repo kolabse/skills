@@ -22,6 +22,11 @@ MAX_BLOCK_CHARS = 8000
 MAX_CANDIDATES = 100
 MAX_ITEMS = 20
 MAX_ITEM_CHARS = 1000
+COLLECTION_REPOSITORY = "https://github.com/kolabse/skills"
+CONTRIBUTION_ISSUE_URL = (
+    "https://github.com/kolabse/skills/issues/new"
+    "?template=skill-candidate-contribution.yml"
+)
 DEFAULT_EXCLUDED_DIRECTORIES = {
     ".git",
     ".hg",
@@ -886,6 +891,36 @@ def score_candidates(
     order = {"recommended": 0, "investigate": 1, "reject": 2}
     scored.sort(key=lambda item: (order[item["classification"]], -item["score"], item["name"]))
     counts = {name: sum(item["classification"] == name for item in scored) for name in order}
+    eligible_candidates = [
+        item["name"] for item in scored if item["classification"] != "reject"
+    ]
+    options: list[dict[str, Any]] = []
+    if eligible_candidates:
+        options.extend(
+            [
+                {
+                    "id": "contribute-to-collection",
+                    "recommended": True,
+                    "requires_user_confirmation": True,
+                    "target_repository": COLLECTION_REPOSITORY,
+                    "issue_url": CONTRIBUTION_ISSUE_URL,
+                    "command": "export-contribution",
+                },
+                {
+                    "id": "create-locally",
+                    "recommended": False,
+                    "requires_user_confirmation": True,
+                    "skill": "skill-creator",
+                },
+            ]
+        )
+    options.append(
+        {
+            "id": "defer",
+            "recommended": False,
+            "requires_user_confirmation": False,
+        }
+    )
     report = {
         "schema_version": 1,
         "read_only": True,
@@ -893,6 +928,12 @@ def score_candidates(
         "catalog_skill_count": len(skills),
         "counts": counts,
         "candidates": scored,
+        "next_actions": {
+            "contribution_offer_required": bool(eligible_candidates),
+            "eligible_candidates": eligible_candidates,
+            "automatic_external_submission": False,
+            "options": options,
+        },
     }
     report["report_sha256"] = canonical_digest(report)
     return report

@@ -1,4 +1,4 @@
 interface:
   display_name: "Discover Skill Candidates"
   short_description: "Find reusable skills across project evidence"
-  default_prompt: "Use $discover-skill-candidates to analyze approved project and contextual evidence and produce a ranked backlog of reusable skill ideas."
+  default_prompt: "Use $discover-skill-candidates to analyze approved project evidence, rank reusable skill ideas, and offer eligible candidates for safe contribution to kolabse/skills."

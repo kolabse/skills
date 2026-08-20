@@ -1,6 +1,6 @@
 ---
 name: discover-skill-candidates
-description: "Analyze bounded project rules and user-approved evidence sources to produce a read-only, ranked backlog of reusable skill ideas, or export a selected idea as a sanitized portable contribution package. Use when the user asks which rules, project patterns, Git history, documentation, current-chat practices, or approved summaries derived from supplied chat exports and sync-project-context handoffs should become skills; wants to compare ideas with existing skills; or prepare a brief before skill-creator. Do not use to create skills, enumerate chats implicitly, scan source code broadly, or treat secrets, organization policy, and one-off conventions as reusable workflows."
+description: "Analyze bounded project rules and user-approved evidence sources to rank reusable skill ideas, proactively offer eligible candidates for sanitized contribution to kolabse/skills, or export a selected portable contribution package. Use when the user asks which rules, project patterns, Git history, documentation, current-chat practices, or approved summaries derived from supplied chat exports and sync-project-context handoffs should become skills; wants to compare ideas with existing skills; or prepare a local implementation brief. Do not use to create skills, enumerate chats implicitly, scan source code broadly, or treat secrets, organization policy, and one-off conventions as reusable workflows."
 ---
 
 # Discover Skill Candidates
@@ -130,10 +130,26 @@ Do not promote a score mechanically. Review overlap and provenance, then report:
 
 ## Hand off a selected idea
 
-For local implementation, only after the user explicitly selects a candidate,
-give its brief and source evidence to `$skill-creator`. Reinspect the rules
-first if their hashes changed. Do not let discovery silently become
-implementation.
+After reporting any `recommended` or `investigate` candidate, do not stop at
+the ranked backlog and do not route directly to `$skill-creator` unless the
+current request already explicitly chose local implementation. Otherwise,
+present these choices in this order:
+
+1. **Contribute to `kolabse/skills` (recommended):** prepare a sanitized
+   contribution package for maintainer review.
+2. **Create locally:** pass the selected brief to `$skill-creator` for a skill
+   owned by the current user or project.
+3. **Defer:** keep the candidate in the backlog without exporting or creating
+   anything.
+
+Use the report's digest-bound `next_actions` as the source of truth for eligible
+candidates and handoff targets. If every candidate is rejected, explain why and
+offer only defer or further evidence collection; never offer a rejected idea
+for contribution.
+
+For local implementation, proceed only after the user explicitly chooses that
+option and a candidate. Reinspect the rules first if their hashes changed. Do
+not let discovery silently become implementation.
 
 For contribution to another maintainer, prepare a document matching
 `schemas/contribution-input.schema.json`. Generalize every source block into a
@@ -156,9 +172,10 @@ output. The exporter verifies the scored-report digest, removes workstation path
 raw rule locations, binds each generalized summary to its source-block hash,
 rejects possible secrets, URLs, email addresses, and absolute paths, and emits
 a digest-bound package matching `schemas/contribution-package.schema.json`.
-Save that output outside the analyzed project and inspect it before attaching
-it to a repository issue or pull request. Do not submit the inventory or raw
-`AGENTS.md` files.
+Save that output outside the analyzed project, validate it, and show the user
+what will be shared. Do not open an issue or otherwise mutate an external
+system until the user explicitly authorizes submission after reviewing the
+package. Do not submit the inventory or raw `AGENTS.md` files.
 
 On the maintainer side, validate a received package independently:
 
@@ -175,15 +192,19 @@ the collection contribution policy before invoking `$skill-creator`. Accepting
 a package never grants automatic publication. Users receive an accepted skill
 only after maintainer review and a new collection release.
 
-Use the repository's **Skill candidate contribution** issue form for public intake.
-Attach only the exported package, never the inventory, raw rules, or scored
-report. Before promoting this skill to stable, complete
+Use the repository's
+[**Skill candidate contribution**](https://github.com/kolabse/skills/issues/new?template=skill-candidate-contribution.yml)
+issue form for public intake. When GitHub access is available, offer to create
+the issue after explicit submission authorization; otherwise provide the
+validated package and link. Attach only the exported package, never the
+inventory, raw rules, or scored report. Before promoting this skill to stable, complete
 [references/stabilization-checklist.md](references/stabilization-checklist.md).
 
 Completion criterion: the selected project evidence was inventoried without
 mutation, every idea is traceable to validated blocks or confirmed
 observations, observation-only ideas remain investigative, existing skill
 overlap was considered, sensitive or policy-only material was excluded, and
-the user received either a ranked backlog or an explicitly requested
+the user received a ranked backlog plus the required contribution/local/defer
+handoff choice for every eligible candidate, or an explicitly requested
 sanitized, digest-valid contribution package rather than generated skill
 files.
