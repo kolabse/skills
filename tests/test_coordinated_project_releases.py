@@ -455,6 +455,7 @@ class ConfiguredGitFlowTests(unittest.TestCase):
                 "status": "passed",
                 "source_branch": plan["source_branch"],
                 "target_branch": plan["target_branch"],
+                "source_commit": plan["source_commit"],
                 "evidence_sha256": "b" * 64,
             },
             "production_commit": plan["source_commit"],
@@ -514,6 +515,27 @@ class ConfiguredGitFlowTests(unittest.TestCase):
         )
         self.assertFalse(result["passed"])
         self.assertFalse(result["production_published"])
+
+    def test_review_evidence_must_match_planned_source_commit(self) -> None:
+        plan = self.route_plan({
+            "release_id": "stale-review",
+            "source_branch": "development",
+            "explicit_hotfix": False,
+        }, "stale-review-plan.json")
+        self.publish_to_production("development")
+        evidence = self.evidence(plan, reintegration={
+            "status": "not-required", "target_branch": "development",
+            "commit": None, "evidence_sha256": None,
+        })
+        value = json.loads(evidence.read_text(encoding="utf-8"))
+        value["review"]["source_commit"] = "0" * 40
+        write_json(evidence, value)
+
+        result = GITFLOW.verify_completion(
+            self.repository, self.parent / "stale-review-plan.json", evidence
+        )
+        self.assertFalse(result["passed"])
+        self.assertIn("review evidence does not match the planned route", result["blockers"])
 
     def test_unchanged_production_is_not_reported_as_new_publication(self) -> None:
         self.publish_to_production("development")

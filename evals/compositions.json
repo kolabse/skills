@@ -99,7 +99,7 @@
         "coordinate-code-documentation-repositories",
         "verify-before-push"
       ],
-      "reason": "The paired change requires freshness, cross-repository coordination, and final commit-bound verification."
+      "reason": "The paired workflow requires freshness and cross-repository coordination, which invokes commit-bound verification as a mandatory checkpoint before publication."
     },
     {
       "prompt": "Выполни стандартный GitFlow-релиз по объявленным ролям веток: сначала синхронизируй репозиторий, затем проверь все gates и итоговый production SHA.",
@@ -108,7 +108,7 @@
         "execute-configured-gitflow-releases",
         "verify-before-push"
       ],
-      "reason": "The configured release composition establishes freshness, executes the route, and binds declared verification evidence."
+      "reason": "The configured release workflow establishes freshness and executes the route, invoking commit-bound verification before publication."
     },
     {
       "prompt": "Сначала синхронизируй code и docs репозитории, согласуй каноническую документацию с hotfix, затем выполни GitFlow-релиз и финальную проверку gates, production SHA и reintegration в development.",
@@ -118,7 +118,7 @@
         "execute-configured-gitflow-releases",
         "verify-before-push"
       ],
-      "reason": "The documented release coordinates canonical documentation before executing and verifying the configured GitFlow route."
+      "reason": "The documented release coordinates canonical documentation and the GitFlow route, with commit-bound verification at each publication boundary."
     }
   ]
 }

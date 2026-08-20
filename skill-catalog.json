@@ -30,17 +30,17 @@
     },
     {
       "name": "paired-code-documentation-change",
-      "required_steps": ["synchronize-git-repositories", "coordinate-code-documentation-repositories", "verify-before-push"],
+      "required_steps": ["synchronize-git-repositories", "coordinate-code-documentation-repositories"],
       "optional_steps": ["maintain-project-digest", "maintain-work-log", "notify-via-telegram"]
     },
     {
       "name": "configured-gitflow-release",
-      "required_steps": ["synchronize-git-repositories", "execute-configured-gitflow-releases", "verify-before-push"],
+      "required_steps": ["synchronize-git-repositories", "execute-configured-gitflow-releases"],
       "optional_steps": ["maintain-work-log", "notify-via-telegram"]
     },
     {
       "name": "documented-configured-gitflow-release",
-      "required_steps": ["synchronize-git-repositories", "coordinate-code-documentation-repositories", "execute-configured-gitflow-releases", "verify-before-push"],
+      "required_steps": ["synchronize-git-repositories", "coordinate-code-documentation-repositories", "execute-configured-gitflow-releases"],
       "optional_steps": ["maintain-work-log", "notify-via-telegram"]
     }
   ],
@@ -88,8 +88,8 @@
       "trigger_evals": "evals/coordinate-code-documentation-repositories.json",
       "license": "Apache-2.0",
       "provides": ["cross-repository-code-documentation-coordination"],
-      "requires": ["repository-freshness"],
-      "optional_integrations": ["push-verification-evidence", "user-facing-project-digest", "work-log", "task-notification"],
+      "requires": ["repository-freshness", "push-verification-evidence"],
+      "optional_integrations": ["user-facing-project-digest", "work-log", "task-notification"],
       "configuration": {
         "scope": "project",
         "format": "json",
@@ -120,8 +120,8 @@
       "trigger_evals": "evals/execute-configured-gitflow-releases.json",
       "license": "Apache-2.0",
       "provides": ["configured-gitflow-release", "gitflow-hotfix-reintegration"],
-      "requires": ["repository-freshness"],
-      "optional_integrations": ["push-verification-evidence", "cross-repository-code-documentation-coordination", "work-log", "task-notification"],
+      "requires": ["repository-freshness", "push-verification-evidence"],
+      "optional_integrations": ["cross-repository-code-documentation-coordination", "work-log", "task-notification"],
       "configuration": {
         "scope": "project",
         "format": "json",

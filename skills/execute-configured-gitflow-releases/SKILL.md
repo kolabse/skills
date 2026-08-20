@@ -83,6 +83,9 @@ before executing a route.
 1. Run every common and route-specific gate and retain evidence bound to the
    planned source commit. Missing, stale, damaged, failing, or commit-mismatched
    evidence blocks publication.
+   `$verify-before-push` is a mandatory pre-publication checkpoint after the
+   source commit is frozen and immediately before its first push. If the source
+   changes, discard that evidence and rerun the checkpoint.
 2. Publish the source and use the project-approved reviewed path to production.
    Never push directly to protected production, bypass review, force-push, or
    rewrite history.
@@ -90,6 +93,8 @@ before executing a route.
 4. For a hotfix, create or update the approved reintegration change targeting
    the configured development line. Do not silently merge, rebase, reset, or
    cherry-pick to repair divergence.
+   Run `$verify-before-push` again for a distinct reintegration commit before
+   publishing it.
 5. Obtain authorization at each external mutation boundary. A request to plan,
    verify, push, create a review, merge, deploy, tag, or delete a branch does
    not silently authorize the others.

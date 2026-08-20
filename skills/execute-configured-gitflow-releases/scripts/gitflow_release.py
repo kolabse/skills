@@ -392,10 +392,13 @@ def verify_completion(project_root: Path, plan_path: Path, input_path: Path) -> 
     review = evidence.get("review")
     if (
         not isinstance(review, dict)
-        or set(review) != {"status", "source_branch", "target_branch", "evidence_sha256"}
+        or set(review) != {
+            "status", "source_branch", "target_branch", "source_commit", "evidence_sha256"
+        }
         or review.get("status") != "passed"
         or review.get("source_branch") != plan["source_branch"]
         or review.get("target_branch") != plan["target_branch"]
+        or review.get("source_commit") != plan["source_commit"]
         or not valid_digest(review.get("evidence_sha256"))
     ):
         blockers.append("review evidence does not match the planned route")

@@ -523,15 +523,16 @@ The catalog defines six reusable ordered workflows:
   verify the collection release, then bind pre-push evidence; work logging and
   Telegram notification are optional.
 - `paired-code-documentation-change`: synchronize both repositories, coordinate
-  the paired implementation and canonical documentation change, then bind
-  verification evidence; digest, work-log, and Telegram updates are optional.
+  the paired implementation and canonical documentation change, and require a
+  commit-bound checkpoint before either publication; digest, work-log, and
+  Telegram updates are optional.
 - `configured-gitflow-release`: synchronize the repository, execute the
-  project-declared release route, then bind verification evidence; work logging
-  and Telegram updates are optional.
+  project-declared release route with a commit-bound checkpoint before
+  publication; work logging and Telegram updates are optional.
 - `documented-configured-gitflow-release`: synchronize the code and
   documentation repositories, coordinate their canonical change, execute the
-  configured release route, then bind verification evidence; work logging and
-  Telegram updates are optional.
+  configured release route, and apply each mandatory checkpoint before its
+  publication boundary; work logging and Telegram updates are optional.
 
 Required steps fail closed. Optional logging and notification report their own
 failure without changing the observed result of the primary operation. Resolve

@@ -65,7 +65,7 @@ Completion criterion: the plan names the exact starting state, authoritative
 sources, intended documentation targets, required topics, and no unresolved
 repository role.
 
-## Implement and publish coherently
+## Implement and prepare publication coherently
 
 - Keep code and documentation changes logically separated in their respective
   repositories. Do not rewrite either history solely to embed reciprocal
@@ -76,6 +76,12 @@ repository role.
   deliberate and reviewable, not silently omitted.
 - Use review descriptions, release evidence, or another declared traceability
   mechanism to connect the changes without circular history edits.
+- After both final local commits exist, run `$verify-before-push` for each
+  repository and bind its evidence to those exact commits. This is a mandatory
+  pre-publication checkpoint: do not push either half of the paired change
+  until both repositories pass.
+- Publish the already-verified commits without modifying them. If either commit
+  changes, rerun the checkpoint for both repositories before any further push.
 - Obtain authorization independently for staging, commits, pushes, review
   requests, merges, or other external mutations. This skill does not broaden
   the user's permission.
