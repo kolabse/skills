@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+## [1.12.0] - 2026-08-20
+
 ### Added
 
 - Experimental `maintain-project-digest` skill for collaborative same-day,
@@ -357,6 +359,7 @@ First versioned release of the kolabse skill collection.
 - Tests for configuration migration, fake cloud and infrastructure CLIs,
   installation confirmation, and collection metadata.
 
+[1.12.0]: https://github.com/kolabse/skills/releases/tag/v1.12.0
 [1.11.0]: https://github.com/kolabse/skills/releases/tag/v1.11.0
 [1.10.0]: https://github.com/kolabse/skills/releases/tag/v1.10.0
 [1.9.0]: https://github.com/kolabse/skills/releases/tag/v1.9.0
