@@ -17,6 +17,34 @@ import manage_installed_skills as manager  # noqa: E402
 
 
 class ManageInstalledSkillsTests(unittest.TestCase):
+    def test_coordinated_release_skills_are_managed(self) -> None:
+        self.assertIn("coordinate-code-documentation-repositories", manager.KNOWN_SKILLS)
+        self.assertIn("execute-configured-gitflow-releases", manager.KNOWN_SKILLS)
+
+    def test_coordinated_release_configs_are_migration_candidates(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            project = self.make_project(root, {
+                "coordinate-code-documentation-repositories": "1.13.0",
+                "execute-configured-gitflow-releases": "1.13.0",
+            })
+            for name, script in (
+                ("coordinate-code-documentation-repositories", "coordinate_change.py"),
+                ("execute-configured-gitflow-releases", "gitflow_release.py"),
+            ):
+                config = project / ".agents" / name / "config.json"
+                config.parent.mkdir(parents=True, exist_ok=True)
+                config.write_text("{}\n", encoding="utf-8")
+                helper = project / ".agents/skills" / name / "scripts" / script
+                helper.parent.mkdir(parents=True, exist_ok=True)
+                helper.write_text("# fixture\n", encoding="utf-8")
+
+            names = [name for name, _ in manager.migration_commands(project, False)]
+            self.assertEqual([
+                "coordinate-code-documentation-repositories",
+                "execute-configured-gitflow-releases",
+            ], names)
+
     def make_project(self, root: Path, versions: dict[str, str]) -> Path:
         project = root / "project"
         project.mkdir(parents=True, exist_ok=True)
