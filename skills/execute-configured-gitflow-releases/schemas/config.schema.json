@@ -1,0 +1,33 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/kolabse/skills/execute-configured-gitflow-releases/config.schema.json",
+  "type": "object", "additionalProperties": false,
+  "required": ["version", "remote", "branches", "protected_production", "default_route", "gates", "deployment", "reintegration"],
+  "properties": {
+    "version": {"const": 1},
+    "remote": {"type": "string", "pattern": "^[A-Za-z0-9._-]+$"},
+    "branches": {
+      "type": "object", "additionalProperties": false,
+      "required": ["development", "production", "hotfix_prefix"],
+      "properties": {
+        "development": {"type": "string", "minLength": 1},
+        "production": {"type": "string", "minLength": 1},
+        "hotfix_prefix": {"type": "string", "minLength": 2}
+      }
+    },
+    "protected_production": {"const": true},
+    "default_route": {"type": ["string", "null"], "enum": ["standard", null]},
+    "gates": {
+      "type": "object", "additionalProperties": false,
+      "required": ["common", "standard", "hotfix"],
+      "properties": {
+        "common": {"$ref": "#/$defs/gates"},
+        "standard": {"$ref": "#/$defs/gates"},
+        "hotfix": {"$ref": "#/$defs/gates"}
+      }
+    },
+    "deployment": {"type": "object", "additionalProperties": false, "required": ["evidence_required"], "properties": {"evidence_required": {"type": "boolean"}}},
+    "reintegration": {"type": "object", "additionalProperties": false, "required": ["required"], "properties": {"required": {"const": true}}}
+  },
+  "$defs": {"gates": {"type": "array", "uniqueItems": true, "items": {"type": "string", "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$"}}}
+}

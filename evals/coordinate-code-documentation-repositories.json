@@ -1,0 +1,19 @@
+{
+  "skill": "coordinate-code-documentation-repositories",
+  "positive": [
+    {"prompt": "Реализуй изменение в app-репозитории и одновременно обнови каноническую документацию в отдельном docs-репозитории.", "reason": "The request treats separate implementation and canonical documentation repositories as one change."},
+    {"prompt": "Перед публикацией проверь, что код и authoritative documentation описывают одинаковое поведение и оба commit SHA опубликованы.", "reason": "Joint semantic and published-history completion is the skill's core outcome."},
+    {"prompt": "Документация проекта находится в соседнем Git-репозитории. Составь связанный план изменения и не считай задачу завершённой без него.", "reason": "A paired read-only plan and fail-closed completion boundary are required."},
+    {"prompt": "Refactor the service without user-visible changes, record the decision and validation in the separate canonical documentation repository, and keep both changes traceable.", "reason": "The request requires cross-repository decision, validation, and traceability evidence."},
+    {"prompt": "Проверь совместное изменение кода и документации: requirements, operational impact, tests и limitations должны относиться к финальным SHA обоих репозиториев.", "reason": "Configured documentation topics and both final identities are explicit."},
+    {"prompt": "Не удаётся найти обязательный documentation repository; сохрани доступное состояние и сообщи, можно ли завершать парное изменение.", "reason": "Missing a required repository role must block joint completion."}
+  ],
+  "negative": [
+    {"prompt": "Добавь комментарий к сложной функции в этом же репозитории.", "reason": "A same-repository code comment is not a paired repository workflow."},
+    {"prompt": "Добавь сегодняшнее исправление в пользовательский дайджест проекта.", "reason": "A daily user-facing digest belongs to maintain-project-digest."},
+    {"prompt": "Синхронизируй два Git-репозитория и покажи их ahead/behind состояние.", "reason": "Repository freshness alone belongs to synchronize-git-repositories."},
+    {"prompt": "Запусти тесты для кода и документации перед push и сохрани evidence.", "reason": "Commit-bound declared checks alone belong to verify-before-push."},
+    {"prompt": "Исправь опечатку в README текущего репозитория.", "reason": "Ordinary documentation editing in one repository does not require paired coordination."},
+    {"prompt": "Собери changelog из последних коммитов приложения.", "reason": "A changelog summary does not establish a canonical cross-repository change lifecycle."}
+  ]
+}

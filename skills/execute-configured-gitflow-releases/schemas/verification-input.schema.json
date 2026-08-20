@@ -1,0 +1,16 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/kolabse/skills/execute-configured-gitflow-releases/verification-input.schema.json",
+  "type": "object", "additionalProperties": false,
+  "required": ["plan_sha256", "source_commit", "gate_evidence", "review", "production_commit", "deployment", "reintegration"],
+  "properties": {
+    "plan_sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "source_commit": {"type": "string", "pattern": "^[0-9a-f]{40}$"},
+    "gate_evidence": {"type": "object", "additionalProperties": {"$ref": "#/$defs/evidence"}},
+    "review": {"type": "object", "additionalProperties": false, "required": ["status", "source_branch", "target_branch", "evidence_sha256"], "properties": {"status": {"const": "passed"}, "source_branch": {"type": "string"}, "target_branch": {"type": "string"}, "evidence_sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"}}},
+    "production_commit": {"type": "string", "pattern": "^[0-9a-f]{40}$"},
+    "deployment": {"type": "object", "additionalProperties": false, "required": ["status", "production_commit", "evidence_sha256"], "properties": {"status": {"enum": ["passed", "not-required"]}, "production_commit": {"type": "string", "pattern": "^[0-9a-f]{40}$"}, "evidence_sha256": {"type": ["string", "null"], "pattern": "^[0-9a-f]{64}$"}}},
+    "reintegration": {"type": "object", "additionalProperties": false, "required": ["status", "target_branch", "commit", "evidence_sha256"], "properties": {"status": {"enum": ["passed", "blocked", "not-required"]}, "target_branch": {"type": "string"}, "commit": {"type": ["string", "null"], "pattern": "^[0-9a-f]{40}$"}, "evidence_sha256": {"type": ["string", "null"], "pattern": "^[0-9a-f]{64}$"}}}
+  },
+  "$defs": {"evidence": {"type": "object", "additionalProperties": false, "required": ["status", "commit", "evidence_sha256"], "properties": {"status": {"const": "passed"}, "commit": {"type": "string", "pattern": "^[0-9a-f]{40}$"}, "evidence_sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"}}}}
+}

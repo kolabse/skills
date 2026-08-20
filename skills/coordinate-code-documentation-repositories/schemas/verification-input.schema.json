@@ -1,0 +1,14 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/kolabse/skills/coordinate-code-documentation-repositories/verification-input.schema.json",
+  "type": "object", "additionalProperties": false,
+  "required": ["plan_sha256", "implementation_commit", "documentation_commit", "documentation_evidence", "validation_results", "traceability"],
+  "properties": {
+    "plan_sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "implementation_commit": {"type": "string", "pattern": "^[0-9a-f]{40}$"},
+    "documentation_commit": {"type": "string", "pattern": "^[0-9a-f]{40}$"},
+    "documentation_evidence": {"type": "object", "propertyNames": {"enum": ["requirement", "decision", "behavior", "operational-impact", "validation", "limitations"]}, "additionalProperties": {"type": "array", "minItems": 1, "uniqueItems": true, "items": {"type": "string", "minLength": 1}}},
+    "validation_results": {"type": "array", "minItems": 1, "items": {"type": "object", "additionalProperties": false, "required": ["name", "status", "evidence_sha256"], "properties": {"name": {"type": "string", "minLength": 1}, "status": {"const": "passed"}, "evidence_sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"}}}},
+    "traceability": {"type": "array", "minItems": 2, "items": {"type": "object", "additionalProperties": false, "required": ["method", "repository", "reference", "evidence_sha256"], "properties": {"method": {"enum": ["change-request", "release-evidence", "project-record"]}, "repository": {"enum": ["implementation", "documentation"]}, "reference": {"type": "string", "minLength": 1}, "evidence_sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"}}}}
+  }
+}

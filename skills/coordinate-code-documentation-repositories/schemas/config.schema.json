@@ -1,0 +1,35 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/kolabse/skills/coordinate-code-documentation-repositories/config.schema.json",
+  "title": "Code and canonical documentation repository contract",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["version", "repositories", "canonical_documentation", "traceability"],
+  "properties": {
+    "version": {"const": 1},
+    "repositories": {
+      "type": "object", "additionalProperties": false,
+      "required": ["implementation", "documentation"],
+      "properties": {
+        "implementation": {"$ref": "#/$defs/repository"},
+        "documentation": {"$ref": "#/$defs/repository"}
+      }
+    },
+    "canonical_documentation": {
+      "type": "object", "additionalProperties": false,
+      "required": ["roots", "required_topics"],
+      "properties": {
+        "roots": {"type": "array", "minItems": 1, "uniqueItems": true, "items": {"$ref": "#/$defs/path"}},
+        "required_topics": {"type": "array", "minItems": 1, "uniqueItems": true, "items": {"enum": ["requirement", "decision", "behavior", "operational-impact", "validation", "limitations"]}}
+      }
+    },
+    "traceability": {
+      "type": "object", "additionalProperties": false, "required": ["method"],
+      "properties": {"method": {"enum": ["change-request", "release-evidence", "project-record"]}}
+    }
+  },
+  "$defs": {
+    "repository": {"type": "object", "additionalProperties": false, "required": ["path"], "properties": {"path": {"$ref": "#/$defs/path"}}},
+    "path": {"type": "string", "minLength": 1, "maxLength": 300}
+  }
+}

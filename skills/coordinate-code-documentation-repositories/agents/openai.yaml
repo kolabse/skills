@@ -1,0 +1,4 @@
+interface:
+  display_name: "Coordinate Code and Documentation"
+  short_description: "Coordinate paired code and documentation changes"
+  default_prompt: "Use $coordinate-code-documentation-repositories to keep this code change and its canonical documentation aligned across repositories."

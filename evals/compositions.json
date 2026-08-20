@@ -91,6 +91,34 @@
         "sync-project-context"
       ],
       "reason": "The notification skill owns destination materialization, while project context synchronization transfers only the approved secret-free routing values."
+    },
+    {
+      "prompt": "Синхронизируй app и docs репозитории, реализуй парное изменение канонической документации и кода, затем привяжи проверки к финальным SHA обоих репозиториев.",
+      "expected_skills": [
+        "synchronize-git-repositories",
+        "coordinate-code-documentation-repositories",
+        "verify-before-push"
+      ],
+      "reason": "The paired change requires freshness, cross-repository coordination, and final commit-bound verification."
+    },
+    {
+      "prompt": "Выполни стандартный GitFlow-релиз по объявленным ролям веток: сначала синхронизируй репозиторий, затем проверь все gates и итоговый production SHA.",
+      "expected_skills": [
+        "synchronize-git-repositories",
+        "execute-configured-gitflow-releases",
+        "verify-before-push"
+      ],
+      "reason": "The configured release composition establishes freshness, executes the route, and binds declared verification evidence."
+    },
+    {
+      "prompt": "Сначала синхронизируй code и docs репозитории, согласуй каноническую документацию с hotfix, затем выполни GitFlow-релиз и финальную проверку gates, production SHA и reintegration в development.",
+      "expected_skills": [
+        "synchronize-git-repositories",
+        "coordinate-code-documentation-repositories",
+        "execute-configured-gitflow-releases",
+        "verify-before-push"
+      ],
+      "reason": "The documented release coordinates canonical documentation before executing and verifying the configured GitFlow route."
     }
   ]
 }

@@ -1,7 +1,7 @@
 {
   "name": "kolabse-skills",
-  "version": "1.12.1",
-  "description": "Reusable Git, project digest, skill discovery, private context, notification, and infrastructure workflows maintained by kolabse.",
+  "version": "1.13.0",
+  "description": "Reusable Git, coordinated documentation, release, private context, notification, and infrastructure workflows maintained by kolabse.",
   "author": {
     "name": "kolabse",
     "url": "https://github.com/kolabse"
@@ -14,9 +14,11 @@
     "skill-discovery",
     "cloud",
     "git",
+    "gitflow",
     "infrastructure",
     "logging",
     "project-digest",
+    "project-documentation",
     "notifications",
     "project-handoff",
     "project-workflows",
@@ -31,7 +33,7 @@
   "interface": {
     "displayName": "kolabse Skills",
     "shortDescription": "Reusable Git, context, and cloud workflows",
-    "longDescription": "A maintained collection of workflows for reusable-skill discovery, safe Git synchronization, state-bound pre-push verification, private cross-device project handoffs, user-facing project digests, project work logs, task notifications, and cloud infrastructure.",
+    "longDescription": "A maintained collection of workflows for reusable-skill discovery, safe Git synchronization, coordinated code and documentation changes, configured GitFlow releases, state-bound pre-push verification, private cross-device project handoffs, user-facing project digests, project work logs, task notifications, and cloud infrastructure.",
     "developerName": "kolabse",
     "category": "Developer Tools",
     "capabilities": [
@@ -40,12 +42,9 @@
     ],
     "websiteURL": "https://github.com/kolabse/skills",
     "defaultPrompt": [
-      "Run project checks and verify evidence for this Git state before push.",
-      "Safely synchronize every Git repository involved in this task.",
-      "Analyze local project rules and rank evidence-backed reusable skill ideas.",
-      "Save or restore a private cross-device handoff for this project.",
-      "Add today's completed user-visible changes to the project digest.",
-      "Configure this project for reusable work logs, notifications, or Yandex Cloud operations."
+      "Safely synchronize this project's repositories and verify exact-state evidence before publication.",
+      "Coordinate implementation with canonical documentation and execute the configured standard or hotfix release route.",
+      "Use the appropriate kolabse workflow for project context, digests, skill discovery, notifications, or cloud operations."
     ]
   }
 }

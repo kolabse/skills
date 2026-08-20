@@ -12,8 +12,8 @@ body:
     id: package
     attributes:
       label: Contribution package
-      description: Attach the generated JSON file or paste its complete contents.
-      placeholder: Drag the contribution-package.json file here, or paste the validated JSON.
+      description: Attach the generated JSON file or paste its complete raw contents. If you add a Markdown fence, put the opening `{` on the next line after ` ```json `.
+      placeholder: Drag the contribution-package.json file here, or paste raw validated JSON without a Markdown fence.
     validations:
       required: true
   - type: checkboxes
