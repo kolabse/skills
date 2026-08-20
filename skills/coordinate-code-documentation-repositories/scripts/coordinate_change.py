@@ -282,6 +282,8 @@ def validate_change_input(value: dict[str, Any], config: dict[str, Any], documen
                 raise CoordinationError(f"{field} path is outside canonical roots: {relative}")
             if field == "documentation_sources" and not resolved.is_file():
                 raise CoordinationError(f"documentation source does not exist: {relative}")
+            if field == "documentation_targets" and resolved.is_dir():
+                raise CoordinationError(f"documentation target must be a file path: {relative}")
             paths.append(relative)
         if len(set(paths)) != len(paths):
             raise CoordinationError(f"{field} must not contain duplicates")

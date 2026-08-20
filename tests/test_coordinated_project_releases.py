@@ -211,6 +211,16 @@ class CoordinateRepositoriesTests(unittest.TestCase):
         with self.assertRaisesRegex(COORDINATE.CoordinationError, "outside the implementation"):
             COORDINATE.build_plan(self.application, change_input, self.application / "plan.json")
 
+        directory_target = self.parent / "directory-target.json"
+        write_json(directory_target, {
+            "outcome": "Invalid directory target",
+            "documentation_sources": ["canonical/contract.md"],
+            "documentation_targets": ["canonical"],
+            "topics": ["requirement", "validation"],
+        })
+        with self.assertRaisesRegex(COORDINATE.CoordinationError, "must be a file path"):
+            COORDINATE.build_plan(self.application, directory_target, self.parent / "invalid-plan.json")
+
     def test_rejects_absolute_paths_and_unknown_versions(self) -> None:
         invalid = dict(self.config)
         invalid["repositories"] = {
