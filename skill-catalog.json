@@ -27,21 +27,6 @@
       "name": "skill-collection-release",
       "required_steps": ["synchronize-git-repositories", "release-skill-collection", "verify-before-push"],
       "optional_steps": ["maintain-work-log", "notify-via-telegram"]
-    },
-    {
-      "name": "paired-code-documentation-change",
-      "required_steps": ["synchronize-git-repositories", "coordinate-code-documentation-repositories", "verify-before-push"],
-      "optional_steps": ["maintain-project-digest", "maintain-work-log", "notify-via-telegram"]
-    },
-    {
-      "name": "configured-gitflow-release",
-      "required_steps": ["synchronize-git-repositories", "execute-configured-gitflow-releases", "verify-before-push"],
-      "optional_steps": ["maintain-work-log", "notify-via-telegram"]
-    },
-    {
-      "name": "documented-configured-gitflow-release",
-      "required_steps": ["synchronize-git-repositories", "coordinate-code-documentation-repositories", "execute-configured-gitflow-releases", "verify-before-push"],
-      "optional_steps": ["maintain-work-log", "notify-via-telegram"]
     }
   ],
   "skills": [

@@ -512,7 +512,7 @@ $sync-project-context Synchronize all project tasks bidirectionally and show con
 
 ## Supported compositions
 
-The catalog defines six reusable ordered workflows:
+The catalog defines three reusable ordered workflows:
 
 - `protected-push`: synchronize repositories, then produce current
   verification evidence; work logging and Telegram notification are optional.
@@ -522,18 +522,6 @@ The catalog defines six reusable ordered workflows:
 - `skill-collection-release`: synchronize the repository, plan and locally
   verify the collection release, then bind pre-push evidence; work logging and
   Telegram notification are optional.
-- `paired-code-documentation-change`: synchronize both repositories, coordinate
-  the paired implementation and canonical documentation change, and require a
-  commit-bound checkpoint before either publication; digest, work-log, and
-  Telegram updates are optional.
-- `configured-gitflow-release`: synchronize the repository, execute the
-  project-declared release route with a commit-bound checkpoint before
-  publication; work logging and Telegram updates are optional.
-- `documented-configured-gitflow-release`: synchronize the code and
-  documentation repositories, coordinate their canonical change, execute the
-  configured release route, and apply each mandatory checkpoint before its
-  publication boundary; work logging and Telegram updates are optional.
-
 Required steps fail closed. Optional logging and notification report their own
 failure without changing the observed result of the primary operation. Resolve
 an exact plan with `scripts/compose_skills.py`; pass `--evidence` with a
