@@ -197,6 +197,8 @@ creating a skill.
   chats or `sync-project-context` handoffs;
 - ranks candidates as recommended, investigate, or rejected and compares them
   with existing catalogs;
+- proactively offers every eligible candidate for safe contribution to
+  `kolabse/skills`, local creation, or deferral;
 - exports a selected idea as a sanitized, digest-bound contribution package
   that maintainers can validate independently.
 

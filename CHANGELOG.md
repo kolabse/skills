@@ -2,6 +2,13 @@
 
 ## Unreleased
 
+### Fixed
+
+- `discover-skill-candidates` now makes contribution to `kolabse/skills` the
+  recommended next step for every eligible candidate instead of defaulting to
+  local creation, while keeping export and external Issue submission behind
+  explicit user confirmation.
+
 ## [1.12.0] - 2026-08-20
 
 ### Added

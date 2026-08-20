@@ -496,6 +496,70 @@ class DiscoverSkillCandidatesTests(unittest.TestCase):
                     {"candidates": [candidate(old_ids)]}, current_ids
                 )
 
+    def test_eligible_candidates_require_collection_contribution_offer(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            project = Path(directory) / "project"
+            initialize_project(
+                project,
+                "# One\n\nVerify identities.\n\n# Two\n\nFail closed on mismatch.\n",
+            )
+            rules = self.inventory(project)
+            ids = self.block_ids(rules)
+            report = discover_candidates.score_candidates(
+                discover_candidates.normalize_candidate_input(
+                    {"candidates": [candidate(ids)]}, set(ids)
+                ),
+                rules,
+                [],
+            )
+
+            actions = report["next_actions"]
+            self.assertTrue(actions["contribution_offer_required"])
+            self.assertEqual(["verify-deployment-context"], actions["eligible_candidates"])
+            self.assertFalse(actions["automatic_external_submission"])
+            self.assertEqual(
+                ["contribute-to-collection", "create-locally", "defer"],
+                [item["id"] for item in actions["options"]],
+            )
+            contribution = actions["options"][0]
+            self.assertTrue(contribution["recommended"])
+            self.assertTrue(contribution["requires_user_confirmation"])
+            self.assertEqual(
+                "https://github.com/kolabse/skills", contribution["target_repository"]
+            )
+            self.assertIn("skill-candidate-contribution.yml", contribution["issue_url"])
+
+            tampered = json.loads(json.dumps(report))
+            tampered["next_actions"]["options"][0]["target_repository"] = (
+                "https://example.invalid/another-collection"
+            )
+            with self.assertRaisesRegex(discover_candidates.DiscoveryError, "digest"):
+                discover_candidates.export_contribution(
+                    tampered,
+                    contribution_details(ids),
+                    "verify-deployment-context",
+                )
+
+    def test_rejected_candidates_are_not_offered_for_contribution(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            project = Path(directory) / "project"
+            initialize_project(project, "# Rule\n\nKeep this project-specific.\n")
+            rules = self.inventory(project)
+            ids = self.block_ids(rules)
+            rejected = candidate(ids, disqualifiers=["project-specific"])
+            report = discover_candidates.score_candidates(
+                discover_candidates.normalize_candidate_input(
+                    {"candidates": [rejected]}, set(ids)
+                ),
+                rules,
+                [],
+            )
+
+            actions = report["next_actions"]
+            self.assertFalse(actions["contribution_offer_required"])
+            self.assertEqual([], actions["eligible_candidates"])
+            self.assertEqual(["defer"], [item["id"] for item in actions["options"]])
+
     def test_default_catalog_is_loaded_and_deduplicated(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
             project = Path(directory) / "project"
