@@ -121,6 +121,8 @@ def validate_config(value: dict[str, Any]) -> dict[str, Any]:
     valid_branch(f"{prefix}candidate", "hotfix prefix")
     if development == production:
         raise GitFlowError("development and production roles must be different")
+    if development.startswith(prefix) or production.startswith(prefix):
+        raise GitFlowError("persistent branch roles must remain outside the hotfix namespace")
     if value.get("protected_production") is not True:
         raise GitFlowError("production must be declared protected")
     default_route = value.get("default_route")
@@ -402,6 +404,9 @@ def verify_completion(project_root: Path, plan_path: Path, input_path: Path) -> 
         or not valid_digest(review.get("evidence_sha256"))
     ):
         blockers.append("review evidence does not match the planned route")
+    current_source = resolve_ref(project_root, remote_ref(config, plan["source_branch"]))
+    if current_source != plan["source_commit"]:
+        blockers.append("remote source branch changed after the release plan")
     production_commit = evidence.get("production_commit")
     if not isinstance(production_commit, str) or not COMMIT_RE.fullmatch(production_commit):
         blockers.append("production_commit is invalid")

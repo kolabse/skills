@@ -537,6 +537,33 @@ class ConfiguredGitFlowTests(unittest.TestCase):
         self.assertFalse(result["passed"])
         self.assertIn("review evidence does not match the planned route", result["blockers"])
 
+    def test_remote_source_must_not_advance_after_plan(self) -> None:
+        plan = self.route_plan({
+            "release_id": "advanced-source",
+            "source_branch": "development",
+            "explicit_hotfix": False,
+        }, "advanced-source-plan.json")
+        (self.repository / "service.txt").write_text("advanced\n", encoding="utf-8")
+        git(self.repository, "add", "--", "service.txt")
+        git(self.repository, "commit", "-m", "Advance source after plan")
+        git(self.repository, "push")
+        advanced_source = git(self.repository, "rev-parse", "HEAD")
+        self.publish_to_production("development")
+        evidence = self.evidence(plan, reintegration={
+            "status": "not-required", "target_branch": "development",
+            "commit": None, "evidence_sha256": None,
+        })
+        value = json.loads(evidence.read_text(encoding="utf-8"))
+        value["production_commit"] = advanced_source
+        value["deployment"]["production_commit"] = advanced_source
+        write_json(evidence, value)
+
+        result = GITFLOW.verify_completion(
+            self.repository, self.parent / "advanced-source-plan.json", evidence
+        )
+        self.assertFalse(result["passed"])
+        self.assertIn("remote source branch changed after the release plan", result["blockers"])
+
     def test_unchanged_production_is_not_reported_as_new_publication(self) -> None:
         self.publish_to_production("development")
         git(self.repository, "switch", "development")
@@ -840,6 +867,11 @@ class ConfiguredGitFlowTests(unittest.TestCase):
         duplicate["gates"]["hotfix"] = ["tests"]
         with self.assertRaisesRegex(GITFLOW.GitFlowError, "unique across"):
             GITFLOW.validate_config(duplicate)
+        colliding = json.loads(json.dumps(self.config))
+        colliding["branches"]["production"] = "release/live"
+        colliding["branches"]["hotfix_prefix"] = "release/"
+        with self.assertRaisesRegex(GITFLOW.GitFlowError, "outside the hotfix namespace"):
+            GITFLOW.validate_config(colliding)
         with self.assertRaisesRegex(GITFLOW.GitFlowError, "contains a URL"):
             GITFLOW.validate_route_input({
                 "release_id": "https://internal.example.invalid/release",
