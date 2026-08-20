@@ -1,0 +1,4 @@
+interface:
+  display_name: "Дайджест проекта"
+  short_description: "Ведёт понятный пользователям дайджест изменений"
+  default_prompt: "Use $maintain-project-digest to add today's completed user-visible changes to the project documentation digest."

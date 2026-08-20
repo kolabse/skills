@@ -2,6 +2,13 @@
 
 ## Unreleased
 
+### Added
+
+- Experimental `maintain-project-digest` skill for collaborative same-day,
+  user-facing change summaries with stable categories, read-only planning,
+  duplicate detection, stale-plan protection, cooperative locking, and atomic
+  updates that preserve every earlier dated section.
+
 ## [1.11.0] - 2026-08-15
 
 ### Changed

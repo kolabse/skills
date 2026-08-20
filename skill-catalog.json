@@ -152,6 +152,34 @@
       }
     },
     {
+      "name": "maintain-project-digest",
+      "path": "skills/maintain-project-digest",
+      "status": "experimental",
+      "maintainers": [
+        "@kolabse"
+      ],
+      "platforms": [
+        "linux",
+        "macos",
+        "windows"
+      ],
+      "trigger_evals": "evals/maintain-project-digest.json",
+      "license": "Apache-2.0",
+      "provides": ["user-facing-project-digest"],
+      "requires": [],
+      "optional_integrations": ["work-log"],
+      "configuration": {
+        "scope": "project",
+        "format": "none",
+        "status": ["python", "scripts/project_digest.py", "status", "--project-root", "<project-root>", "--json"]
+      },
+      "provenance": {
+        "kind": "original",
+        "source": "Created to maintain a safe, collaborative daily summary of completed user-visible project changes",
+        "canonical_repository": "https://github.com/kolabse/skills"
+      }
+    },
+    {
       "name": "notify-via-telegram",
       "path": "skills/notify-via-telegram",
       "status": "stable",

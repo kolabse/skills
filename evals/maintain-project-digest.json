@@ -1,0 +1,55 @@
+{
+  "skill": "maintain-project-digest",
+  "positive": [
+    {
+      "prompt": "Добавь в сегодняшний дайджест проекта понятное пользователям описание завершённых изменений.",
+      "reason": "The user explicitly requests today's user-facing project digest."
+    },
+    {
+      "prompt": "Дайджест: форма обратной связи больше не отправляется дважды, а каталог теперь загружается быстрее.",
+      "reason": "The digest cue and completed user-visible outcomes require categorization and daily recording."
+    },
+    {
+      "prompt": "Обнови ежедневный список изменений в документации продукта, не добавляя технических деталей.",
+      "reason": "A daily nontechnical product change record is the skill's core workflow."
+    },
+    {
+      "prompt": "Зафиксируй для пользователей, что сегодня появилась фильтрация товаров и исправлен вход через мобильное приложение.",
+      "reason": "Completed user-visible changes should be added to today's digest."
+    },
+    {
+      "prompt": "Дополните общий сегодняшний дайджест команды, но не меняйте записи за прошлые дни.",
+      "reason": "Concurrent same-day maintenance with historical preservation is an explicit skill invariant."
+    },
+    {
+      "prompt": "Создай в нашей документации первый пользовательский дайджест изменений за сегодня.",
+      "reason": "First-time creation of the project digest belongs to this skill."
+    }
+  ],
+  "negative": [
+    {
+      "prompt": "Запиши выполненные команды, результаты тестов и оставшийся блокер в журнал работ.",
+      "reason": "Technical operational evidence belongs to maintain-work-log, not the user-facing digest."
+    },
+    {
+      "prompt": "Подготовь release notes для версии 4.2.0 по всем изменениям с прошлого релиза.",
+      "reason": "Version-scoped release notes are retrospective release documentation, not today's rolling digest."
+    },
+    {
+      "prompt": "Покажи историю коммитов за сегодня.",
+      "reason": "Reading commit history does not imply maintaining a user-facing digest."
+    },
+    {
+      "prompt": "Составь план доработок на следующую неделю.",
+      "reason": "Planned work must not be recorded as completed digest changes."
+    },
+    {
+      "prompt": "Обнови CHANGELOG согласно conventional commits.",
+      "reason": "A conventional changelog workflow is distinct from the daily project digest."
+    },
+    {
+      "prompt": "Напиши технический отчёт о причинах вчерашнего инцидента.",
+      "reason": "An incident report is a technical document and not a daily user change digest."
+    }
+  ]
+}
