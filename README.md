@@ -314,6 +314,36 @@ Maintain the canonical dated project journal at `docs/reports/work-log.md`.
 $maintain-work-log Configure this project to maintain its dated work log.
 ```
 
+### `maintain-project-digest` (experimental)
+
+Maintain a daily, user-facing digest of completed project changes in the
+project documentation.
+
+**What it does:**
+
+- groups completed changes under today's date as new capabilities,
+  improvements, fixes, security, documentation, or important behavior changes;
+- writes short nontechnical outcomes and omits empty categories;
+- keeps newest dates first and leaves every earlier date unchanged;
+- uses a content-bound plan, cooperative lock, atomic replacement, and
+  duplicate detection so several developers can safely contribute in one day.
+
+**What it does not do:**
+
+- choose or create a documentation location when the project does not identify
+  one unambiguously;
+- record plans, failed experiments, internal implementation activity, or
+  unsupported user benefits;
+- replace the technical work log, version release notes, or a conventional
+  changelog;
+- rewrite historical digest periods during an ordinary same-day update.
+
+**How to invoke it:**
+
+```text
+$maintain-project-digest Add today's completed user-visible changes to the project digest.
+```
+
 ### `notify-via-telegram`
 
 Send lifecycle updates for long-running agent tasks through Telegram.
