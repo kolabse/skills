@@ -307,7 +307,9 @@ class VerifiedDevelopmentLifecycleTests(unittest.TestCase):
 
         checkpoint = self.checkpoint(plan, "task-claimed", attempt=1)
         evidence = read_json(Path(checkpoint["evidence_ref"]))
-        evidence["observed_at"] = datetime.now(timezone.utc).isoformat()
+        evidence["observed_at"] = (
+            datetime.fromisoformat(checkpoint["observed_at"]) + timedelta(seconds=1)
+        ).isoformat()
         write_json(Path(checkpoint["evidence_ref"]), evidence)
         checkpoint["evidence_sha256"] = LIFECYCLE.digest(evidence)
         with self.assertRaisesRegex(LIFECYCLE.LifecycleError, "timestamp, subjects, or assertions"):
