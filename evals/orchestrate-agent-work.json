@@ -1,0 +1,13 @@
+{
+  "skill": "orchestrate-agent-work",
+  "positive": [
+    {"prompt":"Use three subagents in parallel to inspect the API, UI, and tests, then integrate their findings.","reason":"The user explicitly requests bounded parallel agent work."},
+    {"prompt":"Delegate independent reviews of these four modules and coordinate the combined result.","reason":"Delegation and integration are the requested workflow."},
+    {"prompt":"Our AGENTS.md requires subagents for this migration; assign non-overlapping ownership.","reason":"Applicable project policy explicitly requires subagents."}
+  ],
+  "negative": [
+    {"prompt":"Fix these three small typos.","reason":"Several edits alone do not justify orchestration."},
+    {"prompt":"Create a new Codex task for me to revisit tomorrow.","reason":"A user-visible task is not an internal subagent assignment."},
+    {"prompt":"Explain how parallel programming works.","reason":"Conceptual explanation does not request agent coordination."}
+  ]
+}

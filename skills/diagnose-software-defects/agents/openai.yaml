@@ -1,0 +1,4 @@
+interface:
+  display_name: "Diagnose Software Defects"
+  short_description: "Finds evidence-backed causes of software failures"
+  default_prompt: "Use $diagnose-software-defects to reproduce this failure and identify its evidence-backed root cause."

@@ -1,0 +1,4 @@
+interface:
+  display_name: "Review Code Changes"
+  short_description: "Finds evidence-backed defects in defined changes"
+  default_prompt: "Use $review-code-changes to review this change and report only actionable, evidence-backed findings."

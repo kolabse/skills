@@ -1,0 +1,15 @@
+{
+  "$schema":"https://json-schema.org/draft/2020-12/schema","title":"Test-first evidence","type":"object","additionalProperties":false,
+  "required":["schema_version","behavior","subject","red","green","evidence_digest"],
+  "properties":{
+    "schema_version":{"const":1},"behavior":{"type":"string","minLength":1},
+    "subject":{"oneOf":[
+      {"type":"object","additionalProperties":false,"required":["kind","identity"],"properties":{"kind":{"const":"commit"},"identity":{"type":"string","pattern":"^[0-9a-f]{40}([0-9a-f]{24})?$"}}},
+      {"type":"object","additionalProperties":false,"required":["kind","identity"],"properties":{"kind":{"const":"worktree"},"identity":{"type":"string","pattern":"^sha256:[0-9a-f]{64}$"}}}
+    ]},
+    "red":{"type":"object","additionalProperties":false,"required":["command","exit_code","summary","failure_class","intended_behavior_failure_reason"],"properties":{"command":{"$ref":"#/$defs/argv"},"exit_code":{"type":"integer","not":{"const":0}},"summary":{"type":"string","minLength":1},"failure_class":{"const":"intended_behavior"},"intended_behavior_failure_reason":{"type":"string","minLength":1}}},
+    "green":{"type":"object","additionalProperties":false,"required":["focused","broader"],"properties":{"focused":{"$ref":"#/$defs/greenRun"},"broader":{"$ref":"#/$defs/greenRun"}}},
+    "evidence_digest":{"type":"string","pattern":"^sha256:[0-9a-f]{64}$"}
+  },
+  "$defs":{"argv":{"type":"array","minItems":1,"items":{"type":"string","minLength":1}},"greenRun":{"type":"object","additionalProperties":false,"required":["command","exit_code","summary"],"properties":{"command":{"$ref":"#/$defs/argv"},"exit_code":{"const":0},"summary":{"type":"string","minLength":1}}}}
+}

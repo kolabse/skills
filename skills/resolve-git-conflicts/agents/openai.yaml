@@ -1,0 +1,4 @@
+interface:
+  display_name: "Resolve Git Conflicts"
+  short_description: "Reconciles Git conflicts without staging unrelated work"
+  default_prompt: "Use $resolve-git-conflicts to resolve these active conflicts path by path and verify the result."

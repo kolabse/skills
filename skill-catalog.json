@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "collection_version": "1.13.0",
+  "collection_version": "1.14.0",
   "license": "Apache-2.0",
   "composition_evals": "evals/compositions.json",
   "composition_evidence_schema": "schemas/composition-evidence.schema.json",
@@ -30,6 +30,142 @@
     }
   ],
   "skills": [
+    {
+      "name": "orchestrate-agent-work",
+      "path": "skills/orchestrate-agent-work",
+      "status": "experimental",
+      "maintainers": ["@kolabse"],
+      "platforms": ["linux", "macos", "windows"],
+      "trigger_evals": "evals/orchestrate-agent-work.json",
+      "license": "Apache-2.0",
+      "provides": ["multi-agent-work-orchestration"],
+      "requires": [],
+      "optional_integrations": [],
+      "configuration": {
+        "scope": "project",
+        "format": "none",
+        "status": ["python", "scripts/status.py"]
+      },
+      "provenance": {
+        "kind": "original",
+        "source": "Clean-room implementation informed by https://github.com/kolabse/skills/issues/53 and review of provencher/codex-skills@8aa6c42b73781c905c55f8a1253a18127079ac21",
+        "canonical_repository": "https://github.com/kolabse/skills"
+      }
+    },
+    {
+      "name": "develop-with-test-first-evidence",
+      "path": "skills/develop-with-test-first-evidence",
+      "status": "experimental",
+      "maintainers": ["@kolabse"],
+      "platforms": ["linux", "macos", "windows"],
+      "trigger_evals": "evals/develop-with-test-first-evidence.json",
+      "license": "Apache-2.0",
+      "provides": ["test-first-development-evidence"],
+      "requires": [],
+      "optional_integrations": ["software-defect-diagnosis"],
+      "configuration": {
+        "scope": "project",
+        "format": "none",
+        "status": ["python", "scripts/status.py"]
+      },
+      "provenance": {
+        "kind": "original",
+        "source": "Clean-room implementation informed by https://github.com/kolabse/skills/issues/53 and review of mattpocock/skills@5b15a47f2d7150f545fbcacbfe381787fc0230dc",
+        "canonical_repository": "https://github.com/kolabse/skills"
+      }
+    },
+    {
+      "name": "review-code-changes",
+      "path": "skills/review-code-changes",
+      "status": "experimental",
+      "maintainers": ["@kolabse"],
+      "platforms": ["linux", "macos", "windows"],
+      "trigger_evals": "evals/review-code-changes.json",
+      "license": "Apache-2.0",
+      "provides": ["code-change-review"],
+      "requires": [],
+      "optional_integrations": ["software-defect-diagnosis"],
+      "configuration": {
+        "scope": "project",
+        "format": "none",
+        "status": ["python", "scripts/status.py"]
+      },
+      "provenance": {
+        "kind": "original",
+        "source": "Clean-room implementation informed by https://github.com/kolabse/skills/issues/53 and review of mattpocock/skills@5b15a47f2d7150f545fbcacbfe381787fc0230dc",
+        "canonical_repository": "https://github.com/kolabse/skills"
+      }
+    },
+    {
+      "name": "diagnose-software-defects",
+      "path": "skills/diagnose-software-defects",
+      "status": "experimental",
+      "maintainers": ["@kolabse"],
+      "platforms": ["linux", "macos", "windows"],
+      "trigger_evals": "evals/diagnose-software-defects.json",
+      "license": "Apache-2.0",
+      "provides": ["software-defect-diagnosis"],
+      "requires": [],
+      "optional_integrations": [],
+      "configuration": {
+        "scope": "project",
+        "format": "none",
+        "status": ["python", "scripts/status.py"]
+      },
+      "provenance": {
+        "kind": "original",
+        "source": "Clean-room implementation informed by https://github.com/kolabse/skills/issues/53 and review of mattpocock/skills@5b15a47f2d7150f545fbcacbfe381787fc0230dc",
+        "canonical_repository": "https://github.com/kolabse/skills"
+      }
+    },
+    {
+      "name": "resolve-git-conflicts",
+      "path": "skills/resolve-git-conflicts",
+      "status": "experimental",
+      "maintainers": ["@kolabse"],
+      "platforms": ["linux", "macos", "windows"],
+      "trigger_evals": "evals/resolve-git-conflicts.json",
+      "license": "Apache-2.0",
+      "provides": ["git-conflict-resolution"],
+      "requires": [],
+      "optional_integrations": ["software-defect-diagnosis"],
+      "configuration": {
+        "scope": "project",
+        "format": "none",
+        "status": ["python", "scripts/status.py"]
+      },
+      "provenance": {
+        "kind": "original",
+        "source": "Clean-room implementation informed by https://github.com/kolabse/skills/issues/53 and review of mattpocock/skills@5b15a47f2d7150f545fbcacbfe381787fc0230dc",
+        "canonical_repository": "https://github.com/kolabse/skills"
+      }
+    },
+    {
+      "name": "execute-verified-development-lifecycle",
+      "path": "skills/execute-verified-development-lifecycle",
+      "status": "experimental",
+      "maintainers": ["@kolabse"],
+      "platforms": ["linux", "macos", "windows"],
+      "trigger_evals": "evals/execute-verified-development-lifecycle.json",
+      "license": "Apache-2.0",
+      "provides": ["verified-development-lifecycle"],
+      "requires": ["repository-freshness", "test-first-development-evidence", "push-verification-evidence", "code-change-review"],
+      "optional_integrations": ["multi-agent-work-orchestration", "software-defect-diagnosis", "git-conflict-resolution", "cross-repository-code-documentation-coordination", "work-log", "user-facing-project-digest", "task-notification", "configured-gitflow-release"],
+      "configuration": {
+        "scope": "project",
+        "format": "json",
+        "current_version": 1,
+        "schema": "schemas/config.schema.json",
+        "configure": ["python", "scripts/development_lifecycle.py", "configure", "--project-root", "<project-root>", "--config-source", "<config.json>"],
+        "status": ["python", "scripts/development_lifecycle.py", "status", "--project-root", "<project-root>", "--json"],
+        "migrate": ["python", "scripts/development_lifecycle.py", "migrate", "--project-root", "<project-root>", "--json"]
+      },
+      "provenance": {
+        "kind": "original",
+        "source": "Clean-room implementation from https://github.com/kolabse/skills/issues/53, informed by review of provencher/codex-skills@8aa6c42b73781c905c55f8a1253a18127079ac21 and mattpocock/skills@5b15a47f2d7150f545fbcacbfe381787fc0230dc",
+        "canonical_repository": "https://github.com/kolabse/skills"
+      }
+    },
     {
       "name": "discover-skill-candidates",
       "path": "skills/discover-skill-candidates",

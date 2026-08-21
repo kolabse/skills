@@ -1,0 +1,4 @@
+interface:
+  display_name: "Execute Verified Development Lifecycle"
+  short_description: "Verify an evidence-bound development lifecycle"
+  default_prompt: "Use $execute-verified-development-lifecycle to plan and verify this change through the project-declared development lifecycle."

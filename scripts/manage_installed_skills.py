@@ -12,7 +12,7 @@ from urllib.parse import urlparse
 
 
 COLLECTION = "kolabse-skills"
-COLLECTION_VERSION = "1.13.0"
+COLLECTION_VERSION = "1.14.0"
 SKILLS_CLI_VERSION = "1.5.22"
 LOCK_FILE = "skills-lock.json"
 METADATA_FILE = "collection-metadata.json"
@@ -21,11 +21,19 @@ CANONICAL_SLUG = "kolabse/skills"
 REPOSITORY_ROOT = Path(__file__).resolve().parents[1]
 KNOWN_SKILLS = {
     "coordinate-code-documentation-repositories",
+    "develop-with-test-first-evidence",
+    "diagnose-software-defects",
+    "discover-skill-candidates",
     "execute-configured-gitflow-releases",
+    "execute-verified-development-lifecycle",
     "maintain-work-log",
+    "maintain-project-digest",
     "notify-via-telegram",
     "operate-yandex-cloud",
+    "orchestrate-agent-work",
     "release-skill-collection",
+    "resolve-git-conflicts",
+    "review-code-changes",
     "sync-project-context",
     "synchronize-git-repositories",
     "verify-before-push",
@@ -641,6 +649,11 @@ def migration_commands(project: Path, include_user_config: bool) -> list[tuple[s
             "execute-configured-gitflow-releases",
             root / ".agents/execute-configured-gitflow-releases/config.json",
             installed / "execute-configured-gitflow-releases/scripts/gitflow_release.py",
+        ),
+        (
+            "execute-verified-development-lifecycle",
+            root / ".agents/execute-verified-development-lifecycle/config.json",
+            installed / "execute-verified-development-lifecycle/scripts/development_lifecycle.py",
         ),
     )
     for name, config_path, script_path in coordinated_migrations:

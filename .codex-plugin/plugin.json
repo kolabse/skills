@@ -1,7 +1,7 @@
 {
   "name": "kolabse-skills",
-  "version": "1.13.0",
-  "description": "Reusable Git, coordinated documentation, release, private context, notification, and infrastructure workflows maintained by kolabse.",
+  "version": "1.14.0",
+  "description": "Reusable development lifecycle, Git, review, testing, diagnosis, documentation, release, context, notification, and infrastructure workflows maintained by kolabse.",
   "author": {
     "name": "kolabse",
     "url": "https://github.com/kolabse"
@@ -11,10 +11,15 @@
   "license": "Apache-2.0",
   "keywords": [
     "agent-skills",
+    "agent-orchestration",
+    "code-review",
+    "debugging",
+    "development-lifecycle",
     "skill-discovery",
     "cloud",
     "git",
     "gitflow",
+    "git-conflicts",
     "infrastructure",
     "logging",
     "project-digest",
@@ -24,6 +29,7 @@
     "project-workflows",
     "repository-synchronization",
     "testing",
+    "test-driven-development",
     "telegram",
     "work-log",
     "pre-push",
@@ -32,8 +38,8 @@
   "skills": "./skills/",
   "interface": {
     "displayName": "kolabse Skills",
-    "shortDescription": "Reusable Git, context, and cloud workflows",
-    "longDescription": "A maintained collection of workflows for reusable-skill discovery, safe Git synchronization, coordinated code and documentation changes, configured GitFlow releases, state-bound pre-push verification, private cross-device project handoffs, user-facing project digests, project work logs, task notifications, and cloud infrastructure.",
+    "shortDescription": "Verified development, Git, context, and cloud workflows",
+    "longDescription": "A maintained collection of workflows for verified development lifecycles, authorized agent orchestration, test-first evidence, code review, defect diagnosis, Git conflict resolution, reusable-skill discovery, safe Git synchronization, coordinated code and documentation changes, configured GitFlow releases, state-bound pre-push verification, private cross-device project handoffs, project records, notifications, and cloud infrastructure.",
     "developerName": "kolabse",
     "category": "Developer Tools",
     "capabilities": [
@@ -43,6 +49,7 @@
     "websiteURL": "https://github.com/kolabse/skills",
     "defaultPrompt": [
       "Safely synchronize this project's repositories and verify exact-state evidence before publication.",
+      "Execute the configured development lifecycle with test-first, review, pipeline, documentation, delivery, and cleanup evidence.",
       "Coordinate implementation with canonical documentation and execute the configured standard or hotfix release route.",
       "Use the appropriate kolabse workflow for project context, digests, skill discovery, notifications, or cloud operations."
     ]

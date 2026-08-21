@@ -1,0 +1,14 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/kolabse/skills/execute-verified-development-lifecycle/checkpoint.schema.json",
+  "type": "object", "additionalProperties": false,
+  "required": ["schema_version", "plan_sha256", "config_sha256", "checkpoint", "attempt", "status", "observed_at", "subjects", "assertions", "coverage", "evidence_sha256", "evidence_ref", "rewind_to"],
+  "properties": {
+    "schema_version": {"const": 1}, "plan_sha256": {"$ref": "#/$defs/sha"}, "config_sha256": {"$ref": "#/$defs/sha"},
+    "checkpoint": {"enum": ["task-claimed", "feature-prepared", "tdd-red", "tdd-green", "changed-scope-preflight", "review-complete", "push-verified", "feature-published", "feature-pipeline", "documentation-ready", "development-integrated", "documentation-published", "production-delegated", "deployment-observed", "marker-observed", "smoke-passed", "documentation-complete", "cleanup-proved"]}, "attempt": {"type": "integer", "minimum": 1}, "status": {"enum": ["passed", "failed", "not-required"]}, "observed_at": {"type": "string", "format": "date-time"},
+    "subjects": {"type": "array", "minItems": 1, "items": {"type": "object", "additionalProperties": false, "required": ["kind", "role", "repository", "identity"], "properties": {"kind": {"enum": ["task", "ref", "commit", "tree", "check-run", "review-change", "pipeline", "documentation", "notification", "development-integration", "production-handoff", "deployment", "marker", "smoke-run", "cleanup-resource", "durable-target"]}, "role": {"type": "string", "minLength": 1}, "repository": {"type": ["string", "null"]}, "identity": {"type": "string", "minLength": 1}}}},
+    "assertions": {"type": "array", "minItems": 1, "items": {"type": "object", "additionalProperties": false, "required": ["name", "passed"], "properties": {"name": {"type": "string"}, "passed": {"type": "boolean"}}}},
+    "coverage": {"type": "object", "additionalProperties": false, "required": ["repositories", "rules", "references", "checks", "documentation", "notifications"], "properties": {"repositories": {"$ref": "#/$defs/ids"}, "rules": {"$ref": "#/$defs/ids"}, "references": {"$ref": "#/$defs/ids"}, "checks": {"$ref": "#/$defs/ids"}, "documentation": {"$ref": "#/$defs/ids"}, "notifications": {"$ref": "#/$defs/ids"}}},
+    "evidence_sha256": {"$ref": "#/$defs/sha"}, "evidence_ref": {"type": "string", "minLength": 1}, "rewind_to": {"type": ["string", "null"]}
+  }, "$defs": {"sha": {"type": "string", "pattern": "^[0-9a-f]{64}$"}, "ids": {"type": "array", "uniqueItems": true, "items": {"type": "string"}}}
+}
