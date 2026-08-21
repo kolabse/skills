@@ -235,6 +235,17 @@ def validate_config(config: dict[str, Any]) -> None:
     exact_keys(config["delivery"], {"deployment_required", "marker_required", "smoke_required"}, "delivery")
     if not all(isinstance(config["delivery"][key], bool) for key in config["delivery"]):
         raise LifecycleError("delivery requirements must be boolean")
+    delivery_gates = {
+        "deployment-observed": "deployment_required",
+        "marker-observed": "marker_required",
+        "smoke-passed": "smoke_required",
+    }
+    gates_by_id = {item["id"]: item for item in config["gates"]}
+    for gate_id, requirement in delivery_gates.items():
+        if gates_by_id[gate_id]["required"] is not config["delivery"][requirement]:
+            raise LifecycleError(
+                f"gate {gate_id} required must match delivery.{requirement}"
+            )
     exact_keys(config["cleanup"], {"proof_methods"}, "cleanup")
     methods = config["cleanup"].get("proof_methods", [])
     if not methods or len(methods) != len(set(methods)) or not set(methods) <= {"merged", "identical-tree", "patch-equivalent", "provider-representation"}:
@@ -684,9 +695,14 @@ def cmd_advance(args: argparse.Namespace) -> dict[str, Any]:
             raise LifecycleError(f"checkpoint {name} lacks subject identity for repositories: {', '.join(missing_repositories)}")
     def identities(document: dict[str, Any], kind: str) -> set[str]:
         return {x["identity"] for x in document.get("subjects", []) if x.get("kind") == kind}
+    def repository_identities(document: dict[str, Any], kind: str) -> set[tuple[str | None, str]]:
+        return {
+            (x["repository"], x["identity"])
+            for x in document.get("subjects", []) if x.get("kind") == kind
+        }
     green = state["completed"].get("tdd-green")
     if green and name in {"review-complete", "push-verified", "feature-published", "feature-pipeline"}:
-        if identities(checkpoint, "commit") != identities(green, "commit"):
+        if repository_identities(checkpoint, "commit") != repository_identities(green, "commit"):
             raise LifecycleError(f"checkpoint {name} commit does not match tdd-green commit")
     development = state["completed"].get("development-integrated")
     if development and name in {"production-delegated", "deployment-observed"}:
@@ -730,7 +746,8 @@ def cmd_advance(args: argparse.Namespace) -> dict[str, Any]:
             raise LifecycleError(f"failure rewind must be configured target {configured}")
         start = ORDER.index(rewind)
         state["completed"] = {k: v for k, v in state["completed"].items() if ORDER.index(k) < start}
-        state["current_checkpoint"] = ORDER[start - 1] if start else None
+        retained = [item for item in active if item in state["completed"]]
+        state["current_checkpoint"] = retained[-1] if retained else None
         state["failed"] = True
     else:
         raise LifecycleError("checkpoint status must be passed, failed, or not-required")

@@ -414,6 +414,100 @@ class VerifiedDevelopmentLifecycleTests(unittest.TestCase):
         with self.assertRaisesRegex(LIFECYCLE.LifecycleError, "same or earlier"):
             LIFECYCLE.validate_config(bad)
 
+    def test_delivery_requirement_must_match_gate_requiredness(self) -> None:
+        bad = self.make_config()
+        next(
+            gate for gate in bad["gates"] if gate["id"] == "deployment-observed"
+        )["required"] = False
+
+        with self.assertRaisesRegex(
+            LIFECYCLE.LifecycleError,
+            "deployment-observed required must match delivery.deployment_required",
+        ):
+            LIFECYCLE.validate_config(bad)
+
+    def test_failure_rewind_uses_enabled_checkpoint_prefix(self) -> None:
+        self.config["delivery"]["marker_required"] = False
+        next(
+            gate for gate in self.config["gates"] if gate["id"] == "marker-observed"
+        )["required"] = False
+        write_json(self.source, self.config)
+        self.configure()
+        plan_path, state_path, plan = self.make_plan()
+        active = LIFECYCLE.enabled_order(self.config)
+        smoke_index = active.index("smoke-passed")
+        for name in active[:smoke_index]:
+            self.advance(plan_path, state_path, self.checkpoint(plan, name))
+
+        failed = self.checkpoint(
+            plan, "smoke-passed", status="failed", rewind_to="smoke-passed"
+        )
+        result = self.advance(plan_path, state_path, failed)
+
+        self.assertEqual(result["current_checkpoint"], "deployment-observed")
+        retried = self.advance(
+            plan_path, state_path, self.checkpoint(plan, "smoke-passed", attempt=2)
+        )
+        self.assertEqual(retried["current_checkpoint"], "smoke-passed")
+
+    def test_commit_progression_preserves_repository_binding(self) -> None:
+        second = self.project / "docs-repo"
+        second.mkdir()
+        second_remote = self.base / "docs-remote.git"
+        subprocess.run(["git", "init", "--bare", str(second_remote)], capture_output=True, check=True)
+        git(second, "init", "-b", "main")
+        git(second, "config", "user.email", "tests@example.invalid")
+        git(second, "config", "user.name", "Lifecycle Tests")
+        git(second, "remote", "add", "origin", str(second_remote))
+        (second / "AGENTS.md").write_text(LIFECYCLE.RULE_BLOCK + "\n", encoding="utf-8")
+        git(second, "add", ".")
+        git(second, "commit", "-m", "Initial")
+        git(second, "push", "-u", "origin", "main")
+        self.config["repositories"].append({
+            "name": "docs", "path": "docs-repo", "base_ref": "origin/main",
+            "require_clean": True, "require_upstream_current": True,
+        })
+        write_json(self.source, self.config)
+        self.configure()
+        self.make_plan()
+        request = read_json(self.artifacts / "input.json")
+        docs_commit = git(second, "rev-parse", "HEAD")
+        request["repositories"].append({
+            "name": "docs", "start_commit": docs_commit,
+            "upstream_commit": docs_commit, "clean": True, "current": True,
+        })
+        write_json(self.artifacts / "input.json", request)
+        plan_path = self.artifacts / "two-repo-plan.json"
+        state_path = self.artifacts / "two-repo-state.json"
+        plan = LIFECYCLE.cmd_plan(Namespace(
+            project_root=str(self.project), input=str(self.artifacts / "input.json"),
+            output=str(plan_path), state_output=str(state_path),
+        ))
+        self.assertTrue(plan["ready"])
+
+        for name in ("task-claimed", "feature-prepared", "tdd-red", "tdd-green"):
+            checkpoint = self.checkpoint(plan, name)
+            if name in LIFECYCLE.SOURCE_CHECKPOINTS:
+                checkpoint["subjects"].append({
+                    "kind": "commit", "role": "checkpoint-subject",
+                    "repository": "docs", "identity": "b" * 40,
+                })
+                self.rebind_evidence(checkpoint)
+            self.advance(plan_path, state_path, checkpoint)
+        review = self.checkpoint(plan, "review-complete")
+        review["subjects"].append({
+            "kind": "commit", "role": "checkpoint-subject",
+            "repository": "docs", "identity": "a" * 40,
+        })
+        next(
+            subject for subject in review["subjects"]
+            if subject["kind"] == "commit" and subject["repository"] == "app"
+        )["identity"] = "b" * 40
+        self.rebind_evidence(review)
+
+        with self.assertRaisesRegex(LIFECYCLE.LifecycleError, "does not match tdd-green"):
+            self.advance(plan_path, state_path, review)
+
     def test_checkpoint_timestamp_rejects_naive_and_future_values(self) -> None:
         self.configure()
         plan_path, state_path, plan = self.make_plan()
