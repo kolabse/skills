@@ -24,7 +24,9 @@
   trusting caller-supplied status.
 - Lifecycle advancement preserves commit identities per repository, computes
   rewinds from enabled checkpoints, and rejects delivery requirements that
-  contradict their evidence gates.
+  contradict their evidence gates. It also binds the prepared feature ref,
+  validates cleanup proof methods and production routes, and prevents plan and
+  state artifacts from overwriting each other.
 
 ## [1.13.0] - 2026-08-20
 

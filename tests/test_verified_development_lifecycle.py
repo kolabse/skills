@@ -105,7 +105,8 @@ class VerifiedDevelopmentLifecycleTests(unittest.TestCase):
         subjects = []
         for kind in sorted(LIFECYCLE.SUBJECT_KINDS[name]):
             identity = "a" * 40 if kind in {"commit", "tree"} else ("feature/change-53" if kind == "ref" else f"{kind}-identity")
-            subjects.append({"kind": kind, "role": "checkpoint-subject", "repository": "app" if name in LIFECYCLE.SOURCE_CHECKPOINTS else None, "identity": identity})
+            role = "merged" if kind == "cleanup-resource" else "checkpoint-subject"
+            subjects.append({"kind": kind, "role": role, "repository": "app" if name in LIFECYCLE.SOURCE_CHECKPOINTS else None, "identity": identity})
         assertions = [{"name": assertion, "passed": status == "passed"} for assertion in sorted(LIFECYCLE.ASSERTIONS[name])]
         value = {
             "schema_version": 1, "checkpoint": name, "status": status,
@@ -426,6 +427,54 @@ class VerifiedDevelopmentLifecycleTests(unittest.TestCase):
         ):
             LIFECYCLE.validate_config(bad)
 
+    def test_production_route_label_must_be_non_empty(self) -> None:
+        bad = self.make_config()
+        bad["production"]["route_label"] = "  "
+
+        with self.assertRaisesRegex(LIFECYCLE.LifecycleError, "route_label"):
+            LIFECYCLE.validate_config(bad)
+
+    def test_plan_and_state_outputs_must_be_distinct(self) -> None:
+        self.configure()
+        self.make_plan()
+        collision = self.artifacts / "collision.json"
+
+        with self.assertRaisesRegex(LIFECYCLE.LifecycleError, "must be distinct"):
+            LIFECYCLE.cmd_plan(Namespace(
+                project_root=str(self.project), input=str(self.artifacts / "input.json"),
+                output=str(collision), state_output=str(collision),
+            ))
+
+        self.assertFalse(collision.exists())
+
+    def test_prepared_feature_ref_must_match_plan(self) -> None:
+        self.configure()
+        plan_path, state_path, plan = self.make_plan()
+        self.advance(plan_path, state_path, self.checkpoint(plan, "task-claimed"))
+        checkpoint = self.checkpoint(plan, "feature-prepared")
+        next(
+            subject for subject in checkpoint["subjects"] if subject["kind"] == "ref"
+        )["identity"] = "feature/different"
+        self.rebind_evidence(checkpoint)
+
+        with self.assertRaisesRegex(LIFECYCLE.LifecycleError, "planned feature_ref"):
+            self.advance(plan_path, state_path, checkpoint)
+
+    def test_cleanup_resource_must_name_configured_proof_method(self) -> None:
+        self.configure()
+        plan_path, state_path, plan = self.make_plan()
+        for name in LIFECYCLE.ORDER[:-1]:
+            self.advance(plan_path, state_path, self.checkpoint(plan, name))
+        checkpoint = self.checkpoint(plan, "cleanup-proved")
+        next(
+            subject for subject in checkpoint["subjects"]
+            if subject["kind"] == "cleanup-resource"
+        )["role"] = "branch-name-pattern"
+        self.rebind_evidence(checkpoint)
+
+        with self.assertRaisesRegex(LIFECYCLE.LifecycleError, "configured proof methods"):
+            self.advance(plan_path, state_path, checkpoint)
+
     def test_failure_rewind_uses_enabled_checkpoint_prefix(self) -> None:
         self.config["delivery"]["marker_required"] = False
         next(
@@ -492,6 +541,16 @@ class VerifiedDevelopmentLifecycleTests(unittest.TestCase):
                     "kind": "commit", "role": "checkpoint-subject",
                     "repository": "docs", "identity": "b" * 40,
                 })
+                if name == "feature-prepared":
+                    self.rebind_evidence(checkpoint)
+                    with self.assertRaisesRegex(
+                        LIFECYCLE.LifecycleError, "for every repository"
+                    ):
+                        self.advance(plan_path, state_path, checkpoint)
+                    checkpoint["subjects"].append({
+                        "kind": "ref", "role": "checkpoint-subject",
+                        "repository": "docs", "identity": plan["feature_ref"],
+                    })
                 self.rebind_evidence(checkpoint)
             self.advance(plan_path, state_path, checkpoint)
         review = self.checkpoint(plan, "review-complete")
