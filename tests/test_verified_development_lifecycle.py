@@ -313,6 +313,21 @@ class VerifiedDevelopmentLifecycleTests(unittest.TestCase):
         with self.assertRaisesRegex(LIFECYCLE.LifecycleError, "timestamp, subjects, or assertions"):
             self.advance(plan_path, state_path, checkpoint)
 
+    def test_retained_evidence_allows_canonicalized_parent_alias(self) -> None:
+        self.configure()
+        plan_path, state_path, plan = self.make_plan()
+        alias = self.base / "artifacts-alias"
+        try:
+            alias.symlink_to(self.artifacts, target_is_directory=True)
+        except OSError as exc:
+            self.skipTest(f"directory symlinks are unavailable: {exc}")
+        checkpoint = self.checkpoint(plan, "task-claimed")
+        checkpoint["evidence_ref"] = str(alias / Path(checkpoint["evidence_ref"]).name)
+
+        result = self.advance(plan_path, state_path, checkpoint)
+
+        self.assertEqual(result["current_checkpoint"], "task-claimed")
+
     def test_verify_rejects_self_rehashed_state_with_malformed_completed_entries(self) -> None:
         self.configure()
         plan_path, state_path, _ = self.make_plan()

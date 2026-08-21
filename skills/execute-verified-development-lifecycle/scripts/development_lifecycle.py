@@ -408,10 +408,11 @@ def verify_retained_evidence(root: Path, config: dict[str, Any], checkpoint: dic
     if not evidence_path.is_absolute():
         evidence_path = root.resolve() / evidence_path
     lexical = evidence_path.absolute()
-    ensure_external(lexical, config, root)
-    if lexical.resolve() != lexical or not lexical.exists() or not lexical.is_file() or lexical.is_symlink():
+    if not lexical.exists() or not lexical.is_file() or lexical.is_symlink():
         raise LifecycleError("evidence_ref must identify a regular non-symlink JSON file outside configured repositories")
-    evidence = read_json(lexical)
+    resolved = lexical.resolve()
+    ensure_external(resolved, config, root)
+    evidence = read_json(resolved)
     exact_keys(evidence, {"schema_version", "plan_sha256", "config_sha256", "checkpoint", "observed_at", "subjects", "assertions", "producer", "artifact_sha256"}, "retained evidence")
     reject_sensitive(evidence, "retained evidence")
     if evidence["schema_version"] != 1 or evidence["plan_sha256"] != checkpoint["plan_sha256"] or evidence["config_sha256"] != checkpoint["config_sha256"] or evidence["checkpoint"] != checkpoint["checkpoint"]:
