@@ -1,0 +1,4 @@
+interface:
+  display_name: "Develop with Test-First Evidence"
+  short_description: "Builds changes through evidenced red-green cycles"
+  default_prompt: "Use $develop-with-test-first-evidence to implement this behavior with recorded red and green test evidence."

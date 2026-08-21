@@ -116,7 +116,7 @@ python bootstrap_update.py plan --json
 python bootstrap_update.py update --yes --migrate --json
 ```
 
-Use `--release v1.13.0` to pin a version. The bootstrap requires `gh` for
+Use `--release v1.14.0` to pin a version. The bootstrap requires `gh` for
 attestation verification and removes its temporary directory on completion.
 For an offline cache, provide both `--offline-archive` and
 `--offline-checksums`. Provenance verification remains required when `gh` can
@@ -508,6 +508,166 @@ Then use task-level or batch commands, for example:
 $sync-project-context Save the current task state.
 $sync-project-context Restore all project tasks on this computer.
 $sync-project-context Synchronize all project tasks bidirectionally and show conflicts before applying changes.
+```
+
+### `orchestrate-agent-work` (experimental)
+
+Coordinate explicitly authorized subagents while retaining responsibility for
+the integrated result.
+
+**What it does:**
+
+- divides parallel work into bounded, non-overlapping assignments;
+- monitors and reconciles agent results against shared constraints;
+- verifies the combined result before reporting completion.
+
+**What it does not do:**
+
+- delegate unless the user or project instructions authorize subagents;
+- transfer approval authority, secrets, destructive cleanup, or unapproved
+  external mutations to another agent;
+- treat independently completed subtasks as proof that integration succeeded.
+
+**How to invoke it:**
+
+```text
+$orchestrate-agent-work Delegate these independent subtasks to agents and verify the integrated result.
+```
+
+### `develop-with-test-first-evidence` (experimental)
+
+Implement behavior through evidence-backed red-green-refactor cycles.
+
+**What it does:**
+
+- records a focused test failing for the intended behavioral reason before
+  implementation;
+- binds focused and broader green results to the final change state;
+- validates durable evidence with its bundled schema and helper.
+
+**What it does not do:**
+
+- manufacture a red result by breaking unrelated behavior;
+- call after-the-fact tests test-first development;
+- hide pre-existing, environmental, or final-state failures.
+
+**How to invoke it:**
+
+```text
+$develop-with-test-first-evidence Implement this behavior with a recorded red-green-refactor cycle.
+```
+
+### `review-code-changes` (experimental)
+
+Review a defined change for actionable correctness, security, reliability, and
+compatibility defects.
+
+**What it does:**
+
+- resolves an exact baseline and changed state;
+- reports evidence-backed findings with impact, trigger, priority, and tight
+  locations;
+- makes uncertainty and meaningful test gaps explicit.
+
+**What it does not do:**
+
+- report style preferences or unsupported speculation as defects;
+- implement findings, publish comments, or approve a review without separate
+  authorization;
+- substitute a general code explanation for a scoped review.
+
+**How to invoke it:**
+
+```text
+$review-code-changes Review this branch against its declared baseline and report actionable findings.
+```
+
+### `diagnose-software-defects` (experimental)
+
+Investigate failures and regressions to produce a supported causal explanation
+or ranked hypotheses.
+
+**What it does:**
+
+- bounds and safely reproduces the symptom where possible;
+- tests competing hypotheses with relevant evidence;
+- reports root cause, contributing conditions, blast radius, confidence, and
+  a fix-verification plan.
+
+**What it does not do:**
+
+- infer causation from correlation;
+- mutate production or discard failing evidence;
+- implement a speculative fix when only diagnosis was requested.
+
+**How to invoke it:**
+
+```text
+$diagnose-software-defects Diagnose this regression and distinguish evidence from hypotheses.
+```
+
+### `resolve-git-conflicts` (experimental)
+
+Resolve authorized merge, rebase, or cherry-pick conflicts semantically while
+preserving unrelated work.
+
+**What it does:**
+
+- inspects the active operation, base, both sides, and each unmerged path;
+- reconciles only conflicts whose intended combined behavior is understood;
+- validates resolved paths and makes the remaining Git operation step explicit.
+
+**What it does not do:**
+
+- treat ordinary repository divergence as a file-conflict task;
+- automatically stash, reset, abort, continue, force-push, or stage unrelated
+  paths;
+- guess through ambiguous generated, binary, schema, or product decisions.
+
+**How to invoke it:**
+
+```text
+$resolve-git-conflicts Resolve the active merge conflicts path by path and validate the result.
+```
+
+### `execute-verified-development-lifecycle` (experimental)
+
+Plan and verify a project-declared path from feature preparation through
+reviewed development integration, delivery observation, documentation, and
+proved cleanup.
+
+**What it does:**
+
+- freezes a digest-bound plan before editing and advances ordered checkpoints
+  using retained evidence;
+- verifies feature-before-edit, test-first, changed-scope preflight, review,
+  exact-state push, pipeline, documentation, development integration,
+  delegated production, delivery, smoke, notification, and cleanup gates;
+- rewinds to a declared checkpoint after failure and invalidates stale
+  downstream evidence.
+
+**What it does not do:**
+
+- infer provider adapters, repository roles, gates, or authorization;
+- push, open or merge reviews, deploy, notify, edit documentation, or delete
+  resources itself;
+- execute production delivery, which remains delegated to the approved release
+  workflow such as `$execute-configured-gitflow-releases`.
+
+Install and configure its required skills first: `$synchronize-git-repositories`,
+`$develop-with-test-first-evidence`, `$verify-before-push`, and
+`$review-code-changes`. Configure the project-owned version-1 lifecycle
+contract before the first plan. Install optional skills only when the project
+enables their corresponding checkpoints: `$orchestrate-agent-work`,
+`$diagnose-software-defects`, `$resolve-git-conflicts`,
+`$coordinate-code-documentation-repositories`, `$maintain-work-log`,
+`$maintain-project-digest`, `$notify-via-telegram`, and
+`$execute-configured-gitflow-releases`.
+
+**How to invoke it:**
+
+```text
+$execute-verified-development-lifecycle Plan and verify this change through the project's configured development lifecycle.
 ```
 
 ## Supported compositions

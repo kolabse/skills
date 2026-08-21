@@ -1,5 +1,28 @@
 # Changelog
 
+## [1.14.0] - 2026-08-21
+
+### Added
+
+- Experimental `execute-verified-development-lifecycle` skill for an
+  evidence-bound path from task claim and pre-edit feature branches through
+  test-first development, changed-scope Preflight, review, development
+  publication, documentation, failure rewinds, and proved cleanup.
+- Experimental `develop-with-test-first-evidence`, `review-code-changes`,
+  `diagnose-software-defects`, `resolve-git-conflicts`, and
+  `orchestrate-agent-work` skills as independently installable lifecycle
+  capabilities with bounded triggers and safety contracts.
+- Provider-neutral task-claim, source-control, development-publication, and
+  delivery adapter contracts, plus explicit dependency planning and managed
+  lifecycle references for every declared project repository.
+
+### Security
+
+- Lifecycle planning independently verifies live Git identities, repository
+  state, declared rule/reference files, retained evidence digests,
+  per-repository subjects, rewind direction, and timestamp validity instead of
+  trusting caller-supplied status.
+
 ## [1.13.0] - 2026-08-20
 
 ### Added
@@ -384,6 +407,7 @@ First versioned release of the kolabse skill collection.
 - Tests for configuration migration, fake cloud and infrastructure CLIs,
   installation confirmation, and collection metadata.
 
+[1.14.0]: https://github.com/kolabse/skills/releases/tag/v1.14.0
 [1.13.0]: https://github.com/kolabse/skills/releases/tag/v1.13.0
 [1.12.1]: https://github.com/kolabse/skills/releases/tag/v1.12.1
 [1.12.0]: https://github.com/kolabse/skills/releases/tag/v1.12.0

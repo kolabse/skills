@@ -1,0 +1,7 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/kolabse/skills/execute-verified-development-lifecycle/state.schema.json",
+  "type": "object", "additionalProperties": false,
+  "required": ["schema_version", "mode", "lifecycle_id", "plan_sha256", "config_sha256", "current_checkpoint", "attempts", "completed", "history", "failed", "complete", "mutates_repository", "state_sha256"],
+  "properties": {"schema_version": {"const": 1}, "mode": {"const": "state"}, "lifecycle_id": {"type": "string"}, "plan_sha256": {"type": "string"}, "config_sha256": {"type": "string"}, "current_checkpoint": {"type": ["string", "null"]}, "attempts": {"type": "object", "additionalProperties": {"type": "integer"}}, "completed": {"type": "object", "additionalProperties": {"type": "object"}}, "history": {"type": "array", "items": {"type": "object"}}, "failed": {"type": "boolean"}, "complete": {"type": "boolean"}, "mutates_repository": {"const": false}, "state_sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"}}
+}

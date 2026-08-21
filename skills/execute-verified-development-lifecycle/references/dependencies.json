@@ -1,0 +1,21 @@
+{
+  "schema_version": 1,
+  "source": "kolabse/skills",
+  "cli_version": "1.5.22",
+  "required": [
+    "synchronize-git-repositories",
+    "develop-with-test-first-evidence",
+    "verify-before-push",
+    "review-code-changes"
+  ],
+  "integrations": [
+    "orchestrate-agent-work",
+    "diagnose-software-defects",
+    "resolve-git-conflicts",
+    "coordinate-code-documentation-repositories",
+    "maintain-work-log",
+    "maintain-project-digest",
+    "notify-via-telegram",
+    "execute-configured-gitflow-releases"
+  ]
+}

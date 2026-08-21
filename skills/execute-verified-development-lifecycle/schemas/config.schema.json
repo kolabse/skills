@@ -1,0 +1,33 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/kolabse/skills/execute-verified-development-lifecycle/config.schema.json",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["version", "repositories", "rules", "references", "checks", "gates", "adapters", "required_capabilities", "notifications", "documentation", "integration", "production", "delivery", "cleanup"],
+  "properties": {
+    "version": {"const": 1},
+    "repositories": {"type": "array", "minItems": 1, "items": {"$ref": "#/$defs/repository"}},
+    "rules": {"type": "array", "minItems": 1, "items": {"$ref": "#/$defs/declaration"}},
+    "references": {"type": "array", "minItems": 1, "items": {"$ref": "#/$defs/declaration"}},
+    "checks": {"type": "array", "minItems": 1, "items": {"$ref": "#/$defs/check"}},
+    "gates": {"type": "array", "minItems": 18, "maxItems": 18, "items": {"$ref": "#/$defs/gate"}},
+    "adapters": {"type": "array", "minItems": 1, "items": {"$ref": "#/$defs/adapter"}},
+    "required_capabilities": {"type": "array", "minItems": 1, "uniqueItems": true, "items": {"$ref": "#/$defs/capability"}},
+    "notifications": {"type": "array", "items": {"$ref": "#/$defs/declaration"}},
+    "documentation": {"type": "array", "minItems": 1, "items": {"$ref": "#/$defs/declaration"}},
+    "integration": {"type": "object", "additionalProperties": false, "required": ["development_repository", "development_ref", "review_required"], "properties": {"development_repository": {"$ref": "#/$defs/id"}, "development_ref": {"type": "string", "minLength": 1}, "review_required": {"const": true}}},
+    "production": {"type": "object", "additionalProperties": false, "required": ["delegated", "route_label"], "properties": {"delegated": {"const": true}, "route_label": {"type": "string", "minLength": 1}}},
+    "delivery": {"type": "object", "additionalProperties": false, "required": ["deployment_required", "marker_required", "smoke_required"], "properties": {"deployment_required": {"type": "boolean"}, "marker_required": {"type": "boolean"}, "smoke_required": {"type": "boolean"}}},
+    "cleanup": {"type": "object", "additionalProperties": false, "required": ["proof_methods"], "properties": {"proof_methods": {"type": "array", "minItems": 1, "uniqueItems": true, "items": {"enum": ["merged", "identical-tree", "patch-equivalent", "provider-representation"]}}}}
+  },
+  "$defs": {
+    "id": {"type": "string", "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$"},
+    "path": {"type": "string", "minLength": 1, "maxLength": 300},
+    "repository": {"type": "object", "additionalProperties": false, "required": ["name", "path", "base_ref", "require_clean", "require_upstream_current"], "properties": {"name": {"$ref": "#/$defs/id"}, "path": {"$ref": "#/$defs/path"}, "base_ref": {"type": "string", "minLength": 1}, "require_clean": {"const": true}, "require_upstream_current": {"const": true}}},
+    "declaration": {"type": "object", "additionalProperties": false, "required": ["id", "path"], "properties": {"id": {"$ref": "#/$defs/id"}, "path": {"$ref": "#/$defs/path"}}},
+    "check": {"type": "object", "additionalProperties": false, "required": ["id", "phase", "required"], "properties": {"id": {"$ref": "#/$defs/id"}, "phase": {"enum": ["red", "green", "preflight", "feature-pipeline", "smoke"]}, "required": {"type": "boolean"}}},
+    "capability": {"enum": ["task.claim", "scope.preflight", "scm.review", "scm.pipeline", "scm.integrate-development", "development.publish", "delivery.observe-deployment", "delivery.observe-marker", "delivery.observe-smoke"]},
+    "adapter": {"type": "object", "additionalProperties": false, "required": ["id", "kind", "capabilities"], "properties": {"id": {"$ref": "#/$defs/id"}, "kind": {"type": "string", "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$"}, "capabilities": {"type": "array", "minItems": 1, "uniqueItems": true, "items": {"$ref": "#/$defs/capability"}}}},
+    "gate": {"type": "object", "additionalProperties": false, "required": ["id", "required", "failure_rewind"], "properties": {"id": {"enum": ["task-claimed", "feature-prepared", "tdd-red", "tdd-green", "changed-scope-preflight", "review-complete", "push-verified", "feature-published", "feature-pipeline", "documentation-ready", "development-integrated", "documentation-published", "production-delegated", "deployment-observed", "marker-observed", "smoke-passed", "documentation-complete", "cleanup-proved"]}, "required": {"type": "boolean"}, "failure_rewind": {"enum": ["task-claimed", "feature-prepared", "tdd-red", "tdd-green", "changed-scope-preflight", "review-complete", "push-verified", "feature-published", "feature-pipeline", "documentation-ready", "development-integrated", "documentation-published", "production-delegated", "deployment-observed", "marker-observed", "smoke-passed", "documentation-complete", "cleanup-proved"]}}}
+  }
+}

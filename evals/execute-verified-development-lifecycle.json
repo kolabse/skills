@@ -1,0 +1,31 @@
+{
+  "skill": "execute-verified-development-lifecycle",
+  "positive": [
+    {
+      "prompt": "Проведи изменение через весь настроенный development lifecycle: feature до правок, TDD, review, pipeline, merge в development, deploy marker, smoke и доказанный cleanup.",
+      "reason": "The request explicitly requires the configured end-to-end development lifecycle and its ordered evidence gates."
+    },
+    {
+      "prompt": "Plan and verify this feature through our declared repository, preflight, review, documentation, development integration, delivery-observation, and cleanup checkpoints; production execution stays delegated.",
+      "reason": "A digest-bound multi-gate development lifecycle with delegated production is the skill's core scope."
+    },
+    {
+      "prompt": "После сбоя feature pipeline зафиксируй evidence, откатись к объявленному checkpoint, аннулируй последующие доказательства и заверши настроенный цикл разработки.",
+      "reason": "Failure rewind and downstream evidence invalidation belong to lifecycle state coordination."
+    }
+  ],
+  "negative": [
+    {
+      "prompt": "Исправь эту небольшую функцию и запусти unit tests.",
+      "reason": "An ordinary local edit and test run does not request the configured cross-system lifecycle."
+    },
+    {
+      "prompt": "Выполни production hotfix через объявленный GitFlow route и проверь reintegration.",
+      "reason": "Direct production release execution belongs to the configured GitFlow release skill."
+    },
+    {
+      "prompt": "Review this pull request for correctness and security issues without changing code.",
+      "reason": "A scoped read-only review belongs to review-code-changes, not the full lifecycle."
+    }
+  ]
+}

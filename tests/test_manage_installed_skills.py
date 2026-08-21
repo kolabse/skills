@@ -17,6 +17,22 @@ import manage_installed_skills as manager  # noqa: E402
 
 
 class ManageInstalledSkillsTests(unittest.TestCase):
+    NEW_SKILLS = {
+        "orchestrate-agent-work",
+        "develop-with-test-first-evidence",
+        "review-code-changes",
+        "diagnose-software-defects",
+        "resolve-git-conflicts",
+        "execute-verified-development-lifecycle",
+    }
+
+    def test_known_skills_match_collection_catalog(self) -> None:
+        catalog = json.loads((Path(__file__).resolve().parents[1] / "skill-catalog.json").read_text(encoding="utf-8"))
+        self.assertEqual({item["name"] for item in catalog["skills"]}, manager.KNOWN_SKILLS)
+
+    def test_new_issue_53_skills_are_managed(self) -> None:
+        self.assertTrue(self.NEW_SKILLS <= manager.KNOWN_SKILLS)
+
     def test_coordinated_release_skills_are_managed(self) -> None:
         self.assertIn("coordinate-code-documentation-repositories", manager.KNOWN_SKILLS)
         self.assertIn("execute-configured-gitflow-releases", manager.KNOWN_SKILLS)
@@ -44,6 +60,19 @@ class ManageInstalledSkillsTests(unittest.TestCase):
                 "coordinate-code-documentation-repositories",
                 "execute-configured-gitflow-releases",
             ], names)
+
+    def test_verified_lifecycle_config_is_a_migration_candidate(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            project = self.make_project(Path(directory), {"execute-verified-development-lifecycle": "1.14.0"})
+            config = project / ".agents/execute-verified-development-lifecycle/config.json"
+            config.parent.mkdir(parents=True, exist_ok=True)
+            config.write_text("{}\n", encoding="utf-8")
+            helper = project / ".agents/skills/execute-verified-development-lifecycle/scripts/development_lifecycle.py"
+            helper.parent.mkdir(parents=True, exist_ok=True)
+            helper.write_text("# fixture\n", encoding="utf-8")
+            commands = dict(manager.migration_commands(project, False))
+            self.assertIn("execute-verified-development-lifecycle", commands)
+            self.assertEqual("migrate", commands["execute-verified-development-lifecycle"][2])
 
     def make_project(self, root: Path, versions: dict[str, str]) -> Path:
         project = root / "project"
@@ -312,6 +341,24 @@ class ManageInstalledSkillsTests(unittest.TestCase):
                 command,
             )
 
+    def test_plan_and_update_selection_include_all_new_locked_skills(self) -> None:
+        with tempfile.TemporaryDirectory() as directory, patch.object(
+            shutil, "which", return_value="npx"
+        ), patch.object(manager, "run_checked") as run:
+            run.return_value.stdout = "updated"
+            run.return_value.stderr = ""
+            project = self.make_project(Path(directory), {name: "1.13.0" for name in self.NEW_SKILLS})
+
+            plan = manager.build_update_plan(project, [], "project")
+            self.assertEqual(self.NEW_SKILLS, {item["skill"] for item in plan["outcomes"]})
+            selected = manager.resolve_update_selection(project, [], "project")
+            self.assertEqual(sorted(self.NEW_SKILLS), selected)
+
+            manager.update_skills(project, [], "project", "1.5.22", True, 30)
+            command = run.call_args.args[0]
+            for name in self.NEW_SKILLS:
+                self.assertIn(name, command)
+
     def test_update_rejects_cli_noop_reported_with_zero_exit_code(self) -> None:
         with tempfile.TemporaryDirectory() as directory, patch.object(
             shutil, "which", return_value="npx"
@@ -444,7 +491,7 @@ class ManageInstalledSkillsTests(unittest.TestCase):
             before = (project / "skills-lock.json").read_bytes()
             plan = manager.build_update_plan(project, [], "project")
             self.assertFalse(plan["mutates"])
-            self.assertEqual("1.13.0", plan["target_version"])
+            self.assertEqual("1.14.0", plan["target_version"])
             self.assertEqual("update", plan["outcomes"][0]["action"])
             self.assertEqual(["verify-before-push"], plan["migration_candidates"])
             self.assertEqual(before, (project / "skills-lock.json").read_bytes())
