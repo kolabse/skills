@@ -22,6 +22,9 @@
   state, declared rule/reference files, retained evidence digests,
   per-repository subjects, rewind direction, and timestamp validity instead of
   trusting caller-supplied status.
+- Lifecycle advancement preserves commit identities per repository, computes
+  rewinds from enabled checkpoints, and rejects delivery requirements that
+  contradict their evidence gates.
 
 ## [1.13.0] - 2026-08-20
 
