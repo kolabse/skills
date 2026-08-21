@@ -16,7 +16,7 @@
     "notifications": {"type": "array", "items": {"$ref": "#/$defs/declaration"}},
     "documentation": {"type": "array", "minItems": 1, "items": {"$ref": "#/$defs/declaration"}},
     "integration": {"type": "object", "additionalProperties": false, "required": ["development_repository", "development_ref", "review_required"], "properties": {"development_repository": {"$ref": "#/$defs/id"}, "development_ref": {"type": "string", "minLength": 1}, "review_required": {"const": true}}},
-    "production": {"type": "object", "additionalProperties": false, "required": ["delegated", "route_label"], "properties": {"delegated": {"const": true}, "route_label": {"type": "string", "minLength": 1}}},
+    "production": {"type": "object", "additionalProperties": false, "required": ["delegated", "route_label"], "properties": {"delegated": {"const": true}, "route_label": {"type": "string", "minLength": 1, "pattern": ".*\\S.*"}}},
     "delivery": {"type": "object", "additionalProperties": false, "required": ["deployment_required", "marker_required", "smoke_required"], "properties": {"deployment_required": {"type": "boolean"}, "marker_required": {"type": "boolean"}, "smoke_required": {"type": "boolean"}}},
     "cleanup": {"type": "object", "additionalProperties": false, "required": ["proof_methods"], "properties": {"proof_methods": {"type": "array", "minItems": 1, "uniqueItems": true, "items": {"enum": ["merged", "identical-tree", "patch-equivalent", "provider-representation"]}}}}
   },

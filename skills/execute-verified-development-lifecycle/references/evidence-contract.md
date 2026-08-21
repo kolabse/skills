@@ -44,7 +44,7 @@ A passed checkpoint requires every assertion true. A failed checkpoint requires 
 
 Assertions use stable names and `passed` results. `changed-scope-preflight` must include `coverage` arrays containing all configured repository names, rule IDs, reference IDs, check IDs applicable to changed scope, documentation target IDs, and notification IDs. Plan creation already requires full declared rule/reference coverage; preflight confirms which declarations apply.
 
-`cleanup-proved` lists exact resource identities and one configured representation method per deletable resource. The helper validates evidence structure and declared coverage but does not delete anything.
+`cleanup-proved` lists exact resource identities and one configured representation method per deletable resource. Each `cleanup-resource` subject uses its `role` field to name that method; the value must appear in `cleanup.proof_methods`. The helper validates evidence structure and declared coverage but does not delete anything.
 
 Every subject names `kind`, `role`, `repository`, and immutable `identity`; `repository` is null only for genuinely non-repository subjects. Source-state checkpoints must cover every configured repository. Commit identity is carried from green verification through review, push verification, feature publication, and feature pipeline. `production-delegated` and `deployment-observed` both carry the exact `development-integration` identity observed at `development-integrated`; deployment must also match the production handoff. Marker and smoke checkpoints carry the exact deployment identity.
 

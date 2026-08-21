@@ -232,6 +232,8 @@ def validate_config(config: dict[str, Any]) -> None:
     exact_keys(config["production"], {"delegated", "route_label"}, "production")
     if config["production"].get("delegated") is not True:
         raise LifecycleError("production must be delegated")
+    if not isinstance(config["production"].get("route_label"), str) or not config["production"]["route_label"].strip():
+        raise LifecycleError("production.route_label must be a non-empty string")
     exact_keys(config["delivery"], {"deployment_required", "marker_required", "smoke_required"}, "delivery")
     if not all(isinstance(config["delivery"][key], bool) for key in config["delivery"]):
         raise LifecycleError("delivery requirements must be boolean")
@@ -555,6 +557,8 @@ def cmd_plan(args: argparse.Namespace) -> dict[str, Any]:
     }
     plan["plan_sha256"] = digest(plan)
     out_path, state_path = Path(args.output), Path(args.state_output)
+    if out_path.resolve() == state_path.resolve():
+        raise LifecycleError("plan and state output paths must be distinct")
     ensure_external(out_path, config, root); ensure_external(state_path, config, root)
     atomic_write(out_path, plan)
     state = {"schema_version": 1, "mode": "state", "lifecycle_id": plan["lifecycle_id"], "plan_sha256": plan["plan_sha256"], "config_sha256": config_hash, "current_checkpoint": None, "attempts": {}, "completed": {}, "history": [], "failed": False, "complete": False, "mutates_repository": False}
@@ -700,6 +704,15 @@ def cmd_advance(args: argparse.Namespace) -> dict[str, Any]:
             (x["repository"], x["identity"])
             for x in document.get("subjects", []) if x.get("kind") == kind
         }
+    if name == "feature-prepared":
+        expected_refs = {
+            (repository, plan["feature_ref"])
+            for repository in declared(config, "repositories")
+        }
+        if repository_identities(checkpoint, "ref") != expected_refs:
+            raise LifecycleError(
+                "feature-prepared ref does not match planned feature_ref for every repository"
+            )
     green = state["completed"].get("tdd-green")
     if green and name in {"review-complete", "push-verified", "feature-published", "feature-pipeline"}:
         if repository_identities(checkpoint, "commit") != repository_identities(green, "commit"):
@@ -716,6 +729,17 @@ def cmd_advance(args: argparse.Namespace) -> dict[str, Any]:
     if deployment and name in {"marker-observed", "smoke-passed"}:
         if identities(checkpoint, "deployment") != identities(deployment, "deployment"):
             raise LifecycleError(f"checkpoint {name} does not match observed deployment identity")
+    if name == "cleanup-proved":
+        proof_methods = set(config["cleanup"]["proof_methods"])
+        cleanup_resources = [
+            item for item in checkpoint["subjects"] if item["kind"] == "cleanup-resource"
+        ]
+        invalid_methods = sorted({item["role"] for item in cleanup_resources} - proof_methods)
+        if invalid_methods:
+            raise LifecycleError(
+                "cleanup-resource roles must name configured proof methods: "
+                + ", ".join(sorted(proof_methods))
+            )
     failed_assertions = [item for item in checkpoint["assertions"] if not item["passed"]]
     required = gate_map(config)[name]["required"]
     if status == "passed" and failed_assertions:
