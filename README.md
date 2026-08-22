@@ -116,7 +116,7 @@ python bootstrap_update.py plan --json
 python bootstrap_update.py update --yes --migrate --json
 ```
 
-Use `--release v1.14.0` to pin a version. The bootstrap requires `gh` for
+Use `--release v1.14.1` to pin a version. The bootstrap requires `gh` for
 attestation verification and removes its temporary directory on completion.
 For an offline cache, provide both `--offline-archive` and
 `--offline-checksums`. Provenance verification remains required when `gh` can
