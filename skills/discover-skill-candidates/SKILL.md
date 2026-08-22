@@ -192,6 +192,15 @@ the collection contribution policy before invoking `$skill-creator`. Accepting
 a package never grants automatic publication. Users receive an accepted skill
 only after maintainer review and a new collection release.
 
+When maintainers implement an accepted candidate, keep its intake Issue as the
+canonical work item. Record that Issue in the implementation pull request and
+put `Closes #<issue-number>` in the pull request body unless the Issue must
+remain open for an explicitly documented reason. After merge, inspect the
+Issue's actual state. If it remains open unexpectedly, close it as completed
+with links to the implementation pull request and, when available, the release.
+Do not close rejected, superseded, or partially implemented candidates as
+completed; record their real disposition instead.
+
 Use the repository's
 [**Skill candidate contribution**](https://github.com/kolabse/skills/issues/new?template=skill-candidate-contribution.yml)
 issue form for public intake. When GitHub access is available, offer to create

@@ -21,6 +21,27 @@ skill focused, portable, attributable, and independently installable.
 Completion criterion: ownership, provenance, license, scope, and skill name are
 known before files are copied.
 
+## Track a candidate through implementation
+
+When a new or extended skill originates from a GitHub Issue, keep that Issue
+as the canonical work item until implementation is represented in the primary
+branch.
+
+1. Record the source Issue in the implementation pull request.
+2. Put `Closes #<issue-number>` in the pull request body. If the change must
+   not close the Issue, state the reason and intended disposition explicitly.
+3. After merge, inspect the Issue rather than assuming the closing keyword was
+   applied. If it remains open unexpectedly, close it as completed with links
+   to the implementation pull request and, when available, the release.
+4. If implementation is rejected, superseded, or only partially delivered,
+   leave an explanatory comment and use the corresponding Issue disposition;
+   never report a candidate as completed merely because a branch or pull
+   request existed.
+
+Completion criterion: every implemented candidate is traceable from its source
+Issue to the merged pull request, and the Issue has a verified final state with
+an implementation or non-completion explanation.
+
 ## Add or migrate the skill
 
 1. Synchronize both source and destination repositories without overwriting
