@@ -110,7 +110,7 @@ def resolved(path: str | Path) -> Path:
 
 def is_within(path: Path, parent: Path) -> bool:
     try:
-        path.relative_to(parent)
+        path.resolve().relative_to(parent.resolve())
         return True
     except ValueError:
         return False

@@ -115,7 +115,7 @@ def resolved(value: str | Path) -> Path:
 
 def is_within(path: Path, parent: Path) -> bool:
     try:
-        path.relative_to(parent)
+        path.resolve().relative_to(parent.resolve())
         return True
     except ValueError:
         return False
@@ -171,6 +171,7 @@ RULE_FILES = {"codex": "AGENTS.md", "claude-code": "CLAUDE.md"}
 
 
 def discover_rule_paths(root: Path, excluded: set[str], agent: str = "codex") -> list[Path]:
+    root = root.resolve()
     rule_filename = RULE_FILES[agent]
     paths: list[Path] = []
     for directory, names, files in os.walk(root, followlinks=False):
@@ -189,6 +190,7 @@ def discover_rule_paths(root: Path, excluded: set[str], agent: str = "codex") ->
 
 
 def discover_document_paths(root: Path, excluded: set[str]) -> list[Path]:
+    root = root.resolve()
     paths: list[Path] = []
     docs_root = root / "docs"
     root_candidates = [
@@ -232,6 +234,7 @@ def discover_document_paths(root: Path, excluded: set[str]) -> list[Path]:
 
 
 def resolve_explicit_files(root: Path, values: list[str]) -> list[Path]:
+    root = root.resolve()
     paths: list[Path] = []
     for index, value in enumerate(values):
         relative = PurePosixPath(value.replace("\\", "/"))
