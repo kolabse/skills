@@ -105,10 +105,11 @@ input, and tests cover missing, malformed, current, and legacy configuration.
 
 ## Preserve the consumer update path
 
-- Keep `.codex-plugin/plugin.json`, `skill-catalog.json.collection_version`, and
-  every `skills/*/collection-metadata.json` version identical in a release.
+- Keep `.codex-plugin/plugin.json`, `.claude-plugin/plugin.json`,
+  `skill-catalog.json.collection_version`, and every
+  `skills/*/collection-metadata.json` version identical in a release.
 - Test copied installation and an update from the oldest supported previous
-  release through the pinned `skills` CLI.
+  release through the pinned `skills` CLI for both `codex` and `claude-code`.
 - Keep project/user configuration outside installed skill folders. Never make
   an updater silently create configuration for an unused skill.
 - Document required migrations and rollback limitations in the README and
@@ -120,6 +121,23 @@ input, and tests cover missing, malformed, current, and legacy configuration.
 Completion criterion: a consumer can identify installed versions, update,
 migrate existing configuration, diagnose mixed versions, and reinstall a prior
 tag without relying on repository-private knowledge.
+
+## Preserve cross-agent behavior
+
+Keep shared `SKILL.md` instructions and helpers portable. Codex remains the
+default for existing command-line interfaces; an explicit Claude Code target
+uses `.claude/skills`, `CLAUDE.md`, and `/skill-name`. Do not replace existing
+`.agents` configuration APIs merely to rename them for another consumer.
+
+Treat `agents/openai.yaml` as OpenAI UI metadata and `.codex-plugin` as Codex
+packaging. Claude packaging belongs under `.claude-plugin`; neither manifest may
+silently stand in for the other's validation. When an agent lacks a capability
+such as Codex Desktop task enumeration, report that bounded operation as
+unsupported while preserving the portable subset.
+
+Completion criterion: both consumer installs contain identical skill payloads,
+their native project rule and skill layouts are respected, Codex defaults are
+unchanged, and consumer-smoke evidence names both agents explicitly.
 
 ## Compose skills by capability
 
@@ -203,7 +221,8 @@ Run:
 python scripts/validate_skills.py
 python -m unittest discover -s tests -v
 npx skills@1.5.22 add . --list
-python scripts/smoke_install.py
+python scripts/smoke_install.py --agent codex
+python scripts/smoke_install.py --agent claude-code
 ```
 
 Exercise the trigger corpus against an actual agent, including the skill's

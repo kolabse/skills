@@ -12,13 +12,18 @@ from urllib.parse import urlparse
 
 
 COLLECTION = "kolabse-skills"
-COLLECTION_VERSION = "1.14.1"
+COLLECTION_VERSION = "1.15.0"
 SKILLS_CLI_VERSION = "1.5.22"
 LOCK_FILE = "skills-lock.json"
 METADATA_FILE = "collection-metadata.json"
 CANONICAL_REPOSITORY = "https://github.com/kolabse/skills"
 CANONICAL_SLUG = "kolabse/skills"
 REPOSITORY_ROOT = Path(__file__).resolve().parents[1]
+DEFAULT_AGENT = "codex"
+AGENT_LAYOUTS = {
+    "codex": ".agents/skills",
+    "claude-code": ".claude/skills",
+}
 KNOWN_SKILLS = {
     "coordinate-code-documentation-repositories",
     "develop-with-test-first-evidence",
@@ -56,12 +61,37 @@ def load_object(path: Path, label: str) -> dict[str, Any]:
     return value
 
 
-def project_install_root(project: Path) -> Path:
-    return project.resolve() / ".agents" / "skills"
+def verified_agent(agent: str) -> str:
+    if agent not in AGENT_LAYOUTS:
+        raise ManagerError(
+            f"unsupported agent {agent!r}; expected one of: {', '.join(AGENT_LAYOUTS)}"
+        )
+    return agent
 
 
-def default_global_root() -> Path:
+def agent_layout(agent: str = DEFAULT_AGENT) -> str:
+    return AGENT_LAYOUTS[verified_agent(agent)]
+
+
+def project_install_root(project: Path, agent: str = DEFAULT_AGENT) -> Path:
+    return project.resolve() / Path(agent_layout(agent))
+
+
+def project_config_root(project: Path, agent: str = DEFAULT_AGENT) -> Path:
+    verified_agent(agent)
+    return project.resolve() / ".agents"
+
+
+def default_global_root(agent: str = DEFAULT_AGENT) -> Path:
+    verified_agent(agent)
     return Path.home() / ".agents"
+
+
+def global_install_root(global_root: Path, agent: str = DEFAULT_AGENT) -> Path:
+    agent = verified_agent(agent)
+    if agent == "codex":
+        return global_root / "skills"
+    return global_root.parent / ".claude" / "skills"
 
 
 def normalize_github_source(source: str) -> dict[str, str] | None:
@@ -156,14 +186,17 @@ def classify_lock_source(
 
 
 def read_project_state(
-    project: Path, trusted_development_sources: dict[str, Path] | None = None
+    project: Path,
+    trusted_development_sources: dict[str, Path] | None = None,
+    agent: str = DEFAULT_AGENT,
 ) -> dict[str, Any]:
+    agent = verified_agent(agent)
     root = project.resolve()
     lock = load_object(root / LOCK_FILE, "skills lock")
     entries = lock.get("skills")
     if not isinstance(entries, dict):
         raise ManagerError("skills-lock.json field 'skills' must be an object")
-    installed_root = project_install_root(root)
+    installed_root = project_install_root(root, agent)
     skills: list[dict[str, Any]] = []
     for name in sorted(set(entries) & KNOWN_SKILLS):
         entry = entries[name]
@@ -220,6 +253,8 @@ def read_project_state(
     return {
         "schema_version": 1,
         "collection": COLLECTION,
+        "agent": agent,
+        "layout": agent_layout(agent),
         "scope": "project",
         "project": str(root),
         "lock_file": str(root / LOCK_FILE),
@@ -230,8 +265,10 @@ def read_project_state(
 def read_global_state(
     global_root: Path | None = None,
     trusted_development_sources: dict[str, Path] | None = None,
+    agent: str = DEFAULT_AGENT,
 ) -> dict[str, Any]:
-    root = (global_root or default_global_root()).expanduser().resolve()
+    agent = verified_agent(agent)
+    root = (global_root or default_global_root(agent)).expanduser().resolve()
     lock_path = root / ".skill-lock.json"
     lock = load_object(lock_path, "global skills lock")
     if lock.get("version") != 3:
@@ -239,7 +276,7 @@ def read_global_state(
     entries = lock.get("skills")
     if not isinstance(entries, dict):
         raise ManagerError("global .skill-lock.json field 'skills' must be an object")
-    installed_root = root / "skills"
+    installed_root = global_install_root(root, agent)
     skills: list[dict[str, Any]] = []
     for name in sorted(set(entries) & KNOWN_SKILLS):
         entry = entries[name]
@@ -295,6 +332,8 @@ def read_global_state(
     return {
         "schema_version": 1,
         "collection": COLLECTION,
+        "agent": agent,
+        "layout": agent_layout(agent),
         "scope": "global",
         "global_root": str(root),
         "lock_file": str(lock_path),
@@ -306,7 +345,10 @@ def print_state(state: dict[str, Any], as_json: bool) -> None:
     if as_json:
         print(json.dumps(state, ensure_ascii=False, indent=2, sort_keys=True))
         return
-    print(f"Collection: {state['collection']} ({state['scope']})")
+    print(
+        f"Collection: {state['collection']} ({state['scope']}; "
+        f"agent={state['agent']}; layout={state['layout']})"
+    )
     for skill in state["skills"]:
         marker = "ok" if skill["installed"] and skill["provenance_status"] == "verified" else "problem"
         print(
@@ -487,7 +529,9 @@ def resolve_update_selection(
     adopt_legacy: bool = False,
     trusted_development_sources: dict[str, Path] | None = None,
     global_root: Path | None = None,
+    agent: str = DEFAULT_AGENT,
 ) -> list[str]:
+    agent = verified_agent(agent)
     unknown = set(skills) - KNOWN_SKILLS
     if unknown:
         raise ManagerError(f"Unknown collection skills: {', '.join(sorted(unknown))}")
@@ -496,9 +540,9 @@ def resolve_update_selection(
             raise ManagerError(
                 "global updates require explicit skill names so unrelated global skills are not updated"
             )
-        state = read_global_state(global_root, trusted_development_sources)
+        state = read_global_state(global_root, trusted_development_sources, agent)
     else:
-        state = read_project_state(project, trusted_development_sources)
+        state = read_project_state(project, trusted_development_sources, agent)
     entries = {item["name"]: item for item in state["skills"]}
     if skills:
         missing = set(skills) - set(entries)
@@ -525,6 +569,33 @@ def resolve_update_selection(
     return selected
 
 
+def alternate_layout_skills(
+    project: Path,
+    selected: list[str],
+    scope: str,
+    agent: str,
+    global_root: Path | None = None,
+) -> list[str]:
+    """Return selected skills also installed for the other supported agent."""
+    requested = verified_agent(agent)
+    other = next(name for name in AGENT_LAYOUTS if name != requested)
+    if scope == "project":
+        alternate_root = project_install_root(project, other)
+    else:
+        lock_root = (global_root or default_global_root(agent)).expanduser().resolve()
+        alternate_root = global_install_root(lock_root, other)
+    return sorted(name for name in selected if (alternate_root / name).is_dir())
+
+
+def targeted_update_source(item: dict[str, Any]) -> str:
+    if item["source_kind"] == "github":
+        return CANONICAL_SLUG
+    source = item.get("source")
+    if item["source_kind"] in {"local", "development"} and isinstance(source, str) and source:
+        return source
+    raise ManagerError(f"cannot resolve a verified update source for {item['name']}")
+
+
 def update_skills(
     project: Path,
     skills: list[str],
@@ -536,10 +607,12 @@ def update_skills(
     trusted_development_sources: dict[str, Path] | None = None,
     global_root: Path | None = None,
     as_json: bool = False,
+    agent: str = DEFAULT_AGENT,
 ) -> dict[str, Any]:
+    agent = verified_agent(agent)
     if scope == "global" and global_root is not None:
         requested_root = global_root.expanduser().resolve()
-        if requested_root != default_global_root().resolve():
+        if requested_root != default_global_root(agent).resolve():
             raise ManagerError(
                 "relocated global roots are read-only because the external skills CLI cannot target them"
             )
@@ -550,35 +623,67 @@ def update_skills(
         adopt_legacy,
         trusted_development_sources,
         global_root,
+        agent,
     )
     before = (
-        read_project_state(project, trusted_development_sources)
+        read_project_state(project, trusted_development_sources, agent)
         if scope == "project"
-        else read_global_state(global_root, trusted_development_sources)
+        else read_global_state(global_root, trusted_development_sources, agent)
     )
     before_by_name = {item["name"]: item for item in before["skills"]}
+    shared_with_other_agent = alternate_layout_skills(
+        project, selected, scope, agent, global_root
+    )
     npx = shutil.which("npx")
     if not npx:
         raise ManagerError("npx is required to update skills")
-    command = [npx, "--yes", f"skills@{cli_version}", "update", *selected]
-    command.append("-p" if scope == "project" else "-g")
-    if yes:
-        command.append("-y")
-    result = run_checked(command, project.resolve(), timeout)
-    combined_output = f"{result.stdout}\n{result.stderr}".casefold()
-    if "no installed skills found matching" in combined_output:
-        requested = ", ".join(selected)
-        raise ManagerError(
-            f"skills CLI did not update {requested}; the lock source may not support in-place "
-            "updates (local development installs must be re-added from their source)"
-        )
-    if result.stdout.strip() and not as_json:
-        print_portable(result.stdout.strip())
+    if agent == "claude-code" or shared_with_other_agent:
+        by_source: dict[str, list[str]] = {}
+        for name in selected:
+            by_source.setdefault(targeted_update_source(before_by_name[name]), []).append(name)
+        results: list[subprocess.CompletedProcess[str]] = []
+        for source, names in by_source.items():
+            command = [
+                npx,
+                "--yes",
+                f"skills@{cli_version}",
+                "add",
+                source,
+                "--skill",
+                *names,
+                "--agent",
+                agent,
+                "--copy",
+            ]
+            if yes:
+                command.append("--yes")
+            if scope == "global":
+                command.append("--global")
+            results.append(run_checked(command, project.resolve(), timeout))
+    else:
+        command = [npx, "--yes", f"skills@{cli_version}", "update", *selected]
+        command.append("-p" if scope == "project" else "-g")
+        if yes:
+            command.append("-y")
+        result = run_checked(command, project.resolve(), timeout)
+        combined_output = f"{result.stdout}\n{result.stderr}".casefold()
+        if "no installed skills found matching" in combined_output:
+            requested = ", ".join(selected)
+            raise ManagerError(
+                f"skills CLI did not update {requested}; the lock source may not support in-place "
+                "updates (local development installs must be re-added from their source)"
+            )
+        results = [result]
+    if not as_json:
+        for completed in results:
+            if completed.stdout.strip():
+                print_portable(completed.stdout.strip())
     state = doctor(
         project,
         trusted_development_sources,
         scope=scope,
         global_root=global_root,
+        agent=agent,
     )
     if not state["healthy"]:
         detail = "; ".join(state["problems"])
@@ -602,6 +707,8 @@ def update_skills(
         "schema_version": 1,
         "operation": "update",
         "collection": COLLECTION,
+        "agent": agent,
+        "layout": agent_layout(agent),
         "scope": scope,
         "outcomes": outcomes,
         "healthy": True,
@@ -634,25 +741,31 @@ def python_executable() -> str:
     return shutil.which("python") or sys.executable
 
 
-def migration_commands(project: Path, include_user_config: bool) -> list[tuple[str, list[str]]]:
+def migration_commands(
+    project: Path,
+    include_user_config: bool,
+    agent: str = DEFAULT_AGENT,
+) -> list[tuple[str, list[str]]]:
+    agent = verified_agent(agent)
     root = project.resolve()
-    installed = project_install_root(root)
+    installed = project_install_root(root, agent)
+    config_root = project_config_root(root, agent)
     python = python_executable()
     commands: list[tuple[str, list[str]]] = []
     coordinated_migrations = (
         (
             "coordinate-code-documentation-repositories",
-            root / ".agents/coordinate-code-documentation-repositories/config.json",
+            config_root / "coordinate-code-documentation-repositories/config.json",
             installed / "coordinate-code-documentation-repositories/scripts/coordinate_change.py",
         ),
         (
             "execute-configured-gitflow-releases",
-            root / ".agents/execute-configured-gitflow-releases/config.json",
+            config_root / "execute-configured-gitflow-releases/config.json",
             installed / "execute-configured-gitflow-releases/scripts/gitflow_release.py",
         ),
         (
             "execute-verified-development-lifecycle",
-            root / ".agents/execute-verified-development-lifecycle/config.json",
+            config_root / "execute-verified-development-lifecycle/config.json",
             installed / "execute-verified-development-lifecycle/scripts/development_lifecycle.py",
         ),
     )
@@ -661,7 +774,7 @@ def migration_commands(project: Path, include_user_config: bool) -> list[tuple[s
             commands.append(
                 (name, [python, str(script_path), "migrate", "--project-root", str(root), "--json"])
             )
-    verify_config = root / ".agents/verify-before-push/config.json"
+    verify_config = config_root / "verify-before-push/config.json"
     verify_script = installed / "verify-before-push/scripts/verify_before_push.py"
     if verify_config.is_file() and verify_script.is_file():
         commands.append(
@@ -670,7 +783,7 @@ def migration_commands(project: Path, include_user_config: bool) -> list[tuple[s
                 [python, str(verify_script), "migrate", "--project-root", str(root), "--json"],
             )
         )
-    cloud_config = root / ".agents/operate-yandex-cloud/project.yaml"
+    cloud_config = config_root / "operate-yandex-cloud/project.yaml"
     cloud_script = installed / "operate-yandex-cloud/scripts/migrate_config.py"
     if cloud_config.is_file() and cloud_script.is_file():
         commands.append(
@@ -707,9 +820,15 @@ def migration_commands(project: Path, include_user_config: bool) -> list[tuple[s
     return commands
 
 
-def migrate(project: Path, include_user_config: bool, timeout: int) -> dict[str, Any]:
+def migrate(
+    project: Path,
+    include_user_config: bool,
+    timeout: int,
+    agent: str = DEFAULT_AGENT,
+) -> dict[str, Any]:
+    agent = verified_agent(agent)
     results: list[dict[str, Any]] = []
-    for name, command in migration_commands(project, include_user_config):
+    for name, command in migration_commands(project, include_user_config, agent):
         result = run_checked(command, project.resolve(), timeout)
         try:
             payload = json.loads(result.stdout)
@@ -726,6 +845,8 @@ def migrate(project: Path, include_user_config: bool, timeout: int) -> dict[str,
         "schema_version": 1,
         "operation": "migrate",
         "collection": COLLECTION,
+        "agent": agent,
+        "layout": agent_layout(agent),
         "scope": "project",
         "outcomes": results,
         "migrations": results,
@@ -738,11 +859,17 @@ def build_update_plan(
     scope: str,
     adopt_legacy: bool = False,
     global_root: Path | None = None,
+    agent: str = DEFAULT_AGENT,
 ) -> dict[str, Any]:
+    agent = verified_agent(agent)
     unknown = set(skills) - KNOWN_SKILLS
     if unknown:
         raise ManagerError(f"Unknown collection skills: {', '.join(sorted(unknown))}")
-    state = read_project_state(project) if scope == "project" else read_global_state(global_root)
+    state = (
+        read_project_state(project, agent=agent)
+        if scope == "project"
+        else read_global_state(global_root, agent=agent)
+    )
     entries = {item["name"]: item for item in state["skills"]}
     selected = skills or sorted(entries)
     missing = set(selected) - set(entries)
@@ -781,12 +908,16 @@ def build_update_plan(
             }
         )
     migrations = (
-        [name for name, _ in migration_commands(project, False)] if scope == "project" else []
+        [name for name, _ in migration_commands(project, False, agent)]
+        if scope == "project"
+        else []
     )
     return {
         "schema_version": 1,
         "operation": "plan",
         "collection": COLLECTION,
+        "agent": agent,
+        "layout": agent_layout(agent),
         "scope": scope,
         "target_version": COLLECTION_VERSION,
         "mutates": False,
@@ -805,11 +936,13 @@ def doctor(
     include_user_config: bool = False,
     runtime_timeout: int = 30,
     repository_root: Path | None = None,
+    agent: str = DEFAULT_AGENT,
 ) -> dict[str, Any]:
+    agent = verified_agent(agent)
     state = (
-        read_project_state(project, trusted_development_sources)
+        read_project_state(project, trusted_development_sources, agent)
         if scope == "project"
-        else read_global_state(global_root, trusted_development_sources)
+        else read_global_state(global_root, trusted_development_sources, agent)
     )
     problems: list[str] = []
     if not state["skills"]:
@@ -857,7 +990,9 @@ def doctor(
     state["problems"] = problems
     state["warnings"] = warnings
     state["migration_candidates"] = (
-        [name for name, _ in migration_commands(project, False)] if scope == "project" else []
+        [name for name, _ in migration_commands(project, False, agent)]
+        if scope == "project"
+        else []
     )
     return state
 
@@ -868,6 +1003,7 @@ def build_parser() -> argparse.ArgumentParser:
     for name in ("status", "doctor", "migrate"):
         child = subparsers.add_parser(name)
         child.add_argument("--project-path", type=Path, default=Path.cwd())
+        child.add_argument("--agent", choices=tuple(AGENT_LAYOUTS), default=DEFAULT_AGENT)
         child.add_argument("--json", action="store_true")
         if name in {"status", "doctor"}:
             child.add_argument("--scope", choices=("project", "global"), default="project")
@@ -882,6 +1018,7 @@ def build_parser() -> argparse.ArgumentParser:
     update = subparsers.add_parser("update")
     update.add_argument("skills", nargs="*")
     update.add_argument("--project-path", type=Path, default=Path.cwd())
+    update.add_argument("--agent", choices=tuple(AGENT_LAYOUTS), default=DEFAULT_AGENT)
     update.add_argument("--scope", choices=("project", "global"), default="project")
     update.add_argument("--cli-version", default=SKILLS_CLI_VERSION)
     update.add_argument("--yes", action="store_true")
@@ -898,6 +1035,7 @@ def build_parser() -> argparse.ArgumentParser:
     plan = subparsers.add_parser("plan")
     plan.add_argument("skills", nargs="*")
     plan.add_argument("--project-path", type=Path, default=Path.cwd())
+    plan.add_argument("--agent", choices=tuple(AGENT_LAYOUTS), default=DEFAULT_AGENT)
     plan.add_argument("--scope", choices=("project", "global"), default="project")
     plan.add_argument("--global-root", type=Path)
     plan.add_argument("--adopt-legacy", action="store_true")
@@ -910,9 +1048,9 @@ def main(argv: list[str] | None = None) -> int:
     try:
         if args.command == "status":
             state = (
-                read_project_state(args.project_path)
+                read_project_state(args.project_path, agent=args.agent)
                 if args.scope == "project"
-                else read_global_state(args.global_root)
+                else read_global_state(args.global_root, agent=args.agent)
             )
             print_state(state, args.json)
             return 0
@@ -924,6 +1062,7 @@ def main(argv: list[str] | None = None) -> int:
                 deep=args.deep,
                 include_user_config=args.include_user_config,
                 runtime_timeout=args.runtime_timeout,
+                agent=args.agent,
             )
             print_state(state, args.json)
             if not args.json and state["problems"]:
@@ -937,6 +1076,7 @@ def main(argv: list[str] | None = None) -> int:
                 args.scope,
                 args.adopt_legacy,
                 args.global_root,
+                args.agent,
             )
             if args.json:
                 print(json.dumps(result, ensure_ascii=False, indent=2, sort_keys=True))
@@ -948,7 +1088,9 @@ def main(argv: list[str] | None = None) -> int:
                     )
             return 1 if result["blocked"] else 0
         if args.command == "migrate":
-            result = migrate(args.project_path, args.include_user_config, args.timeout)
+            result = migrate(
+                args.project_path, args.include_user_config, args.timeout, args.agent
+            )
             print(json.dumps(result, ensure_ascii=False, indent=2, sort_keys=True))
             return 0
         if args.migrate and args.scope != "project":
@@ -963,9 +1105,12 @@ def main(argv: list[str] | None = None) -> int:
             args.adopt_legacy,
             global_root=args.global_root,
             as_json=args.json,
+            agent=args.agent,
         )
         if args.migrate:
-            migration = migrate(args.project_path, args.include_user_config, args.timeout)
+            migration = migrate(
+                args.project_path, args.include_user_config, args.timeout, args.agent
+            )
             result["migration"] = migration
         if args.json:
             print(json.dumps(result, ensure_ascii=False, indent=2, sort_keys=True))
@@ -976,6 +1121,8 @@ def main(argv: list[str] | None = None) -> int:
                 "schema_version": 1,
                 "operation": args.command,
                 "collection": COLLECTION,
+                "agent": getattr(args, "agent", DEFAULT_AGENT),
+                "layout": agent_layout(getattr(args, "agent", DEFAULT_AGENT)),
                 "scope": getattr(args, "scope", "project"),
                 "outcomes": [
                     {

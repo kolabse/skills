@@ -30,7 +30,7 @@ Use the collection's declared policies and scripts as the source of truth. Keep 
    python scripts/release_collection.py verify-evidence --project-root <project-root> --tag vX.Y.Z --evidence <release-evidence.json> --json
    ```
 
-   The input contract is `schemas/release-evidence.schema.json`. Its gates are `local_release_check`, `locked_holdout`, `consumer_smoke`, `supported_platform_ci`, and `review`.
+   The input contract is `schemas/release-evidence.schema.json`. Its gates are `local_release_check`, `locked_holdout`, `consumer_smoke`, `supported_platform_ci`, and `review`. Consumer-smoke evidence must cover both `claude-code` and `codex`; one consumer cannot stand in for the other.
 6. Use `verify-before-push` to bind the final declared verification evidence to the exact Git state.
 7. Show the user the target commit, tag, remaining external gates, and publication action. Creating or moving a tag, pushing, dispatching a workflow, or uploading assets requires explicit user authorization.
 8. Publish only through the repository's protected release workflow. Never replace an existing release asset or move an existing release tag; issue a new version instead.

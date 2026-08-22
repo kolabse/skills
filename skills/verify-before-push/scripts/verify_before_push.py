@@ -16,7 +16,7 @@ CONFIG_RELATIVE = Path(".agents/verify-before-push/config.json")
 DEFAULT_EVIDENCE = Path(".agents/verify-before-push/evidence.json")
 POLICY_START = "<!-- verify-before-push:start -->"
 POLICY_END = "<!-- verify-before-push:end -->"
-POLICY_BLOCK = """<!-- verify-before-push:start -->
+CODEX_POLICY_BLOCK = """<!-- verify-before-push:start -->
 ## Verification before push
 
 Use `$verify-before-push` before pushing protected repositories. Run the
@@ -24,6 +24,11 @@ project-declared checks and require current evidence bound to the exact Git
 commits and worktrees being pushed. Treat missing, failed, malformed, or
 stale evidence as a stop condition for a protected push.
 <!-- verify-before-push:end -->"""
+CLAUDE_POLICY_BLOCK = CODEX_POLICY_BLOCK.replace("`$verify-before-push`", "`/verify-before-push`")
+AGENTS = {
+    "codex": {"filename": "AGENTS.md", "block": CODEX_POLICY_BLOCK},
+    "claude-code": {"filename": "CLAUDE.md", "block": CLAUDE_POLICY_BLOCK},
+}
 
 
 class VerificationError(RuntimeError):
@@ -125,21 +130,21 @@ def validate_config_document(config: dict[str, Any], project_root: Path) -> Path
     return evidence_path
 
 
-def policy_state(project_root: Path) -> tuple[Path, str, bool]:
-    path = project_root / "AGENTS.md"
+def policy_state(project_root: Path, agent: str = "codex") -> tuple[Path, str, bool]:
+    path = project_root / AGENTS[agent]["filename"]
     text = path.read_text(encoding="utf-8") if path.is_file() else ""
     starts, ends = text.count(POLICY_START), text.count(POLICY_END)
     if starts != ends or starts > 1 or (starts == 1 and text.index(POLICY_START) > text.index(POLICY_END)):
-        raise VerificationError("AGENTS.md contains malformed or duplicate managed markers")
+        raise VerificationError(f"{AGENTS[agent]['filename']} contains malformed or duplicate managed markers")
     return path, text, starts == 1
 
 
-def ensure_policy(project_root: Path) -> bool:
-    path, text, configured = policy_state(project_root)
+def ensure_policy(project_root: Path, agent: str = "codex") -> bool:
+    path, text, configured = policy_state(project_root, agent)
     if configured:
         return False
     separator = "" if not text else ("\n" if text.endswith("\n") else "\n\n")
-    path.write_text(f"{text}{separator}{POLICY_BLOCK}\n", encoding="utf-8", newline="\n")
+    path.write_text(f"{text}{separator}{AGENTS[agent]['block']}\n", encoding="utf-8", newline="\n")
     return True
 
 
@@ -155,15 +160,17 @@ def ensure_evidence_ignored(project_root: Path, evidence_path: Path) -> bool:
     return True
 
 
-def configuration_status(project_root: Path) -> dict[str, Any]:
+def configuration_status(project_root: Path, agent: str = "codex") -> dict[str, Any]:
     config, evidence_path = load_config(project_root)
     validate_config_document(config, project_root)
-    _, _, policy = policy_state(project_root)
+    rules_path, _, policy = policy_state(project_root, agent)
     ignore = project_root / ".gitignore"
     ignored = ignore.is_file() and evidence_path.relative_to(project_root).as_posix() in ignore.read_text(encoding="utf-8").splitlines()
     return {
         "skill": "verify-before-push",
         "scope": "project",
+        "agent": agent,
+        "rules_file": str(rules_path),
         "configured": policy and ignored,
         "valid": True,
         "version": config["version"],
@@ -173,17 +180,17 @@ def configuration_status(project_root: Path) -> dict[str, Any]:
     }
 
 
-def configure_project(project_root: Path, source: Path | None) -> dict[str, Any]:
+def configure_project(project_root: Path, source: Path | None, agent: str = "codex") -> dict[str, Any]:
     target = project_root / CONFIG_RELATIVE
     config = load_json(source.resolve() if source else target, "Configuration")
     evidence_path = validate_config_document(config, project_root)
-    policy_state(project_root)
+    policy_state(project_root, agent)
     previous = target.read_bytes() if target.is_file() else None
     write_atomic(target, config)
     changed = previous != target.read_bytes()
-    changed = ensure_policy(project_root) or changed
+    changed = ensure_policy(project_root, agent) or changed
     changed = ensure_evidence_ignored(project_root, evidence_path) or changed
-    state = configuration_status(project_root)
+    state = configuration_status(project_root, agent)
     state["changed"] = changed
     return state
 
@@ -410,6 +417,7 @@ def main(argv: list[str] | None = None) -> int:
         if command == "configure":
             child.add_argument("--config-source", type=Path)
         if command in {"configure", "status", "migrate"}:
+            child.add_argument("--agent", choices=sorted(AGENTS), default="codex")
             child.add_argument("--json", action="store_true")
     args = parser.parse_args(argv)
     project_root = args.project_root.resolve()
@@ -421,15 +429,15 @@ def main(argv: list[str] | None = None) -> int:
         elif args.command == "gate":
             verify_evidence(project_root, args.repository)
         elif args.command == "configure":
-            state = configure_project(project_root, args.config_source)
+            state = configure_project(project_root, args.config_source, args.agent)
             print(json.dumps(state, sort_keys=True) if args.json else f"Configured: {state['config_file']}")
         elif args.command == "status":
-            state = configuration_status(project_root)
+            state = configuration_status(project_root, args.agent)
             print(json.dumps(state, sort_keys=True) if args.json else f"Configured: {state['configured']}")
             if not state["configured"]:
                 return 1
         else:
-            state = configure_project(project_root, None)
+            state = configure_project(project_root, None, args.agent)
             print(json.dumps(state, sort_keys=True) if args.json else f"Configuration is version {state['version']}")
         return 0
     except VerificationError as error:

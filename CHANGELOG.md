@@ -1,5 +1,23 @@
 # Changelog
 
+## [1.15.0] - 2026-08-22
+
+### Added
+
+- Claude Code is now a supported collection consumer alongside Codex, with a
+  native `.claude-plugin` manifest, `.claude/skills` installation and update
+  layouts, `/skill-name` invocation, and `CLAUDE.md` project-rule support.
+- Consumer installation, upgrade, bootstrap, packaging, and release evidence
+  now verify Claude Code and Codex independently.
+
+### Changed
+
+- Project-rule helpers select the consumer explicitly while retaining the
+  existing Codex defaults, `.agents` configuration contracts, OpenAI metadata,
+  and Codex plugin distribution.
+- `sync-project-context` exposes its portable checkpoint and environment core
+  to Claude Code and fails closed for Codex Desktop-only batch task operations.
+
 ## [1.14.1] - 2026-08-22
 
 ### Fixed
@@ -420,6 +438,7 @@ First versioned release of the kolabse skill collection.
 - Tests for configuration migration, fake cloud and infrastructure CLIs,
   installation confirmation, and collection metadata.
 
+[1.15.0]: https://github.com/kolabse/skills/releases/tag/v1.15.0
 [1.14.1]: https://github.com/kolabse/skills/releases/tag/v1.14.1
 [1.14.0]: https://github.com/kolabse/skills/releases/tag/v1.14.0
 [1.13.0]: https://github.com/kolabse/skills/releases/tag/v1.13.0

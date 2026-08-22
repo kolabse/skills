@@ -39,7 +39,8 @@ identifiers, or internal architecture; enable this mode only when permitted.
 
 The separate project environment manifest may additionally store only:
 
-- explicitly selected, untracked project-relative `AGENTS.md` text after
+- explicitly selected, untracked project-relative `AGENTS.md` or `CLAUDE.md`
+  text after
   review, limited to 32 KiB per file;
 - Git coverage records for tracked rules, without their contents;
 - skill and plugin identifiers, versions, canonical source identifiers, and

@@ -1,0 +1,20 @@
+{
+  "name": "kolabse-skills",
+  "version": "1.15.0",
+  "description": "Reusable development lifecycle, Git, review, testing, diagnosis, documentation, release, context, notification, and infrastructure workflows maintained by kolabse.",
+  "author": {
+    "name": "kolabse",
+    "url": "https://github.com/kolabse"
+  },
+  "homepage": "https://github.com/kolabse/skills",
+  "repository": "https://github.com/kolabse/skills",
+  "license": "Apache-2.0",
+  "keywords": [
+    "agent-skills",
+    "claude-code",
+    "codex",
+    "development-lifecycle",
+    "git",
+    "testing"
+  ]
+}

@@ -24,10 +24,31 @@ this repository, for example from:
 https://github.com/kolabse/skills/tree/main/skills/operate-yandex-cloud
 ```
 
+Choose an explicit consumer for non-interactive installation:
+
+```shell
+npx skills@1.5.22 add kolabse/skills --agent codex --copy -y
+npx skills@1.5.22 add kolabse/skills --agent claude-code --copy -y
+```
+
+Codex discovers project skills under `.agents/skills/` and invokes them as
+`$skill-name`. Claude Code discovers them under `.claude/skills/` and invokes
+them as `/skill-name`. The skill instructions and bundled scripts are shared;
+consumer-specific rule files and invocation syntax are selected at setup time.
+
 The repository is also packaged as the skills-only `kolabse-skills` plugin for
-ChatGPT and Codex. Its manifest is in [`.codex-plugin/plugin.json`](.codex-plugin/plugin.json),
-and every folder under `skills/` is included in the plugin. The cross-agent
-`npx skills` installation remains available independently of the plugin.
+ChatGPT/Codex and Claude Code. The manifests are in
+[`.codex-plugin/plugin.json`](.codex-plugin/plugin.json) and
+[`.claude-plugin/plugin.json`](.claude-plugin/plugin.json); every folder under
+`skills/` is included. Cross-agent `npx skills` installation remains available
+independently of either plugin format.
+
+Claude Code can load an extracted release or trusted checkout directly while
+testing with `claude --plugin-dir <collection-root>`. For ordinary personal or
+project use, prefer the explicit `npx skills ... --agent claude-code` command
+above. Claude Code reads `CLAUDE.md`, not `AGENTS.md`; when a project already
+has shared `AGENTS.md` rules, a minimal `CLAUDE.md` containing `@AGENTS.md`
+preserves one canonical rules document.
 
 ## Update installed skills
 
@@ -116,7 +137,7 @@ python bootstrap_update.py plan --json
 python bootstrap_update.py update --yes --migrate --json
 ```
 
-Use `--release v1.14.1` to pin a version. The bootstrap requires `gh` for
+Use `--release v1.15.0` to pin a version. The bootstrap requires `gh` for
 attestation verification and removes its temporary directory on completion.
 For an offline cache, provide both `--offline-archive` and
 `--offline-checksums`. Provenance verification remains required when `gh` can
@@ -128,20 +149,23 @@ remain forward-only.
 
 ### Inspect global installations
 
-The supported global layout is deliberately bounded to
-`~/.agents/.skill-lock.json` v3 and `~/.agents/skills`; the manager does not
-scan other user directories:
+The supported global state is deliberately bounded to the shared
+`~/.agents/.skill-lock.json` v3 lock. Installed payloads live in
+`~/.agents/skills` for Codex and `~/.claude/skills` for Claude Code. The manager
+does not scan other user directories. Codex remains the default; pass
+`--agent claude-code` for the Claude payload layout:
 
 ```shell
 python scripts/manage_installed_skills.py status --scope global --json
 python scripts/manage_installed_skills.py doctor --scope global --json
 python scripts/manage_installed_skills.py plan verify-before-push --scope global --json
 python scripts/manage_installed_skills.py update verify-before-push --scope global --yes --json
+python scripts/manage_installed_skills.py status --scope global --agent claude-code --json
 ```
 
 Use `--global-root` for read-only inspection of a test or explicitly relocated
 compatible layout. Relocated roots cannot be updated because the external CLI
-cannot target them. Unknown or ambiguous layouts are reported without mutation.
+cannot target them. Unknown lock formats are reported without mutation.
 
 To roll back skill files, first back up project/user configuration, then
 reinstall the required release tag with the same skills and agent targets used
@@ -490,9 +514,16 @@ evaluated independently.
   OAuth tokens, or skill/plugin installations;
 - duplicate rules or dependencies already carried by Git;
 - silently overwrite Git-owned destination rules: apply may only create a
-  missing untracked `AGENTS.md` after an explicit plan;
+  missing untracked `AGENTS.md` or `CLAUDE.md` selected for the active agent
+  after an explicit plan;
 - include branch names or file paths in metadata-only mode; visible task titles
   remain intentionally included.
+
+Codex Desktop supports the documented batch task discovery, creation, rename,
+and Google Drive connector workflows. Claude Code can use the portable
+checkpoint, local-folder storage, and environment-reconciliation core, but its
+session store is not inspected and Codex-only batch task operations fail closed
+as unsupported.
 
 **How to invoke it:**
 
@@ -509,6 +540,8 @@ $sync-project-context Save the current task state.
 $sync-project-context Restore all project tasks on this computer.
 $sync-project-context Synchronize all project tasks bidirectionally and show conflicts before applying changes.
 ```
+
+In Claude Code, replace the `$` prefix in these examples with `/`.
 
 ### `orchestrate-agent-work` (experimental)
 

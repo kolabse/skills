@@ -59,6 +59,8 @@ class ReleaseArtifactTests(unittest.TestCase):
                     self.assertIn(expected, tar_names)
                 self.assertIn(prefix + ".codex-plugin/plugin.json", zip_names)
                 self.assertIn(prefix + ".codex-plugin/plugin.json", tar_names)
+                self.assertIn(prefix + ".claude-plugin/plugin.json", zip_names)
+                self.assertIn(prefix + ".claude-plugin/plugin.json", tar_names)
                 self.assertIn(prefix + "scripts/trigger_evals.py", zip_names)
                 self.assertIn(prefix + "scripts/trigger_evals.py", tar_names)
                 self.assertIn(prefix + "scripts/smoke_install.py", zip_names)

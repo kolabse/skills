@@ -9,6 +9,11 @@ Use the project contract as the source of truth. This skill coordinates evidence
 
 Compose with `$synchronize-git-repositories` before planning and whenever remote freshness matters. Use `$verify-before-push` for the exact-state push checkpoint. Production execution remains delegated to the project's approved release process.
 
+In Codex, invoke composed skills as `$skill-name`; in Claude Code, invoke them
+as `/skill-name`. Pass `--agent claude-code` to rule configuration, rule
+status, and dependency installation. Omitting `--agent` preserves Codex and
+its `AGENTS.md` rules as the default.
+
 ## Resolve the contract
 
 Inspect project instructions and install a version-1 project-owned configuration matching [`schemas/config.schema.json`](schemas/config.schema.json):
@@ -27,7 +32,10 @@ python <skill-root>/scripts/development_lifecycle.py rules-status --project-root
 python <skill-root>/scripts/development_lifecycle.py configure-rules --project-root <root> --apply --yes --json
 ```
 
-`rules-status` is read-only. `configure-rules` preserves unrelated `AGENTS.md` content, is idempotent, and rejects malformed or duplicate managed markers. Planning inspects these files directly and blocks on a missing or stale reference.
+`rules-status` is read-only. `configure-rules` preserves unrelated `AGENTS.md`
+or `CLAUDE.md` content selected by `--agent`, is idempotent, and rejects
+malformed or duplicate managed markers. Planning inspects declared project
+files directly and blocks on a missing or stale reference.
 
 Inspect the bundled dependency plan before starting:
 

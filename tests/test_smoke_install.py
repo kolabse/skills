@@ -58,6 +58,15 @@ class SmokeInstallTests(unittest.TestCase):
             with self.assertRaisesRegex(SmokeError, "lock does not contain"):
                 verify_installation(source, project, ["demo"])
 
+    def test_verifies_claude_code_layout(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            source, project = self.make_fixture(Path(directory))
+            installed = project / ".agents/skills/demo"
+            claude = project / ".claude/skills/demo"
+            claude.parent.mkdir(parents=True)
+            installed.rename(claude)
+            verify_installation(source, project, ["demo"], "claude-code")
+
 
 if __name__ == "__main__":
     unittest.main()

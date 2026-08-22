@@ -10,6 +10,8 @@ from pathlib import Path
 
 
 ROOT = Path(__file__).resolve().parents[1]
+SUPPORTED_AGENTS = ("codex", "claude-code")
+AGENT_LAYOUTS = {"codex": ".agents/skills", "claude-code": ".claude/skills"}
 sys.path.insert(0, str(ROOT / "scripts"))
 from bootstrap_update import bootstrap  # noqa: E402
 from build_release import build_release  # noqa: E402
@@ -27,11 +29,13 @@ def directory_digest(root: Path) -> str:
     return digest.hexdigest()
 
 
-def run_smoke(source: Path, tag: str, timeout: int) -> None:
+def run_smoke(source: Path, tag: str, timeout: int, agent: str = "codex") -> None:
+    if agent not in SUPPORTED_AGENTS:
+        raise SmokeError(f"unsupported agent {agent!r}")
     with tempfile.TemporaryDirectory(prefix="kolabse-bootstrap-smoke-") as directory:
         root = Path(directory)
         project = root / "consumer"
-        installed = project / ".agents/skills/verify-before-push"
+        installed = project / AGENT_LAYOUTS[agent] / "verify-before-push"
         installed.parent.mkdir(parents=True)
         shutil.copytree(source / "skills/verify-before-push", installed)
         (project / "skills-lock.json").write_text(
@@ -64,6 +68,7 @@ def run_smoke(source: Path, tag: str, timeout: int) -> None:
             archive,
             dist / "SHA256SUMS",
             allow_unattested_offline=True,
+            agent=agent,
         )
         if result != 0:
             raise SmokeError(f"bootstrap manager returned {result}")
@@ -74,11 +79,12 @@ def run_smoke(source: Path, tag: str, timeout: int) -> None:
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description="Smoke-test the standalone release bootstrap.")
     parser.add_argument("--source", type=Path, default=ROOT)
-    parser.add_argument("--tag", default="v1.14.1")
+    parser.add_argument("--tag", default="v1.15.0")
     parser.add_argument("--timeout", type=int, default=120)
+    parser.add_argument("--agent", choices=SUPPORTED_AGENTS, default="codex")
     args = parser.parse_args(argv)
     try:
-        run_smoke(args.source.resolve(), args.tag, args.timeout)
+        run_smoke(args.source.resolve(), args.tag, args.timeout, args.agent)
         print("Standalone bootstrap plan passed without mutating the consumer fixture.")
         return 0
     except (OSError, SmokeError, ValueError) as error:

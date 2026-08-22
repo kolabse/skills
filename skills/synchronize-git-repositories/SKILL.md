@@ -1,6 +1,6 @@
 ---
 name: synchronize-git-repositories
-description: "Safely establish remote freshness for one or more existing Git repositories without overwriting local work, and bootstrap an authorized publishable feature branch at a verified primary-branch SHA before the first code edit. Use when a repository has a configured remote or upstream and the task depends on current remote state: before analysis, edits, validation, commits, pushes, deployments, or remote execution when project policy requires synchronization; across related code, infrastructure, or documentation repositories; when the user asks to fetch, pull, update, compare with upstream, check whether repositories are current, or publish a feature branch before work; and when configuring a synchronization policy in AGENTS.md. Do not use for local-only Git work, repository initialization, conceptual Git help, or destructive remote-ref operations unless synchronization is also requested."
+description: "Safely establish remote freshness for one or more existing Git repositories without overwriting local work, and bootstrap an authorized publishable feature branch at a verified primary-branch SHA before the first code edit. Use when a repository has a configured remote or upstream and the task depends on current remote state: before analysis, edits, validation, commits, pushes, deployments, or remote execution when project policy requires synchronization; across related code, infrastructure, or documentation repositories; when the user asks to fetch, pull, update, compare with upstream, check whether repositories are current, or publish a feature branch before work; and when configuring a synchronization policy in AGENTS.md or CLAUDE.md. Do not use for local-only Git work, repository initialization, conceptual Git help, or destructive remote-ref operations unless synchronization is also requested."
 ---
 
 # Synchronize Git Repositories
@@ -11,11 +11,14 @@ local work merely to make a repository appear current.
 
 ## Configure the project policy
 
-1. Resolve the project boundary and inspect the applicable `AGENTS.md` files.
+1. Resolve the project boundary and select the target agent explicitly when
+   configuring rules. Codex uses `AGENTS.md` with `$skill-name`; Claude Code
+   uses `CLAUDE.md` with `/skill-name`. Omit `--agent` only for the unchanged
+   Codex default.
 2. When no equivalent policy already exists, run the idempotent helper:
 
    ```shell
-   python <skill-root>/scripts/configure_project.py configure --project-path <project-root>
+   python <skill-root>/scripts/configure_project.py configure --project-path <project-root> [--agent codex|claude-code]
    ```
 
    It preserves unrelated content and adds exactly one managed block:
@@ -43,7 +46,7 @@ local work merely to make a repository appear current.
 Inspect configuration without changing files with:
 
 ```shell
-python <skill-root>/scripts/configure_project.py status --project-path <project-root> --json
+python <skill-root>/scripts/configure_project.py status --project-path <project-root> [--agent codex|claude-code] --json
 ```
 
 Completion criterion: one effective project policy invokes this skill, existing

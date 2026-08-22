@@ -14,7 +14,7 @@
       "properties": {
         "local_release_check": {"$ref": "#/$defs/gate"},
         "locked_holdout": {"$ref": "#/$defs/gate"},
-        "consumer_smoke": {"$ref": "#/$defs/gate"},
+        "consumer_smoke": {"$ref": "#/$defs/consumerSmokeGate"},
         "supported_platform_ci": {"$ref": "#/$defs/gate"},
         "review": {"$ref": "#/$defs/gate"}
       },
@@ -33,6 +33,20 @@
         "evidence_sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"}
       },
       "additionalProperties": true
+    },
+    "consumerSmokeGate": {
+      "allOf": [
+        {"$ref": "#/$defs/gate"},
+        {
+          "type": "object",
+          "required": ["agents"],
+          "properties": {
+            "agents": {
+              "const": ["claude-code", "codex"]
+            }
+          }
+        }
+      ]
     }
   }
 }

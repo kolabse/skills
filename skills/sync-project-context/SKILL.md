@@ -19,7 +19,8 @@ the project repository.
 2. Never include source text, diffs, prompts, full transcripts, credentials,
    personal data, customer data, private URLs, or raw logs in a checkpoint.
    The separate environment manifest may contain only explicitly selected,
-   bounded `AGENTS.md` text that Git does not track and typed safe preferences.
+   bounded `AGENTS.md` or `CLAUDE.md` text that Git does not track and typed
+   safe preferences.
 3. Record decisions, concise rationale and considered options, discussion
    outcomes, actions, observed verification, blockers, open questions, next
    steps, commit identifiers, and optionally relative file paths.
@@ -91,6 +92,11 @@ Use `project` only for a repository-wide handoff that is not tied to a chat.
   only within the same stream and still require explicit reconciliation.
 
 ## Save all project chats
+
+This batch-chat workflow is supported only in Codex Desktop. Claude Code does
+not expose the required project-task listing, creation, binding, and title
+operations through this skill. In Claude Code, stop and report the unsupported
+operation; do not simulate a batch by scanning local history or internal files.
 
 Interpret "save all project chats", "сохрани все чаты проекта", and equivalent
 explicit requests as a desktop batch operation. Read and follow
@@ -202,6 +208,10 @@ chat.
 
 ## Restore all project chats
 
+This batch-chat workflow is supported only in Codex Desktop. In Claude Code,
+stop with an unsupported-operation result and offer only restoration of a
+single explicitly supplied continuation packet into the current session.
+
 Interpret "restore all project chats", "восстанови все чаты проекта", and
 equivalent explicit requests as authorization to materialize saved chat streams
 as separate Codex desktop tasks. Read and follow
@@ -223,6 +233,10 @@ for legacy streams that have no saved title; never derive a replacement title
 from the summary.
 
 ## Synchronize all project chats
+
+This batch-chat workflow is supported only in Codex Desktop. In Claude Code,
+do not claim that all chats were discovered or synchronized; fail closed and
+limit work to explicitly supplied single-stream state.
 
 Interpret "sync all project chats", "синхронизируй все чаты проекта", and
 equivalent explicit requests as one bidirectional reconcile on the current
@@ -250,7 +264,8 @@ another computer, read and follow
 
 Keep environment state in a separate append-only manifest graph. Inspect Git
 before capture: omit clean tracked rule content, reject unpublished tracked
-rules, and capture only explicitly selected untracked `AGENTS.md` files after
+rules, and capture only explicitly selected untracked `AGENTS.md` or
+`CLAUDE.md` files after
 review. Synchronize skill and plugin declarations, versions, sources, and
 digests rather than installed copies. Synchronize plugin connection
 requirements but never OAuth state or credentials. Transfer safe scalar
@@ -262,7 +277,8 @@ through the notification skill on each computer.
 
 Always run the read-only `environment_sync.py plan` before applying anything.
 Git is authoritative, an existing destination rule is preserved, and
-`apply --approve-local-rules` may create only a missing untracked `AGENTS.md`.
+`apply --approve-local-rules` may create only a missing untracked `AGENTS.md`
+or `CLAUDE.md` named explicitly in the reviewed manifest.
 Install skills and plugins through their canonical managers and reconnect
 plugins interactively.
 
@@ -301,4 +317,5 @@ sync left no unhandled one-sided changes; stream/checkpoint IDs, coverage
 limits, skipped tasks, repository identity, and freshness were reported; no
 sensitive values were accepted; ordinary context synchronization created no
 project file; and environment apply created only explicitly approved missing,
-untracked `AGENTS.md` files without overwriting Git or destination state.
+untracked `AGENTS.md` or `CLAUDE.md` files without overwriting Git or
+destination state.
