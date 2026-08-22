@@ -43,12 +43,22 @@ CAPABILITIES = {
 }
 START_MARKER = "<!-- execute-verified-development-lifecycle:start -->"
 END_MARKER = "<!-- execute-verified-development-lifecycle:end -->"
-RULE_BLOCK = f"""{START_MARKER}
+CODEX_RULE_BLOCK = f"""{START_MARKER}
 ## Verified development lifecycle
 
 Use `$execute-verified-development-lifecycle` for changes governed by the
 project-declared verified development lifecycle.
 {END_MARKER}"""
+# Backward-compatible public constant for existing Codex integrations.
+RULE_BLOCK = CODEX_RULE_BLOCK
+AGENTS = {
+    "codex": {"filename": "AGENTS.md", "block": CODEX_RULE_BLOCK, "installer": "codex"},
+    "claude-code": {
+        "filename": "CLAUDE.md",
+        "block": CODEX_RULE_BLOCK.replace("`$execute-verified-development-lifecycle`", "`/execute-verified-development-lifecycle`"),
+        "installer": "claude-code",
+    },
+}
 SHA_RE = re.compile(r"^[0-9a-f]{40,64}$")
 REF_RE = re.compile(r"^(?![./])(?!.*(?:\.\.|//|@\{|\\))[A-Za-z0-9][A-Za-z0-9._/-]{0,254}(?<![./])$")
 SECRET_RE = re.compile(r"(?i)(?:token|secret|password|passwd|api[_-]?key|private[_-]?key)\s*[:=]")
@@ -264,7 +274,7 @@ def load_config(root: Path) -> tuple[dict[str, Any], str]:
     return config, digest(config)
 
 
-def inspect_rule_file(path: Path) -> dict[str, Any]:
+def inspect_rule_file(path: Path, expected_block: str = CODEX_RULE_BLOCK) -> dict[str, Any]:
     if not path.exists():
         return {"path": str(path), "status": "missing", "installed": False}
     try:
@@ -280,17 +290,17 @@ def inspect_rule_file(path: Path) -> dict[str, Any]:
     if end_start < start:
         return {"path": str(path), "status": "malformed-markers", "installed": False}
     end = end_start + len(END_MARKER)
-    installed = content[start:end].replace("\r\n", "\n") == RULE_BLOCK
+    installed = content[start:end].replace("\r\n", "\n") == expected_block
     return {"path": str(path), "status": "installed" if installed else "stale-managed-block", "installed": installed}
 
 
-def rule_statuses(root: Path, config: dict[str, Any]) -> list[dict[str, Any]]:
+def rule_statuses(root: Path, config: dict[str, Any], agent: str = "codex") -> list[dict[str, Any]]:
     results = []
     for repo in config["repositories"]:
         repo_root = (root.resolve() / repo["path"]).resolve()
         if root.resolve() not in (repo_root, *repo_root.parents):
             raise LifecycleError(f"repository path escapes project root: {repo['path']}")
-        item = inspect_rule_file(repo_root / "AGENTS.md")
+        item = inspect_rule_file(repo_root / AGENTS[agent]["filename"], AGENTS[agent]["block"])
         item["repository"] = repo["name"]
         results.append(item)
     return results
@@ -369,16 +379,18 @@ def inspect_declared_files(root: Path, config: dict[str, Any]) -> list[dict[str,
 def cmd_rules_status(args: argparse.Namespace) -> dict[str, Any]:
     root = Path(args.project_root)
     config, config_hash = load_config(root)
-    repositories = rule_statuses(root, config)
-    return {"mode": "rules-status", "config_sha256": config_hash, "repositories": repositories, "passed": all(x["installed"] for x in repositories), "mutates_repository": False}
+    agent = getattr(args, "agent", "codex")
+    repositories = rule_statuses(root, config, agent)
+    return {"mode": "rules-status", "agent": agent, "config_sha256": config_hash, "repositories": repositories, "passed": all(x["installed"] for x in repositories), "mutates_repository": False}
 
 
 def cmd_configure_rules(args: argparse.Namespace) -> dict[str, Any]:
     if not args.apply or not args.yes:
         raise LifecycleError("rule configuration requires both --apply and --yes")
     root = Path(args.project_root)
+    agent = getattr(args, "agent", "codex")
     config, config_hash = load_config(root)
-    before = rule_statuses(root, config)
+    before = rule_statuses(root, config, agent)
     malformed = [x["repository"] for x in before if x["status"] == "malformed-markers"]
     if malformed:
         raise LifecycleError(f"malformed or duplicate managed markers: {', '.join(malformed)}")
@@ -390,9 +402,9 @@ def cmd_configure_rules(args: argparse.Namespace) -> dict[str, Any]:
         content = path.read_text(encoding="utf-8") if path.exists() else ""
         if START_MARKER in content:
             start, end = content.index(START_MARKER), content.index(END_MARKER) + len(END_MARKER)
-            content = content[:start] + RULE_BLOCK + content[end:]
+            content = content[:start] + AGENTS[agent]["block"] + content[end:]
         else:
-            content = content.rstrip() + ("\n\n" if content.strip() else "") + RULE_BLOCK + "\n"
+            content = content.rstrip() + ("\n\n" if content.strip() else "") + AGENTS[agent]["block"] + "\n"
         path.parent.mkdir(parents=True, exist_ok=True)
         fd, name = tempfile.mkstemp(prefix=f".{path.name}.", dir=path.parent)
         try:
@@ -403,10 +415,10 @@ def cmd_configure_rules(args: argparse.Namespace) -> dict[str, Any]:
             if os.path.exists(name):
                 os.unlink(name)
         changed.append(item["repository"])
-    after = rule_statuses(root, config)
+    after = rule_statuses(root, config, agent)
     if not all(x["installed"] for x in after):
         raise LifecycleError("managed rule reference did not validate after configuration")
-    return {"mode": "configure-rules", "config_sha256": config_hash, "changed_repositories": changed, "repositories": after, "passed": True, "mutates_repository": bool(changed)}
+    return {"mode": "configure-rules", "agent": agent, "config_sha256": config_hash, "changed_repositories": changed, "repositories": after, "passed": True, "mutates_repository": bool(changed)}
 
 
 def ensure_external(path: Path, config: dict[str, Any], root: Path) -> None:
@@ -818,8 +830,9 @@ def cmd_dependencies(args: argparse.Namespace) -> dict[str, Any]:
     argv = ["npx", "--yes", f"skills@{manifest['cli_version']}", "add", manifest["source"]]
     for name in selected:
         argv.extend(["--skill", name])
-    argv.extend(["--agent", "codex", "--copy", "-y"])
-    result = {"mode": "dependencies", "required": manifest["required"], "integrations": manifest["integrations"], "selected": selected, "install_argv": argv, "reminders": ["Configure documentation targets before planning", "Configure notification audiences and record every disposition", "Optional integrations do not weaken required lifecycle gates"], "apply_requested": bool(args.apply), "mutates_environment": False}
+    agent = getattr(args, "agent", "codex")
+    argv.extend(["--agent", AGENTS[agent]["installer"], "--copy", "-y"])
+    result = {"mode": "dependencies", "agent": agent, "required": manifest["required"], "integrations": manifest["integrations"], "selected": selected, "install_argv": argv, "reminders": ["Configure documentation targets before planning", "Configure notification audiences and record every disposition", "Optional integrations do not weaken required lifecycle gates"], "apply_requested": bool(args.apply), "mutates_environment": False}
     if args.apply:
         if not args.yes:
             raise LifecycleError("dependency installation requires both --apply and --yes")
@@ -844,12 +857,12 @@ def parser() -> argparse.ArgumentParser:
     c = common("configure"); c.add_argument("--config-source", required=True); c.set_defaults(func=cmd_configure)
     common("status").set_defaults(func=cmd_status)
     common("migrate").set_defaults(func=cmd_migrate)
-    common("rules-status").set_defaults(func=cmd_rules_status)
-    cr = common("configure-rules"); cr.add_argument("--apply", action="store_true"); cr.add_argument("--yes", action="store_true"); cr.set_defaults(func=cmd_configure_rules)
+    rs = common("rules-status"); rs.add_argument("--agent", choices=sorted(AGENTS), default="codex"); rs.set_defaults(func=cmd_rules_status)
+    cr = common("configure-rules"); cr.add_argument("--agent", choices=sorted(AGENTS), default="codex"); cr.add_argument("--apply", action="store_true"); cr.add_argument("--yes", action="store_true"); cr.set_defaults(func=cmd_configure_rules)
     pl = common("plan"); pl.add_argument("--input", required=True); pl.add_argument("--output", required=True); pl.add_argument("--state-output", required=True); pl.set_defaults(func=cmd_plan)
     ad = common("advance"); ad.add_argument("--plan", required=True); ad.add_argument("--state", required=True); ad.add_argument("--checkpoint", required=True); ad.set_defaults(func=cmd_advance)
     ve = common("verify"); ve.add_argument("--plan", required=True); ve.add_argument("--state", required=True); ve.set_defaults(func=cmd_verify)
-    dep = sub.add_parser("dependencies"); dep.add_argument("--include-integrations", action="store_true"); dep.add_argument("--apply", action="store_true"); dep.add_argument("--yes", action="store_true"); dep.add_argument("--json", action="store_true"); dep.set_defaults(func=cmd_dependencies)
+    dep = sub.add_parser("dependencies"); dep.add_argument("--agent", choices=sorted(AGENTS), default="codex"); dep.add_argument("--include-integrations", action="store_true"); dep.add_argument("--apply", action="store_true"); dep.add_argument("--yes", action="store_true"); dep.add_argument("--json", action="store_true"); dep.set_defaults(func=cmd_dependencies)
     return p
 
 

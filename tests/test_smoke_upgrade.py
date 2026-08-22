@@ -48,6 +48,25 @@ class SmokeUpgradeTests(unittest.TestCase):
                     source, project, ["existing", "new-skill"]
                 )
 
+    def test_verifies_claude_code_layout(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            source = root / "source"
+            project = root / "project"
+            skill = source / "skills/existing"
+            skill.mkdir(parents=True)
+            (skill / "SKILL.md").write_text("existing\n", encoding="utf-8")
+            installed = project / ".claude/skills/existing"
+            installed.mkdir(parents=True)
+            (installed / "SKILL.md").write_text("existing\n", encoding="utf-8")
+            (project / "skills-lock.json").write_text(
+                json.dumps({"skills": {"existing": {"computedHash": "0" * 64}}}),
+                encoding="utf-8",
+            )
+            verify_updated_installation(
+                source, project, ["existing"], "claude-code"
+            )
+
 
 if __name__ == "__main__":
     unittest.main()

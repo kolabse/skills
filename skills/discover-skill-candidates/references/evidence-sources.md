@@ -1,7 +1,9 @@
 # Evidence sources
 
 Use additional sources only when the user asks for broader discovery or
-explicitly approves them. The default inventory remains `AGENTS.md`-only.
+explicitly approves them. The default Codex inventory remains `AGENTS.md`-only;
+`--agent claude-code` selects `CLAUDE.md`-only inventory. Never merge the two
+rule families implicitly.
 
 ## Durable project evidence
 

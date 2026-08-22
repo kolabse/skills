@@ -18,6 +18,7 @@ from typing import Any
 REPOSITORY = "kolabse/skills"
 API_ROOT = f"https://api.github.com/repos/{REPOSITORY}"
 TAG_PATTERN = re.compile(r"^v\d+\.\d+\.\d+(?:[-+][0-9A-Za-z]+(?:[.-][0-9A-Za-z]+)*)?$")
+SUPPORTED_AGENTS = ("codex", "claude-code")
 
 
 class BootstrapError(RuntimeError):
@@ -113,9 +114,39 @@ def safe_extract(archive: Path, destination: Path) -> Path:
     return managers[0]
 
 
-def run_manager(manager: Path, command: str, arguments: list[str], project: Path, timeout: int) -> int:
-    python = shutil.which("python") or sys.executable
+def forwarded_agent_arguments(arguments: list[str], agent: str) -> list[str]:
+    if agent not in SUPPORTED_AGENTS:
+        raise BootstrapError(f"unsupported agent {agent!r}")
     forwarded = list(arguments)
+    declared: list[str] = []
+    for index, value in enumerate(forwarded):
+        if value == "--agent":
+            if index + 1 >= len(forwarded) or forwarded[index + 1].startswith("-"):
+                raise BootstrapError("forwarded --agent requires a value")
+            declared.append(forwarded[index + 1])
+        elif value.startswith("--agent="):
+            declared.append(value.split("=", 1)[1])
+    if len(declared) > 1:
+        raise BootstrapError("agent selection is ambiguous; pass --agent exactly once")
+    if declared and declared[0] != agent:
+        raise BootstrapError(
+            f"forwarded agent {declared[0]!r} conflicts with bootstrap agent {agent!r}"
+        )
+    if not declared:
+        forwarded.extend(["--agent", agent])
+    return forwarded
+
+
+def run_manager(
+    manager: Path,
+    command: str,
+    arguments: list[str],
+    project: Path,
+    timeout: int,
+    agent: str = "codex",
+) -> int:
+    python = shutil.which("python") or sys.executable
+    forwarded = forwarded_agent_arguments(arguments, agent)
     if command in {"status", "doctor", "plan", "migrate", "update"} and not any(
         value == "--project-path" or value.startswith("--project-path=") for value in forwarded
     ):
@@ -141,7 +172,10 @@ def bootstrap(
     offline_archive: Path | None = None,
     offline_checksums: Path | None = None,
     allow_unattested_offline: bool = False,
+    agent: str = "codex",
 ) -> int:
+    if agent not in SUPPORTED_AGENTS:
+        raise BootstrapError(f"unsupported agent {agent!r}")
     if release == "stable":
         if offline_archive:
             match = re.fullmatch(r"kolabse-skills-(v[^/\\]+)\.zip", offline_archive.name)
@@ -175,7 +209,7 @@ def bootstrap(
         if not (offline_archive and allow_unattested_offline):
             verify_attestation(archive, timeout)
         manager = safe_extract(archive, workspace / "extracted")
-        return run_manager(manager, command, arguments, project, timeout)
+        return run_manager(manager, command, arguments, project, timeout, agent)
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -186,6 +220,7 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--offline-archive", type=Path)
     parser.add_argument("--offline-checksums", type=Path)
     parser.add_argument("--allow-unattested-offline", action="store_true")
+    parser.add_argument("--agent", choices=SUPPORTED_AGENTS, default="codex")
     parser.add_argument("command", choices=("status", "doctor", "plan", "migrate", "update"))
     parser.add_argument("arguments", nargs=argparse.REMAINDER)
     args = parser.parse_args(argv)
@@ -199,6 +234,7 @@ def main(argv: list[str] | None = None) -> int:
             args.offline_archive,
             args.offline_checksums,
             args.allow_unattested_offline,
+            args.agent,
         )
     except (BootstrapError, OSError, UnicodeError, zipfile.BadZipFile) as error:
         print(f"BOOTSTRAP_FAILED: {error}", file=sys.stderr)

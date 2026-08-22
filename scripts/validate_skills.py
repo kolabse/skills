@@ -184,6 +184,32 @@ def validate_plugin_manifest(repository_root: Path) -> list[str]:
     return errors
 
 
+def validate_claude_plugin_manifest(repository_root: Path) -> list[str]:
+    manifest_path = repository_root / ".claude-plugin/plugin.json"
+    if not manifest_path.is_file():
+        return [f"{manifest_path}: required Claude Code plugin manifest is missing"]
+    try:
+        manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+    except (json.JSONDecodeError, UnicodeDecodeError) as error:
+        return [f"{manifest_path}: invalid JSON: {error}"]
+    if not isinstance(manifest, dict):
+        return [f"{manifest_path}: manifest root must be an object"]
+    errors: list[str] = []
+    if manifest.get("name") != PLUGIN_NAME:
+        errors.append(f"{manifest_path}: name must be '{PLUGIN_NAME}'")
+    version = manifest.get("version")
+    if not isinstance(version, str) or not PLUGIN_VERSION_PATTERN.fullmatch(version):
+        errors.append(f"{manifest_path}: version must use semantic versioning")
+    if not isinstance(manifest.get("description"), str) or not manifest["description"]:
+        errors.append(f"{manifest_path}: description is required")
+    if manifest.get("license") != "Apache-2.0":
+        errors.append(f"{manifest_path}: license must be 'Apache-2.0'")
+    author = manifest.get("author")
+    if not isinstance(author, dict) or not author.get("name"):
+        errors.append(f"{manifest_path}: author.name is required")
+    return errors
+
+
 def validate_trigger_evals(
     repository_root: Path,
     entry: dict[str, object],
@@ -463,6 +489,7 @@ def frontmatter(skill_file: Path) -> dict[str, str]:
 
 def validate(repository_root: Path = REPOSITORY_ROOT) -> list[str]:
     errors = validate_plugin_manifest(repository_root)
+    errors.extend(validate_claude_plugin_manifest(repository_root))
     names: set[str] = set()
     skills_root = repository_root / "skills"
     readme = repository_root / "README.md"
@@ -547,6 +574,22 @@ def validate(repository_root: Path = REPOSITORY_ROOT) -> list[str]:
     if collection_version != plugin_version:
         errors.append(
             f"{catalog_path}: collection_version must match plugin version {plugin_version!r}"
+        )
+    claude_manifest_path = repository_root / ".claude-plugin/plugin.json"
+    try:
+        claude_plugin_version = json.loads(
+            claude_manifest_path.read_text(encoding="utf-8")
+        ).get("version")
+    except (OSError, json.JSONDecodeError, UnicodeDecodeError, AttributeError):
+        claude_plugin_version = None
+    if collection_version != claude_plugin_version:
+        errors.append(
+            f"{catalog_path}: collection_version must match Claude plugin version "
+            f"{claude_plugin_version!r}"
+        )
+    if catalog.get("supported_agents") != ["claude-code", "codex"]:
+        errors.append(
+            f"{catalog_path}: supported_agents must be ['claude-code', 'codex']"
         )
     if not isinstance(catalog.get("license"), str) or not catalog["license"]:
         errors.append(f"{catalog_path}: repository license is required")

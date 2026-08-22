@@ -24,6 +24,7 @@ SENSITIVE_KEY = re.compile(
 )
 NOTIFY_SETTING_ID = "notify-via-telegram"
 NOTIFY_DELIVERY_MODES = {"global-and-project", "project-only"}
+RULE_FILENAMES = {"AGENTS.md", "CLAUDE.md"}
 
 
 def sha256_text(value: str) -> str:
@@ -79,9 +80,9 @@ def safe_source_identifier(value: object, label: str) -> str:
 def normalize_rule_path(value: object, project_root: Path) -> tuple[str, Path]:
     path = safe_string(value, "rule.path", maximum=512).replace("\\", "/")
     pure = PurePosixPath(path)
-    if pure.is_absolute() or ".." in pure.parts or pure.name != "AGENTS.md":
+    if pure.is_absolute() or ".." in pure.parts or pure.name not in RULE_FILENAMES:
         raise context_sync.ContextSyncError(
-            "rule.path must be a project-relative AGENTS.md path"
+            "rule.path must be a project-relative AGENTS.md or CLAUDE.md path"
         )
     normalized = pure.as_posix()
     target = (project_root / Path(*pure.parts)).resolve()
@@ -519,7 +520,7 @@ def load_manifest_file(
         seen.add(("rules", identifier))
         path = safe_string(rule["path"], f"Environment manifest rules[{index}].path", maximum=512).replace("\\", "/")
         pure = PurePosixPath(path)
-        if pure.is_absolute() or ".." in pure.parts or pure.name != "AGENTS.md" or pure.as_posix() != path:
+        if pure.is_absolute() or ".." in pure.parts or pure.name not in RULE_FILENAMES or pure.as_posix() != path:
             raise context_sync.ContextSyncError("Environment manifest rule path is invalid")
         if rule["scope"] not in {"project", "subtree"}:
             raise context_sync.ContextSyncError("Environment manifest rule scope is invalid")
@@ -1007,7 +1008,7 @@ def build_parser() -> argparse.ArgumentParser:
 
     for name, handler_help in (
         ("plan", "Plan reconciliation without modifying the destination"),
-        ("apply", "Create only missing untracked local AGENTS.md rules"),
+        ("apply", "Create only missing untracked local AGENTS.md or CLAUDE.md rules"),
     ):
         command = subparsers.add_parser(name, help=handler_help)
         command.add_argument("--project-path", required=True)

@@ -96,6 +96,25 @@ class BootstrapUpdateTests(unittest.TestCase):
                 )
             attest.assert_not_called()
 
+    def test_run_manager_forwards_claude_code_agent(self) -> None:
+        with tempfile.TemporaryDirectory() as directory, patch.object(
+            bootstrap.shutil, "which", return_value=sys.executable
+        ), patch.object(bootstrap.subprocess, "run") as run:
+            root = Path(directory)
+            run.return_value.returncode = 0
+            bootstrap.run_manager(
+                root / "manager.py", "plan", ["--json"], root, 30, "claude-code"
+            )
+            command = run.call_args.args[0]
+            self.assertIn("--agent", command)
+            self.assertEqual("claude-code", command[command.index("--agent") + 1])
+
+    def test_conflicting_forwarded_agent_is_rejected(self) -> None:
+        with self.assertRaisesRegex(bootstrap.BootstrapError, "conflicts"):
+            bootstrap.forwarded_agent_arguments(
+                ["--agent", "codex"], "claude-code"
+            )
+
 
 if __name__ == "__main__":
     unittest.main()

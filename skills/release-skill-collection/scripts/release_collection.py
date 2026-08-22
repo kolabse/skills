@@ -21,6 +21,7 @@ REPOSITORY_PATTERN = re.compile(r"^[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+$")
 MAX_OUTPUT_CHARS = 2000
 REQUIRED_FILES = (
     "skill-catalog.json",
+    ".claude-plugin/plugin.json",
     ".codex-plugin/plugin.json",
     "CHANGELOG.md",
     "CONTRIBUTING.md",
@@ -42,6 +43,7 @@ REQUIRED_GATES = {
     "review",
 }
 SUPPORTED_PLATFORMS = ("linux", "macos", "windows")
+SUPPORTED_AGENTS = ("claude-code", "codex")
 POST_PUBLICATION_STEPS = [
     "audit the published release, assets, checksums, and attestations",
     "fetch and prune remote refs after merge and publication",
@@ -205,6 +207,12 @@ def inspect(root: Path, tag: str | None = None) -> dict[str, Any]:
     try:
         versions["plugin"] = load_object(
             root / ".codex-plugin" / "plugin.json", "plugin manifest"
+        ).get("version")
+    except ReleaseError as error:
+        blockers.append(str(error))
+    try:
+        versions["claude_plugin"] = load_object(
+            root / ".claude-plugin" / "plugin.json", "Claude Code plugin manifest"
         ).get("version")
     except ReleaseError as error:
         blockers.append(str(error))
@@ -461,6 +469,9 @@ def verify_evidence(root: Path, tag: str, evidence_path: Path) -> dict[str, Any]
     platforms = gates["supported_platform_ci"].get("platforms")
     if platforms != list(SUPPORTED_PLATFORMS):
         raise ReleaseError("supported-platform CI evidence is incomplete")
+    agents = gates["consumer_smoke"].get("agents")
+    if agents != list(SUPPORTED_AGENTS):
+        raise ReleaseError("consumer-smoke evidence must cover Claude Code and Codex")
     holdout_digest = gates["locked_holdout"].get("assertion_digest")
     if not SHA256_PATTERN.fullmatch(str(holdout_digest or "")):
         raise ReleaseError("locked holdout evidence has no assertion digest")

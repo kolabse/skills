@@ -13,7 +13,9 @@ a substitute for review, CI, or deployment verification.
 
 1. Invoke `$synchronize-git-repositories` and resolve every repository whose
    state must be covered by one push decision.
-2. Preserve existing `AGENTS.md` content. Add one equivalent policy or this
+2. Preserve existing project-rule content. Codex uses `AGENTS.md` and
+   `$verify-before-push`; Claude Code uses `CLAUDE.md` and
+   `/verify-before-push`. Add one equivalent policy or this
    managed block:
 
    ```markdown
@@ -31,7 +33,7 @@ a substitute for review, CI, or deployment verification.
    idempotently:
 
    ```shell
-   python <skill-root>/scripts/verify_before_push.py configure --project-root <project-root> --config-source <draft-config.json>
+   python <skill-root>/scripts/verify_before_push.py configure --project-root <project-root> --config-source <draft-config.json> [--agent codex|claude-code]
    ```
 
    A later setup pass may omit `--config-source`; it validates and preserves
@@ -87,7 +89,8 @@ Completion criterion: configuration names all gated repositories and checks,
 the evidence path is ignored, and a second setup pass creates no duplicate
 policy or ignore entry.
 
-Inspect configuration without running checks with `status --json`. After
+Inspect configuration without running checks with `status --json` and the
+same explicit `--agent`. Omitting `--agent` preserves the Codex default. After
 updating the skill, run `migrate --json`; it migrates supported older versions
 and rejects unknown newer versions.
 

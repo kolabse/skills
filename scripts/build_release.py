@@ -15,7 +15,10 @@ from typing import Iterable
 
 
 ROOT_FILES = ("README.md", "LICENSE", "CHANGELOG.md", "skill-catalog.json")
-OPTIONAL_PLUGIN_FILES = (".codex-plugin/plugin.json",)
+OPTIONAL_PLUGIN_FILES = (
+    ".claude-plugin/plugin.json",
+    ".codex-plugin/plugin.json",
+)
 OPTIONAL_COLLECTION_FILES = (
     "scripts/bootstrap_update.py",
     "scripts/install_personal_plugin.py",
@@ -41,19 +44,21 @@ def sha256_file(path: Path) -> str:
 
 
 def validate_plugin_release_version(source: Path, tag: str) -> None:
-    manifest_path = source / ".codex-plugin" / "plugin.json"
-    if not manifest_path.is_file():
-        return
-    try:
-        manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
-    except (json.JSONDecodeError, UnicodeDecodeError) as error:
-        raise ValueError(f"Invalid plugin manifest: {error}") from error
-    version = manifest.get("version") if isinstance(manifest, dict) else None
     expected = tag.removeprefix("v")
-    if version != expected:
-        raise ValueError(
-            f"Plugin version {version!r} does not match release tag {tag!r}"
-        )
+    for relative in OPTIONAL_PLUGIN_FILES:
+        manifest_path = source / relative
+        if not manifest_path.is_file():
+            continue
+        try:
+            manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+        except (json.JSONDecodeError, UnicodeDecodeError) as error:
+            raise ValueError(f"Invalid plugin manifest {relative}: {error}") from error
+        version = manifest.get("version") if isinstance(manifest, dict) else None
+        if version != expected:
+            raise ValueError(
+                f"Plugin manifest {relative} version {version!r} does not match "
+                f"release tag {tag!r}"
+            )
 
 
 def release_files(source: Path) -> list[Path]:

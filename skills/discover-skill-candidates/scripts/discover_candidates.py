@@ -49,6 +49,9 @@ OBSERVATION_SOURCE_TYPES = {
 OBSERVATIONAL_SOURCE_TYPES = OBSERVATION_SOURCE_TYPES | {"project-structure"}
 NAME_PATTERN = re.compile(r"^[a-z0-9]+(?:-[a-z0-9]+)*$")
 SKILL_REFERENCE_PATTERN = re.compile(r"(?<![A-Za-z0-9_-])\$([a-z0-9]+(?:-[a-z0-9]+)*)")
+CLAUDE_SKILL_REFERENCE_PATTERN = re.compile(
+    r"(?m)(?:^|`)/([a-z0-9]+(?:-[a-z0-9]+)*)(?=`|\s|$)"
+)
 SECRET_PATTERNS = (
     re.compile(r"-----BEGIN [A-Z0-9 ]*PRIVATE KEY-----", re.I),
     re.compile(r"\b(?:bearer|basic)\s+[A-Za-z0-9._~+/=-]{12,}", re.I),
@@ -164,7 +167,11 @@ def contains_share_unsafe(value: object) -> bool:
     return False
 
 
-def discover_rule_paths(root: Path, excluded: set[str]) -> list[Path]:
+RULE_FILES = {"codex": "AGENTS.md", "claude-code": "CLAUDE.md"}
+
+
+def discover_rule_paths(root: Path, excluded: set[str], agent: str = "codex") -> list[Path]:
+    rule_filename = RULE_FILES[agent]
     paths: list[Path] = []
     for directory, names, files in os.walk(root, followlinks=False):
         names[:] = sorted(
@@ -172,11 +179,11 @@ def discover_rule_paths(root: Path, excluded: set[str]) -> list[Path]:
             for name in names
             if name not in excluded and not (Path(directory) / name).is_symlink()
         )
-        if "AGENTS.md" in files:
-            paths.append((Path(directory) / "AGENTS.md").resolve())
+        if rule_filename in files:
+            paths.append((Path(directory) / rule_filename).resolve())
             if len(paths) > MAX_RULE_FILES:
                 raise DiscoveryError(
-                    f"Project contains more than {MAX_RULE_FILES} AGENTS.md files"
+                    f"Project contains more than {MAX_RULE_FILES} {rule_filename} files"
                 )
     return sorted(paths, key=lambda path: path.relative_to(root).as_posix())
 
@@ -189,7 +196,7 @@ def discover_document_paths(root: Path, excluded: set[str]) -> list[Path]:
         for path in root.iterdir()
         if path.is_file()
         and not path.is_symlink()
-        and path.name != "AGENTS.md"
+        and path.name not in set(RULE_FILES.values())
         and (
             path.name.lower().startswith("readme")
             or path.name.lower().startswith("contributing")
@@ -207,7 +214,7 @@ def discover_document_paths(root: Path, excluded: set[str]) -> list[Path]:
             for name in sorted(files):
                 path = Path(directory) / name
                 if (
-                    name != "AGENTS.md"
+                    name not in set(RULE_FILES.values())
                     and path.suffix.lower() in PROJECT_DOCUMENT_EXTENSIONS
                     and not path.is_symlink()
                 ):
@@ -278,7 +285,12 @@ def git_provenance(root: Path, path: Path) -> dict[str, Any]:
     return result
 
 
-def split_blocks(relative: str, content: str) -> list[dict[str, Any]]:
+def split_blocks(relative: str, content: str, agent: str = "codex") -> list[dict[str, Any]]:
+    reference_pattern = (
+        CLAUDE_SKILL_REFERENCE_PATTERN
+        if agent == "claude-code"
+        else SKILL_REFERENCE_PATTERN
+    )
     lines = content.splitlines()
     ranges: list[tuple[int, int]] = []
     index = 0
@@ -340,14 +352,14 @@ def split_blocks(relative: str, content: str) -> list[dict[str, Any]]:
                 "end_line": end_line,
                 "sha256": digest_text(text),
                 "text": text,
-                "skill_references": sorted(set(SKILL_REFERENCE_PATTERN.findall(text))),
+                "skill_references": sorted(set(reference_pattern.findall(text))),
             }
         )
     return blocks
 
 
 def read_evidence_file(
-    project_root: Path, path: Path, source_type: str
+    project_root: Path, path: Path, source_type: str, agent: str = "codex"
 ) -> dict[str, Any]:
     if path.is_symlink() or not path.is_file() or not is_within(path, project_root):
         raise DiscoveryError(f"Evidence path is not a regular project file: {path}")
@@ -372,7 +384,7 @@ def read_evidence_file(
         ),
         "sha256": digest_text(content),
         "git": git_provenance(project_root, path),
-        "blocks": split_blocks(relative, content),
+        "blocks": split_blocks(relative, content, agent),
     }
 
 
@@ -559,21 +571,22 @@ def inventory(
     include_project_structure: bool = False,
     git_history_limit: int = 0,
     observation_inputs: list[str] | None = None,
+    agent: str = "codex",
 ) -> dict[str, Any]:
     if not project_root.is_dir():
         raise DiscoveryError(f"Project directory does not exist: {project_root}")
     files_by_path: dict[Path, dict[str, Any]] = {}
-    rule_paths = discover_rule_paths(project_root, excluded)
+    rule_paths = discover_rule_paths(project_root, excluded, agent)
     for path in rule_paths:
-        files_by_path[path] = read_evidence_file(project_root, path, "project-rule")
+        files_by_path[path] = read_evidence_file(project_root, path, "project-rule", agent)
     if include_project_docs:
         for path in discover_document_paths(project_root, excluded):
             files_by_path.setdefault(
-                path, read_evidence_file(project_root, path, "project-document")
+                path, read_evidence_file(project_root, path, "project-document", agent)
             )
     for path in resolve_explicit_files(project_root, include_files or []):
         files_by_path.setdefault(
-            path, read_evidence_file(project_root, path, "explicit-project-file")
+            path, read_evidence_file(project_root, path, "explicit-project-file", agent)
         )
     files = [
         files_by_path[path]
@@ -607,6 +620,7 @@ def inventory(
     result = {
         "schema_version": 2,
         "read_only": True,
+        "agent": agent,
         "project_root": str(project_root),
         "rule_file_count": len(rule_paths),
         "evidence_file_count": len(files),
@@ -1228,6 +1242,7 @@ def inventory_from_args(
         include_project_structure=args.include_project_structure,
         git_history_limit=args.git_history_limit,
         observation_inputs=args.observation_input,
+        agent=getattr(args, "agent", "codex"),
     )
 
 
@@ -1326,6 +1341,7 @@ def build_parser() -> argparse.ArgumentParser:
 
 
 def add_inventory_arguments(parser: argparse.ArgumentParser) -> None:
+    parser.add_argument("--agent", choices=sorted(RULE_FILES), default="codex")
     parser.add_argument("--exclude-directory", action="append", default=[])
     parser.add_argument("--include-project-docs", action="store_true")
     parser.add_argument("--include-file", action="append", default=[])

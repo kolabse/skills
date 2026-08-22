@@ -8,9 +8,9 @@ itself permission to transfer an item.
 
 The environment manifest may contain:
 
-- explicitly selected project-relative `AGENTS.md` files that are not tracked
+- explicitly selected project-relative `AGENTS.md` or `CLAUDE.md` files that are not tracked
   by Git, limited to 32 KiB of reviewed UTF-8 text;
-- tracked `AGENTS.md` coverage records containing only path, Git blob, and
+- tracked `AGENTS.md` or `CLAUDE.md` coverage records containing only path, Git blob, and
   commit identifiers;
 - skill and plugin identifiers, versions, canonical source identifiers, and
   optional SHA-256 digests;
@@ -33,7 +33,7 @@ Create a reviewed input outside the project:
 ```json
 {
   "rules": [
-    {"id": "project-rules", "path": "AGENTS.md", "scope": "project"}
+    {"id": "project-rules", "path": "CLAUDE.md", "scope": "project"}
   ],
   "skills": [
     {"id": "sync-project-context", "source": "kolabse-skills", "version": "1.8.0", "required": true, "declaration_path": "plugin.json"}
@@ -56,7 +56,7 @@ python <skill-root>/scripts/environment_sync.py inspect \
 
 It classifies a clean tracked rule as `satisfied_by_git` and omits its content.
 It rejects tracked rules with unpublished changes. Only an explicitly listed,
-untracked regular `AGENTS.md` becomes `local_portable`.
+untracked regular `AGENTS.md` or `CLAUDE.md` becomes `local_portable`.
 
 For a skill, plugin, or setting, optionally provide `declaration_path`. A clean
 tracked declaration becomes Git coverage and the requirement is not duplicated
@@ -117,7 +117,7 @@ python <skill-root>/scripts/environment_sync.py apply \
   --project-path <project-root> --approve-local-rules --json
 ```
 
-The helper creates only absent, untracked `AGENTS.md` files with exclusive
+The helper creates only absent, untracked `AGENTS.md` or `CLAUDE.md` files with exclusive
 creation. It never overwrites an existing or Git-owned rule. Re-run `plan`
 after installing skills, plugins, or settings through their own tools.
 

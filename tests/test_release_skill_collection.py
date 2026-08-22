@@ -66,6 +66,11 @@ class ReleaseFixture:
         (plugin / "plugin.json").write_text(
             json.dumps({"version": version}), encoding="utf-8"
         )
+        claude_plugin = self.root / ".claude-plugin"
+        claude_plugin.mkdir()
+        (claude_plugin / "plugin.json").write_text(
+            json.dumps({"version": version}), encoding="utf-8"
+        )
         (self.root / "CHANGELOG.md").write_text(
             f"# Changelog\n\n## [{version}] - 2030-01-01\n", encoding="utf-8"
         )
@@ -260,6 +265,9 @@ class ReleaseSkillCollectionTests(unittest.TestCase):
             gates["supported_platform_ci"] = signed_gate(
                 commit, platforms=["linux", "macos", "windows"]
             )
+            gates["consumer_smoke"] = signed_gate(
+                commit, agents=["claude-code", "codex"]
+            )
             evidence = {
                 "schema_version": 1,
                 "tag": fixture.tag,
@@ -283,6 +291,9 @@ class ReleaseSkillCollectionTests(unittest.TestCase):
             gates = {name: signed_gate(commit) for name in release_collection.REQUIRED_GATES}
             gates["locked_holdout"] = signed_gate(commit, assertion_digest="c" * 64)
             gates["supported_platform_ci"] = signed_gate(commit, platforms=["linux", "macos"])
+            gates["consumer_smoke"] = signed_gate(
+                commit, agents=["claude-code", "codex"]
+            )
             evidence = {"schema_version": 1, "tag": fixture.tag, "commit": commit, "gates": gates}
             evidence["evidence_sha256"] = release_collection.canonical_digest(evidence)
             path = parent / "evidence.json"
@@ -294,6 +305,25 @@ class ReleaseSkillCollectionTests(unittest.TestCase):
             )
             path.write_text(json.dumps(evidence), encoding="utf-8")
             with self.assertRaisesRegex(release_collection.ReleaseError, "digest"):
+                release_collection.verify_evidence(fixture.root, fixture.tag, path)
+
+    def test_verify_evidence_rejects_missing_claude_consumer(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            parent = Path(directory)
+            fixture = ReleaseFixture(parent)
+            commit = git(fixture.root, "rev-parse", "HEAD")
+            gates = {name: signed_gate(commit) for name in release_collection.REQUIRED_GATES}
+            gates["locked_holdout"] = signed_gate(commit, assertion_digest="c" * 64)
+            gates["supported_platform_ci"] = signed_gate(
+                commit, platforms=["linux", "macos", "windows"]
+            )
+            gates["consumer_smoke"] = signed_gate(commit, agents=["codex"])
+            evidence = {"schema_version": 1, "tag": fixture.tag, "commit": commit, "gates": gates}
+            evidence["evidence_sha256"] = release_collection.canonical_digest(evidence)
+            path = parent / "evidence.json"
+            path.write_text(json.dumps(evidence), encoding="utf-8")
+
+            with self.assertRaisesRegex(release_collection.ReleaseError, "Claude Code"):
                 release_collection.verify_evidence(fixture.root, fixture.tag, path)
 
     def test_cleanup_plan_accepts_patch_equivalence_and_rejects_unique_work(self) -> None:

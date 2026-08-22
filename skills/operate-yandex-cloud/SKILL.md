@@ -5,6 +5,10 @@ description: "Operate project-scoped Yandex Cloud infrastructure safely. Use whe
 
 # Operate Yandex Cloud
 
+This workflow is portable between Codex and Claude Code. Invoke it as
+`$operate-yandex-cloud` in Codex or `/operate-yandex-cloud` in Claude Code;
+the authorization and CLI safety boundaries are identical.
+
 Treat the project's infrastructure repository, inventory, configuration and
 runbooks as the source of truth. Resolve live state with read-only checks;
 treat remembered resource identifiers and procedures as hints only.

@@ -8,6 +8,8 @@
     "schema_version": {"const": 1},
     "operation": {"enum": ["update", "migrate"]},
     "collection": {"const": "kolabse-skills"},
+    "agent": {"enum": ["codex", "claude-code"]},
+    "layout": {"enum": [".agents/skills", ".claude/skills"]},
     "scope": {"enum": ["project", "global"]},
     "healthy": {"type": "boolean"},
     "outcomes": {

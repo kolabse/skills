@@ -1,7 +1,7 @@
 {
   "schema_version": 2,
   "collection": "kolabse-skills",
-  "version": "1.14.1",
+  "version": "1.15.0",
   "skill": "execute-configured-gitflow-releases",
   "source": "https://github.com/kolabse/skills",
   "canonical_repository": "https://github.com/kolabse/skills"

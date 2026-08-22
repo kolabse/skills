@@ -13,6 +13,8 @@ from pathlib import Path
 
 REPOSITORY_ROOT = Path(__file__).resolve().parents[1]
 SKILLS_CLI_VERSION = "1.5.22"
+SUPPORTED_AGENTS = ("codex", "claude-code")
+AGENT_LAYOUTS = {"codex": ".agents/skills", "claude-code": ".claude/skills"}
 
 
 class SmokeError(RuntimeError):
@@ -47,8 +49,13 @@ def catalog_skills(source: Path) -> list[str]:
     return sorted(names)
 
 
-def verify_installation(source: Path, project: Path, names: list[str]) -> None:
-    installed_root = project / ".agents" / "skills"
+def verify_installation(
+    source: Path, project: Path, names: list[str], agent: str = "codex"
+) -> None:
+    try:
+        installed_root = project / AGENT_LAYOUTS[agent]
+    except KeyError as error:
+        raise SmokeError(f"unsupported agent {agent!r}") from error
     if not installed_root.is_dir():
         raise SmokeError(f"Installer did not create {installed_root}")
     installed_names = sorted(path.name for path in installed_root.iterdir() if path.is_dir())
@@ -83,7 +90,11 @@ def verify_installation(source: Path, project: Path, names: list[str]) -> None:
             raise SmokeError(f"Installer lock has no computed hash for {name}")
 
 
-def run_smoke(source: Path, npx: str, cli_version: str, timeout: int) -> int:
+def run_smoke(
+    source: Path, npx: str, cli_version: str, timeout: int, agent: str = "codex"
+) -> int:
+    if agent not in SUPPORTED_AGENTS:
+        raise SmokeError(f"unsupported agent {agent!r}")
     names = catalog_skills(source)
     with tempfile.TemporaryDirectory(prefix="kolabse-skills-install-") as directory:
         project = Path(directory)
@@ -99,7 +110,7 @@ def run_smoke(source: Path, npx: str, cli_version: str, timeout: int) -> int:
                 "--skill",
                 "*",
                 "--agent",
-                "codex",
+                agent,
                 "--yes",
                 "--copy",
             ],
@@ -115,8 +126,11 @@ def run_smoke(source: Path, npx: str, cli_version: str, timeout: int) -> int:
         if result.returncode != 0:
             detail = (result.stdout + "\n" + result.stderr).strip()
             raise SmokeError(f"skills CLI exited with {result.returncode}: {detail[-1000:]}")
-        verify_installation(source, project, names)
-    print(f"Installed and verified {len(names)} copied skill(s) with skills@{cli_version}.")
+        verify_installation(source, project, names, agent)
+    print(
+        f"Installed and verified {len(names)} copied skill(s) for {agent} "
+        f"with skills@{cli_version}."
+    )
     return 0
 
 
@@ -125,6 +139,7 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--source", type=Path, default=REPOSITORY_ROOT)
     parser.add_argument("--cli-version", default=SKILLS_CLI_VERSION)
     parser.add_argument("--timeout", type=int, default=120)
+    parser.add_argument("--agent", choices=SUPPORTED_AGENTS, default="codex")
     args = parser.parse_args(argv)
     try:
         if args.timeout <= 0:
@@ -132,7 +147,9 @@ def main(argv: list[str] | None = None) -> int:
         npx = shutil.which("npx")
         if not npx:
             raise SmokeError("npx was not found")
-        return run_smoke(args.source.resolve(), npx, args.cli_version, args.timeout)
+        return run_smoke(
+            args.source.resolve(), npx, args.cli_version, args.timeout, args.agent
+        )
     except (SmokeError, OSError, subprocess.SubprocessError) as error:
         print(f"ERROR: {error}", file=sys.stderr)
         return 1

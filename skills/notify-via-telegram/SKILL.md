@@ -5,6 +5,11 @@ description: "Send Telegram notifications about long-running agent tasks through
 
 # Notify via Telegram
 
+This skill is portable between Codex and Claude Code. Invoke it as
+`$notify-via-telegram` in Codex or `/notify-via-telegram` in Claude Code. The
+Python sender and its configuration contract are shared; only the optional
+Codex Desktop Windows setup fallback below is Codex-specific.
+
 Keep Telegram updates concise, useful away from the workstation, and free of
 credentials, private reasoning, raw logs, and unnecessary implementation detail.
 
@@ -178,7 +183,8 @@ python <skill-root>/scripts/telegram_notify.py project-export \
   --project-path <project-root> > <temporary-json-outside-project>
 ```
 
-Use `$sync-project-context` to inspect and capture that input as a project
+Use `$sync-project-context` in Codex or `/sync-project-context` in Claude Code
+to inspect and capture that input as a project
 environment setting. On another computer, its read-only environment plan will
 report `manual_apply_required`. Recreate the destination with
 `project-configure`, then export observed state for verification:

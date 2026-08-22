@@ -16,6 +16,8 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 SKILLS_CLI_VERSION = "1.5.22"
 BASELINE_TAG = "v1.0.0"
+SUPPORTED_AGENTS = ("codex", "claude-code")
+AGENT_LAYOUTS = {"codex": ".agents/skills", "claude-code": ".claude/skills"}
 sys.path.insert(0, str(ROOT / "scripts"))
 from manage_installed_skills import doctor, migrate, update_skills  # noqa: E402
 
@@ -53,8 +55,13 @@ def configure_identity(git: str, project: Path, timeout: int) -> None:
     run([git, "commit", "-m", "fixture"], project, timeout)
 
 
-def write_legacy_configuration(project: Path, telegram_path: Path, python: str) -> None:
-    verify = project / ".agents/verify-before-push"
+def write_legacy_configuration(
+    project: Path, telegram_path: Path, python: str, agent: str = "codex"
+) -> None:
+    if agent not in SUPPORTED_AGENTS:
+        raise UpgradeError(f"unsupported agent {agent!r}")
+    config_root = project / ".agents"
+    verify = config_root / "verify-before-push"
     verify.mkdir(parents=True)
     (verify / "config.json").write_text(
         json.dumps(
@@ -77,7 +84,7 @@ def write_legacy_configuration(project: Path, telegram_path: Path, python: str) 
         + "\n",
         encoding="utf-8",
     )
-    cloud = project / ".agents/operate-yandex-cloud"
+    cloud = config_root / "operate-yandex-cloud"
     cloud.mkdir(parents=True)
     (cloud / "project.yaml").write_text(
         'version: 1\ncloud_id: "legacy-cloud"\nyc_profile: "legacy-profile"\n',
@@ -123,8 +130,12 @@ def normalized_manifest(root: Path) -> dict[str, str]:
     return result
 
 
-def verify_updated_installation(source: Path, project: Path, names: list[str]) -> None:
-    installed = project / ".agents/skills"
+def verify_updated_installation(
+    source: Path, project: Path, names: list[str], agent: str = "codex"
+) -> None:
+    if agent not in SUPPORTED_AGENTS:
+        raise UpgradeError(f"unsupported agent {agent!r}")
+    installed = project / AGENT_LAYOUTS[agent]
     actual_names = sorted(path.name for path in installed.iterdir() if path.is_dir())
     missing_names = sorted(set(names) - set(actual_names))
     if missing_names:
@@ -144,7 +155,15 @@ def verify_updated_installation(source: Path, project: Path, names: list[str]) -
             raise UpgradeError(f"Updated lock hash is invalid for {name}")
 
 
-def run_upgrade(source: Path, baseline: str, cli_version: str, timeout: int) -> None:
+def run_upgrade(
+    source: Path,
+    baseline: str,
+    cli_version: str,
+    timeout: int,
+    agent: str = "codex",
+) -> None:
+    if agent not in SUPPORTED_AGENTS:
+        raise UpgradeError(f"unsupported agent {agent!r}")
     git = shutil.which("git")
     npx = shutil.which("npx")
     python = shutil.which("python") or sys.executable
@@ -192,7 +211,7 @@ def run_upgrade(source: Path, baseline: str, cli_version: str, timeout: int) -> 
                     "--skill",
                     "*",
                     "--agent",
-                    "codex",
+                    agent,
                     "--yes",
                     "--copy",
                 ],
@@ -210,12 +229,12 @@ def run_upgrade(source: Path, baseline: str, cli_version: str, timeout: int) -> 
             }
             lock["skills"]["unrelated-fixture-skill"] = unrelated_entry
             lock_path.write_text(json.dumps(lock, indent=2) + "\n", encoding="utf-8")
-            unrelated_root = project / ".agents/skills/unrelated-fixture-skill"
+            unrelated_root = project / AGENT_LAYOUTS[agent] / "unrelated-fixture-skill"
             unrelated_root.mkdir(parents=True)
             unrelated_file = unrelated_root / "SKILL.md"
             unrelated_file.write_text("fixture must remain unchanged\n", encoding="utf-8")
             configure_identity(git, project, timeout)
-            write_legacy_configuration(project, telegram, python)
+            write_legacy_configuration(project, telegram, python, agent)
             run([git, "--git-dir", str(remote), "update-ref", "refs/heads/main", candidate], root, timeout)
             previous_telemetry = os.environ.get("DISABLE_TELEMETRY")
             os.environ["DISABLE_TELEMETRY"] = "1"
@@ -229,6 +248,7 @@ def run_upgrade(source: Path, baseline: str, cli_version: str, timeout: int) -> 
                     timeout,
                     adopt_legacy=True,
                     trusted_development_sources={source_url: source},
+                    agent=agent,
                 )
             finally:
                 if previous_telemetry is None:
@@ -240,11 +260,11 @@ def run_upgrade(source: Path, baseline: str, cli_version: str, timeout: int) -> 
                 raise UpgradeError("Collection update changed an unrelated lock entry")
             if unrelated_file.read_text(encoding="utf-8") != "fixture must remain unchanged\n":
                 raise UpgradeError("Collection update changed an unrelated installed skill")
-            verify_updated_installation(source, project, baseline_names)
+            verify_updated_installation(source, project, baseline_names, agent)
             previous_config_env = os.environ.get("TELEGRAM_NOTIFY_CONFIG")
             os.environ["TELEGRAM_NOTIFY_CONFIG"] = str(telegram)
             try:
-                migration = migrate(project, True, timeout)
+                migration = migrate(project, True, timeout, agent)
             finally:
                 if previous_config_env is None:
                     os.environ.pop("TELEGRAM_NOTIFY_CONFIG", None)
@@ -260,7 +280,7 @@ def run_upgrade(source: Path, baseline: str, cli_version: str, timeout: int) -> 
         migrated = {item["skill"] for item in migration["migrations"]}
         if migrated != {"verify-before-push", "operate-yandex-cloud", "notify-via-telegram"}:
             raise UpgradeError(f"Unexpected migrated skills: {sorted(migrated)}")
-        state = doctor(project, {source_url: source})
+        state = doctor(project, {source_url: source}, agent=agent)
         if not state["healthy"]:
             raise UpgradeError(f"Doctor failed after update: {state['problems']}")
         expected_version = json.loads(
@@ -269,7 +289,8 @@ def run_upgrade(source: Path, baseline: str, cli_version: str, timeout: int) -> 
         versions = {item["version"] for item in state["skills"]}
         if versions != {expected_version}:
             raise UpgradeError(f"Installed versions do not match {expected_version}: {versions}")
-        if "version: 3" not in (project / ".agents/operate-yandex-cloud/project.yaml").read_text(encoding="utf-8"):
+        config_root = project / ".agents"
+        if "version: 3" not in (config_root / "operate-yandex-cloud/project.yaml").read_text(encoding="utf-8"):
             raise UpgradeError("Yandex Cloud configuration was not migrated to version 3")
         if json.loads(telegram.read_text(encoding="utf-8")).get("version") != 1:
             raise UpgradeError("Telegram configuration was not migrated to version 1")
@@ -282,9 +303,16 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--baseline", default=BASELINE_TAG)
     parser.add_argument("--cli-version", default=SKILLS_CLI_VERSION)
     parser.add_argument("--timeout", type=int, default=180)
+    parser.add_argument("--agent", choices=SUPPORTED_AGENTS, default="codex")
     args = parser.parse_args(argv)
     try:
-        run_upgrade(args.source.resolve(), args.baseline, args.cli_version, args.timeout)
+        run_upgrade(
+            args.source.resolve(),
+            args.baseline,
+            args.cli_version,
+            args.timeout,
+            args.agent,
+        )
         return 0
     except (UpgradeError, OSError, UnicodeError, subprocess.SubprocessError) as error:
         print(f"UPGRADE_FAILED: {error}", file=sys.stderr)

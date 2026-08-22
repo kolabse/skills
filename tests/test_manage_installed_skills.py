@@ -74,12 +74,15 @@ class ManageInstalledSkillsTests(unittest.TestCase):
             self.assertIn("execute-verified-development-lifecycle", commands)
             self.assertEqual("migrate", commands["execute-verified-development-lifecycle"][2])
 
-    def make_project(self, root: Path, versions: dict[str, str]) -> Path:
+    def make_project(
+        self, root: Path, versions: dict[str, str], agent: str = "codex"
+    ) -> Path:
         project = root / "project"
         project.mkdir(parents=True, exist_ok=True)
+        layout = ".agents/skills" if agent == "codex" else ".claude/skills"
         entries: dict[str, object] = {}
         for name, version in versions.items():
-            skill = project / ".agents/skills" / name
+            skill = project / layout / name
             skill.mkdir(parents=True)
             (skill / "collection-metadata.json").write_text(
                 json.dumps(
@@ -103,11 +106,18 @@ class ManageInstalledSkillsTests(unittest.TestCase):
         )
         return project
 
-    def make_global(self, root: Path, versions: dict[str, str]) -> Path:
+    def make_global(
+        self, root: Path, versions: dict[str, str], agent: str = "codex"
+    ) -> Path:
         global_root = root / ".agents"
+        installed_root = (
+            global_root / "skills"
+            if agent == "codex"
+            else root / ".claude" / "skills"
+        )
         entries: dict[str, object] = {}
         for name, version in versions.items():
-            skill = global_root / "skills" / name
+            skill = installed_root / name
             skill.mkdir(parents=True)
             (skill / "collection-metadata.json").write_text(
                 json.dumps(
@@ -142,6 +152,25 @@ class ManageInstalledSkillsTests(unittest.TestCase):
             self.assertEqual("1.2.0", state["skills"][0]["version"])
             self.assertTrue(state["skills"][0]["metadata_valid"])
             self.assertEqual("verified", state["skills"][0]["provenance_status"])
+
+    def test_claude_code_status_uses_explicit_claude_layout(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            project = self.make_project(
+                Path(directory), {"verify-before-push": "1.14.1"}, "claude-code"
+            )
+            state = manager.read_project_state(project, agent="claude-code")
+            self.assertEqual("claude-code", state["agent"])
+            self.assertEqual(".claude/skills", state["layout"])
+            self.assertTrue(state["skills"][0]["installed"])
+
+            codex_state = manager.doctor(project)
+            self.assertFalse(codex_state["healthy"])
+            self.assertIn("locked but not installed", codex_state["problems"][0])
+
+    def test_unknown_agent_is_rejected_without_layout_guessing(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            with self.assertRaisesRegex(manager.ManagerError, "unsupported agent"):
+                manager.read_project_state(Path(directory), agent="claude")
 
     def test_github_source_variants_normalize_to_canonical_identity(self) -> None:
         variants = [
@@ -337,9 +366,62 @@ class ManageInstalledSkillsTests(unittest.TestCase):
             )
             command = run.call_args.args[0]
             self.assertEqual(
-                ["npx", "--yes", "skills@1.5.22", "update", "verify-before-push", "-p", "-y"],
+                [
+                    "npx", "--yes", "skills@1.5.22", "update",
+                    "verify-before-push", "-p", "-y",
+                ],
                 command,
             )
+
+    def test_claude_code_update_readds_to_verified_agent_layout(self) -> None:
+        with tempfile.TemporaryDirectory() as directory, patch.object(
+            shutil, "which", return_value="npx"
+        ), patch.object(manager, "run_checked") as run:
+            run.return_value.stdout = "unchanged"
+            run.return_value.stderr = ""
+            project = self.make_project(
+                Path(directory), {"verify-before-push": "1.14.1"}, "claude-code"
+            )
+            report = manager.update_skills(
+                project,
+                ["verify-before-push"],
+                "project",
+                "1.5.22",
+                True,
+                30,
+                agent="claude-code",
+            )
+            command = run.call_args.args[0]
+            self.assertEqual("add", command[3])
+            self.assertEqual("claude-code", command[command.index("--agent") + 1])
+            self.assertEqual("claude-code", report["agent"])
+            self.assertEqual(".claude/skills", report["layout"])
+
+    def test_update_targets_selected_agent_when_skill_is_in_both_layouts(self) -> None:
+        with tempfile.TemporaryDirectory() as directory, patch.object(
+            manager, "run_checked"
+        ) as run:
+            project = self.make_project(
+                Path(directory), {"verify-before-push": "1.14.1"}, "claude-code"
+            )
+            codex_copy = project / ".agents/skills/verify-before-push"
+            shutil.copytree(project / ".claude/skills/verify-before-push", codex_copy)
+            run.return_value.stdout = "unchanged"
+            run.return_value.stderr = ""
+
+            manager.update_skills(
+                project,
+                ["verify-before-push"],
+                "project",
+                "1.5.22",
+                True,
+                30,
+                agent="claude-code",
+            )
+
+            command = run.call_args.args[0]
+            self.assertEqual("add", command[3])
+            self.assertEqual("claude-code", command[command.index("--agent") + 1])
 
     def test_plan_and_update_selection_include_all_new_locked_skills(self) -> None:
         with tempfile.TemporaryDirectory() as directory, patch.object(
@@ -419,6 +501,30 @@ class ManageInstalledSkillsTests(unittest.TestCase):
             )
             self.assertTrue(diagnosis["healthy"])
 
+    def test_claude_global_status_uses_shared_lock_and_native_payload(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            global_root = self.make_global(
+                Path(directory), {"verify-before-push": "1.15.0"}, "claude-code"
+            )
+
+            state = manager.read_global_state(global_root, agent="claude-code")
+
+            self.assertEqual(
+                (global_root / ".skill-lock.json").resolve(),
+                Path(state["lock_file"]),
+            )
+            self.assertIn(".claude", state["skills"][0]["path"])
+            self.assertTrue(state["skills"][0]["installed"])
+            self.assertEqual("verified", state["skills"][0]["provenance_status"])
+
+    def test_project_configuration_remains_shared_for_claude(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            project = Path(directory) / "project"
+            self.assertEqual(
+                project.resolve() / ".agents",
+                manager.project_config_root(project, "claude-code"),
+            )
+
     def test_global_doctor_rejects_unsupported_or_ambiguous_layout(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
             global_root = Path(directory) / ".agents"
@@ -491,9 +597,11 @@ class ManageInstalledSkillsTests(unittest.TestCase):
             before = (project / "skills-lock.json").read_bytes()
             plan = manager.build_update_plan(project, [], "project")
             self.assertFalse(plan["mutates"])
-            self.assertEqual("1.14.1", plan["target_version"])
+            self.assertEqual("1.15.0", plan["target_version"])
             self.assertEqual("update", plan["outcomes"][0]["action"])
             self.assertEqual(["verify-before-push"], plan["migration_candidates"])
+            self.assertEqual("codex", plan["agent"])
+            self.assertEqual(".agents/skills", plan["layout"])
             self.assertEqual(before, (project / "skills-lock.json").read_bytes())
             run.assert_not_called()
 

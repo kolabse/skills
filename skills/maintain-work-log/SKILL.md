@@ -1,6 +1,6 @@
 ---
 name: maintain-work-log
-description: "Maintain the canonical dated project work log at docs/reports/work-log.md. Use when the user or applicable project instructions require that log for the current task; when recording material changes, operations, diagnostics, decisions, verification, or blockers in an already configured work-log workflow; when initializing its policy in AGENTS.md; or when reconstructing missing entries from Git history and available project conversations. Do not infer this skill from ordinary project work alone when no work-log requirement is present, and do not use it for application logs, time-tracking products, or personal notes."
+description: "Maintain the canonical dated project work log at docs/reports/work-log.md. Use when the user or applicable project instructions require that log for the current task; when recording material changes, operations, diagnostics, decisions, verification, or blockers in an already configured work-log workflow; when initializing its policy in AGENTS.md or CLAUDE.md; or when reconstructing missing entries from Git history and available project conversations. Do not infer this skill from ordinary project work alone when no work-log requirement is present, and do not use it for application logs, time-tracking products, or personal notes."
 ---
 
 # Maintain Work Log
@@ -11,11 +11,13 @@ transcript of routine command execution.
 
 ## Configure the project
 
-1. Resolve the repository root and inspect the applicable `AGENTS.md` files.
+1. Resolve the repository root and select the target agent explicitly when
+   configuring rules. Codex uses `AGENTS.md` with `$skill-name`; Claude Code
+   uses `CLAUDE.md` with `/skill-name`. Omit `--agent` only for Codex.
 2. When no equivalent policy already exists, run the idempotent helper:
 
    ```shell
-   python <skill-root>/scripts/configure_project.py configure --project-path <project-root>
+   python <skill-root>/scripts/configure_project.py configure --project-path <project-root> [--agent codex|claude-code]
    ```
 
    It preserves unrelated content, creates the log when absent, and adds one
@@ -56,7 +58,7 @@ transcript of routine command execution.
 Inspect configuration without changing files with:
 
 ```shell
-python <skill-root>/scripts/configure_project.py status --project-path <project-root> --json
+python <skill-root>/scripts/configure_project.py status --project-path <project-root> [--agent codex|claude-code] --json
 ```
 
 Completion criterion: the project policy names the log and invokes this skill,
