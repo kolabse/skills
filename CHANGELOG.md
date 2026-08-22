@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.14.1] - 2026-08-22
+
+### Fixed
+
+- Candidate implementations now retain traceability to their source GitHub
+  Issue, require either an automatic closing reference or an explicit reason
+  to keep the Issue open, and verify its actual disposition after merge.
+
 ## [1.14.0] - 2026-08-21
 
 ### Added
@@ -412,6 +420,7 @@ First versioned release of the kolabse skill collection.
 - Tests for configuration migration, fake cloud and infrastructure CLIs,
   installation confirmation, and collection metadata.
 
+[1.14.1]: https://github.com/kolabse/skills/releases/tag/v1.14.1
 [1.14.0]: https://github.com/kolabse/skills/releases/tag/v1.14.0
 [1.13.0]: https://github.com/kolabse/skills/releases/tag/v1.13.0
 [1.12.1]: https://github.com/kolabse/skills/releases/tag/v1.12.1
