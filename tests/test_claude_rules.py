@@ -116,7 +116,7 @@ class ClaudeRuleCompatibilityTests(unittest.TestCase):
             root = Path(directory)
             relative, target = environment_sync.normalize_rule_path("CLAUDE.md", root)
             self.assertEqual("CLAUDE.md", relative)
-            self.assertEqual(root / "CLAUDE.md", target)
+            self.assertEqual((root / "CLAUDE.md").resolve(), target.resolve())
             with self.assertRaises(context_sync.ContextSyncError):
                 environment_sync.normalize_rule_path("PROJECT.md", root)
 

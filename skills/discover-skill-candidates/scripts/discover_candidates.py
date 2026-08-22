@@ -578,6 +578,7 @@ def inventory(
 ) -> dict[str, Any]:
     if not project_root.is_dir():
         raise DiscoveryError(f"Project directory does not exist: {project_root}")
+    project_root = project_root.resolve()
     files_by_path: dict[Path, dict[str, Any]] = {}
     rule_paths = discover_rule_paths(project_root, excluded, agent)
     for path in rule_paths:
