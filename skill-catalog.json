@@ -497,7 +497,7 @@
         "format": "json",
         "current_version": 2,
         "schema": "schemas/config.schema.json",
-        "configure": ["python", "scripts/context_sync.py", "configure", "--project-path", "<project-root>", "--storage-root", "<approved-sync-folder>", "--acknowledge-storage-policy"],
+        "configure": ["python", "scripts/context_sync.py", "configure", "--project-path", "<project-root>", "--backend", "local-folder", "--storage-root", "<approved-sync-folder>", "--acknowledge-storage-policy"],
         "status": ["python", "scripts/context_sync.py", "status", "--project-path", "<project-root>", "--json"],
         "migrate": ["python", "scripts/context_sync.py", "migrate", "--json"]
       },

@@ -34,10 +34,36 @@ the project repository.
 
 ## Select a backend
 
-Use `local-folder` when an approved desktop synchronization client exposes a
-normal local directory. Use `google-drive` when the Google Drive plugin is
-connected and no desktop client is available. The Drive integration is
-optional; do not require or install it for a local-folder workflow.
+Use this precedence before configuring a project or beginning synchronization:
+
+1. Reuse the project's existing configured backend. If the user explicitly
+   asks for another backend, stop and present a separate reconfiguration plan;
+   never replace the mapping implicitly. A configured Google Drive mapping
+   still blocks until its connector is available; do not replace it with a
+   local folder as a fallback.
+2. For a project without a mapping, honor an explicitly requested
+   `google-drive` or `local-folder` backend after confirming the selected
+   account or location is approved.
+3. When the user does not name a backend, use `google-drive` by default if the
+   Google Drive plugin is connected.
+4. If Google Drive is unavailable, stop with connection instructions. Offer
+   `local-folder` only as an explicit alternative; do not discover, select, or
+   recommend OneDrive or another local synchronization folder merely because
+   it exists.
+
+Run the read-only selector before configuration. Pass
+`--google-drive-connected` only after confirming that the connector is
+available in the current environment; omitting it produces a blocked plan for
+an unqualified request rather than a local-folder fallback.
+
+```shell
+python <skill-root>/scripts/context_sync.py backend-plan \
+  --project-path <project-root> --google-drive-connected --json
+```
+
+Use `--requested-backend local-folder` or
+`--requested-backend google-drive` only when the user named that channel.
+Every `configure` call must then pass the planned `--backend` explicitly.
 
 For `google-drive`, read
 [references/google-drive-backend.md](references/google-drive-backend.md) before
@@ -243,6 +269,10 @@ equivalent explicit requests as one bidirectional reconcile on the current
 computer. Read and follow
 [references/desktop-batch-sync.md](references/desktop-batch-sync.md) before
 listing projects or tasks.
+
+If the project is not configured, apply the backend-selection precedence above
+before hydrating or discovering tasks. An unqualified batch request does not
+authorize a detected local synchronization folder.
 
 Hydrate and audit first, discover local tasks with exact titles, and run
 `sync-plan`. Save local-only changes, create remote-only tasks, update tasks
