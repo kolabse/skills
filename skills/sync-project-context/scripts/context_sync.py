@@ -19,6 +19,7 @@ CONFIG_VERSION = 2
 CHECKPOINT_VERSION = 2
 THREAD_REGISTRY_VERSION = 1
 SUPPORTED_CHECKPOINT_VERSIONS = {1, CHECKPOINT_VERSION}
+SUPPORTED_BACKENDS = {"google-drive", "local-folder"}
 DEFAULT_STREAM_ID = "project"
 STREAM_ID_PATTERN = re.compile(r"^stream-[0-9a-f]{16,64}$")
 PROJECT_ID_PATTERN = re.compile(r"^[a-z0-9][a-z0-9-]{2,63}$")
@@ -267,6 +268,76 @@ def find_project(
             )
         raise ContextSyncError("Project is not configured; run configure first")
     return matches[0]
+
+
+def plan_backend_selection(
+    *,
+    configured_backend: str | None,
+    requested_backend: str | None,
+    google_drive_connected: bool,
+) -> dict[str, Any]:
+    for label, backend in (
+        ("configured_backend", configured_backend),
+        ("requested_backend", requested_backend),
+    ):
+        if backend is not None and backend not in SUPPORTED_BACKENDS:
+            raise ContextSyncError(f"{label} is unsupported: {backend}")
+    if not isinstance(google_drive_connected, bool):
+        raise ContextSyncError("google_drive_connected must be boolean")
+    google_drive_blocked = {
+        "status": "blocked",
+        "backend": None,
+        "blocker": "google-drive-unavailable",
+        "explicit_alternatives": ["local-folder"],
+        "next_steps": [
+            "connect-google-drive",
+            "request-local-folder-explicitly",
+        ],
+        "requires_storage_approval": True,
+    }
+
+    if configured_backend is not None:
+        if requested_backend not in {None, configured_backend}:
+            return {
+                "status": "reconfiguration-required",
+                "backend": None,
+                "configured_backend": configured_backend,
+                "requested_backend": requested_backend,
+                "requires_storage_approval": True,
+            }
+        if configured_backend == "google-drive" and not google_drive_connected:
+            return {
+                "status": "blocked",
+                "backend": "google-drive",
+                "selection_source": "configured",
+                "blocker": "google-drive-unavailable",
+                "next_steps": ["connect-google-drive"],
+                "requires_storage_approval": False,
+            }
+        return {
+            "status": "ready",
+            "backend": configured_backend,
+            "selection_source": "configured",
+            "requires_storage_approval": False,
+        }
+
+    if requested_backend == "local-folder":
+        return {
+            "status": "ready",
+            "backend": "local-folder",
+            "selection_source": "explicit",
+            "requires_storage_approval": True,
+        }
+    if requested_backend == "google-drive" and not google_drive_connected:
+        return google_drive_blocked
+    if requested_backend == "google-drive" or google_drive_connected:
+        return {
+            "status": "ready",
+            "backend": "google-drive",
+            "selection_source": "explicit" if requested_backend else "default",
+            "requires_storage_approval": True,
+        }
+    return google_drive_blocked
 
 
 def run_git(
@@ -955,6 +1026,43 @@ def command_prepare_drive_marker(args: argparse.Namespace) -> dict[str, Any]:
         "project_id": project_id,
         "marker_path": str(output),
         "repository_fingerprint": marker["repository_fingerprint"],
+    }
+
+
+def command_backend_plan(args: argparse.Namespace) -> dict[str, Any]:
+    project_root = resolved(args.project_path)
+    if not project_root.is_dir():
+        raise ContextSyncError(
+            f"Project directory does not exist: {project_root}"
+        )
+    config_path = (
+        resolved(args.config_path) if args.config_path else default_config_path()
+    )
+    if is_within(config_path, project_root):
+        raise ContextSyncError(
+            "Configuration path must stay outside the project directory"
+        )
+    config = load_config(config_path, allow_missing=True)
+    identity = os.path.normcase(str(project_root))
+    matches = [
+        item
+        for item in config["projects"]
+        if os.path.normcase(str(resolved(item["local_root"]))) == identity
+    ]
+    if len(matches) > 1:
+        raise ContextSyncError(
+            "Configuration contains duplicate project mappings"
+        )
+    configured_backend = matches[0]["backend"] if matches else None
+    plan = plan_backend_selection(
+        configured_backend=configured_backend,
+        requested_backend=getattr(args, "requested_backend", None),
+        google_drive_connected=getattr(args, "google_drive_connected", False),
+    )
+    return {
+        "project_path": str(project_root),
+        "configured": configured_backend is not None,
+        **plan,
     }
 
 
@@ -2253,6 +2361,17 @@ def build_parser() -> argparse.ArgumentParser:
     )
     subparsers = parser.add_subparsers(dest="command", required=True)
 
+    backend_plan = subparsers.add_parser(
+        "backend-plan",
+        help="Select a storage backend without changing configuration",
+    )
+    backend_plan.add_argument("--project-path", required=True)
+    backend_plan.add_argument(
+        "--requested-backend", choices=tuple(sorted(SUPPORTED_BACKENDS))
+    )
+    backend_plan.add_argument("--google-drive-connected", action="store_true")
+    backend_plan.add_argument("--json", action="store_true")
+
     configure = subparsers.add_parser(
         "configure", help="Configure a local-folder or Google Drive mapping"
     )
@@ -2260,7 +2379,7 @@ def build_parser() -> argparse.ArgumentParser:
     configure.add_argument(
         "--backend",
         choices=("local-folder", "google-drive"),
-        default="local-folder",
+        required=True,
     )
     configure.add_argument("--storage-root")
     configure.add_argument("--drive-project-folder-id")
@@ -2395,6 +2514,7 @@ def main() -> int:
     args = parser.parse_args()
     try:
         handler = {
+            "backend-plan": command_backend_plan,
             "configure": command_configure,
             "prepare-drive-marker": command_prepare_drive_marker,
             "transport": command_transport,

@@ -51,7 +51,11 @@
     },
     {
       "prompt": "Синхронизируй все чаты проекта: сохрани локальные изменения, восстанови удалённые и сохрани точные исходные названия чатов.",
-      "reason": "The unified bidirectional command reconciles local and remote chat streams while preserving exact visible task titles."
+      "reason": "The unified bidirectional command reconciles local and remote chat streams while preserving exact visible task titles; when unconfigured and no channel is named, connected Google Drive is the default backend."
+    },
+    {
+      "prompt": "Синхронизируй все чаты. Канал передачи я не указываю.",
+      "reason": "An unqualified project-chat synchronization request uses the configured backend or connected Google Drive by default and must not silently select a detected local folder."
     },
     {
       "prompt": "Перенеси на второй компьютер правила AGENTS.md только если они не отслеживаются Git, а Git-версию не дублируй.",

@@ -498,6 +498,9 @@ evaluated independently.
 
 - stores immutable checkpoints in an approved synchronized folder or connected
   Google Drive, with machine-local configuration outside the repository;
+- defaults unqualified synchronization requests to connected Google Drive,
+  while preserving an existing backend and requiring explicit opt-in before
+  using a local synchronized folder;
 - keeps one opaque stream per project task: a detailed baseline followed by
   short deltas, exact visible titles, decisions, verification, open questions,
   next steps, and Git fingerprints;
@@ -530,7 +533,7 @@ as unsupported.
 Configure each computer once:
 
 ```text
-$sync-project-context Configure this clone in metadata-only mode using my approved local synchronized folder or connected Google Drive.
+$sync-project-context Configure this clone in metadata-only mode. Use connected Google Drive by default unless I explicitly request another approved channel.
 ```
 
 Then use task-level or batch commands, for example:
