@@ -15,6 +15,7 @@ sys.path.insert(0, str(SCRIPTS_DIRECTORY))
 from validate_skills import (  # noqa: E402
     canonical_digest,
     validate,
+    validate_marketplace_manifests,
     validate_documentation,
     validate_release_holdout,
 )
@@ -59,6 +60,80 @@ class CollectionValidationTests(unittest.TestCase):
 
             self.assertTrue(
                 any("required plugin manifest is missing" in error for error in errors)
+            )
+
+    def test_reports_missing_marketplace_manifests(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            repository = Path(directory)
+
+            errors = validate_marketplace_manifests(repository)
+
+            self.assertTrue(
+                any("Codex marketplace manifest is missing" in error for error in errors)
+            )
+            self.assertTrue(
+                any(
+                    "Claude Code marketplace manifest is missing" in error
+                    for error in errors
+                )
+            )
+
+    def test_reports_noncanonical_marketplace_sources(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            repository = Path(directory)
+            codex_marketplace = repository / ".agents/plugins/marketplace.json"
+            claude_marketplace = repository / ".claude-plugin/marketplace.json"
+            codex_marketplace.parent.mkdir(parents=True)
+            claude_marketplace.parent.mkdir(parents=True)
+            codex_marketplace.write_text(
+                json.dumps(
+                    {
+                        "name": "kolabse",
+                        "interface": {"displayName": "kolabse"},
+                        "plugins": [
+                            {
+                                "name": "kolabse-skills",
+                                "source": {
+                                    "source": "url",
+                                    "url": "https://example.test/skills.git",
+                                    "ref": "main",
+                                },
+                                "policy": {
+                                    "installation": "AVAILABLE",
+                                    "authentication": "ON_INSTALL",
+                                },
+                                "category": "Developer Tools",
+                            }
+                        ],
+                    }
+                ),
+                encoding="utf-8",
+            )
+            claude_marketplace.write_text(
+                json.dumps(
+                    {
+                        "name": "kolabse",
+                        "owner": {"name": "kolabse"},
+                        "plugins": [
+                            {
+                                "name": "kolabse-skills",
+                                "source": {
+                                    "source": "github",
+                                    "repo": "someone/else",
+                                    "ref": "main",
+                                },
+                            }
+                        ],
+                    }
+                ),
+                encoding="utf-8",
+            )
+
+            errors = validate_marketplace_manifests(repository)
+
+            self.assertTrue(any("canonical Git URL" in error for error in errors))
+            self.assertTrue(
+                any("canonical GitHub repository" in error for error in errors)
             )
 
     def test_reports_invalid_catalog_root_without_crashing(self) -> None:
