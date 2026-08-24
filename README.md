@@ -534,8 +534,8 @@ $operate-yandex-cloud Configure this project for Yandex Cloud operations.
 ### `sync-project-context`
 
 Synchronize private, sanitized project and per-chat continuation state between
-computers. The skill remains experimental while its cross-device behavior is
-evaluated independently.
+computers. The skill is stable after two independent real-device Google Drive
+runs passed its deterministic promotion gate.
 
 **What it does:**
 

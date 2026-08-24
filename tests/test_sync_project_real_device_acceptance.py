@@ -18,7 +18,13 @@ def draft(run_id: str = "run-alpha") -> dict[str, object]:
         "skill_version": "1.9.0-rc1",
         "backend": "google-drive",
         "machine_ids": ["machine-alpha", "machine-beta"],
-        "product_versions": {"codex": "2026.815", "google-drive-connector": "0.1.11"},
+        "product_versions": {
+            "codex": {
+                "machine-alpha": "2026.815",
+                "machine-beta": "2026.816",
+            },
+            "google-drive-connector": "0.1.11",
+        },
         "scenarios": [
             {"name": name, "passed": True, "observations": {"checks": 1}}
             for name in real_device_acceptance.SCENARIOS
@@ -55,6 +61,17 @@ class RealDeviceAcceptanceTests(unittest.TestCase):
         unsafe["notes"] = "C:/private/path"
         with self.assertRaisesRegex(real_device_acceptance.AcceptanceError, "unexpected"):
             real_device_acceptance.seal(unsafe)
+
+    def test_rejects_codex_versions_without_exact_machine_coverage(self) -> None:
+        missing = draft()
+        missing["product_versions"]["codex"].pop("machine-beta")
+        with self.assertRaisesRegex(real_device_acceptance.AcceptanceError, "machine"):
+            real_device_acceptance.seal(missing)
+
+        extra = draft()
+        extra["product_versions"]["codex"]["machine-gamma"] = "2026.817"
+        with self.assertRaisesRegex(real_device_acceptance.AcceptanceError, "machine"):
+            real_device_acceptance.seal(extra)
 
 
 if __name__ == "__main__":

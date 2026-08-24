@@ -77,12 +77,30 @@ def normalize(value: object, *, require_digest: bool) -> dict[str, Any]:
     ):
         raise AcceptanceError("machine_ids must contain two distinct opaque identifiers")
     versions = value.get("product_versions")
+    if not isinstance(versions, dict) or set(versions) != {
+        "codex",
+        "google-drive-connector",
+    }:
+        raise AcceptanceError("product_versions must contain Codex and connector versions")
+    codex_versions = versions.get("codex")
     if (
-        not isinstance(versions, dict)
-        or set(versions) != {"codex", "google-drive-connector"}
-        or not all(isinstance(item, str) and VERSION.fullmatch(item) for item in versions.values())
+        not isinstance(codex_versions, dict)
+        or set(codex_versions) != set(machines)
+        or not all(
+            isinstance(machine, str)
+            and isinstance(product_version, str)
+            and VERSION.fullmatch(product_version)
+            for machine, product_version in codex_versions.items()
+        )
     ):
-        raise AcceptanceError("product_versions must contain bounded Codex and connector versions")
+        raise AcceptanceError(
+            "Codex product versions must cover the two machine_ids exactly"
+        )
+    connector_version = versions.get("google-drive-connector")
+    if not isinstance(connector_version, str) or not VERSION.fullmatch(
+        connector_version
+    ):
+        raise AcceptanceError("Google Drive connector version is invalid")
     scenarios = value.get("scenarios")
     if not isinstance(scenarios, list) or len(scenarios) != len(SCENARIOS):
         raise AcceptanceError("acceptance evidence must contain every scenario exactly once")

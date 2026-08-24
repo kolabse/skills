@@ -41,8 +41,10 @@ On two physical computers using the approved Google Drive account:
    verify that hydration or audit rejects it.
 
 Record only sanitized counts, opaque IDs, pass/fail outcomes, and product/tool
-versions. Do not copy account identities, Drive links, transcripts, paths,
-source, or raw logs into the repository.
+versions. Map each Codex version to its opaque machine ID so different client
+versions remain auditable without exposing a device name. Do not copy account
+identities, Drive links, transcripts, paths, source, or raw logs into the
+repository.
 
 Record each completed run with the bundled evidence helper. Start with a JSON
 draft matching `schemas/real-device-acceptance.schema.json` but omit

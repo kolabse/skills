@@ -1,0 +1,101 @@
+{
+  "backend": "google-drive",
+  "kind": "sync-project-context-real-device",
+  "machine_ids": [
+    "machine-6c99f0f10da0",
+    "machine-3de2cb48a6f0"
+  ],
+  "product_versions": {
+    "codex": {
+      "machine-3de2cb48a6f0": "0.149.0-alpha.4.3",
+      "machine-6c99f0f10da0": "0.147.0"
+    },
+    "google-drive-connector": "0.1.11"
+  },
+  "record_sha256": "9cbdb3917bfa2caf5a95c2620606081b49c67a2dff443fe472bf192194fa7fab",
+  "run_id": "run-beta",
+  "scenarios": [
+    {
+      "name": "roundtrip-new-existing",
+      "observations": {
+        "duplicate_tasks": 0,
+        "machines": 2,
+        "streams": 4
+      },
+      "passed": true
+    },
+    {
+      "name": "ordered-deltas",
+      "observations": {
+        "baselines": 1,
+        "deltas": 1,
+        "ordered_histories": 1
+      },
+      "passed": true
+    },
+    {
+      "name": "title-and-content-conflict",
+      "observations": {
+        "blocked_streams": 2,
+        "local_variants": 2,
+        "remote_variants": 2
+      },
+      "passed": true
+    },
+    {
+      "name": "interrupted-upload-retry",
+      "observations": {
+        "remote_objects": 1,
+        "retry_attempts": 1,
+        "verified_readbacks": 1
+      },
+      "passed": true
+    },
+    {
+      "name": "paginated-drive-coverage",
+      "observations": {
+        "continuation_tokens": 2,
+        "items": 3,
+        "pages": 3
+      },
+      "passed": true
+    },
+    {
+      "name": "environment-reconciliation",
+      "observations": {
+        "created_rules": 1,
+        "manifest_generations": 1,
+        "plugin_requirements": 1
+      },
+      "passed": true
+    },
+    {
+      "name": "destination-rule-no-overwrite",
+      "observations": {
+        "existing_rules": 1,
+        "overwrites": 0
+      },
+      "passed": true
+    },
+    {
+      "name": "tamper-rejection",
+      "observations": {
+        "rejections": 1,
+        "tampered_manifests": 1,
+        "valid_graph_audits": 1
+      },
+      "passed": true
+    },
+    {
+      "name": "audit-and-idempotency",
+      "observations": {
+        "audits": 2,
+        "duplicate_tasks": 0,
+        "repeated_restores": 1
+      },
+      "passed": true
+    }
+  ],
+  "schema_version": 1,
+  "skill_version": "1.16.0"
+}
