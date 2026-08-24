@@ -2,6 +2,8 @@
 
 ## [Unreleased]
 
+## [1.16.0] - 2026-08-24
+
 ### Added
 
 - Git-based `kolabse` marketplaces for installing the complete
@@ -9,6 +11,8 @@
   repository.
 - Marketplace schemas, cross-consumer validation, deterministic release
   packaging, and CI smoke coverage for both marketplace payloads.
+- Public support, privacy, terms, branding, OpenAI submission tests, and
+  Anthropic submission guidance for reviewed directory publication.
 
 ## [1.15.1] - 2026-08-24
 
@@ -459,6 +463,7 @@ First versioned release of the kolabse skill collection.
 - Tests for configuration migration, fake cloud and infrastructure CLIs,
   installation confirmation, and collection metadata.
 
+[1.16.0]: https://github.com/kolabse/skills/releases/tag/v1.16.0
 [1.15.1]: https://github.com/kolabse/skills/releases/tag/v1.15.1
 [1.15.0]: https://github.com/kolabse/skills/releases/tag/v1.15.0
 [1.14.1]: https://github.com/kolabse/skills/releases/tag/v1.14.1

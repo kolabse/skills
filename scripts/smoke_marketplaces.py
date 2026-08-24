@@ -58,12 +58,31 @@ def smoke(repository: Path) -> dict[str, object]:
         if not isinstance(payload, dict) or payload.get("type") != "object":
             errors.append(f"{path}: marketplace schema root must describe an object")
 
+    submission_path = repository / "docs/marketplace-submissions/openai-submission.json"
+    try:
+        submission = json.loads(submission_path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError, UnicodeDecodeError) as error:
+        errors.append(f"{submission_path}: could not load submission packet: {error}")
+        submission = {}
+    positive_cases = submission.get("positive_test_cases", [])
+    negative_cases = submission.get("negative_test_cases", [])
+    if not isinstance(positive_cases, list):
+        errors.append(f"{submission_path}: positive_test_cases must be a list")
+        positive_cases = []
+    if not isinstance(negative_cases, list):
+        errors.append(f"{submission_path}: negative_test_cases must be a list")
+        negative_cases = []
+
     return {
         "ok": not errors,
         "marketplace": "kolabse",
         "plugin": "kolabse-skills",
         "versions": versions,
         "skill_count": len(skills),
+        "submission_tests": {
+            "positive": len(positive_cases),
+            "negative": len(negative_cases),
+        },
         "errors": errors,
     }
 

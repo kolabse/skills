@@ -1,6 +1,6 @@
 {
   "name": "kolabse-skills",
-  "version": "1.15.1",
+  "version": "1.16.0",
   "description": "Reusable development lifecycle, Git, review, testing, diagnosis, documentation, release, context, notification, and infrastructure workflows maintained by kolabse.",
   "author": {
     "name": "kolabse",
@@ -47,11 +47,15 @@
       "Write"
     ],
     "websiteURL": "https://github.com/kolabse/skills",
+    "privacyPolicyURL": "https://github.com/kolabse/skills/blob/main/PRIVACY.md",
+    "termsOfServiceURL": "https://github.com/kolabse/skills/blob/main/TERMS.md",
     "defaultPrompt": [
-      "Safely synchronize this project's repositories and verify exact-state evidence before publication.",
-      "Execute the configured development lifecycle with test-first, review, pipeline, documentation, delivery, and cleanup evidence.",
-      "Coordinate implementation with canonical documentation and execute the configured standard or hotfix release route.",
-      "Use the appropriate kolabse workflow for project context, digests, skill discovery, notifications, or cloud operations."
-    ]
+      "Safely synchronize this project's repositories before we begin.",
+      "Review these changes and verify the project checks before push.",
+      "Create today's user-facing digest of completed project changes."
+    ],
+    "brandColor": "#18212F",
+    "composerIcon": "./assets/kolabse-skills-logo.png",
+    "logo": "./assets/kolabse-skills-logo.png"
   }
 }

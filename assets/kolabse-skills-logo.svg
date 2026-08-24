@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-labelledby="title description">
+  <title id="title">kolabse Skills</title>
+  <desc id="description">Interlocking paths forming a letter K</desc>
+  <rect width="512" height="512" rx="112" fill="#18212F"/>
+  <path d="M142 116v280" fill="none" stroke="#F6F8FB" stroke-width="56" stroke-linecap="round"/>
+  <path d="M354 126 214 256l140 130" fill="none" stroke="#58C4B8" stroke-width="56" stroke-linecap="round" stroke-linejoin="round"/>
+  <circle cx="214" cy="256" r="34" fill="#F6B84A"/>
+</svg>
