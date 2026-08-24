@@ -1,17 +1,17 @@
 {
   "schema_version": 1,
-  "collection_version": "1.16.0",
+  "collection_version": "1.17.0",
   "supported_agents": ["claude-code", "codex"],
   "license": "Apache-2.0",
   "composition_evals": "evals/compositions.json",
   "composition_evidence_schema": "schemas/composition-evidence.schema.json",
   "composition_result_schema": "schemas/composition-result.schema.json",
   "release_holdout": {
-    "name": "release-holdout-v3",
-    "path": "evals/release-holdout-v3.json",
-    "sha256": "36a3f7426c1552d92d824a8e07259241d2466aa7a19785b4ef63ee050f7a7a3d",
-    "baseline_release": "v1.8.0",
-    "baseline_report": "evals/baselines/release-holdout-v3-v1.8.0.json"
+    "name": "release-holdout-v4",
+    "path": "evals/release-holdout-v4.json",
+    "sha256": "d5be9dfab3ff21623ea8f21bd7ca7178fbd1b2c42c3c620b014781b976095751",
+    "baseline_release": "v1.17.0",
+    "baseline_report": "evals/baselines/release-holdout-v4-v1.17.0.json"
   },
   "compositions": [
     {
@@ -478,7 +478,8 @@
     {
       "name": "sync-project-context",
       "path": "skills/sync-project-context",
-      "status": "experimental",
+      "status": "stable",
+      "stable_since": "1.17.0",
       "maintainers": [
         "@kolabse"
       ],

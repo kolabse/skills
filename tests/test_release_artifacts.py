@@ -85,11 +85,11 @@ class ReleaseArtifactTests(unittest.TestCase):
                 baseline = "evals/baselines/release-holdout-v1-v0.8.0.json"
                 self.assertIn(prefix + baseline, zip_names)
                 self.assertIn(prefix + baseline, tar_names)
-                stable_baseline = "evals/baselines/release-holdout-v3-v1.8.0.json"
+                stable_baseline = "evals/baselines/release-holdout-v4-v1.17.0.json"
                 self.assertIn(prefix + stable_baseline, zip_names)
                 self.assertIn(prefix + stable_baseline, tar_names)
-                self.assertIn(prefix + "evals/release-holdout-v3.json", zip_names)
-                self.assertIn(prefix + "evals/release-holdout-v3.json", tar_names)
+                self.assertIn(prefix + "evals/release-holdout-v4.json", zip_names)
+                self.assertIn(prefix + "evals/release-holdout-v4.json", tar_names)
                 self.assertFalse(any("/.git/" in name for name in zip_names))
 
                 manifest = json.loads(

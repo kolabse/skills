@@ -2,6 +2,24 @@
 
 ## [Unreleased]
 
+## [1.17.0] - 2026-08-24
+
+### Added
+
+- Two sealed, sanitized real-device Google Drive acceptance records for
+  `sync-project-context` 1.16.0, covering all nine stabilization scenarios on
+  two physical computers.
+- Immutable `release-holdout-v4` coverage for the stable
+  `sync-project-context` trigger surface.
+
+### Changed
+
+- Promoted `sync-project-context` to stable after deterministic acceptance,
+  two independent real-device runs, conflict preservation, pagination,
+  environment reconciliation, tamper rejection, and idempotency checks.
+- Real-device evidence now maps each Codex version to its opaque machine ID so
+  different client versions remain auditable without exposing device names.
+
 ## [1.16.0] - 2026-08-24
 
 ### Added
@@ -463,6 +481,7 @@ First versioned release of the kolabse skill collection.
 - Tests for configuration migration, fake cloud and infrastructure CLIs,
   installation confirmation, and collection metadata.
 
+[1.17.0]: https://github.com/kolabse/skills/releases/tag/v1.17.0
 [1.16.0]: https://github.com/kolabse/skills/releases/tag/v1.16.0
 [1.15.1]: https://github.com/kolabse/skills/releases/tag/v1.15.1
 [1.15.0]: https://github.com/kolabse/skills/releases/tag/v1.15.0

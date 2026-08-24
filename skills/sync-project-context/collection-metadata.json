@@ -1,7 +1,7 @@
 {
   "schema_version": 2,
   "collection": "kolabse-skills",
-  "version": "1.16.0",
+  "version": "1.17.0",
   "skill": "sync-project-context",
   "source": "https://github.com/kolabse/skills",
   "canonical_repository": "https://github.com/kolabse/skills"
