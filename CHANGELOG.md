@@ -1,5 +1,16 @@
 # Changelog
 
+## [1.15.1] - 2026-08-24
+
+### Fixed
+
+- `sync-project-context` now selects connected Google Drive by default when a
+  user requests synchronization without naming a transfer backend. It no
+  longer silently substitutes a discovered local or OneDrive folder.
+- Backend selection is now available as a deterministic read-only plan and
+  fails closed when Google Drive is unavailable or an existing project mapping
+  would need explicit reconfiguration.
+
 ## [1.15.0] - 2026-08-22
 
 ### Added
@@ -438,6 +449,7 @@ First versioned release of the kolabse skill collection.
 - Tests for configuration migration, fake cloud and infrastructure CLIs,
   installation confirmation, and collection metadata.
 
+[1.15.1]: https://github.com/kolabse/skills/releases/tag/v1.15.1
 [1.15.0]: https://github.com/kolabse/skills/releases/tag/v1.15.0
 [1.14.1]: https://github.com/kolabse/skills/releases/tag/v1.14.1
 [1.14.0]: https://github.com/kolabse/skills/releases/tag/v1.14.0
