@@ -23,7 +23,12 @@ Use the collection's declared policies and scripts as the source of truth. Keep 
    python scripts/release_collection.py check --project-root <project-root> --tag vX.Y.Z --json
    ```
 
-   This runs structural validation, security checks, unit tests, deterministic release construction, and checksum verification. It does not run the model-backed holdout or cross-platform/consumer checks; record those separately as required by the collection policy.
+   This runs structural validation, Git marketplace payload smoke tests,
+   security checks, unit tests, deterministic release construction, and
+   checksum verification. Marketplace smoke must cover every declared plugin
+   consumer and reject missing, malformed, or noncanonical catalog sources. It
+   does not run the model-backed holdout or cross-platform/consumer checks;
+   record those separately as required by the collection policy.
 5. Assemble the five required external gate records and verify their exact commit binding, platform coverage, assertion digest, and top-level document digest:
 
    ```shell

@@ -19,11 +19,16 @@ OPTIONAL_PLUGIN_FILES = (
     ".claude-plugin/plugin.json",
     ".codex-plugin/plugin.json",
 )
+OPTIONAL_MARKETPLACE_FILES = (
+    ".agents/plugins/marketplace.json",
+    ".claude-plugin/marketplace.json",
+)
 OPTIONAL_COLLECTION_FILES = (
     "scripts/bootstrap_update.py",
     "scripts/install_personal_plugin.py",
     "scripts/manage_installed_skills.py",
     "scripts/smoke_install.py",
+    "scripts/smoke_marketplaces.py",
     "scripts/smoke_bootstrap.py",
     "scripts/smoke_upgrade.py",
     "scripts/trigger_evals.py",
@@ -72,6 +77,14 @@ def release_files(source: Path) -> list[Path]:
             raise ValueError(f"Release input must not be a symbolic link: {path}")
         files.append(path)
     for name in OPTIONAL_PLUGIN_FILES:
+        path = source / name
+        if path.exists():
+            if not path.is_file():
+                raise ValueError(f"Release input must be a file: {path}")
+            if path.is_symlink():
+                raise ValueError(f"Release input must not be a symbolic link: {path}")
+            files.append(path)
+    for name in OPTIONAL_MARKETPLACE_FILES:
         path = source / name
         if path.exists():
             if not path.is_file():
@@ -140,6 +153,7 @@ def source_commit(source: Path) -> str:
             "--",
             *ROOT_FILES,
             *OPTIONAL_PLUGIN_FILES,
+            *OPTIONAL_MARKETPLACE_FILES,
             *OPTIONAL_COLLECTION_FILES,
             *OPTIONAL_COLLECTION_DIRECTORIES,
             "skills",

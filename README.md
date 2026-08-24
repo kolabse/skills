@@ -37,16 +37,52 @@ them as `/skill-name`. The skill instructions and bundled scripts are shared;
 consumer-specific rule files and invocation syntax are selected at setup time.
 
 The repository is also packaged as the skills-only `kolabse-skills` plugin for
-ChatGPT/Codex and Claude Code. The manifests are in
+ChatGPT/Codex and Claude Code. Every folder under `skills/` is included.
+Cross-agent `npx skills` installation remains available independently of either
+plugin format.
+
+### Install from the Git marketplaces
+
+Codex users can register the repository marketplace and install the complete
+collection with:
+
+```shell
+codex plugin marketplace add kolabse/skills --ref main
+codex plugin add kolabse-skills@kolabse
+```
+
+Refresh the Git snapshot and reinstall the current plugin version with:
+
+```shell
+codex plugin marketplace upgrade kolabse
+codex plugin add kolabse-skills@kolabse
+```
+
+Claude Code users can register the same repository and install the plugin with:
+
+```shell
+claude plugin marketplace add kolabse/skills
+claude plugin install kolabse-skills@kolabse
+```
+
+Refresh it explicitly with `claude plugin marketplace update kolabse`, or
+enable marketplace auto-update in Claude Code. Start a new agent session after
+installing or updating so it discovers the current skill set.
+
+The marketplace catalogs are
+[`.agents/plugins/marketplace.json`](.agents/plugins/marketplace.json) and
+[`.claude-plugin/marketplace.json`](.claude-plugin/marketplace.json). Their
+plugin payloads are described by
 [`.codex-plugin/plugin.json`](.codex-plugin/plugin.json) and
-[`.claude-plugin/plugin.json`](.claude-plugin/plugin.json); every folder under
-`skills/` is included. Cross-agent `npx skills` installation remains available
-independently of either plugin format.
+[`.claude-plugin/plugin.json`](.claude-plugin/plugin.json). Both catalogs fetch
+the canonical `kolabse/skills` repository from `main`; release versioning
+remains authoritative in the plugin manifests.
 
 Claude Code can load an extracted release or trusted checkout directly while
 testing with `claude --plugin-dir <collection-root>`. For ordinary personal or
-project use, prefer the explicit `npx skills ... --agent claude-code` command
-above. Claude Code reads `CLAUDE.md`, not `AGENTS.md`; when a project already
+project use, prefer the Git marketplace or the explicit
+`npx skills ... --agent claude-code` command above. Claude Code reads
+`CLAUDE.md`, not `AGENTS.md`; when a project already
 has shared `AGENTS.md` rules, a minimal `CLAUDE.md` containing `@AGENTS.md`
 preserves one canonical rules document.
 
@@ -180,9 +216,9 @@ documents a downgrade. Restoring older skill files does not downgrade config;
 restore the matching configuration backup when the older release cannot read
 the newer format.
 
-## Install or update the personal Codex plugin
+## Install or update a local-development Codex plugin
 
-From a cloned checkout or release archive, create/update the default personal
+For local plugin development, create/update the default personal
 marketplace entry, copy the plugin to the local plugin directory, add a Codex
 cachebuster, and activate it:
 
@@ -190,10 +226,11 @@ cachebuster, and activate it:
 python scripts/install_personal_plugin.py --activate
 ```
 
-The installer preserves other personal marketplace entries. It does not edit
-the repository manifest. Run it again after updating the checkout, then start a
-new Codex task so the updated skills are loaded. Use `--json` to record the
-installed version, plugin path, marketplace path, and marketplace name.
+The installer preserves other personal marketplace entries and does not edit
+the repository manifest. It is an alternative development path, not the normal
+Git marketplace installation. Run it again after updating the checkout, then
+start a new Codex task so the updated skills are loaded. Use `--json` to record
+the installed version, plugin path, marketplace path, and marketplace name.
 
 ## Available skills
 

@@ -1,0 +1,20 @@
+{
+  "name": "kolabse",
+  "owner": {
+    "name": "kolabse",
+    "url": "https://github.com/kolabse"
+  },
+  "description": "Reusable development workflows maintained by kolabse.",
+  "plugins": [
+    {
+      "name": "kolabse-skills",
+      "source": {
+        "source": "github",
+        "repo": "kolabse/skills",
+        "ref": "main"
+      },
+      "description": "Reusable development lifecycle, Git, review, testing, diagnosis, documentation, release, context, notification, and infrastructure workflows maintained by kolabse.",
+      "category": "development"
+    }
+  ]
+}

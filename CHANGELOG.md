@@ -1,5 +1,15 @@
 # Changelog
 
+## [Unreleased]
+
+### Added
+
+- Git-based `kolabse` marketplaces for installing the complete
+  `kolabse-skills` plugin in Codex and Claude Code from the canonical
+  repository.
+- Marketplace schemas, cross-consumer validation, deterministic release
+  packaging, and CI smoke coverage for both marketplace payloads.
+
 ## [1.15.1] - 2026-08-24
 
 ### Fixed

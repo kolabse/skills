@@ -25,6 +25,8 @@ jobs:
           python-version: ${{ matrix.python-version }}
       - name: Validate collection
         run: python scripts/validate_skills.py
+      - name: Smoke-test Git marketplaces
+        run: python scripts/smoke_marketplaces.py
       - name: Prepare blind trigger suite
         run: python scripts/trigger_evals.py prepare --output .trigger-evals/suite.json
       - name: Prepare locked release holdout

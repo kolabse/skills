@@ -17,6 +17,9 @@ ALLOWED_PROVENANCE = {"original", "migrated", "vendored"}
 ALLOWED_CONFIG_SCOPES = {"project", "user"}
 ALLOWED_CONFIG_FORMATS = {"json", "yaml", "managed-markdown", "none"}
 PLUGIN_NAME = "kolabse-skills"
+MARKETPLACE_NAME = "kolabse"
+CANONICAL_GIT_URL = "https://github.com/kolabse/skills.git"
+CANONICAL_GITHUB_REPOSITORY = "kolabse/skills"
 PLUGIN_VERSION_PATTERN = re.compile(
     r"^[0-9]+\.[0-9]+\.[0-9]+(?:-[0-9A-Za-z]+(?:[.-][0-9A-Za-z]+)*)?$"
 )
@@ -207,6 +210,103 @@ def validate_claude_plugin_manifest(repository_root: Path) -> list[str]:
     author = manifest.get("author")
     if not isinstance(author, dict) or not author.get("name"):
         errors.append(f"{manifest_path}: author.name is required")
+    return errors
+
+
+def _load_marketplace(
+    path: Path, label: str
+) -> tuple[dict[str, object] | None, list[str]]:
+    if not path.is_file():
+        return None, [f"{path}: required {label} marketplace manifest is missing"]
+    try:
+        payload = json.loads(path.read_text(encoding="utf-8"))
+    except (json.JSONDecodeError, UnicodeDecodeError) as error:
+        return None, [f"{path}: invalid JSON: {error}"]
+    if not isinstance(payload, dict):
+        return None, [f"{path}: marketplace root must be an object"]
+    return payload, []
+
+
+def _marketplace_plugin(
+    payload: dict[str, object], path: Path
+) -> tuple[dict[str, object] | None, list[str]]:
+    plugins = payload.get("plugins")
+    if not isinstance(plugins, list):
+        return None, [f"{path}: plugins must be a list"]
+    entries = [entry for entry in plugins if isinstance(entry, dict)]
+    names = [entry.get("name") for entry in entries]
+    if len(names) != len(set(map(str, names))):
+        return None, [f"{path}: plugin names must be unique"]
+    matches = [entry for entry in entries if entry.get("name") == PLUGIN_NAME]
+    if len(matches) != 1:
+        return None, [f"{path}: must contain exactly one '{PLUGIN_NAME}' entry"]
+    return matches[0], []
+
+
+def validate_marketplace_manifests(repository_root: Path) -> list[str]:
+    errors: list[str] = []
+    codex_path = repository_root / ".agents/plugins/marketplace.json"
+    claude_path = repository_root / ".claude-plugin/marketplace.json"
+    codex, codex_errors = _load_marketplace(codex_path, "Codex")
+    claude, claude_errors = _load_marketplace(claude_path, "Claude Code")
+    errors.extend(codex_errors)
+    errors.extend(claude_errors)
+
+    if codex is not None:
+        if codex.get("name") != MARKETPLACE_NAME:
+            errors.append(f"{codex_path}: name must be '{MARKETPLACE_NAME}'")
+        interface = codex.get("interface")
+        if not isinstance(interface, dict) or not interface.get("displayName"):
+            errors.append(f"{codex_path}: interface.displayName is required")
+        entry, entry_errors = _marketplace_plugin(codex, codex_path)
+        errors.extend(entry_errors)
+        if entry is not None:
+            source = entry.get("source")
+            expected_source = {
+                "source": "url",
+                "url": CANONICAL_GIT_URL,
+                "ref": "main",
+            }
+            if source != expected_source:
+                errors.append(
+                    f"{codex_path}: '{PLUGIN_NAME}' must use the canonical Git URL "
+                    "on ref 'main'"
+                )
+            expected_policy = {
+                "installation": "AVAILABLE",
+                "authentication": "ON_INSTALL",
+            }
+            if entry.get("policy") != expected_policy:
+                errors.append(f"{codex_path}: '{PLUGIN_NAME}' policy is invalid")
+            if entry.get("category") != "Developer Tools":
+                errors.append(
+                    f"{codex_path}: '{PLUGIN_NAME}' category must be 'Developer Tools'"
+                )
+
+    if claude is not None:
+        if claude.get("name") != MARKETPLACE_NAME:
+            errors.append(f"{claude_path}: name must be '{MARKETPLACE_NAME}'")
+        owner = claude.get("owner")
+        if not isinstance(owner, dict) or owner.get("name") != "kolabse":
+            errors.append(f"{claude_path}: owner.name must be 'kolabse'")
+        entry, entry_errors = _marketplace_plugin(claude, claude_path)
+        errors.extend(entry_errors)
+        if entry is not None:
+            source = entry.get("source")
+            expected_source = {
+                "source": "github",
+                "repo": CANONICAL_GITHUB_REPOSITORY,
+                "ref": "main",
+            }
+            if source != expected_source:
+                errors.append(
+                    f"{claude_path}: '{PLUGIN_NAME}' must use the canonical GitHub "
+                    "repository on ref 'main'"
+                )
+            if "version" in entry:
+                errors.append(
+                    f"{claude_path}: plugin version must come from .claude-plugin/plugin.json"
+                )
     return errors
 
 
@@ -490,6 +590,7 @@ def frontmatter(skill_file: Path) -> dict[str, str]:
 def validate(repository_root: Path = REPOSITORY_ROOT) -> list[str]:
     errors = validate_plugin_manifest(repository_root)
     errors.extend(validate_claude_plugin_manifest(repository_root))
+    errors.extend(validate_marketplace_manifests(repository_root))
     names: set[str] = set()
     skills_root = repository_root / "skills"
     readme = repository_root / "README.md"

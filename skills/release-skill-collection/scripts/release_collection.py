@@ -27,11 +27,13 @@ REQUIRED_FILES = (
     "CONTRIBUTING.md",
     "scripts/validate_skills.py",
     "scripts/security_checks.py",
+    "scripts/smoke_marketplaces.py",
     "scripts/build_release.py",
     ".github/workflows/release.yml",
 )
 CHECKS = (
     ("structural-validation", ("scripts/validate_skills.py",), 180),
+    ("marketplace-smoke", ("scripts/smoke_marketplaces.py",), 180),
     ("security", ("scripts/security_checks.py",), 180),
     ("unit-tests", ("-m", "unittest", "discover", "-s", "tests", "-v"), 900),
 )

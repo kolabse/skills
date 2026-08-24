@@ -71,12 +71,28 @@ class ReleaseFixture:
         (claude_plugin / "plugin.json").write_text(
             json.dumps({"version": version}), encoding="utf-8"
         )
+        (claude_plugin / "marketplace.json").write_text(
+            json.dumps(
+                {"name": "fixture", "owner": {"name": "fixture"}, "plugins": []}
+            ),
+            encoding="utf-8",
+        )
+        codex_marketplace = self.root / ".agents/plugins"
+        codex_marketplace.mkdir(parents=True)
+        (codex_marketplace / "marketplace.json").write_text(
+            json.dumps({"name": "fixture", "plugins": []}), encoding="utf-8"
+        )
         (self.root / "CHANGELOG.md").write_text(
             f"# Changelog\n\n## [{version}] - 2030-01-01\n", encoding="utf-8"
         )
         (self.root / "CONTRIBUTING.md").write_text("# Contributing\n", encoding="utf-8")
         (self.root / "scripts").mkdir()
-        for name in ("validate_skills.py", "security_checks.py", "build_release.py"):
+        for name in (
+            "validate_skills.py",
+            "smoke_marketplaces.py",
+            "security_checks.py",
+            "build_release.py",
+        ):
             (self.root / "scripts" / name).write_text("# fixture\n", encoding="utf-8")
         workflow = self.root / ".github/workflows"
         workflow.mkdir(parents=True)
@@ -200,7 +216,7 @@ class ReleaseSkillCollectionTests(unittest.TestCase):
                 result = release_collection.check(fixture.root, fixture.tag, output)
 
             self.assertTrue(result["passed"])
-            self.assertEqual(5, len(result["checks"]))
+            self.assertEqual(6, len(result["checks"]))
             self.assertEqual(git(fixture.root, "rev-parse", "HEAD"), result["evidence"]["commit"])
             self.assertRegex(result["report_sha256"], r"^[0-9a-f]{64}$")
 
