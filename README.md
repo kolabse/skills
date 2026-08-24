@@ -78,6 +78,12 @@ plugin payloads are described by
 the canonical `kolabse/skills` repository from `main`; release versioning
 remains authoritative in the plugin manifests.
 
+Public listing materials are maintained with the source: [support](SUPPORT.md),
+[privacy policy](PRIVACY.md), [terms of use](TERMS.md), and the reproducible
+[marketplace submission packet](docs/marketplace-submissions/). Publishing to
+an official directory remains a reviewed maintainer action; installing from
+the Git marketplaces does not require directory approval.
+
 Claude Code can load an extracted release or trusted checkout directly while
 testing with `claude --plugin-dir <collection-root>`. For ordinary personal or
 project use, prefer the Git marketplace or the explicit

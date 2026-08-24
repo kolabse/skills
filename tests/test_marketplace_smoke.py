@@ -26,6 +26,10 @@ class MarketplaceSmokeTests(unittest.TestCase):
             result["versions"]["claude-code"],
         )
         self.assertGreater(result["skill_count"], 0)
+        self.assertEqual(
+            {"positive": 5, "negative": 3},
+            result["submission_tests"],
+        )
 
 
 if __name__ == "__main__":

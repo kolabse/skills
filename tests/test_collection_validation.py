@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import shutil
 import sys
 import tempfile
 import unittest
@@ -17,6 +18,7 @@ from validate_skills import (  # noqa: E402
     validate,
     validate_marketplace_manifests,
     validate_documentation,
+    validate_publication_materials,
     validate_release_holdout,
 )
 
@@ -135,6 +137,27 @@ class CollectionValidationTests(unittest.TestCase):
             self.assertTrue(
                 any("canonical GitHub repository" in error for error in errors)
             )
+
+    def test_publication_materials_reject_incomplete_submission_cases(self) -> None:
+        source = Path(__file__).resolve().parents[1]
+        with tempfile.TemporaryDirectory() as directory:
+            repository = Path(directory)
+            for name in ("PRIVACY.md", "TERMS.md", "SUPPORT.md"):
+                shutil.copy2(source / name, repository / name)
+            shutil.copytree(source / "assets", repository / "assets")
+            submission_directory = repository / "docs/marketplace-submissions"
+            submission_directory.parent.mkdir(parents=True)
+            shutil.copytree(
+                source / "docs/marketplace-submissions", submission_directory
+            )
+            submission_path = submission_directory / "openai-submission.json"
+            submission = json.loads(submission_path.read_text(encoding="utf-8"))
+            del submission["positive_test_cases"][0]["expected_result"]
+            submission_path.write_text(json.dumps(submission), encoding="utf-8")
+
+            errors = validate_publication_materials(repository)
+
+            self.assertTrue(any("expected_result is required" in error for error in errors))
 
     def test_reports_invalid_catalog_root_without_crashing(self) -> None:
         with tempfile.TemporaryDirectory() as directory:

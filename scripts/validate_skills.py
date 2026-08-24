@@ -310,6 +310,116 @@ def validate_marketplace_manifests(repository_root: Path) -> list[str]:
     return errors
 
 
+def validate_publication_materials(repository_root: Path) -> list[str]:
+    errors: list[str] = []
+    required_documents = {
+        "PRIVACY.md": "Privacy Policy",
+        "TERMS.md": "Terms of Use",
+        "SUPPORT.md": "Support",
+        "docs/marketplace-submissions/anthropic-submission.md": (
+            "Anthropic marketplace submission"
+        ),
+    }
+    for relative_path, heading in required_documents.items():
+        path = repository_root / relative_path
+        try:
+            contents = path.read_text(encoding="utf-8")
+        except (OSError, UnicodeError) as error:
+            errors.append(f"{path}: publication document is missing or unreadable: {error}")
+            continue
+        if not contents.startswith(f"# {heading}\n"):
+            errors.append(f"{path}: expected '# {heading}' heading")
+
+    asset_path = repository_root / "assets/kolabse-skills-logo.png"
+    try:
+        asset = asset_path.read_bytes()
+    except OSError as error:
+        errors.append(f"{asset_path}: publication logo is missing or unreadable: {error}")
+    else:
+        if len(asset) < 24 or not asset.startswith(b"\x89PNG\r\n\x1a\n"):
+            errors.append(f"{asset_path}: expected a PNG asset")
+        elif int.from_bytes(asset[16:20], "big") != 512 or int.from_bytes(
+            asset[20:24], "big"
+        ) != 512:
+            errors.append(f"{asset_path}: logo must be 512 by 512 pixels")
+
+    submission_path = (
+        repository_root / "docs/marketplace-submissions/openai-submission.json"
+    )
+    try:
+        submission = json.loads(submission_path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError, UnicodeError) as error:
+        errors.append(f"{submission_path}: submission packet is invalid: {error}")
+        return errors
+    if not isinstance(submission, dict):
+        return [*errors, f"{submission_path}: submission packet must be an object"]
+    if submission.get("schema_version") != 1:
+        errors.append(f"{submission_path}: schema_version must be 1")
+    if submission.get("submission_type") != "skills-only":
+        errors.append(f"{submission_path}: submission_type must be 'skills-only'")
+    if submission.get("plugin") != PLUGIN_NAME:
+        errors.append(f"{submission_path}: plugin must be '{PLUGIN_NAME}'")
+
+    listing = submission.get("listing")
+    expected_listing = {
+        "website_url": "https://github.com/kolabse/skills",
+        "support_url": "https://github.com/kolabse/skills/blob/main/SUPPORT.md",
+        "privacy_policy_url": "https://github.com/kolabse/skills/blob/main/PRIVACY.md",
+        "terms_of_service_url": "https://github.com/kolabse/skills/blob/main/TERMS.md",
+        "logo": "assets/kolabse-skills-logo.png",
+    }
+    if not isinstance(listing, dict):
+        errors.append(f"{submission_path}: listing must be an object")
+    else:
+        for field, expected in expected_listing.items():
+            if listing.get(field) != expected:
+                errors.append(f"{submission_path}: listing.{field} must be {expected!r}")
+
+    prompts = submission.get("starter_prompts")
+    if (
+        not isinstance(prompts, list)
+        or not 1 <= len(prompts) <= 3
+        or not all(isinstance(prompt, str) and prompt.strip() for prompt in prompts)
+    ):
+        errors.append(f"{submission_path}: starter_prompts must contain 1 to 3 prompts")
+
+    case_ids: set[str] = set()
+    for field, expected_count in (
+        ("positive_test_cases", 5),
+        ("negative_test_cases", 3),
+    ):
+        cases = submission.get(field)
+        if not isinstance(cases, list) or len(cases) != expected_count:
+            errors.append(
+                f"{submission_path}: {field} must contain exactly {expected_count} cases"
+            )
+            continue
+        for index, case in enumerate(cases):
+            identifier = case.get("id") if isinstance(case, dict) else None
+            if not isinstance(identifier, str) or not identifier or identifier in case_ids:
+                errors.append(
+                    f"{submission_path}: {field}[{index}].id must be unique and non-empty"
+                )
+            else:
+                case_ids.add(identifier)
+            prompt = case.get("prompt") if isinstance(case, dict) else None
+            if not isinstance(prompt, str) or not prompt.strip():
+                errors.append(f"{submission_path}: {field}[{index}].prompt is required")
+            required_case_fields = (
+                ("expected_behavior", "expected_result", "fixture")
+                if field == "positive_test_cases"
+                else ("expected_safe_behavior", "reason")
+            )
+            for required_field in required_case_fields:
+                value = case.get(required_field) if isinstance(case, dict) else None
+                if not isinstance(value, str) or not value.strip():
+                    errors.append(
+                        f"{submission_path}: {field}[{index}].{required_field} "
+                        "is required"
+                    )
+    return errors
+
+
 def validate_trigger_evals(
     repository_root: Path,
     entry: dict[str, object],
@@ -591,6 +701,7 @@ def validate(repository_root: Path = REPOSITORY_ROOT) -> list[str]:
     errors = validate_plugin_manifest(repository_root)
     errors.extend(validate_claude_plugin_manifest(repository_root))
     errors.extend(validate_marketplace_manifests(repository_root))
+    errors.extend(validate_publication_materials(repository_root))
     names: set[str] = set()
     skills_root = repository_root / "skills"
     readme = repository_root / "README.md"
