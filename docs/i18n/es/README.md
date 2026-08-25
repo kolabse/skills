@@ -32,6 +32,7 @@ Distribuido bajo la [Licencia Apache 2.0](../../../LICENSE). Copyright 2026 kola
     - [`sync-project-context`](#sync-project-context)
   - [Coordinación y comunicación](#coordinación-y-comunicación)
     - [`orchestrate-agent-work`](#orchestrate-agent-work-experimental)
+    - [`synchronize-team-skills`](#synchronize-team-skills-experimental)
     - [`notify-via-telegram`](#notify-via-telegram)
   - [Infraestructura y operaciones](#infraestructura-y-operaciones)
     - [`operate-yandex-cloud`](#operate-yandex-cloud)
@@ -695,6 +696,36 @@ el resultado integrado.
 
 ```text
 $orchestrate-agent-work Delegate these independent subtasks to agents and verify the integrated result.
+```
+
+#### `synchronize-team-skills` (experimental)
+
+Mantiene las habilidades de proyecto de cada integrante alineadas con un único
+manifest revisado en la documentación del proyecto.
+
+**Qué hace:**
+
+- crea o lee `team-agent-skills.md` en una ubicación de documentación aprobada;
+- compara las habilidades declaradas para Codex y Claude Code con copias de
+  proyecto verificadas;
+- informa sin cambios sobre habilidades ausentes, antiguas, más nuevas, no
+  verificadas, que ocultan otras versiones y adicionales conservadas;
+- crea un plan ligado al digest del manifest para una versión fijada;
+- instala solo el conjunto revisado tras la aprobación y verifica el resultado.
+
+**Qué no hace:**
+
+- no convierte automáticamente el estado accidental de un equipo en política;
+- no guarda secretos, configuración personal, rutas locales ni autenticación;
+- no elimina habilidades adicionales, baja versiones ni cambia instalaciones globales;
+- no afirma que una tarea abierta ya haya cargado las habilidades nuevas.
+
+**Cómo invocarlo:**
+
+```text
+$synchronize-team-skills Comprueba las habilidades del proyecto con el manifest del equipo.
+$synchronize-team-skills Muestra el plan y alinea mis habilidades con la documentación del equipo.
+$synchronize-team-skills Añade maintain-project-digest al conjunto de habilidades del equipo.
 ```
 
 #### `notify-via-telegram`

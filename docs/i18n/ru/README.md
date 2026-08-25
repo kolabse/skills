@@ -35,6 +35,7 @@
     - [`sync-project-context`](#sync-project-context)
   - [Координация и коммуникации](#координация-и-коммуникации)
     - [`orchestrate-agent-work`](#orchestrate-agent-work-experimental)
+    - [`synchronize-team-skills`](#synchronize-team-skills-experimental)
     - [`notify-via-telegram`](#notify-via-telegram)
   - [Инфраструктура и эксплуатация](#инфраструктура-и-эксплуатация)
     - [`operate-yandex-cloud`](#operate-yandex-cloud)
@@ -543,6 +544,35 @@ destructive cleanup или внешние mutations и не считает от�
 
 ```text
 $orchestrate-agent-work Делегируй независимые подзадачи агентам и проверь общий результат.
+```
+
+#### `synchronize-team-skills` (experimental)
+
+Синхронизирует проектные навыки участников команды с одним проверенным
+manifest в документации проекта.
+
+**Что делает:**
+
+- создаёт или читает `team-agent-skills.md` в выбранной директории документации;
+- сравнивает требования для Codex и Claude Code с проверенными проектными копиями;
+- без изменений показывает отсутствующие, старые, более новые, непроверенные,
+  перекрывающие и дополнительные навыки;
+- строит связанный с digest manifest план установки одной версии коллекции;
+- после подтверждения устанавливает только согласованный набор и проверяет его.
+
+**Чего не делает:**
+
+- не превращает случайное состояние одного компьютера в стандарт команды;
+- не сохраняет secrets, user config, пути компьютера или plugin authentication;
+- не удаляет дополнительные навыки, не понижает версии и не меняет global scope;
+- не утверждает, что открытый диалог уже загрузил новые навыки.
+
+**Вызов:**
+
+```text
+$synchronize-team-skills Проверь навыки проекта по командному manifest.
+$synchronize-team-skills Покажи план и синхронизируй мои навыки с документацией команды.
+$synchronize-team-skills Добавь maintain-project-digest в командный набор навыков.
 ```
 
 #### `notify-via-telegram`

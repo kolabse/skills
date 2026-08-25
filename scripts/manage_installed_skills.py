@@ -41,6 +41,7 @@ KNOWN_SKILLS = {
     "review-code-changes",
     "sync-project-context",
     "synchronize-git-repositories",
+    "synchronize-team-skills",
     "verify-before-push",
 }
 

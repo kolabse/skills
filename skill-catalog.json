@@ -783,6 +783,65 @@
       ]
     },
     {
+      "name": "synchronize-team-skills",
+      "path": "skills/synchronize-team-skills",
+      "status": "experimental",
+      "maintainers": [
+        "@kolabse"
+      ],
+      "platforms": [
+        "linux",
+        "macos",
+        "windows"
+      ],
+      "trigger_evals": "evals/synchronize-team-skills.json",
+      "license": "Apache-2.0",
+      "provides": [
+        "team-skill-set-synchronization"
+      ],
+      "requires": [
+        "repository-freshness"
+      ],
+      "optional_integrations": [],
+      "configuration": {
+        "scope": "project",
+        "format": "managed-markdown",
+        "configure": [
+          "python",
+          "scripts/team_skills.py",
+          "configure",
+          "--project-root",
+          "<project-root>",
+          "--documentation-root",
+          "<documentation-root>"
+        ],
+        "status": [
+          "python",
+          "scripts/team_skills.py",
+          "status",
+          "--project-root",
+          "<project-root>",
+          "--json"
+        ]
+      },
+      "provenance": {
+        "kind": "original",
+        "source": "Derived from team onboarding experience where partial and stale project skill installations caused inconsistent agent behavior",
+        "canonical_repository": "https://github.com/kolabse/skills"
+      },
+      "category": "collaboration",
+      "tags": [
+        "prepare",
+        "document",
+        "project",
+        "workstation",
+        "read-only-planning",
+        "mutation",
+        "evidence-producing",
+        "git"
+      ]
+    },
+    {
       "name": "notify-via-telegram",
       "path": "skills/notify-via-telegram",
       "status": "stable",

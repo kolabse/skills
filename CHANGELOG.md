@@ -4,6 +4,10 @@
 
 ### Added
 
+- Experimental `synchronize-team-skills` support for declaring a pinned,
+  project-scoped Codex and Claude Code skill set in reviewed documentation,
+  auditing local drift, and applying digest-bound installation plans without
+  deleting extras or changing global installations.
 - A six-category, priority-ordered skill taxonomy and orthogonal controlled
   tags for lifecycle phase, scope, behavior, and integrations, published in
   `skill-catalog.json` with a Draft 2020-12 JSON Schema.

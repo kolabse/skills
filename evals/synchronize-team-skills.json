@@ -1,0 +1,39 @@
+{
+  "skill": "synchronize-team-skills",
+  "positive": [
+    {
+      "prompt": "Синхронизируй навыки команды с набором, указанным в документации этого проекта.",
+      "reason": "The user wants project installations aligned with the reviewed team manifest."
+    },
+    {
+      "prompt": "Проверь, у всех ли разработчиков должен быть одинаковый набор kolabse skills и какие навыки отсутствуют у меня в проекте.",
+      "reason": "Diagnosing local drift from a shared project skill set is the core read-only workflow."
+    },
+    {
+      "prompt": "Добавь maintain-project-digest в документированный набор навыков нашей команды.",
+      "reason": "Changing the reviewed team skill requirement belongs to this skill."
+    },
+    {
+      "prompt": "Установи мне такой же набор проектных навыков, какой команда зафиксировала в docs/team-agent-skills.md.",
+      "reason": "The requested installation is explicitly derived from the project documentation manifest."
+    }
+  ],
+  "negative": [
+    {
+      "prompt": "Обнови все мои глобальные плагины Codex до последних версий.",
+      "reason": "Global plugin management is outside the project-scoped documented skill set."
+    },
+    {
+      "prompt": "Синхронизируй контекст всех чатов проекта через Google Drive.",
+      "reason": "Cross-device chat continuation belongs to sync-project-context."
+    },
+    {
+      "prompt": "Установи один навык из указанного GitHub-репозитория.",
+      "reason": "A one-off skill installation without a team manifest belongs to the ordinary installer."
+    },
+    {
+      "prompt": "Сравни requirements.txt на двух компьютерах.",
+      "reason": "Application dependency comparison is not agent skill-set synchronization."
+    }
+  ]
+}
