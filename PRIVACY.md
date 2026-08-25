@@ -1,5 +1,7 @@
 # Privacy Policy
 
+English | [Русский](docs/i18n/ru/PRIVACY.md)
+
 Effective date: 2026-08-24
 
 `kolabse-skills` is an open-source collection of agent workflows. The

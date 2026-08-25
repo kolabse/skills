@@ -1,0 +1,31 @@
+{
+  "schema_version": 1,
+  "canonical_locale": "en",
+  "locales": {
+    "ru": {
+      "name": "Russian",
+      "documents": [
+        {
+          "canonical": "README.md",
+          "translation": "docs/i18n/ru/README.md"
+        },
+        {
+          "canonical": "CONTRIBUTING.md",
+          "translation": "docs/i18n/ru/CONTRIBUTING.md"
+        },
+        {
+          "canonical": "SUPPORT.md",
+          "translation": "docs/i18n/ru/SUPPORT.md"
+        },
+        {
+          "canonical": "PRIVACY.md",
+          "translation": "docs/i18n/ru/PRIVACY.md"
+        },
+        {
+          "canonical": "TERMS.md",
+          "translation": "docs/i18n/ru/TERMS.md"
+        }
+      ]
+    }
+  }
+}
