@@ -70,6 +70,18 @@ class TeamSkillsTests(unittest.TestCase):
         (skill / "collection-metadata.json").write_text(
             json.dumps(metadata), encoding="utf-8"
         )
+        lock_path = self.root / "skills-lock.json"
+        lock = (
+            json.loads(lock_path.read_text(encoding="utf-8"))
+            if lock_path.is_file()
+            else {"version": 1, "skills": {}}
+        )
+        lock["skills"][name] = {
+            "source": "kolabse/skills",
+            "sourceType": "github",
+            "computedHash": team_skills.skill_folder_hash(skill),
+        }
+        lock_path.write_text(json.dumps(lock), encoding="utf-8")
         return skill
 
     def test_configure_is_idempotent_and_requires_bootstrap_skill(self) -> None:
@@ -151,6 +163,36 @@ class TeamSkillsTests(unittest.TestCase):
         self.assertEqual([], plan["installers"])
         self.assertIn("codex:synchronize-team-skills:unverified", plan["blockers"])
         self.assertIn("codex:verify-before-push:newer-than-required", plan["blockers"])
+
+    def test_status_rejects_content_drift_with_unchanged_metadata(self) -> None:
+        team_skills.configure(self.configure_args())
+        for name in (
+            "synchronize-git-repositories",
+            "synchronize-team-skills",
+            "verify-before-push",
+        ):
+            self.install(name)
+        drifted = self.root / ".agents/skills/verify-before-push/SKILL.md"
+        drifted.write_text("changed after installation", encoding="utf-8")
+
+        plan = team_skills.make_plan(self.root, str(self.docs))
+
+        self.assertIn("codex:verify-before-push:unverified", plan["blockers"])
+        self.assertEqual([], plan["installers"])
+
+    def test_unsafe_layout_does_not_scan_extras(self) -> None:
+        team_skills.configure(self.configure_args())
+        layout = self.root / ".agents/skills"
+        (layout / "notify-via-telegram").mkdir(parents=True)
+
+        with mock.patch.object(Path, "is_symlink", return_value=True), mock.patch.object(
+            team_skills, "verified_extra"
+        ) as extra:
+            status = team_skills.inspect(self.root, str(self.docs))
+
+        extra.assert_not_called()
+        self.assertFalse(status["agents"][0]["layout_safe"])
+        self.assertEqual([], status["agents"][0]["extras"])
 
     def test_apply_rejects_missing_confirmation_and_stale_manifest(self) -> None:
         configured = team_skills.configure(self.configure_args())

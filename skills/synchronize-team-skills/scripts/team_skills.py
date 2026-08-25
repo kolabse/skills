@@ -3,6 +3,7 @@ from __future__ import annotations
 import argparse
 import hashlib
 import json
+import os
 import re
 import shutil
 import subprocess
@@ -24,6 +25,7 @@ NAME_PATTERN = re.compile(r"^[a-z0-9]+(?:-[a-z0-9]+)*$")
 VERSION_PATTERN = re.compile(
     r"^[0-9]+\.[0-9]+\.[0-9]+(?:-[0-9A-Za-z]+(?:[.-][0-9A-Za-z]+)*)?$"
 )
+HASH_PATTERN = re.compile(r"^[0-9a-f]{64}$")
 REQUIRED_FIELDS = {
     "schema_version",
     "source",
@@ -193,7 +195,65 @@ def version_state(observed: str, required: str) -> str:
     return "version-mismatch"
 
 
-def observe_skill(path: Path, name: str, required_version: str) -> dict[str, Any]:
+def read_lock_entries(project_root: Path) -> dict[str, dict[str, Any]]:
+    try:
+        value = json.loads((project_root / "skills-lock.json").read_text(encoding="utf-8"))
+    except (FileNotFoundError, json.JSONDecodeError, UnicodeDecodeError, OSError):
+        return {}
+    entries = value.get("skills") if isinstance(value, dict) else None
+    if not isinstance(entries, dict):
+        return {}
+    return {name: entry for name, entry in entries.items() if isinstance(entry, dict)}
+
+
+def canonical_lock_entry(entry: dict[str, Any] | None) -> bool:
+    if not isinstance(entry, dict) or entry.get("sourceType") not in {None, "github"}:
+        return False
+    source = entry.get("source")
+    if not isinstance(source, str):
+        return False
+    normalized = source.strip().lower().replace("\\", "/")
+    normalized = re.sub(r"@v?[0-9]+\.[0-9]+\.[0-9]+(?:[-+][0-9a-z.-]+)?$", "", normalized)
+    normalized = re.sub(r"/tree/v?[0-9]+\.[0-9]+\.[0-9]+(?:[-+][0-9a-z.-]+)?$", "", normalized)
+    normalized = normalized.removesuffix(".git").rstrip("/")
+    return normalized in {
+        SOURCE,
+        CANONICAL_SOURCE,
+        "git@github.com:kolabse/skills",
+    }
+
+
+def skill_folder_hash(path: Path) -> str | None:
+    files: list[tuple[str, bytes]] = []
+    try:
+        for current, directories, names in os.walk(path, followlinks=False):
+            current_path = Path(current)
+            if any((current_path / name).is_symlink() for name in directories):
+                return None
+            directories[:] = [
+                name for name in directories if name not in {".git", "node_modules"}
+            ]
+            for name in names:
+                candidate = current_path / name
+                if candidate.is_symlink() or not candidate.is_file():
+                    return None
+                relative = candidate.relative_to(path).as_posix()
+                files.append((relative, candidate.read_bytes()))
+    except OSError:
+        return None
+    result = hashlib.sha256()
+    for relative, content in sorted(files):
+        result.update(relative.encode("utf-8"))
+        result.update(content)
+    return result.hexdigest()
+
+
+def observe_skill(
+    path: Path,
+    name: str,
+    required_version: str,
+    lock_entry: dict[str, Any] | None,
+) -> dict[str, Any]:
     result: dict[str, Any] = {
         "name": name,
         "path": str(path),
@@ -222,14 +282,26 @@ def observe_skill(path: Path, name: str, required_version: str) -> dict[str, Any
         and metadata.get("canonical_repository") == CANONICAL_SOURCE
     )
     version = metadata.get("version") if isinstance(metadata, dict) else None
-    if not valid_identity or not isinstance(version, str):
+    expected_hash = lock_entry.get("computedHash") if isinstance(lock_entry, dict) else None
+    actual_hash = skill_folder_hash(path)
+    content_verified = (
+        canonical_lock_entry(lock_entry)
+        and isinstance(expected_hash, str)
+        and HASH_PATTERN.fullmatch(expected_hash) is not None
+        and actual_hash == expected_hash
+    )
+    if not valid_identity or not isinstance(version, str) or not content_verified:
         result.update(version=str(version or "unknown"), provenance="unverified", state="unverified")
         return result
     result.update(version=version, provenance="verified", state=version_state(version, required_version))
     return result
 
 
-def verified_extra(path: Path, desired: set[str]) -> dict[str, str] | None:
+def verified_extra(
+    path: Path,
+    desired: set[str],
+    lock_entry: dict[str, Any] | None,
+) -> dict[str, str] | None:
     if not path.is_dir() or path.name in desired:
         return None
     try:
@@ -238,12 +310,19 @@ def verified_extra(path: Path, desired: set[str]) -> dict[str, str] | None:
         return None
     if not isinstance(metadata, dict) or metadata.get("collection") != "kolabse-skills":
         return None
-    return {"name": path.name, "version": str(metadata.get("version", "unknown")), "action": "preserve"}
+    version = metadata.get("version")
+    if not isinstance(version, str):
+        return None
+    observed = observe_skill(path, path.name, version, lock_entry)
+    if observed["state"] != "current":
+        return None
+    return {"name": path.name, "version": version, "action": "preserve"}
 
 
 def inspect(project_root: Path, documentation_root: str | None) -> dict[str, Any]:
     path, manifest = read_manifest(project_root, documentation_root)
     desired = set(manifest["skills"])
+    lock_entries = read_lock_entries(project_root)
     agents: list[dict[str, Any]] = []
     ready = True
     for agent in manifest["agents"]:
@@ -251,7 +330,12 @@ def inspect(project_root: Path, documentation_root: str | None) -> dict[str, Any
         layout_safe = not layout.is_symlink() and layout.resolve().is_relative_to(project_root)
         if layout_safe:
             skills = [
-                observe_skill(layout / name, name, manifest["collection_version"])
+                observe_skill(
+                    layout / name,
+                    name,
+                    manifest["collection_version"],
+                    lock_entries.get(name),
+                )
                 for name in manifest["skills"]
             ]
         else:
@@ -268,8 +352,12 @@ def inspect(project_root: Path, documentation_root: str | None) -> dict[str, Any
                 for name in manifest["skills"]
             ]
         extras = []
-        if layout.is_dir():
-            extras = [item for child in sorted(layout.iterdir()) if (item := verified_extra(child, desired))]
+        if layout_safe and layout.is_dir():
+            extras = [
+                item
+                for child in sorted(layout.iterdir())
+                if (item := verified_extra(child, desired, lock_entries.get(child.name)))
+            ]
         agent_ready = all(item["state"] == "current" for item in skills)
         ready = ready and agent_ready
         agents.append(
