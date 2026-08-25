@@ -266,10 +266,14 @@ def skill_folder_hash(path: Path) -> str | None:
             if any((current_path / name).is_symlink() for name in directories):
                 return None
             directories[:] = [
-                name for name in directories if name not in {".git", "node_modules"}
+                name
+                for name in directories
+                if name not in {".git", "node_modules", "__pycache__"}
             ]
             for name in names:
                 candidate = current_path / name
+                if candidate.suffix in {".pyc", ".pyo"}:
+                    continue
                 if candidate.is_symlink() or not candidate.is_file():
                     return None
                 relative = candidate.relative_to(path).as_posix()

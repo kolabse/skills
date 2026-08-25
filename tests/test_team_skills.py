@@ -214,6 +214,23 @@ class TeamSkillsTests(unittest.TestCase):
         self.assertIn("codex:verify-before-push:unverified", plan["blockers"])
         self.assertEqual([], plan["installers"])
 
+    def test_status_ignores_python_runtime_cache_files(self) -> None:
+        team_skills.configure(self.configure_args())
+        for name in (
+            "synchronize-git-repositories",
+            "synchronize-team-skills",
+            "verify-before-push",
+        ):
+            self.install(name)
+        cache = self.root / ".agents/skills/synchronize-team-skills/scripts/__pycache__"
+        cache.mkdir(parents=True)
+        (cache / "team_skills.cpython-313.pyc").write_bytes(b"runtime cache")
+
+        status = team_skills.inspect(self.root, str(self.docs))
+
+        states = {item["name"]: item["state"] for item in status["agents"][0]["skills"]}
+        self.assertEqual("current", states["synchronize-team-skills"])
+
     def test_unsafe_layout_does_not_scan_extras(self) -> None:
         team_skills.configure(self.configure_args())
         layout = self.root / ".agents/skills"
