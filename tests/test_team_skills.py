@@ -99,6 +99,16 @@ class TeamSkillsTests(unittest.TestCase):
                 self.configure_args(skill=["verify-before-push"])
             )
 
+    def test_configure_defaults_to_both_supported_agents(self) -> None:
+        args = self.configure_args(agent=[])
+
+        configured = team_skills.configure(args)
+        manifest = team_skills.parse_document(
+            Path(configured["document"]).read_text(encoding="utf-8")
+        )
+
+        self.assertEqual(["claude-code", "codex"], manifest["agents"])
+
     def test_manifest_rejects_unknown_collection_skill(self) -> None:
         with self.assertRaisesRegex(team_skills.TeamSkillsError, "unknown collection"):
             team_skills.configure(
@@ -307,6 +317,43 @@ class TeamSkillsTests(unittest.TestCase):
         plan = team_skills.make_plan(self.root, str(self.docs))
 
         self.assertIn("codex:verify-before-push:outdated-local-source", plan["blockers"])
+        self.assertEqual([], plan["installers"])
+
+    def test_plan_blocks_missing_copy_with_verified_local_lock_source(self) -> None:
+        team_skills.configure(self.configure_args())
+        self.install("synchronize-git-repositories")
+        self.install("synchronize-team-skills")
+        checkout = self.root / "checkout"
+        (checkout / ".codex-plugin").mkdir(parents=True)
+        (checkout / "skills/verify-before-push").mkdir(parents=True)
+        (checkout / ".codex-plugin/plugin.json").write_text(
+            json.dumps(
+                {
+                    "name": "kolabse-skills",
+                    "repository": "https://github.com/kolabse/skills",
+                }
+            ),
+            encoding="utf-8",
+        )
+        (checkout / "skill-catalog.json").write_text(
+            json.dumps({"skills": [{"name": "verify-before-push"}]}),
+            encoding="utf-8",
+        )
+        (checkout / "skills/verify-before-push/SKILL.md").write_text(
+            "fixture", encoding="utf-8"
+        )
+        lock_path = self.root / "skills-lock.json"
+        lock = json.loads(lock_path.read_text(encoding="utf-8"))
+        lock["skills"]["verify-before-push"] = {
+            "source": str(checkout),
+            "sourceType": "local",
+            "computedHash": "0" * 64,
+        }
+        lock_path.write_text(json.dumps(lock), encoding="utf-8")
+
+        plan = team_skills.make_plan(self.root, str(self.docs))
+
+        self.assertIn("codex:verify-before-push:missing-local-source", plan["blockers"])
         self.assertEqual([], plan["installers"])
 
     def test_plan_blocks_unverified_collision_and_newer_version(self) -> None:

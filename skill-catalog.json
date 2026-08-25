@@ -813,7 +813,11 @@
           "--project-root",
           "<project-root>",
           "--documentation-root",
-          "<documentation-root>"
+          "<documentation-root>",
+          "--agent",
+          "codex",
+          "--agent",
+          "claude-code"
         ],
         "status": [
           "python",

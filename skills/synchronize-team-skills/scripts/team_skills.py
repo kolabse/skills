@@ -362,13 +362,19 @@ def observe_skill(
     required_version: str,
     lock_entry: dict[str, Any] | None,
 ) -> dict[str, Any]:
+    lock_verified = verified_lock_source(project_root, name, lock_entry)
+    source_kind = (
+        "local"
+        if lock_verified and lock_entry.get("sourceType") == "local"
+        else "github" if lock_verified else "missing"
+    )
     result: dict[str, Any] = {
         "name": name,
         "path": str(path),
         "installed": path.is_dir(),
         "version": "missing",
         "provenance": "missing",
-        "source_kind": "missing",
+        "source_kind": source_kind,
         "state": "missing",
         "project_override": path.is_dir(),
     }
@@ -396,7 +402,7 @@ def observe_skill(
     expected_hash = lock_entry.get("computedHash") if isinstance(lock_entry, dict) else None
     actual_hash = skill_folder_hash(path)
     content_verified = (
-        verified_lock_source(project_root, name, lock_entry)
+        lock_verified
         and isinstance(expected_hash, str)
         and HASH_PATTERN.fullmatch(expected_hash) is not None
         and actual_hash == expected_hash
@@ -404,7 +410,6 @@ def observe_skill(
     if not valid_identity or not isinstance(version, str) or not content_verified:
         result.update(version=str(version or "unknown"), provenance="unverified", state="unverified")
         return result
-    source_kind = "local" if lock_entry.get("sourceType") == "local" else "github"
     result.update(
         version=version,
         provenance="verified",
@@ -533,7 +538,7 @@ def configure(args: argparse.Namespace) -> dict[str, Any]:
             "source": SOURCE,
             "collection_version": args.collection_version or default_collection_version(),
             "scope": "project",
-            "agents": args.agent or ["codex"],
+            "agents": args.agent or sorted(AGENT_LAYOUTS),
             "skills": args.skill or sorted(REQUIRED_SKILLS),
             "extras_policy": "preserve",
         }
@@ -579,8 +584,8 @@ def make_plan(project_root: Path, documentation_root: str | None) -> dict[str, A
         for name, state in states.items():
             if state in {"unverified", "newer-than-required", "version-mismatch"}:
                 blockers.append(f"{agent['agent']}:{name}:{state}")
-            elif state == "outdated" and observed[name]["source_kind"] == "local":
-                blockers.append(f"{agent['agent']}:{name}:outdated-local-source")
+            elif state in {"missing", "outdated"} and observed[name]["source_kind"] == "local":
+                blockers.append(f"{agent['agent']}:{name}:{state}-local-source")
         for extra in agent["unsafe_extras"]:
             blockers.append(
                 f"{agent['agent']}:extra:{extra['name']}:{extra['provenance']}"
