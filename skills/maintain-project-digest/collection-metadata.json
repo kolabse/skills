@@ -1,7 +1,7 @@
 {
   "schema_version": 2,
   "collection": "kolabse-skills",
-  "version": "1.17.0",
+  "version": "1.18.0",
   "skill": "maintain-project-digest",
   "source": "https://github.com/kolabse/skills",
   "canonical_repository": "https://github.com/kolabse/skills"

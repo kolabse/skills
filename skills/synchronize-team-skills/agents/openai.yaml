@@ -1,0 +1,4 @@
+interface:
+  display_name: "Синхронизация навыков команды"
+  short_description: "Сверяет навыки проекта с командной документацией"
+  default_prompt: "Use $synchronize-team-skills to compare this project's installed skills with the reviewed team skill manifest and safely align them after approval."

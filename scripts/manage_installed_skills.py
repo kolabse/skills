@@ -12,7 +12,7 @@ from urllib.parse import urlparse
 
 
 COLLECTION = "kolabse-skills"
-COLLECTION_VERSION = "1.17.0"
+COLLECTION_VERSION = "1.18.0"
 SKILLS_CLI_VERSION = "1.5.22"
 LOCK_FILE = "skills-lock.json"
 METADATA_FILE = "collection-metadata.json"
@@ -41,6 +41,7 @@ KNOWN_SKILLS = {
     "review-code-changes",
     "sync-project-context",
     "synchronize-git-repositories",
+    "synchronize-team-skills",
     "verify-before-push",
 }
 

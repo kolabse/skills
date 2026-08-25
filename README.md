@@ -32,6 +32,7 @@ Licensed under the [Apache License 2.0](LICENSE). Copyright 2026 kolabse.
     - [`sync-project-context`](#sync-project-context)
   - [Coordination and communication](#coordination-and-communication)
     - [`orchestrate-agent-work`](#orchestrate-agent-work-experimental)
+    - [`synchronize-team-skills`](#synchronize-team-skills-experimental)
     - [`notify-via-telegram`](#notify-via-telegram)
   - [Infrastructure and operations](#infrastructure-and-operations)
     - [`operate-yandex-cloud`](#operate-yandex-cloud)
@@ -694,6 +695,36 @@ the integrated result.
 
 ```text
 $orchestrate-agent-work Delegate these independent subtasks to agents and verify the integrated result.
+```
+
+#### `synchronize-team-skills` (experimental)
+
+Keep each team member's project-scoped agent skills aligned with one reviewed
+manifest in the project documentation.
+
+**What it does:**
+
+- creates or reads `team-agent-skills.md` in an approved documentation root;
+- compares declared Codex and Claude Code skills with verified project copies;
+- reports missing, outdated, newer, unverified, project-override, and preserved-extra
+  states without changing the environment;
+- builds a manifest-digest-bound installation plan for one pinned collection
+  version;
+- installs only the reviewed set after approval, then verifies observable state.
+
+**What it does not do:**
+
+- turn one workstation's accidental state into team policy automatically;
+- store secrets, user configuration, machine paths, or plugin authentication;
+- remove extra skills, downgrade newer copies, or change global installations;
+- claim a running agent task has reloaded newly installed skills.
+
+**How to invoke it:**
+
+```text
+$synchronize-team-skills Check this project's installed skills against the reviewed team manifest.
+$synchronize-team-skills Align my project skills with the team documentation after showing the plan.
+$synchronize-team-skills Add maintain-project-digest to the reviewed team skill set.
 ```
 
 #### `notify-via-telegram`
