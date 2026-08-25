@@ -9,6 +9,36 @@
 
 Лицензия — [Apache License 2.0](../../../LICENSE). Copyright 2026 kolabse.
 
+## Оглавление
+
+- [Установка навыков](#установка-навыков)
+  - [Установка из Git marketplaces](#установка-из-git-marketplaces)
+- [Обновление установленных навыков](#обновление-установленных-навыков)
+  - [Запуск без клонирования репозитория](#запуск-без-клонирования-репозитория)
+  - [Проверка глобальных установок](#проверка-глобальных-установок)
+- [Установка или обновление локального Codex-плагина для разработки](#установка-или-обновление-локального-codex-плагина-для-разработки)
+- [Доступные навыки](#доступные-навыки)
+  - [`discover-skill-candidates`](#discover-skill-candidates-experimental)
+  - [`coordinate-code-documentation-repositories`](#coordinate-code-documentation-repositories-experimental)
+  - [`execute-configured-gitflow-releases`](#execute-configured-gitflow-releases-experimental)
+  - [`release-skill-collection`](#release-skill-collection)
+  - [`verify-before-push`](#verify-before-push)
+  - [`synchronize-git-repositories`](#synchronize-git-repositories)
+  - [`maintain-work-log`](#maintain-work-log)
+  - [`maintain-project-digest`](#maintain-project-digest-experimental)
+  - [`notify-via-telegram`](#notify-via-telegram)
+  - [`operate-yandex-cloud`](#operate-yandex-cloud)
+  - [`sync-project-context`](#sync-project-context)
+  - [`orchestrate-agent-work`](#orchestrate-agent-work-experimental)
+  - [`develop-with-test-first-evidence`](#develop-with-test-first-evidence-experimental)
+  - [`review-code-changes`](#review-code-changes-experimental)
+  - [`diagnose-software-defects`](#diagnose-software-defects-experimental)
+  - [`resolve-git-conflicts`](#resolve-git-conflicts-experimental)
+  - [`execute-verified-development-lifecycle`](#execute-verified-development-lifecycle-experimental)
+- [Поддерживаемые композиции](#поддерживаемые-композиции)
+- [Добавление навыка](#добавление-навыка)
+- [Проверка релиза](#проверка-релиза)
+
 ## Установка навыков
 
 Установите один или несколько навыков в текущий проект через общий для агентов

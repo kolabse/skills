@@ -6,11 +6,13 @@ import re
 import sys
 from pathlib import Path
 from typing import Any
+from urllib.parse import unquote
 
 
 FENCE = re.compile(r"^```([^`]*)\s*$")
 HEADING = re.compile(r"^(#{1,6})\s+\S")
 LINK = re.compile(r"(?<!!)\[[^\]]*\]\(([^)]+)\)")
+HEADING_TEXT = re.compile(r"^#{1,6}\s+(.+?)\s*#*\s*$")
 
 
 class LocalizationError(RuntimeError):
@@ -78,12 +80,46 @@ def markdown_structure(text: str) -> tuple[list[int], list[str]]:
     return headings, shell_blocks
 
 
+def markdown_anchors(text: str) -> set[str]:
+    anchors: set[str] = set()
+    occurrences: dict[str, int] = {}
+    in_fence = False
+    for line in text.splitlines():
+        if FENCE.match(line):
+            in_fence = not in_fence
+            continue
+        if in_fence:
+            continue
+        heading = HEADING_TEXT.match(line)
+        if not heading:
+            continue
+        label = re.sub(r"\[([^\]]+)\]\([^)]+\)", r"\1", heading.group(1))
+        label = re.sub(r"<[^>]+>", "", label)
+        label = label.replace("`", "").replace("*", "").replace("_", "")
+        slug = "".join(
+            character
+            for character in label.lower()
+            if character.isalnum() or character in {" ", "-"}
+        ).replace(" ", "-")
+        suffix = occurrences.get(slug, 0)
+        occurrences[slug] = suffix + 1
+        anchors.add(slug if suffix == 0 else f"{slug}-{suffix}")
+    return anchors
+
+
 def validate_relative_links(root: Path, path: Path, text: str) -> None:
+    local_anchors = markdown_anchors(text)
     for raw_target in LINK.findall(text):
         target = raw_target.strip().split(maxsplit=1)[0].strip("<>")
-        if not target or target.startswith(("#", "http://", "https://", "mailto:")):
+        if not target or target.startswith(("http://", "https://", "mailto:")):
             continue
-        relative_target = target.split("#", 1)[0].split("?", 1)[0]
+        if target.startswith("#"):
+            anchor = unquote(target[1:])
+            if anchor not in local_anchors:
+                raise LocalizationError(f"broken Markdown anchor in {path}: {target}")
+            continue
+        path_part, separator, fragment = target.partition("#")
+        relative_target = path_part.split("?", 1)[0]
         if not relative_target:
             continue
         resolved = (path.parent / relative_target).resolve()
@@ -93,6 +129,10 @@ def validate_relative_links(root: Path, path: Path, text: str) -> None:
             raise LocalizationError(f"link escapes repository in {path}: {target}") from error
         if not resolved.exists():
             raise LocalizationError(f"broken relative link in {path}: {target}")
+        if separator and resolved.is_file() and resolved.suffix.lower() == ".md":
+            target_anchors = markdown_anchors(resolved.read_text(encoding="utf-8"))
+            if unquote(fragment) not in target_anchors:
+                raise LocalizationError(f"broken Markdown anchor in {path}: {target}")
 
 
 def validate(root: Path) -> int:
