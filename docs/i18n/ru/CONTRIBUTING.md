@@ -1,6 +1,6 @@
 # Добавление навыков
 
-[English](../../../CONTRIBUTING.md) | Русский
+[English](../../../CONTRIBUTING.md) | Русский | [Español](../es/CONTRIBUTING.md)
 
 > Это перевод для удобства чтения. Канонической является
 > [английская версия](../../../CONTRIBUTING.md).

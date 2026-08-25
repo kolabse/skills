@@ -1,6 +1,6 @@
 # Terms of Use
 
-English | [Русский](docs/i18n/ru/TERMS.md)
+English | [Русский](docs/i18n/ru/TERMS.md) | [Español](docs/i18n/es/TERMS.md)
 
 Effective date: 2026-08-24
 

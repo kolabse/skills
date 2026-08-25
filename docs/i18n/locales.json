@@ -2,8 +2,33 @@
   "schema_version": 1,
   "canonical_locale": "en",
   "locales": {
+    "es": {
+      "name": "Español",
+      "documents": [
+        {
+          "canonical": "README.md",
+          "translation": "docs/i18n/es/README.md"
+        },
+        {
+          "canonical": "CONTRIBUTING.md",
+          "translation": "docs/i18n/es/CONTRIBUTING.md"
+        },
+        {
+          "canonical": "SUPPORT.md",
+          "translation": "docs/i18n/es/SUPPORT.md"
+        },
+        {
+          "canonical": "PRIVACY.md",
+          "translation": "docs/i18n/es/PRIVACY.md"
+        },
+        {
+          "canonical": "TERMS.md",
+          "translation": "docs/i18n/es/TERMS.md"
+        }
+      ]
+    },
     "ru": {
-      "name": "Russian",
+      "name": "Русский",
       "documents": [
         {
           "canonical": "README.md",
