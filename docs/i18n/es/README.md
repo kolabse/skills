@@ -15,23 +15,29 @@ Distribuido bajo la [Licencia Apache 2.0](../../../LICENSE). Copyright 2026 kola
   - [Inspeccionar instalaciones globales](#inspeccionar-instalaciones-globales)
 - [Instalar o actualizar un plugin local de Codex para desarrollo](#instalar-o-actualizar-un-plugin-local-de-codex-para-desarrollo)
 - [Habilidades disponibles](#habilidades-disponibles)
-  - [`discover-skill-candidates`](#discover-skill-candidates-experimental)
-  - [`coordinate-code-documentation-repositories`](#coordinate-code-documentation-repositories-experimental)
-  - [`execute-configured-gitflow-releases`](#execute-configured-gitflow-releases-experimental)
-  - [`release-skill-collection`](#release-skill-collection)
-  - [`verify-before-push`](#verify-before-push)
-  - [`synchronize-git-repositories`](#synchronize-git-repositories)
-  - [`maintain-work-log`](#maintain-work-log)
-  - [`maintain-project-digest`](#maintain-project-digest-experimental)
-  - [`notify-via-telegram`](#notify-via-telegram)
-  - [`operate-yandex-cloud`](#operate-yandex-cloud)
-  - [`sync-project-context`](#sync-project-context)
-  - [`orchestrate-agent-work`](#orchestrate-agent-work-experimental)
-  - [`develop-with-test-first-evidence`](#develop-with-test-first-evidence-experimental)
-  - [`review-code-changes`](#review-code-changes-experimental)
-  - [`diagnose-software-defects`](#diagnose-software-defects-experimental)
-  - [`resolve-git-conflicts`](#resolve-git-conflicts-experimental)
-  - [`execute-verified-development-lifecycle`](#execute-verified-development-lifecycle-experimental)
+  - [Desarrollo y calidad del código](#desarrollo-y-calidad-del-código)
+    - [`develop-with-test-first-evidence`](#develop-with-test-first-evidence-experimental)
+    - [`review-code-changes`](#review-code-changes-experimental)
+    - [`diagnose-software-defects`](#diagnose-software-defects-experimental)
+    - [`resolve-git-conflicts`](#resolve-git-conflicts-experimental)
+  - [Repositorios y entrega de cambios](#repositorios-y-entrega-de-cambios)
+    - [`synchronize-git-repositories`](#synchronize-git-repositories)
+    - [`verify-before-push`](#verify-before-push)
+    - [`coordinate-code-documentation-repositories`](#coordinate-code-documentation-repositories-experimental)
+    - [`execute-configured-gitflow-releases`](#execute-configured-gitflow-releases-experimental)
+    - [`execute-verified-development-lifecycle`](#execute-verified-development-lifecycle-experimental)
+  - [Conocimiento y continuidad del proyecto](#conocimiento-y-continuidad-del-proyecto)
+    - [`maintain-work-log`](#maintain-work-log)
+    - [`maintain-project-digest`](#maintain-project-digest-experimental)
+    - [`sync-project-context`](#sync-project-context)
+  - [Coordinación y comunicación](#coordinación-y-comunicación)
+    - [`orchestrate-agent-work`](#orchestrate-agent-work-experimental)
+    - [`notify-via-telegram`](#notify-via-telegram)
+  - [Infraestructura y operaciones](#infraestructura-y-operaciones)
+    - [`operate-yandex-cloud`](#operate-yandex-cloud)
+  - [Evolución de la colección de habilidades](#evolución-de-la-colección-de-habilidades)
+    - [`discover-skill-candidates`](#discover-skill-candidates-experimental)
+    - [`release-skill-collection`](#release-skill-collection)
 - [Composiciones compatibles](#composiciones-compatibles)
 - [Añadir una habilidad](#añadir-una-habilidad)
 - [Verificar una versión](#verificar-una-versión)
@@ -282,40 +288,176 @@ mando, capacidades, requisitos y integraciones opcionales. Estado
 habilidades también declaran un comando de configuración idempotent; versión JSON/YAML
 configuraciones publican un esquema JSON y un comando de migración junto a la habilidad.
 
-### `discover-skill-candidates` (experimental)
+El catálogo se agrupa por su finalidad principal para el usuario, en el orden de
+prioridad mostrado a continuación. Cada habilidad tiene exactamente una categoría
+principal. Las etiquetas independientes describen la fase del ciclo de vida, el
+alcance, el comportamiento y las integraciones; el estado de madurez sigue siendo
+independiente. Las asignaciones legibles por máquina y el vocabulario controlado
+oficiales están en [`skill-catalog.json`](../../../skill-catalog.json), validados
+con
+[`schemas/skill-catalog.schema.json`](../../../schemas/skill-catalog.schema.json).
 
-Encontrar ideas de habilidad reutilizables en proyecto consolidado y evidencia contextual sin
-creando una habilidad.
+Los ejes de etiquetas controladas son:
+
+- fase del ciclo de vida: `prepare`, `investigate`, `implement`, `verify`,
+  `publish`, `operate`, `document` y `handoff`;
+- alcance: `project`, `repository`, `multi-repository`, `workstation`,
+  `external-service` y `skill-collection`;
+- comportamiento: `read-only-planning`, `mutation`, `evidence-producing`,
+  `orchestration` y `notification`;
+- integración: `git`, `github`, `telegram`, `google-drive` y `yandex-cloud`.
+
+### Desarrollo y calidad del código
+
+#### `develop-with-test-first-evidence` (experimental)
+
+Implementar el comportamiento a través de ciclos de refactor rojo respaldados por evidencia.
 
 *Lo que hace*
 
-- inventarios vinculados a proyectos relacionados `AGENTS.md` archivos con Git y
-  - Probabilidad de nivel de línea;
-- opcionalmente inventories documentación del proyecto, archivos seleccionados, Git atado
-  historia, metadatos de estructura y resúmenes confirmados por el usuario desde disponibles
-  chats o `sync-project-context` oficios;
-- clasifica a los candidatos como recomendados, investigados o rechazados y los compara
-  con catálogos existentes;
-- Ofrece proactivamente a cada candidato elegible para una contribución segura
-  `kolabse/skills`, creación local o aplazamiento;
-- exporta una idea seleccionada como un paquete de contribución sanitario y dilatado
-  que los usuarios pueden validar independientemente.
+- registra una prueba enfocada fallando por la razón conductual prevista antes
+  aplicación;
+- vincula los resultados verdes centrados y más amplios al estado del cambio final;
+- valida pruebas duraderas con su esquema y ayudante.
 
 **Lo que no hace:**
 
-- modificar las reglas del proyecto, publicar o instalar una habilidad;
-- enumerar chats, ingerir transcripciones crudas, o escanear ampliamente código fuente;
-- exportar reglas crudas, caminos locales, secretos, URLs o direcciones de correo electrónico;
-- promover convenciones sobre políticas únicas, volátiles, sensibles o unilaterales como reutilizables
-  flujos de trabajo sin revisión.
+- fabricar un resultado rojo rompiendo el comportamiento no relacionado;
+- llamar el primer desarrollo de las pruebas después del hecho;
+- ocultar fallos preexistentes, ambientales o del estado final.
 
 **Cómo invocarlo:**
 
 ```text
-$discover-skill-candidates Analyze this project's local rules and prepare an evidence-backed backlog of reusable skill ideas without creating anything.
+$develop-with-test-first-evidence Implement this behavior with a recorded red-green-refactor cycle.
 ```
 
-### `coordinate-code-documentation-repositories` (experimental)
+#### `review-code-changes` (experimental)
+
+Revise un cambio definido para la corrección, seguridad, fiabilidad y
+defectos de compatibilidad.
+
+*Lo que hace*
+
+- resuelve un estado de referencia exacto y cambiado;
+- reporta hallazgos respaldados por pruebas con impacto, disparador, prioridad y apretado
+  emplazamientos;
+- hace explícita la incertidumbre y las lagunas significativas de los ensayos.
+
+**Lo que no hace:**
+
+- reportar preferencias de estilo o especulación sin soporte como defectos;
+- implementar conclusiones, publicar comentarios o aprobar un examen sin separado
+  autorización;
+- sustituir una explicación de código general para un examen abarcado.
+
+**Cómo invocarlo:**
+
+```text
+$review-code-changes Review this branch against its declared baseline and report actionable findings.
+```
+
+#### `diagnose-software-defects` (experimental)
+
+Investigar fallos y regresiones para producir una explicación causal respaldada
+o hipótesis clasificadas.
+
+*Lo que hace*
+
+- límites y reproduce con seguridad el síntoma cuando sea posible;
+- pruebas de hipótesis concurrentes con pruebas pertinentes;
+- reporte causa raíz, condiciones de contribución, radio de explosión, confianza y
+  un plan de verificación de soluciones.
+
+**Lo que no hace:**
+
+- infer causation from correlation;
+- mutar la producción o descartar pruebas fallidas;
+- implementar una solución especulativa cuando sólo se solicitó el diagnóstico.
+
+**Cómo invocarlo:**
+
+```text
+$diagnose-software-defects Diagnose this regression and distinguish evidence from hypotheses.
+```
+
+#### `resolve-git-conflicts` (experimental)
+
+Resuelva los conflictos autorizados de fusión, rebase o cereza semánticamente mientras
+preservar el trabajo no relacionado.
+
+*Lo que hace*
+
+- inspecciona el funcionamiento activo, la base, ambos lados, y cada camino inmerso;
+- reconcilia únicamente los conflictos cuyo comportamiento combinado previsto se entiende;
+- valida los caminos resueltos y hace explícita la operación Git restante.
+
+**Lo que no hace:**
+
+- tratar la divergencia de repositorios ordinarios como una tarea de conflictos;
+- automáticamente, reajuste, abortar, continuar, fuerza-push, o etapa no relacionada
+  caminos;
+- adivinar a través de decisiones ambiguas generadas, binarias, esquemas o de productos.
+
+**Cómo invocarlo:**
+
+```text
+$resolve-git-conflicts Resolve the active merge conflicts path by path and validate the result.
+```
+
+
+### Repositorios y entrega de cambios
+
+#### `synchronize-git-repositories`
+
+Establecer el estado remoto actual sin sobreescribir el trabajo local.
+
+*Lo que hace*
+
+- descubre sólo los repositorios pertinentes para tareas y corta sus distancias rastreadas;
+- rápido hacia adelante limpias ramas detrás de sólo;
+- reportes sucios, por delante, divergidos, desprendidos, sin rastrear y en estados de progreso;
+- publica una sucursal autorizada de la corriente verificada `main` antes
+  la primera edición cuando la política del proyecto lo requiere.
+
+**Lo que no hace:**
+
+- automáticamente apuñalar, restablecer, rebajar, fusionar, limpiar, cambiar o fuerza-push;
+- ocultar la divergencia o tratar una embrague exitosa como prueba de que la rama local
+  se actualizó;
+- escanear o actualizar repositorios no relacionados.
+
+**Cómo invocarlo:**
+
+```text
+$synchronize-git-repositories Configure this project's repository synchronization policy.
+```
+
+#### `verify-before-push`
+
+Controles declarados por el proyecto Bind al estado Git exacto siendo empujado.
+
+*Lo que hace*
+
+- configura una política de verificación de repositorio fuera de la instalación
+  carpeta de habilidad;
+- corren cheques declarados y registran evidencia de compromisos exactos, árboles de trabajo,
+  estado corriente y configuración de verificación;
+- no cierra cuando falta evidencia protegida, falla, malformada o estancada.
+
+**Lo que no hace:**
+
+- bloquear los depósitos no relacionados que no estén cubiertos por la política;
+- parse arbitrary shell commands or install an IDE- or agent-specific hook;
+- tratar un cheque exitoso de un estado mayor de Git como evidencia actual.
+
+**Cómo invocarlo:**
+
+```text
+$verify-before-push Configure this project's verification policy and checks.
+```
+
+#### `coordinate-code-documentation-repositories` (experimental)
 
 Coordinar un cambio de proyecto auditable cuando se implemente y canónico
 documentación vive en depósitos Git separados.
@@ -344,7 +486,7 @@ documentación vive en depósitos Git separados.
 $coordinate-code-documentation-repositories Implement this change across the declared code and canonical documentation repositories and verify both published outcomes.
 ```
 
-### `execute-configured-gitflow-releases` (experimental)
+#### `execute-configured-gitflow-releases` (experimental)
 
 Ejecutar rutas de liberación estándar y hotfix de un proyecto declarado GitFlow
 contrato.
@@ -374,84 +516,50 @@ $execute-configured-gitflow-releases Run the standard release route declared by 
 $execute-configured-gitflow-releases Run an explicit hotfix release and verify its reintegration into the declared development line.
 ```
 
-### `release-skill-collection`
+#### `execute-verified-development-lifecycle` (experimental)
 
-Planifique, verifique, audite y limpie las liberaciones de recolección de habilidades deterministas.
+Planifique y verifique un camino declarado por proyecto desde la preparación de características a través de
+examen de la integración del desarrollo, la observación de la ejecución, la documentación y
+probada limpieza.
 
 *Lo que hace*
 
-- versiones de cheques, preparación de cambios, estado de repositorio, pruebas, seguridad,
-  archivos determinísticos y sumas de comprobación;
-- valida la retención de compromiso, consumidor, plataforma, revisión y cheque local
-  pruebas;
-- auditorías inmutables de GitHub, manifiestos, sumas de comprobación y certificados;
-- prueba si las ramas temporales son fusionadas, idénticas o
-  parche-equivalente antes de la limpieza;
-- aplica una limpieza confirmada explícitamente sólo de un plan seguro sin cambios y
-  una auditoría de la versión publicada.
+- Congela un plan con digestión antes de la edición y avanza los puestos de control ordenados
+  utilizar pruebas retenidas;
+- verifica características antes de editar, prueba-primero, cambio-scopio preflight, revisión,
+  presión de estado exacto, tubería, documentación, integración de desarrollo,
+  Delegadas de producción, entrega, humo, notificación y puertas de limpieza;
+- rebobinado a un puesto de control declarado después del fracaso e invalida el estancamiento
+  evidencia abajo.
 
 **Lo que no hace:**
 
-- inferir permiso para cometer, etiquetar, empujar, enviar flujos de trabajo, o publicar activos;
-- mover una etiqueta existente o sustituir los activos publicados;
-- eliminar ramas de nombres solos, un plan fijo o una liberación no auditada.
+- adaptadores de proveedores de inferencia, papeles de repositorio, puertas o autorización;
+- push, open or merge reviews, deployment, notify, edit documentation, or delete
+  los propios recursos;
+- ejecutar la producción, que sigue delegada en la versión aprobada
+  flujo de trabajo, como `$execute-configured-gitflow-releases`.
+
+Instalar y configurar sus habilidades requeridas primero: `$synchronize-git-repositories`,
+`$develop-with-test-first-evidence`, `$verify-before-push`, y
+`$review-code-changes`. Configurar el ciclo de vida de la versión-1 del proyecto
+contrato antes del primer plan. Instalar habilidades opcionales sólo cuando el proyecto
+permite sus puestos de control correspondientes: `$orchestrate-agent-work`,
+`$diagnose-software-defects`, `$resolve-git-conflicts`,
+`$coordinate-code-documentation-repositories`, `$maintain-work-log`,
+`$maintain-project-digest`, `$notify-via-telegram`, y
+`$execute-configured-gitflow-releases`.
 
 **Cómo invocarlo:**
 
 ```text
-$release-skill-collection Plan and verify release vX.Y.Z of this skill collection, but do not publish it yet.
+$execute-verified-development-lifecycle Plan and verify this change through the project's configured development lifecycle.
 ```
 
-### `verify-before-push`
 
-Controles declarados por el proyecto Bind al estado Git exacto siendo empujado.
+### Conocimiento y continuidad del proyecto
 
-*Lo que hace*
-
-- configura una política de verificación de repositorio fuera de la instalación
-  carpeta de habilidad;
-- corren cheques declarados y registran evidencia de compromisos exactos, árboles de trabajo,
-  estado corriente y configuración de verificación;
-- no cierra cuando falta evidencia protegida, falla, malformada o estancada.
-
-**Lo que no hace:**
-
-- bloquear los depósitos no relacionados que no estén cubiertos por la política;
-- parse arbitrary shell commands or install an IDE- or agent-specific hook;
-- tratar un cheque exitoso de un estado mayor de Git como evidencia actual.
-
-**Cómo invocarlo:**
-
-```text
-$verify-before-push Configure this project's verification policy and checks.
-```
-
-### `synchronize-git-repositories`
-
-Establecer el estado remoto actual sin sobreescribir el trabajo local.
-
-*Lo que hace*
-
-- descubre sólo los repositorios pertinentes para tareas y corta sus distancias rastreadas;
-- rápido hacia adelante limpias ramas detrás de sólo;
-- reportes sucios, por delante, divergidos, desprendidos, sin rastrear y en estados de progreso;
-- publica una sucursal autorizada de la corriente verificada `main` antes
-  la primera edición cuando la política del proyecto lo requiere.
-
-**Lo que no hace:**
-
-- automáticamente apuñalar, restablecer, rebajar, fusionar, limpiar, cambiar o fuerza-push;
-- ocultar la divergencia o tratar una embrague exitosa como prueba de que la rama local
-  se actualizó;
-- escanear o actualizar repositorios no relacionados.
-
-**Cómo invocarlo:**
-
-```text
-$synchronize-git-repositories Configure this project's repository synchronization policy.
-```
-
-### `maintain-work-log`
+#### `maintain-work-log`
 
 Mantener la revista canónica de fecha del proyecto en `docs/reports/work-log.md`.
 
@@ -474,7 +582,7 @@ Mantener la revista canónica de fecha del proyecto en `docs/reports/work-log.md
 $maintain-work-log Configure this project to maintain its dated work log.
 ```
 
-### `maintain-project-digest` (experimental)
+#### `maintain-project-digest` (experimental)
 
 Mantener un digest diario y orientado al usuario de los cambios de proyecto completados en el
 documentación del proyecto.
@@ -504,66 +612,7 @@ documentación del proyecto.
 $maintain-project-digest Add today's completed user-visible changes to the project digest.
 ```
 
-### `notify-via-telegram`
-
-Envía actualizaciones de ciclo de vida para tareas de agente de larga duración a través de Telegram.
-
-*Lo que hace*
-
-- informes comienzan, hitos, resultados intermedios, problemas, bloqueadores y
-  terminación;
-- valida interactivamente el bot y ayuda a descubrir un chat de destino;
-- proporciona un formulario de primer uso enmascarado y fácil de pegar para Codex Desktop en Windows;
-- almacena credenciales en el directorio de configuración del usuario y envía una prueba
-  notificación durante la configuración;
-- apoya un tema de chat o foro por proyecto, con una opción explícita
-  entre la ejecución de proyectos a nivel mundial y la ejecución de proyectos únicamente;
-- Exportaciones de valores libres de secretos para la reconciliación mediante
-  `sync-project-context`;
-- funciona con la biblioteca estándar Python 3 en Windows, macOS y Linux.
-
-**Lo que no hace:**
-
-- colocar el bot token en la conversación, la historia de la concha o el repositorio;
-- copiar el estado global de autenticación de bots o Telegram entre ordenadores;
-- enviar notificaciones cuando el usuario pida mantener el progreso en la tarea actual;
-- actuar como un marco general de desarrollo de bots Telegram.
-
-**Cómo invocarlo:**
-
-```text
-$notify-via-telegram Configure Telegram notifications for long tasks.
-$notify-via-telegram Configure this project to notify its team chat only, instead of the global destination.
-```
-
-### `operate-yandex-cloud`
-
-Operar infraestructura de Yandex Cloud configurada explícitamente.
-
-*Lo que hace*
-
-- almacena los IDs compartidos de Cloud/Folder en la configuración de proyectos y la estación de trabajo
-  `yc` perfil en configuración local ignorada;
-- detecta las herramientas necesarias, comprueba las versiones mínimas y ejecuta solo lectura
-  context preflight;
-- soporta el alcance de CLI, SSH, Terraform, Ansible, Helm, Kubernetes, despliegue,
-  bases de datos, almacenamiento, DNS, vigilancia, respaldo y flujos de trabajo de incidentes;
-- proporciona salida JSON y ayudantes Python multiplataforma.
-
-**Lo que no hace:**
-
-- infer Yandex Cloud de SSH genérico, Kubernetes, Terraform o despliegue
-  solicitudes sin contexto de proveedores;
-- almacenar credenciales en configuración de proyectos compartidos;
-- aplicar una mutación antes de establecer el objetivo, el contexto y la autorización.
-
-**Cómo invocarlo:**
-
-```text
-$operate-yandex-cloud Configure this project for Yandex Cloud operations.
-```
-
-### `sync-project-context`
+#### `sync-project-context`
 
 Synchronize private, sanitized project and per-chat continuing state between
 ordenadores. La habilidad es estable después de dos dispositivos reales independientes Google Drive
@@ -621,7 +670,10 @@ $sync-project-context Synchronize all project tasks bidirectionally and show con
 
 En el Código de Claude, sustitúyase `$` prefijo en estos ejemplos con `/`.
 
-### `orchestrate-agent-work` (experimental)
+
+### Coordinación y comunicación
+
+#### `orchestrate-agent-work` (experimental)
 
 Coordinate explicitly authorized subagents while retaining responsibility for
 el resultado integrado.
@@ -645,140 +697,130 @@ el resultado integrado.
 $orchestrate-agent-work Delegate these independent subtasks to agents and verify the integrated result.
 ```
 
-### `develop-with-test-first-evidence` (experimental)
+#### `notify-via-telegram`
 
-Implementar el comportamiento a través de ciclos de refactor rojo respaldados por evidencia.
+Envía actualizaciones de ciclo de vida para tareas de agente de larga duración a través de Telegram.
 
 *Lo que hace*
 
-- registra una prueba enfocada fallando por la razón conductual prevista antes
-  aplicación;
-- vincula los resultados verdes centrados y más amplios al estado del cambio final;
-- valida pruebas duraderas con su esquema y ayudante.
+- informes comienzan, hitos, resultados intermedios, problemas, bloqueadores y
+  terminación;
+- valida interactivamente el bot y ayuda a descubrir un chat de destino;
+- proporciona un formulario de primer uso enmascarado y fácil de pegar para Codex Desktop en Windows;
+- almacena credenciales en el directorio de configuración del usuario y envía una prueba
+  notificación durante la configuración;
+- apoya un tema de chat o foro por proyecto, con una opción explícita
+  entre la ejecución de proyectos a nivel mundial y la ejecución de proyectos únicamente;
+- Exportaciones de valores libres de secretos para la reconciliación mediante
+  `sync-project-context`;
+- funciona con la biblioteca estándar Python 3 en Windows, macOS y Linux.
 
 **Lo que no hace:**
 
-- fabricar un resultado rojo rompiendo el comportamiento no relacionado;
-- llamar el primer desarrollo de las pruebas después del hecho;
-- ocultar fallos preexistentes, ambientales o del estado final.
+- colocar el bot token en la conversación, la historia de la concha o el repositorio;
+- copiar el estado global de autenticación de bots o Telegram entre ordenadores;
+- enviar notificaciones cuando el usuario pida mantener el progreso en la tarea actual;
+- actuar como un marco general de desarrollo de bots Telegram.
 
 **Cómo invocarlo:**
 
 ```text
-$develop-with-test-first-evidence Implement this behavior with a recorded red-green-refactor cycle.
+$notify-via-telegram Configure Telegram notifications for long tasks.
+$notify-via-telegram Configure this project to notify its team chat only, instead of the global destination.
 ```
 
-### `review-code-changes` (experimental)
 
-Revise un cambio definido para la corrección, seguridad, fiabilidad y
-defectos de compatibilidad.
+### Infraestructura y operaciones
+
+#### `operate-yandex-cloud`
+
+Operar infraestructura de Yandex Cloud configurada explícitamente.
 
 *Lo que hace*
 
-- resuelve un estado de referencia exacto y cambiado;
-- reporta hallazgos respaldados por pruebas con impacto, disparador, prioridad y apretado
-  emplazamientos;
-- hace explícita la incertidumbre y las lagunas significativas de los ensayos.
+- almacena los IDs compartidos de Cloud/Folder en la configuración de proyectos y la estación de trabajo
+  `yc` perfil en configuración local ignorada;
+- detecta las herramientas necesarias, comprueba las versiones mínimas y ejecuta solo lectura
+  context preflight;
+- soporta el alcance de CLI, SSH, Terraform, Ansible, Helm, Kubernetes, despliegue,
+  bases de datos, almacenamiento, DNS, vigilancia, respaldo y flujos de trabajo de incidentes;
+- proporciona salida JSON y ayudantes Python multiplataforma.
 
 **Lo que no hace:**
 
-- reportar preferencias de estilo o especulación sin soporte como defectos;
-- implementar conclusiones, publicar comentarios o aprobar un examen sin separado
-  autorización;
-- sustituir una explicación de código general para un examen abarcado.
+- infer Yandex Cloud de SSH genérico, Kubernetes, Terraform o despliegue
+  solicitudes sin contexto de proveedores;
+- almacenar credenciales en configuración de proyectos compartidos;
+- aplicar una mutación antes de establecer el objetivo, el contexto y la autorización.
 
 **Cómo invocarlo:**
 
 ```text
-$review-code-changes Review this branch against its declared baseline and report actionable findings.
+$operate-yandex-cloud Configure this project for Yandex Cloud operations.
 ```
 
-### `diagnose-software-defects` (experimental)
 
-Investigar fallos y regresiones para producir una explicación causal respaldada
-o hipótesis clasificadas.
+### Evolución de la colección de habilidades
+
+#### `discover-skill-candidates` (experimental)
+
+Encontrar ideas de habilidad reutilizables en proyecto consolidado y evidencia contextual sin
+creando una habilidad.
 
 *Lo que hace*
 
-- límites y reproduce con seguridad el síntoma cuando sea posible;
-- pruebas de hipótesis concurrentes con pruebas pertinentes;
-- reporte causa raíz, condiciones de contribución, radio de explosión, confianza y
-  un plan de verificación de soluciones.
+- inventarios vinculados a proyectos relacionados `AGENTS.md` archivos con Git y
+  - Probabilidad de nivel de línea;
+- opcionalmente inventories documentación del proyecto, archivos seleccionados, Git atado
+  historia, metadatos de estructura y resúmenes confirmados por el usuario desde disponibles
+  chats o `sync-project-context` oficios;
+- clasifica a los candidatos como recomendados, investigados o rechazados y los compara
+  con catálogos existentes;
+- Ofrece proactivamente a cada candidato elegible para una contribución segura
+  `kolabse/skills`, creación local o aplazamiento;
+- exporta una idea seleccionada como un paquete de contribución sanitario y dilatado
+  que los usuarios pueden validar independientemente.
 
 **Lo que no hace:**
 
-- infer causation from correlation;
-- mutar la producción o descartar pruebas fallidas;
-- implementar una solución especulativa cuando sólo se solicitó el diagnóstico.
+- modificar las reglas del proyecto, publicar o instalar una habilidad;
+- enumerar chats, ingerir transcripciones crudas, o escanear ampliamente código fuente;
+- exportar reglas crudas, caminos locales, secretos, URLs o direcciones de correo electrónico;
+- promover convenciones sobre políticas únicas, volátiles, sensibles o unilaterales como reutilizables
+  flujos de trabajo sin revisión.
 
 **Cómo invocarlo:**
 
 ```text
-$diagnose-software-defects Diagnose this regression and distinguish evidence from hypotheses.
+$discover-skill-candidates Analyze this project's local rules and prepare an evidence-backed backlog of reusable skill ideas without creating anything.
 ```
 
-### `resolve-git-conflicts` (experimental)
+#### `release-skill-collection`
 
-Resuelva los conflictos autorizados de fusión, rebase o cereza semánticamente mientras
-preservar el trabajo no relacionado.
+Planifique, verifique, audite y limpie las liberaciones de recolección de habilidades deterministas.
 
 *Lo que hace*
 
-- inspecciona el funcionamiento activo, la base, ambos lados, y cada camino inmerso;
-- reconcilia únicamente los conflictos cuyo comportamiento combinado previsto se entiende;
-- valida los caminos resueltos y hace explícita la operación Git restante.
+- versiones de cheques, preparación de cambios, estado de repositorio, pruebas, seguridad,
+  archivos determinísticos y sumas de comprobación;
+- valida la retención de compromiso, consumidor, plataforma, revisión y cheque local
+  pruebas;
+- auditorías inmutables de GitHub, manifiestos, sumas de comprobación y certificados;
+- prueba si las ramas temporales son fusionadas, idénticas o
+  parche-equivalente antes de la limpieza;
+- aplica una limpieza confirmada explícitamente sólo de un plan seguro sin cambios y
+  una auditoría de la versión publicada.
 
 **Lo que no hace:**
 
-- tratar la divergencia de repositorios ordinarios como una tarea de conflictos;
-- automáticamente, reajuste, abortar, continuar, fuerza-push, o etapa no relacionada
-  caminos;
-- adivinar a través de decisiones ambiguas generadas, binarias, esquemas o de productos.
+- inferir permiso para cometer, etiquetar, empujar, enviar flujos de trabajo, o publicar activos;
+- mover una etiqueta existente o sustituir los activos publicados;
+- eliminar ramas de nombres solos, un plan fijo o una liberación no auditada.
 
 **Cómo invocarlo:**
 
 ```text
-$resolve-git-conflicts Resolve the active merge conflicts path by path and validate the result.
-```
-
-### `execute-verified-development-lifecycle` (experimental)
-
-Planifique y verifique un camino declarado por proyecto desde la preparación de características a través de
-examen de la integración del desarrollo, la observación de la ejecución, la documentación y
-probada limpieza.
-
-*Lo que hace*
-
-- Congela un plan con digestión antes de la edición y avanza los puestos de control ordenados
-  utilizar pruebas retenidas;
-- verifica características antes de editar, prueba-primero, cambio-scopio preflight, revisión,
-  presión de estado exacto, tubería, documentación, integración de desarrollo,
-  Delegadas de producción, entrega, humo, notificación y puertas de limpieza;
-- rebobinado a un puesto de control declarado después del fracaso e invalida el estancamiento
-  evidencia abajo.
-
-**Lo que no hace:**
-
-- adaptadores de proveedores de inferencia, papeles de repositorio, puertas o autorización;
-- push, open or merge reviews, deployment, notify, edit documentation, or delete
-  los propios recursos;
-- ejecutar la producción, que sigue delegada en la versión aprobada
-  flujo de trabajo, como `$execute-configured-gitflow-releases`.
-
-Instalar y configurar sus habilidades requeridas primero: `$synchronize-git-repositories`,
-`$develop-with-test-first-evidence`, `$verify-before-push`, y
-`$review-code-changes`. Configurar el ciclo de vida de la versión-1 del proyecto
-contrato antes del primer plan. Instalar habilidades opcionales sólo cuando el proyecto
-permite sus puestos de control correspondientes: `$orchestrate-agent-work`,
-`$diagnose-software-defects`, `$resolve-git-conflicts`,
-`$coordinate-code-documentation-repositories`, `$maintain-work-log`,
-`$maintain-project-digest`, `$notify-via-telegram`, y
-`$execute-configured-gitflow-releases`.
-
-**Cómo invocarlo:**
-
-```text
-$execute-verified-development-lifecycle Plan and verify this change through the project's configured development lifecycle.
+$release-skill-collection Plan and verify release vX.Y.Z of this skill collection, but do not publish it yet.
 ```
 
 ## Composiciones compatibles

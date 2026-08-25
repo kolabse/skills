@@ -57,11 +57,16 @@ an implementation or non-completion explanation.
    below 500 lines; disclose branch-specific detail through direct references.
 5. Add one entry to `skill-catalog.json`:
    - `name` and repository-relative `path`;
+   - exactly one primary `category`, following the documented priority order;
+   - one or more controlled `tags` for lifecycle phase, scope, behavior, and
+     integrations;
    - `status`: `experimental`, `stable`, or `deprecated`;
    - GitHub handles in `maintainers`;
    - supported `platforms`;
    - SPDX expression in `license`;
    - provenance kind, source, previous names, and canonical repository.
+   Validate category and tag values against
+   `schemas/skill-catalog.schema.json`; maturity status is independent of both.
 6. Add the skill to the README catalog with its purpose, installation notes,
    and required first-run action.
 7. Add tests for deterministic scripts and realistic prompts that should and

@@ -4,6 +4,9 @@
 
 ### Added
 
+- A six-category, priority-ordered skill taxonomy and orthogonal controlled
+  tags for lifecycle phase, scope, behavior, and integrations, published in
+  `skill-catalog.json` with a Draft 2020-12 JSON Schema.
 - Spanish translations of the public README, contribution guide, support,
   privacy, and terms documents under `docs/i18n/es/`, with three-language
   navigation across the English, Russian, and Spanish document sets.
@@ -16,6 +19,9 @@
 
 ### Changed
 
+- The English, Russian, and Spanish skill catalogs are now grouped consistently
+  by primary user-facing category, with automated checks for category order and
+  skill placement.
 - Localization validation now derives required language navigation from the
   locale manifest, reports locale identifiers safely on legacy Windows
   encodings, and supports multiple complete translation sets.

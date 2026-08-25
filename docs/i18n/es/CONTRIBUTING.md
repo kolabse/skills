@@ -57,11 +57,17 @@ una explicación de aplicación o no completa.
    debajo de 500 líneas; divulgar detalles de ramas específicas mediante referencias directas.
 5. Añádase una entrada `skill-catalog.json`:
    - `name` y repositorio relativo `path`;
+   - exactamente una `category` principal, respetando el orden de prioridad
+     documentado;
+   - una o más `tags` controladas para la fase del ciclo de vida, el alcance,
+     el comportamiento y las integraciones;
    - `status`: `experimental`, `stable`o `deprecated`;
    - GitHub maneja dentro `maintainers`;
    - apoyo `platforms`;
    - Expresión SPDX en `license`;
    - Tipo de procedencia, fuente, nombres anteriores y repositorio canónico.
+   Valide las categorías y etiquetas con
+   `schemas/skill-catalog.schema.json`; el estado de madurez es independiente.
 6. Añadir la habilidad al catálogo README con su propósito, notas de instalación,
    y requiere acción de primera.
 7. Agregue pruebas para scripts deterministas y indicaciones realistas que deben y

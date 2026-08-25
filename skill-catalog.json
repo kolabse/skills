@@ -1,7 +1,10 @@
 {
-  "schema_version": 1,
+  "schema_version": 2,
   "collection_version": "1.17.0",
-  "supported_agents": ["claude-code", "codex"],
+  "supported_agents": [
+    "claude-code",
+    "codex"
+  ],
   "license": "Apache-2.0",
   "composition_evals": "evals/compositions.json",
   "composition_evidence_schema": "schemas/composition-evidence.schema.json",
@@ -16,281 +19,208 @@
   "compositions": [
     {
       "name": "protected-push",
-      "required_steps": ["synchronize-git-repositories", "verify-before-push"],
-      "optional_steps": ["maintain-work-log", "notify-via-telegram"]
+      "required_steps": [
+        "synchronize-git-repositories",
+        "verify-before-push"
+      ],
+      "optional_steps": [
+        "maintain-work-log",
+        "notify-via-telegram"
+      ]
     },
     {
       "name": "yandex-cloud-operation",
-      "required_steps": ["synchronize-git-repositories", "operate-yandex-cloud"],
-      "optional_steps": ["verify-before-push", "maintain-work-log", "notify-via-telegram"]
+      "required_steps": [
+        "synchronize-git-repositories",
+        "operate-yandex-cloud"
+      ],
+      "optional_steps": [
+        "verify-before-push",
+        "maintain-work-log",
+        "notify-via-telegram"
+      ]
     },
     {
       "name": "skill-collection-release",
-      "required_steps": ["synchronize-git-repositories", "release-skill-collection", "verify-before-push"],
-      "optional_steps": ["maintain-work-log", "notify-via-telegram"]
+      "required_steps": [
+        "synchronize-git-repositories",
+        "release-skill-collection",
+        "verify-before-push"
+      ],
+      "optional_steps": [
+        "maintain-work-log",
+        "notify-via-telegram"
+      ]
     }
   ],
   "skills": [
     {
-      "name": "orchestrate-agent-work",
-      "path": "skills/orchestrate-agent-work",
-      "status": "experimental",
-      "maintainers": ["@kolabse"],
-      "platforms": ["linux", "macos", "windows"],
-      "trigger_evals": "evals/orchestrate-agent-work.json",
-      "license": "Apache-2.0",
-      "provides": ["multi-agent-work-orchestration"],
-      "requires": [],
-      "optional_integrations": [],
-      "configuration": {
-        "scope": "project",
-        "format": "none",
-        "status": ["python", "scripts/status.py"]
-      },
-      "provenance": {
-        "kind": "original",
-        "source": "Clean-room implementation informed by https://github.com/kolabse/skills/issues/53 and review of provencher/codex-skills@8aa6c42b73781c905c55f8a1253a18127079ac21",
-        "canonical_repository": "https://github.com/kolabse/skills"
-      }
-    },
-    {
       "name": "develop-with-test-first-evidence",
       "path": "skills/develop-with-test-first-evidence",
       "status": "experimental",
-      "maintainers": ["@kolabse"],
-      "platforms": ["linux", "macos", "windows"],
+      "maintainers": [
+        "@kolabse"
+      ],
+      "platforms": [
+        "linux",
+        "macos",
+        "windows"
+      ],
       "trigger_evals": "evals/develop-with-test-first-evidence.json",
       "license": "Apache-2.0",
-      "provides": ["test-first-development-evidence"],
+      "provides": [
+        "test-first-development-evidence"
+      ],
       "requires": [],
-      "optional_integrations": ["software-defect-diagnosis"],
+      "optional_integrations": [
+        "software-defect-diagnosis"
+      ],
       "configuration": {
         "scope": "project",
         "format": "none",
-        "status": ["python", "scripts/status.py"]
+        "status": [
+          "python",
+          "scripts/status.py"
+        ]
       },
       "provenance": {
         "kind": "original",
         "source": "Clean-room implementation informed by https://github.com/kolabse/skills/issues/53 and review of mattpocock/skills@5b15a47f2d7150f545fbcacbfe381787fc0230dc",
         "canonical_repository": "https://github.com/kolabse/skills"
-      }
+      },
+      "category": "development-quality",
+      "tags": [
+        "implement",
+        "verify",
+        "project",
+        "repository",
+        "evidence-producing"
+      ]
     },
     {
       "name": "review-code-changes",
       "path": "skills/review-code-changes",
       "status": "experimental",
-      "maintainers": ["@kolabse"],
-      "platforms": ["linux", "macos", "windows"],
+      "maintainers": [
+        "@kolabse"
+      ],
+      "platforms": [
+        "linux",
+        "macos",
+        "windows"
+      ],
       "trigger_evals": "evals/review-code-changes.json",
       "license": "Apache-2.0",
-      "provides": ["code-change-review"],
+      "provides": [
+        "code-change-review"
+      ],
       "requires": [],
-      "optional_integrations": ["software-defect-diagnosis"],
+      "optional_integrations": [
+        "software-defect-diagnosis"
+      ],
       "configuration": {
         "scope": "project",
         "format": "none",
-        "status": ["python", "scripts/status.py"]
+        "status": [
+          "python",
+          "scripts/status.py"
+        ]
       },
       "provenance": {
         "kind": "original",
         "source": "Clean-room implementation informed by https://github.com/kolabse/skills/issues/53 and review of mattpocock/skills@5b15a47f2d7150f545fbcacbfe381787fc0230dc",
         "canonical_repository": "https://github.com/kolabse/skills"
-      }
+      },
+      "category": "development-quality",
+      "tags": [
+        "verify",
+        "repository",
+        "read-only-planning",
+        "evidence-producing"
+      ]
     },
     {
       "name": "diagnose-software-defects",
       "path": "skills/diagnose-software-defects",
       "status": "experimental",
-      "maintainers": ["@kolabse"],
-      "platforms": ["linux", "macos", "windows"],
+      "maintainers": [
+        "@kolabse"
+      ],
+      "platforms": [
+        "linux",
+        "macos",
+        "windows"
+      ],
       "trigger_evals": "evals/diagnose-software-defects.json",
       "license": "Apache-2.0",
-      "provides": ["software-defect-diagnosis"],
+      "provides": [
+        "software-defect-diagnosis"
+      ],
       "requires": [],
       "optional_integrations": [],
       "configuration": {
         "scope": "project",
         "format": "none",
-        "status": ["python", "scripts/status.py"]
+        "status": [
+          "python",
+          "scripts/status.py"
+        ]
       },
       "provenance": {
         "kind": "original",
         "source": "Clean-room implementation informed by https://github.com/kolabse/skills/issues/53 and review of mattpocock/skills@5b15a47f2d7150f545fbcacbfe381787fc0230dc",
         "canonical_repository": "https://github.com/kolabse/skills"
-      }
+      },
+      "category": "development-quality",
+      "tags": [
+        "investigate",
+        "project",
+        "repository",
+        "read-only-planning",
+        "evidence-producing"
+      ]
     },
     {
       "name": "resolve-git-conflicts",
       "path": "skills/resolve-git-conflicts",
       "status": "experimental",
-      "maintainers": ["@kolabse"],
-      "platforms": ["linux", "macos", "windows"],
+      "maintainers": [
+        "@kolabse"
+      ],
+      "platforms": [
+        "linux",
+        "macos",
+        "windows"
+      ],
       "trigger_evals": "evals/resolve-git-conflicts.json",
       "license": "Apache-2.0",
-      "provides": ["git-conflict-resolution"],
+      "provides": [
+        "git-conflict-resolution"
+      ],
       "requires": [],
-      "optional_integrations": ["software-defect-diagnosis"],
+      "optional_integrations": [
+        "software-defect-diagnosis"
+      ],
       "configuration": {
         "scope": "project",
         "format": "none",
-        "status": ["python", "scripts/status.py"]
+        "status": [
+          "python",
+          "scripts/status.py"
+        ]
       },
       "provenance": {
         "kind": "original",
         "source": "Clean-room implementation informed by https://github.com/kolabse/skills/issues/53 and review of mattpocock/skills@5b15a47f2d7150f545fbcacbfe381787fc0230dc",
         "canonical_repository": "https://github.com/kolabse/skills"
-      }
-    },
-    {
-      "name": "execute-verified-development-lifecycle",
-      "path": "skills/execute-verified-development-lifecycle",
-      "status": "experimental",
-      "maintainers": ["@kolabse"],
-      "platforms": ["linux", "macos", "windows"],
-      "trigger_evals": "evals/execute-verified-development-lifecycle.json",
-      "license": "Apache-2.0",
-      "provides": ["verified-development-lifecycle"],
-      "requires": ["repository-freshness", "test-first-development-evidence", "push-verification-evidence", "code-change-review"],
-      "optional_integrations": ["multi-agent-work-orchestration", "software-defect-diagnosis", "git-conflict-resolution", "cross-repository-code-documentation-coordination", "work-log", "user-facing-project-digest", "task-notification", "configured-gitflow-release"],
-      "configuration": {
-        "scope": "project",
-        "format": "json",
-        "current_version": 1,
-        "schema": "schemas/config.schema.json",
-        "configure": ["python", "scripts/development_lifecycle.py", "configure", "--project-root", "<project-root>", "--config-source", "<config.json>"],
-        "status": ["python", "scripts/development_lifecycle.py", "status", "--project-root", "<project-root>", "--json"],
-        "migrate": ["python", "scripts/development_lifecycle.py", "migrate", "--project-root", "<project-root>", "--json"]
       },
-      "provenance": {
-        "kind": "original",
-        "source": "Clean-room implementation from https://github.com/kolabse/skills/issues/53, informed by review of provencher/codex-skills@8aa6c42b73781c905c55f8a1253a18127079ac21 and mattpocock/skills@5b15a47f2d7150f545fbcacbfe381787fc0230dc",
-        "canonical_repository": "https://github.com/kolabse/skills"
-      }
-    },
-    {
-      "name": "discover-skill-candidates",
-      "path": "skills/discover-skill-candidates",
-      "status": "experimental",
-      "maintainers": [
-        "@kolabse"
-      ],
-      "platforms": [
-        "linux",
-        "macos",
-        "windows"
-      ],
-      "trigger_evals": "evals/discover-skill-candidates.json",
-      "license": "Apache-2.0",
-      "provides": ["skill-candidate-discovery", "multi-source-project-evidence-inventory", "rule-provenance-inventory", "portable-skill-candidate-contribution"],
-      "requires": [],
-      "optional_integrations": ["private-project-handoff"],
-      "configuration": {
-        "scope": "project",
-        "format": "none",
-        "status": ["python", "scripts/discover_candidates.py", "inventory", "--project-path", "<project-root>", "--json"]
-      },
-      "provenance": {
-        "kind": "original",
-        "source": "Created to turn recurring local project rules into reviewed reusable-skill ideas without silently authoring skills",
-        "canonical_repository": "https://github.com/kolabse/skills"
-      }
-    },
-    {
-      "name": "coordinate-code-documentation-repositories",
-      "path": "skills/coordinate-code-documentation-repositories",
-      "status": "experimental",
-      "maintainers": [
-        "@kolabse"
-      ],
-      "platforms": [
-        "linux",
-        "macos",
-        "windows"
-      ],
-      "trigger_evals": "evals/coordinate-code-documentation-repositories.json",
-      "license": "Apache-2.0",
-      "provides": ["cross-repository-code-documentation-coordination"],
-      "requires": ["repository-freshness", "push-verification-evidence"],
-      "optional_integrations": ["user-facing-project-digest", "work-log", "task-notification"],
-      "configuration": {
-        "scope": "project",
-        "format": "json",
-        "current_version": 1,
-        "schema": "schemas/config.schema.json",
-        "configure": ["python", "scripts/coordinate_change.py", "configure", "--project-root", "<project-root>"],
-        "status": ["python", "scripts/coordinate_change.py", "status", "--project-root", "<project-root>", "--json"],
-        "migrate": ["python", "scripts/coordinate_change.py", "migrate", "--project-root", "<project-root>", "--json"]
-      },
-      "provenance": {
-        "kind": "original",
-        "source": "Contributed through https://github.com/kolabse/skills/issues/50 and independently reviewed for collection use",
-        "canonical_repository": "https://github.com/kolabse/skills"
-      }
-    },
-    {
-      "name": "execute-configured-gitflow-releases",
-      "path": "skills/execute-configured-gitflow-releases",
-      "status": "experimental",
-      "maintainers": [
-        "@kolabse"
-      ],
-      "platforms": [
-        "linux",
-        "macos",
-        "windows"
-      ],
-      "trigger_evals": "evals/execute-configured-gitflow-releases.json",
-      "license": "Apache-2.0",
-      "provides": ["configured-gitflow-release", "gitflow-hotfix-reintegration"],
-      "requires": ["repository-freshness", "push-verification-evidence"],
-      "optional_integrations": ["cross-repository-code-documentation-coordination", "work-log", "task-notification"],
-      "configuration": {
-        "scope": "project",
-        "format": "json",
-        "current_version": 1,
-        "schema": "schemas/config.schema.json",
-        "configure": ["python", "scripts/gitflow_release.py", "configure", "--project-root", "<project-root>"],
-        "status": ["python", "scripts/gitflow_release.py", "status", "--project-root", "<project-root>", "--json"],
-        "migrate": ["python", "scripts/gitflow_release.py", "migrate", "--project-root", "<project-root>", "--json"]
-      },
-      "provenance": {
-        "kind": "original",
-        "source": "Contributed through https://github.com/kolabse/skills/issues/51 and independently reviewed for collection use",
-        "canonical_repository": "https://github.com/kolabse/skills"
-      }
-    },
-    {
-      "name": "verify-before-push",
-      "path": "skills/verify-before-push",
-      "status": "stable",
-      "stable_since": "1.0.0",
-      "maintainers": [
-        "@kolabse"
-      ],
-      "platforms": [
-        "linux",
-        "macos",
-        "windows"
-      ],
-      "trigger_evals": "evals/verify-before-push.json",
-      "license": "Apache-2.0",
-      "provides": ["push-verification-evidence"],
-      "requires": ["repository-freshness"],
-      "optional_integrations": ["work-log", "task-notification"],
-      "configuration": {
-        "scope": "project",
-        "format": "json",
-        "current_version": 1,
-        "schema": "schemas/config.schema.json",
-        "configure": ["python", "scripts/verify_before_push.py", "configure", "--project-root", "<project-root>"],
-        "status": ["python", "scripts/verify_before_push.py", "status", "--project-root", "<project-root>", "--json"],
-        "migrate": ["python", "scripts/verify_before_push.py", "migrate", "--project-root", "<project-root>", "--json"]
-      },
-      "provenance": {
-        "kind": "original",
-        "source": "Derived from prior project experience where this workflow was successfully applied as a project rule",
-        "canonical_repository": "https://github.com/kolabse/skills"
-      }
+      "category": "development-quality",
+      "tags": [
+        "implement",
+        "repository",
+        "mutation",
+        "git"
+      ]
     },
     {
       "name": "synchronize-git-repositories",
@@ -307,20 +237,337 @@
       ],
       "trigger_evals": "evals/synchronize-git-repositories.json",
       "license": "Apache-2.0",
-      "provides": ["repository-freshness"],
+      "provides": [
+        "repository-freshness"
+      ],
       "requires": [],
-      "optional_integrations": ["work-log"],
+      "optional_integrations": [
+        "work-log"
+      ],
       "configuration": {
         "scope": "project",
         "format": "managed-markdown",
-        "configure": ["python", "scripts/configure_project.py", "configure", "--project-path", "<project-root>"],
-        "status": ["python", "scripts/configure_project.py", "status", "--project-path", "<project-root>", "--json"]
+        "configure": [
+          "python",
+          "scripts/configure_project.py",
+          "configure",
+          "--project-path",
+          "<project-root>"
+        ],
+        "status": [
+          "python",
+          "scripts/configure_project.py",
+          "status",
+          "--project-path",
+          "<project-root>",
+          "--json"
+        ]
       },
       "provenance": {
         "kind": "original",
         "source": "Derived from prior project experience where this workflow was successfully applied as a project rule",
         "canonical_repository": "https://github.com/kolabse/skills"
-      }
+      },
+      "category": "repository-delivery",
+      "tags": [
+        "prepare",
+        "repository",
+        "multi-repository",
+        "mutation",
+        "git"
+      ]
+    },
+    {
+      "name": "verify-before-push",
+      "path": "skills/verify-before-push",
+      "status": "stable",
+      "stable_since": "1.0.0",
+      "maintainers": [
+        "@kolabse"
+      ],
+      "platforms": [
+        "linux",
+        "macos",
+        "windows"
+      ],
+      "trigger_evals": "evals/verify-before-push.json",
+      "license": "Apache-2.0",
+      "provides": [
+        "push-verification-evidence"
+      ],
+      "requires": [
+        "repository-freshness"
+      ],
+      "optional_integrations": [
+        "work-log",
+        "task-notification"
+      ],
+      "configuration": {
+        "scope": "project",
+        "format": "json",
+        "current_version": 1,
+        "schema": "schemas/config.schema.json",
+        "configure": [
+          "python",
+          "scripts/verify_before_push.py",
+          "configure",
+          "--project-root",
+          "<project-root>"
+        ],
+        "status": [
+          "python",
+          "scripts/verify_before_push.py",
+          "status",
+          "--project-root",
+          "<project-root>",
+          "--json"
+        ],
+        "migrate": [
+          "python",
+          "scripts/verify_before_push.py",
+          "migrate",
+          "--project-root",
+          "<project-root>",
+          "--json"
+        ]
+      },
+      "provenance": {
+        "kind": "original",
+        "source": "Derived from prior project experience where this workflow was successfully applied as a project rule",
+        "canonical_repository": "https://github.com/kolabse/skills"
+      },
+      "category": "repository-delivery",
+      "tags": [
+        "verify",
+        "repository",
+        "evidence-producing",
+        "git"
+      ]
+    },
+    {
+      "name": "coordinate-code-documentation-repositories",
+      "path": "skills/coordinate-code-documentation-repositories",
+      "status": "experimental",
+      "maintainers": [
+        "@kolabse"
+      ],
+      "platforms": [
+        "linux",
+        "macos",
+        "windows"
+      ],
+      "trigger_evals": "evals/coordinate-code-documentation-repositories.json",
+      "license": "Apache-2.0",
+      "provides": [
+        "cross-repository-code-documentation-coordination"
+      ],
+      "requires": [
+        "repository-freshness",
+        "push-verification-evidence"
+      ],
+      "optional_integrations": [
+        "user-facing-project-digest",
+        "work-log",
+        "task-notification"
+      ],
+      "configuration": {
+        "scope": "project",
+        "format": "json",
+        "current_version": 1,
+        "schema": "schemas/config.schema.json",
+        "configure": [
+          "python",
+          "scripts/coordinate_change.py",
+          "configure",
+          "--project-root",
+          "<project-root>"
+        ],
+        "status": [
+          "python",
+          "scripts/coordinate_change.py",
+          "status",
+          "--project-root",
+          "<project-root>",
+          "--json"
+        ],
+        "migrate": [
+          "python",
+          "scripts/coordinate_change.py",
+          "migrate",
+          "--project-root",
+          "<project-root>",
+          "--json"
+        ]
+      },
+      "provenance": {
+        "kind": "original",
+        "source": "Contributed through https://github.com/kolabse/skills/issues/50 and independently reviewed for collection use",
+        "canonical_repository": "https://github.com/kolabse/skills"
+      },
+      "category": "repository-delivery",
+      "tags": [
+        "prepare",
+        "publish",
+        "multi-repository",
+        "orchestration",
+        "evidence-producing",
+        "git"
+      ]
+    },
+    {
+      "name": "execute-configured-gitflow-releases",
+      "path": "skills/execute-configured-gitflow-releases",
+      "status": "experimental",
+      "maintainers": [
+        "@kolabse"
+      ],
+      "platforms": [
+        "linux",
+        "macos",
+        "windows"
+      ],
+      "trigger_evals": "evals/execute-configured-gitflow-releases.json",
+      "license": "Apache-2.0",
+      "provides": [
+        "configured-gitflow-release",
+        "gitflow-hotfix-reintegration"
+      ],
+      "requires": [
+        "repository-freshness",
+        "push-verification-evidence"
+      ],
+      "optional_integrations": [
+        "cross-repository-code-documentation-coordination",
+        "work-log",
+        "task-notification"
+      ],
+      "configuration": {
+        "scope": "project",
+        "format": "json",
+        "current_version": 1,
+        "schema": "schemas/config.schema.json",
+        "configure": [
+          "python",
+          "scripts/gitflow_release.py",
+          "configure",
+          "--project-root",
+          "<project-root>"
+        ],
+        "status": [
+          "python",
+          "scripts/gitflow_release.py",
+          "status",
+          "--project-root",
+          "<project-root>",
+          "--json"
+        ],
+        "migrate": [
+          "python",
+          "scripts/gitflow_release.py",
+          "migrate",
+          "--project-root",
+          "<project-root>",
+          "--json"
+        ]
+      },
+      "provenance": {
+        "kind": "original",
+        "source": "Contributed through https://github.com/kolabse/skills/issues/51 and independently reviewed for collection use",
+        "canonical_repository": "https://github.com/kolabse/skills"
+      },
+      "category": "repository-delivery",
+      "tags": [
+        "verify",
+        "publish",
+        "repository",
+        "mutation",
+        "evidence-producing",
+        "git"
+      ]
+    },
+    {
+      "name": "execute-verified-development-lifecycle",
+      "path": "skills/execute-verified-development-lifecycle",
+      "status": "experimental",
+      "maintainers": [
+        "@kolabse"
+      ],
+      "platforms": [
+        "linux",
+        "macos",
+        "windows"
+      ],
+      "trigger_evals": "evals/execute-verified-development-lifecycle.json",
+      "license": "Apache-2.0",
+      "provides": [
+        "verified-development-lifecycle"
+      ],
+      "requires": [
+        "repository-freshness",
+        "test-first-development-evidence",
+        "push-verification-evidence",
+        "code-change-review"
+      ],
+      "optional_integrations": [
+        "multi-agent-work-orchestration",
+        "software-defect-diagnosis",
+        "git-conflict-resolution",
+        "cross-repository-code-documentation-coordination",
+        "work-log",
+        "user-facing-project-digest",
+        "task-notification",
+        "configured-gitflow-release"
+      ],
+      "configuration": {
+        "scope": "project",
+        "format": "json",
+        "current_version": 1,
+        "schema": "schemas/config.schema.json",
+        "configure": [
+          "python",
+          "scripts/development_lifecycle.py",
+          "configure",
+          "--project-root",
+          "<project-root>",
+          "--config-source",
+          "<config.json>"
+        ],
+        "status": [
+          "python",
+          "scripts/development_lifecycle.py",
+          "status",
+          "--project-root",
+          "<project-root>",
+          "--json"
+        ],
+        "migrate": [
+          "python",
+          "scripts/development_lifecycle.py",
+          "migrate",
+          "--project-root",
+          "<project-root>",
+          "--json"
+        ]
+      },
+      "provenance": {
+        "kind": "original",
+        "source": "Clean-room implementation from https://github.com/kolabse/skills/issues/53, informed by review of provencher/codex-skills@8aa6c42b73781c905c55f8a1253a18127079ac21 and mattpocock/skills@5b15a47f2d7150f545fbcacbfe381787fc0230dc",
+        "canonical_repository": "https://github.com/kolabse/skills"
+      },
+      "category": "repository-delivery",
+      "tags": [
+        "prepare",
+        "implement",
+        "verify",
+        "publish",
+        "document",
+        "project",
+        "multi-repository",
+        "mutation",
+        "evidence-producing",
+        "orchestration",
+        "git"
+      ]
     },
     {
       "name": "maintain-work-log",
@@ -337,20 +584,41 @@
       ],
       "trigger_evals": "evals/maintain-work-log.json",
       "license": "Apache-2.0",
-      "provides": ["work-log"],
+      "provides": [
+        "work-log"
+      ],
       "requires": [],
       "optional_integrations": [],
       "configuration": {
         "scope": "project",
         "format": "managed-markdown",
-        "configure": ["python", "scripts/configure_project.py", "configure", "--project-path", "<project-root>"],
-        "status": ["python", "scripts/configure_project.py", "status", "--project-path", "<project-root>", "--json"]
+        "configure": [
+          "python",
+          "scripts/configure_project.py",
+          "configure",
+          "--project-path",
+          "<project-root>"
+        ],
+        "status": [
+          "python",
+          "scripts/configure_project.py",
+          "status",
+          "--project-path",
+          "<project-root>",
+          "--json"
+        ]
       },
       "provenance": {
         "kind": "original",
         "source": "Derived from prior project experience where this workflow was successfully applied as a project rule",
         "canonical_repository": "https://github.com/kolabse/skills"
-      }
+      },
+      "category": "project-knowledge",
+      "tags": [
+        "document",
+        "project",
+        "mutation"
+      ]
     },
     {
       "name": "maintain-project-digest",
@@ -366,114 +634,36 @@
       ],
       "trigger_evals": "evals/maintain-project-digest.json",
       "license": "Apache-2.0",
-      "provides": ["user-facing-project-digest"],
+      "provides": [
+        "user-facing-project-digest"
+      ],
       "requires": [],
-      "optional_integrations": ["work-log"],
+      "optional_integrations": [
+        "work-log"
+      ],
       "configuration": {
         "scope": "project",
         "format": "none",
-        "status": ["python", "scripts/project_digest.py", "status", "--project-root", "<project-root>", "--json"]
+        "status": [
+          "python",
+          "scripts/project_digest.py",
+          "status",
+          "--project-root",
+          "<project-root>",
+          "--json"
+        ]
       },
       "provenance": {
         "kind": "original",
         "source": "Created to maintain a safe, collaborative daily summary of completed user-visible project changes",
         "canonical_repository": "https://github.com/kolabse/skills"
-      }
-    },
-    {
-      "name": "notify-via-telegram",
-      "path": "skills/notify-via-telegram",
-      "status": "stable",
-      "stable_since": "1.0.0",
-      "maintainers": [
-        "@kolabse"
-      ],
-      "platforms": [
-        "linux",
-        "macos",
-        "windows"
-      ],
-      "trigger_evals": "evals/notify-via-telegram.json",
-      "license": "Apache-2.0",
-      "provides": ["task-notification"],
-      "requires": [],
-      "optional_integrations": [],
-      "configuration": {
-        "scope": "user",
-        "format": "json",
-        "current_version": 1,
-        "schema": "schemas/config.schema.json",
-        "configure": ["python", "scripts/telegram_notify.py", "configure"],
-        "status": ["python", "scripts/telegram_notify.py", "status", "--json"],
-        "migrate": ["python", "scripts/telegram_notify.py", "migrate", "--json"]
       },
-      "provenance": {
-        "kind": "original",
-        "source": "Derived from prior project experience where this workflow was successfully applied as a project rule",
-        "canonical_repository": "https://github.com/kolabse/skills"
-      }
-    },
-    {
-      "name": "operate-yandex-cloud",
-      "path": "skills/operate-yandex-cloud",
-      "status": "stable",
-      "stable_since": "1.0.0",
-      "maintainers": [
-        "@kolabse"
-      ],
-      "platforms": [
-        "linux",
-        "macos",
-        "windows"
-      ],
-      "trigger_evals": "evals/operate-yandex-cloud.json",
-      "license": "Apache-2.0",
-      "provides": ["yandex-cloud-operations"],
-      "requires": ["repository-freshness"],
-      "optional_integrations": ["push-verification-evidence", "work-log", "task-notification"],
-      "configuration": {
-        "scope": "project",
-        "format": "yaml",
-        "current_version": 3,
-        "schema": "schemas/project.schema.json",
-        "configure": ["python", "scripts/configure_project.py", "--project-path", "<project-root>"],
-        "status": ["python", "scripts/preflight.py", "--project-path", "<project-root>", "--json"],
-        "migrate": ["python", "scripts/migrate_config.py", "--project-path", "<project-root>", "--json"]
-      },
-      "provenance": {
-        "kind": "original",
-        "source": "Derived from prior project experience where this workflow was successfully applied as a project rule",
-        "canonical_repository": "https://github.com/kolabse/skills"
-      }
-    },
-    {
-      "name": "release-skill-collection",
-      "path": "skills/release-skill-collection",
-      "status": "stable",
-      "stable_since": "1.8.0",
-      "maintainers": [
-        "@kolabse"
-      ],
-      "platforms": [
-        "linux",
-        "macos",
-        "windows"
-      ],
-      "trigger_evals": "evals/release-skill-collection.json",
-      "license": "Apache-2.0",
-      "provides": ["skill-collection-release-planning", "deterministic-release-checks", "release-evidence-verification", "release-publication-audit", "release-branch-cleanup-planning", "release-branch-cleanup-application"],
-      "requires": ["repository-freshness"],
-      "optional_integrations": ["push-verification-evidence", "work-log", "task-notification"],
-      "configuration": {
-        "scope": "project",
-        "format": "none",
-        "status": ["python", "scripts/release_collection.py", "status", "--project-root", "<project-root>", "--json"]
-      },
-      "provenance": {
-        "kind": "original",
-        "source": "Created to encode this collection's established deterministic and immutable release gates",
-        "canonical_repository": "https://github.com/kolabse/skills"
-      }
+      "category": "project-knowledge",
+      "tags": [
+        "document",
+        "project",
+        "mutation"
+      ]
     },
     {
       "name": "sync-project-context",
@@ -490,23 +680,350 @@
       ],
       "trigger_evals": "evals/sync-project-context.json",
       "license": "Apache-2.0",
-      "provides": ["private-project-handoff", "per-chat-continuation", "desktop-batch-chat-save", "desktop-batch-chat-restore", "desktop-bidirectional-chat-sync", "exact-chat-title-restore", "git-first-project-environment-reconciliation"],
+      "provides": [
+        "private-project-handoff",
+        "per-chat-continuation",
+        "desktop-batch-chat-save",
+        "desktop-batch-chat-restore",
+        "desktop-bidirectional-chat-sync",
+        "exact-chat-title-restore",
+        "git-first-project-environment-reconciliation"
+      ],
       "requires": [],
-      "optional_integrations": ["google-drive", "repository-freshness", "work-log"],
+      "optional_integrations": [
+        "google-drive",
+        "repository-freshness",
+        "work-log"
+      ],
       "configuration": {
         "scope": "user",
         "format": "json",
         "current_version": 2,
         "schema": "schemas/config.schema.json",
-        "configure": ["python", "scripts/context_sync.py", "configure", "--project-path", "<project-root>", "--backend", "local-folder", "--storage-root", "<approved-sync-folder>", "--acknowledge-storage-policy"],
-        "status": ["python", "scripts/context_sync.py", "status", "--project-path", "<project-root>", "--json"],
-        "migrate": ["python", "scripts/context_sync.py", "migrate", "--json"]
+        "configure": [
+          "python",
+          "scripts/context_sync.py",
+          "configure",
+          "--project-path",
+          "<project-root>",
+          "--backend",
+          "local-folder",
+          "--storage-root",
+          "<approved-sync-folder>",
+          "--acknowledge-storage-policy"
+        ],
+        "status": [
+          "python",
+          "scripts/context_sync.py",
+          "status",
+          "--project-path",
+          "<project-root>",
+          "--json"
+        ],
+        "migrate": [
+          "python",
+          "scripts/context_sync.py",
+          "migrate",
+          "--json"
+        ]
       },
       "provenance": {
         "kind": "original",
         "source": "Derived from prior project experience where this workflow was successfully applied as a project rule",
         "canonical_repository": "https://github.com/kolabse/skills"
-      }
+      },
+      "category": "project-knowledge",
+      "tags": [
+        "handoff",
+        "project",
+        "workstation",
+        "external-service",
+        "read-only-planning",
+        "mutation",
+        "google-drive"
+      ]
+    },
+    {
+      "name": "orchestrate-agent-work",
+      "path": "skills/orchestrate-agent-work",
+      "status": "experimental",
+      "maintainers": [
+        "@kolabse"
+      ],
+      "platforms": [
+        "linux",
+        "macos",
+        "windows"
+      ],
+      "trigger_evals": "evals/orchestrate-agent-work.json",
+      "license": "Apache-2.0",
+      "provides": [
+        "multi-agent-work-orchestration"
+      ],
+      "requires": [],
+      "optional_integrations": [],
+      "configuration": {
+        "scope": "project",
+        "format": "none",
+        "status": [
+          "python",
+          "scripts/status.py"
+        ]
+      },
+      "provenance": {
+        "kind": "original",
+        "source": "Clean-room implementation informed by https://github.com/kolabse/skills/issues/53 and review of provencher/codex-skills@8aa6c42b73781c905c55f8a1253a18127079ac21",
+        "canonical_repository": "https://github.com/kolabse/skills"
+      },
+      "category": "collaboration",
+      "tags": [
+        "prepare",
+        "project",
+        "orchestration"
+      ]
+    },
+    {
+      "name": "notify-via-telegram",
+      "path": "skills/notify-via-telegram",
+      "status": "stable",
+      "stable_since": "1.0.0",
+      "maintainers": [
+        "@kolabse"
+      ],
+      "platforms": [
+        "linux",
+        "macos",
+        "windows"
+      ],
+      "trigger_evals": "evals/notify-via-telegram.json",
+      "license": "Apache-2.0",
+      "provides": [
+        "task-notification"
+      ],
+      "requires": [],
+      "optional_integrations": [],
+      "configuration": {
+        "scope": "user",
+        "format": "json",
+        "current_version": 1,
+        "schema": "schemas/config.schema.json",
+        "configure": [
+          "python",
+          "scripts/telegram_notify.py",
+          "configure"
+        ],
+        "status": [
+          "python",
+          "scripts/telegram_notify.py",
+          "status",
+          "--json"
+        ],
+        "migrate": [
+          "python",
+          "scripts/telegram_notify.py",
+          "migrate",
+          "--json"
+        ]
+      },
+      "provenance": {
+        "kind": "original",
+        "source": "Derived from prior project experience where this workflow was successfully applied as a project rule",
+        "canonical_repository": "https://github.com/kolabse/skills"
+      },
+      "category": "collaboration",
+      "tags": [
+        "project",
+        "external-service",
+        "mutation",
+        "notification",
+        "telegram"
+      ]
+    },
+    {
+      "name": "operate-yandex-cloud",
+      "path": "skills/operate-yandex-cloud",
+      "status": "stable",
+      "stable_since": "1.0.0",
+      "maintainers": [
+        "@kolabse"
+      ],
+      "platforms": [
+        "linux",
+        "macos",
+        "windows"
+      ],
+      "trigger_evals": "evals/operate-yandex-cloud.json",
+      "license": "Apache-2.0",
+      "provides": [
+        "yandex-cloud-operations"
+      ],
+      "requires": [
+        "repository-freshness"
+      ],
+      "optional_integrations": [
+        "push-verification-evidence",
+        "work-log",
+        "task-notification"
+      ],
+      "configuration": {
+        "scope": "project",
+        "format": "yaml",
+        "current_version": 3,
+        "schema": "schemas/project.schema.json",
+        "configure": [
+          "python",
+          "scripts/configure_project.py",
+          "--project-path",
+          "<project-root>"
+        ],
+        "status": [
+          "python",
+          "scripts/preflight.py",
+          "--project-path",
+          "<project-root>",
+          "--json"
+        ],
+        "migrate": [
+          "python",
+          "scripts/migrate_config.py",
+          "--project-path",
+          "<project-root>",
+          "--json"
+        ]
+      },
+      "provenance": {
+        "kind": "original",
+        "source": "Derived from prior project experience where this workflow was successfully applied as a project rule",
+        "canonical_repository": "https://github.com/kolabse/skills"
+      },
+      "category": "infrastructure-operations",
+      "tags": [
+        "operate",
+        "project",
+        "external-service",
+        "read-only-planning",
+        "mutation",
+        "yandex-cloud"
+      ]
+    },
+    {
+      "name": "discover-skill-candidates",
+      "path": "skills/discover-skill-candidates",
+      "status": "experimental",
+      "maintainers": [
+        "@kolabse"
+      ],
+      "platforms": [
+        "linux",
+        "macos",
+        "windows"
+      ],
+      "trigger_evals": "evals/discover-skill-candidates.json",
+      "license": "Apache-2.0",
+      "provides": [
+        "skill-candidate-discovery",
+        "multi-source-project-evidence-inventory",
+        "rule-provenance-inventory",
+        "portable-skill-candidate-contribution"
+      ],
+      "requires": [],
+      "optional_integrations": [
+        "private-project-handoff"
+      ],
+      "configuration": {
+        "scope": "project",
+        "format": "none",
+        "status": [
+          "python",
+          "scripts/discover_candidates.py",
+          "inventory",
+          "--project-path",
+          "<project-root>",
+          "--json"
+        ]
+      },
+      "provenance": {
+        "kind": "original",
+        "source": "Created to turn recurring local project rules into reviewed reusable-skill ideas without silently authoring skills",
+        "canonical_repository": "https://github.com/kolabse/skills"
+      },
+      "category": "collection-maintenance",
+      "tags": [
+        "investigate",
+        "project",
+        "skill-collection",
+        "read-only-planning",
+        "evidence-producing"
+      ]
+    },
+    {
+      "name": "release-skill-collection",
+      "path": "skills/release-skill-collection",
+      "status": "stable",
+      "stable_since": "1.8.0",
+      "maintainers": [
+        "@kolabse"
+      ],
+      "platforms": [
+        "linux",
+        "macos",
+        "windows"
+      ],
+      "trigger_evals": "evals/release-skill-collection.json",
+      "license": "Apache-2.0",
+      "provides": [
+        "skill-collection-release-planning",
+        "deterministic-release-checks",
+        "release-evidence-verification",
+        "release-publication-audit",
+        "release-branch-cleanup-planning",
+        "release-branch-cleanup-application"
+      ],
+      "requires": [
+        "repository-freshness"
+      ],
+      "optional_integrations": [
+        "push-verification-evidence",
+        "work-log",
+        "task-notification"
+      ],
+      "configuration": {
+        "scope": "project",
+        "format": "none",
+        "status": [
+          "python",
+          "scripts/release_collection.py",
+          "status",
+          "--project-root",
+          "<project-root>",
+          "--json"
+        ]
+      },
+      "provenance": {
+        "kind": "original",
+        "source": "Created to encode this collection's established deterministic and immutable release gates",
+        "canonical_repository": "https://github.com/kolabse/skills"
+      },
+      "category": "collection-maintenance",
+      "tags": [
+        "verify",
+        "publish",
+        "repository",
+        "skill-collection",
+        "mutation",
+        "evidence-producing",
+        "git",
+        "github"
+      ]
     }
+  ],
+  "catalog_schema": "schemas/skill-catalog.schema.json",
+  "category_order": [
+    "development-quality",
+    "repository-delivery",
+    "project-knowledge",
+    "collaboration",
+    "infrastructure-operations",
+    "collection-maintenance"
   ]
 }

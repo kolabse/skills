@@ -16,6 +16,29 @@ ALLOWED_STATUSES = {"experimental", "stable", "deprecated"}
 ALLOWED_PROVENANCE = {"original", "migrated", "vendored"}
 ALLOWED_CONFIG_SCOPES = {"project", "user"}
 ALLOWED_CONFIG_FORMATS = {"json", "yaml", "managed-markdown", "none"}
+CATEGORY_ORDER = [
+    "development-quality",
+    "repository-delivery",
+    "project-knowledge",
+    "collaboration",
+    "infrastructure-operations",
+    "collection-maintenance",
+]
+CATEGORY_HEADINGS = {
+    "development-quality": "Development and code quality",
+    "repository-delivery": "Repositories and change delivery",
+    "project-knowledge": "Project knowledge and continuity",
+    "collaboration": "Coordination and communication",
+    "infrastructure-operations": "Infrastructure and operations",
+    "collection-maintenance": "Skill collection evolution",
+}
+ALLOWED_TAGS = {
+    "prepare", "investigate", "implement", "verify", "publish", "operate",
+    "document", "handoff", "project", "repository", "multi-repository",
+    "workstation", "external-service", "skill-collection", "read-only-planning",
+    "mutation", "evidence-producing", "orchestration", "notification", "git",
+    "github", "telegram", "google-drive", "yandex-cloud",
+}
 PLUGIN_NAME = "kolabse-skills"
 MARKETPLACE_NAME = "kolabse"
 CANONICAL_GIT_URL = "https://github.com/kolabse/skills.git"
@@ -637,6 +660,7 @@ def validate_manager_contract(repository_root: Path, collection_version: str) ->
         "manager-result.schema.json",
         "composition-evidence.schema.json",
         "composition-result.schema.json",
+        "skill-catalog.schema.json",
     ):
         path = repository_root / "schemas" / name
         try:
@@ -649,7 +673,67 @@ def validate_manager_contract(repository_root: Path, collection_version: str) ->
     return errors
 
 
-def validate_documentation(repository_root: Path, skill_names: set[str]) -> list[str]:
+def validate_catalog_taxonomy(
+    repository_root: Path, catalog: dict[str, object], entries: list[object]
+) -> list[str]:
+    catalog_path = repository_root / "skill-catalog.json"
+    schema_path = repository_root / "schemas/skill-catalog.schema.json"
+    errors: list[str] = []
+    if catalog.get("catalog_schema") != "schemas/skill-catalog.schema.json":
+        errors.append(f"{catalog_path}: catalog_schema must reference the public schema")
+    if catalog.get("category_order") != CATEGORY_ORDER:
+        errors.append(f"{catalog_path}: category_order must match the documented priority order")
+    try:
+        schema = json.loads(schema_path.read_text(encoding="utf-8"))
+    except (FileNotFoundError, json.JSONDecodeError, UnicodeDecodeError) as error:
+        return [*errors, f"{schema_path}: schema is missing or invalid: {error}"]
+    try:
+        schema_categories = schema["$defs"]["category"]["enum"]
+        schema_tags = schema["$defs"]["tag"]["enum"]
+    except (KeyError, TypeError):
+        return [*errors, f"{schema_path}: category and tag enums are required"]
+    if schema_categories != CATEGORY_ORDER:
+        errors.append(f"{schema_path}: category enum must match category_order")
+    if set(schema_tags) != ALLOWED_TAGS or len(schema_tags) != len(ALLOWED_TAGS):
+        errors.append(f"{schema_path}: tag enum must match the controlled vocabulary")
+
+    seen_categories: list[str] = []
+    previous_category_index = -1
+    for index, entry in enumerate(entries):
+        if not isinstance(entry, dict):
+            continue
+        location = f"{catalog_path}: skills[{index}]"
+        category = entry.get("category")
+        if category not in CATEGORY_ORDER:
+            errors.append(f"{location}.category must be one of {CATEGORY_ORDER}")
+        else:
+            category_index = CATEGORY_ORDER.index(category)
+            if category_index < previous_category_index:
+                errors.append(f"{location}.category breaks category_order")
+            previous_category_index = category_index
+            if category not in seen_categories:
+                seen_categories.append(category)
+        tags = entry.get("tags")
+        if not isinstance(tags, list) or not tags:
+            errors.append(f"{location}.tags must be a non-empty list")
+        elif not all(isinstance(tag, str) for tag in tags):
+            errors.append(f"{location}.tags must contain only strings")
+        else:
+            unknown = sorted(set(tags) - ALLOWED_TAGS)
+            if unknown:
+                errors.append(f"{location}.tags contains unsupported values {unknown}")
+            if len(tags) != len(set(tags)):
+                errors.append(f"{location}.tags must not contain duplicates")
+    if seen_categories != CATEGORY_ORDER:
+        errors.append(f"{catalog_path}: every category must form one ordered non-empty group")
+    return errors
+
+
+def validate_documentation(
+    repository_root: Path,
+    skill_names: set[str],
+    entries: list[object] | None = None,
+) -> list[str]:
     errors: list[str] = []
     readme_path = repository_root / "README.md"
     changelog_path = repository_root / "CHANGELOG.md"
@@ -661,7 +745,8 @@ def validate_documentation(repository_root: Path, skill_names: set[str]) -> list
     available = readme.find("\n## Available skills\n")
     compositions = readme.find("\n## Supported compositions\n")
     add_skill = readme.find("\n## Add a skill\n")
-    headings = [readme.find(f"\n### `{name}`") for name in skill_names]
+    skill_heading_level = "####" if entries is not None else "###"
+    headings = [readme.find(f"\n{skill_heading_level} `{name}`") for name in skill_names]
     if (
         available < 0
         or compositions < 0
@@ -673,6 +758,28 @@ def validate_documentation(repository_root: Path, skill_names: set[str]) -> list
         errors.append(
             f"{readme_path}: Supported compositions must follow the complete Available skills catalog"
         )
+    if entries is not None and available >= 0 and compositions >= 0:
+        category_positions = [
+            readme.find(f"\n### {CATEGORY_HEADINGS[category]}\n", available, compositions)
+            for category in CATEGORY_ORDER
+        ]
+        if any(position < 0 for position in category_positions) or category_positions != sorted(category_positions):
+            errors.append(f"{readme_path}: skill categories must follow category_order")
+        else:
+            category_end_positions = [*category_positions[1:], compositions]
+            by_name = {
+                entry.get("name"): entry
+                for entry in entries
+                if isinstance(entry, dict) and isinstance(entry.get("name"), str)
+            }
+            for name in skill_names:
+                entry = by_name.get(name)
+                if not entry or entry.get("category") not in CATEGORY_ORDER:
+                    continue
+                group = CATEGORY_ORDER.index(str(entry["category"]))
+                position = readme.find(f"\n#### `{name}`")
+                if not (category_positions[group] < position < category_end_positions[group]):
+                    errors.append(f"{readme_path}: '{name}' is outside its catalog category")
     versions = re.findall(r"^## \[([0-9]+\.[0-9]+\.[0-9]+)\] - ", changelog, re.MULTILINE)
     definitions = set(
         re.findall(r"^\[([0-9]+\.[0-9]+\.[0-9]+)\]: https://github\.com/kolabse/skills/releases/tag/v\1$", changelog, re.MULTILINE)
@@ -775,8 +882,8 @@ def validate(repository_root: Path = REPOSITORY_ROOT) -> list[str]:
     if not isinstance(catalog, dict):
         errors.append(f"{catalog_path}: catalog root must be an object")
         return errors
-    if catalog.get("schema_version") != 1:
-        errors.append(f"{catalog_path}: schema_version must be 1")
+    if catalog.get("schema_version") != 2:
+        errors.append(f"{catalog_path}: schema_version must be 2")
     collection_version = catalog.get("collection_version")
     manifest_path = repository_root / ".codex-plugin/plugin.json"
     try:
@@ -905,6 +1012,7 @@ def validate(repository_root: Path = REPOSITORY_ROOT) -> list[str]:
         errors.append(f"{catalog_path}: skill '{missing}' is missing from the catalog")
     for unknown in sorted(catalog_names - names):
         errors.append(f"{catalog_path}: catalog references unknown skill '{unknown}'")
+    errors.extend(validate_catalog_taxonomy(repository_root, catalog, entries))
     stable_names = {
         str(entry.get("name"))
         for entry in entries
@@ -913,7 +1021,7 @@ def validate(repository_root: Path = REPOSITORY_ROOT) -> list[str]:
     errors.extend(validate_release_holdout(repository_root, catalog, stable_names))
     errors.extend(validate_compositions(repository_root, catalog, entries))
     errors.extend(validate_manager_contract(repository_root, collection_version))
-    errors.extend(validate_documentation(repository_root, catalog_names))
+    errors.extend(validate_documentation(repository_root, catalog_names, entries))
     return errors
 
 

@@ -18,23 +18,29 @@
   - [Проверка глобальных установок](#проверка-глобальных-установок)
 - [Установка или обновление локального Codex-плагина для разработки](#установка-или-обновление-локального-codex-плагина-для-разработки)
 - [Доступные навыки](#доступные-навыки)
-  - [`discover-skill-candidates`](#discover-skill-candidates-experimental)
-  - [`coordinate-code-documentation-repositories`](#coordinate-code-documentation-repositories-experimental)
-  - [`execute-configured-gitflow-releases`](#execute-configured-gitflow-releases-experimental)
-  - [`release-skill-collection`](#release-skill-collection)
-  - [`verify-before-push`](#verify-before-push)
-  - [`synchronize-git-repositories`](#synchronize-git-repositories)
-  - [`maintain-work-log`](#maintain-work-log)
-  - [`maintain-project-digest`](#maintain-project-digest-experimental)
-  - [`notify-via-telegram`](#notify-via-telegram)
-  - [`operate-yandex-cloud`](#operate-yandex-cloud)
-  - [`sync-project-context`](#sync-project-context)
-  - [`orchestrate-agent-work`](#orchestrate-agent-work-experimental)
-  - [`develop-with-test-first-evidence`](#develop-with-test-first-evidence-experimental)
-  - [`review-code-changes`](#review-code-changes-experimental)
-  - [`diagnose-software-defects`](#diagnose-software-defects-experimental)
-  - [`resolve-git-conflicts`](#resolve-git-conflicts-experimental)
-  - [`execute-verified-development-lifecycle`](#execute-verified-development-lifecycle-experimental)
+  - [Разработка и качество кода](#разработка-и-качество-кода)
+    - [`develop-with-test-first-evidence`](#develop-with-test-first-evidence-experimental)
+    - [`review-code-changes`](#review-code-changes-experimental)
+    - [`diagnose-software-defects`](#diagnose-software-defects-experimental)
+    - [`resolve-git-conflicts`](#resolve-git-conflicts-experimental)
+  - [Репозитории и доставка изменений](#репозитории-и-доставка-изменений)
+    - [`synchronize-git-repositories`](#synchronize-git-repositories)
+    - [`verify-before-push`](#verify-before-push)
+    - [`coordinate-code-documentation-repositories`](#coordinate-code-documentation-repositories-experimental)
+    - [`execute-configured-gitflow-releases`](#execute-configured-gitflow-releases-experimental)
+    - [`execute-verified-development-lifecycle`](#execute-verified-development-lifecycle-experimental)
+  - [Знания и непрерывность проекта](#знания-и-непрерывность-проекта)
+    - [`maintain-work-log`](#maintain-work-log)
+    - [`maintain-project-digest`](#maintain-project-digest-experimental)
+    - [`sync-project-context`](#sync-project-context)
+  - [Координация и коммуникации](#координация-и-коммуникации)
+    - [`orchestrate-agent-work`](#orchestrate-agent-work-experimental)
+    - [`notify-via-telegram`](#notify-via-telegram)
+  - [Инфраструктура и эксплуатация](#инфраструктура-и-эксплуатация)
+    - [`operate-yandex-cloud`](#operate-yandex-cloud)
+  - [Развитие коллекции навыков](#развитие-коллекции-навыков)
+    - [`discover-skill-candidates`](#discover-skill-candidates-experimental)
+    - [`release-skill-collection`](#release-skill-collection)
 - [Поддерживаемые композиции](#поддерживаемые-композиции)
 - [Добавление навыка](#добавление-навыка)
 - [Проверка релиза](#проверка-релиза)
@@ -255,29 +261,131 @@ Stable и experimental навыки перечислены в `skill-catalog.jso
 возможности, зависимости и интеграции; stateful-навыки имеют идемпотентный
 configure, schema и migration для версионированной конфигурации.
 
-### `discover-skill-candidates` (experimental)
+Каталог сгруппирован по основному назначению для пользователя в указанном ниже
+порядке приоритета. У каждого навыка ровно одна основная категория. Независимые
+теги описывают этап жизненного цикла, область действия, поведение и интеграции;
+статус зрелости от них не зависит. Авторитетные машиночитаемые назначения и
+контролируемый словарь находятся в
+[`skill-catalog.json`](../../../skill-catalog.json) и проверяются по
+[`schemas/skill-catalog.schema.json`](../../../schemas/skill-catalog.schema.json).
 
-Находит переиспользуемые идеи навыков в ограниченных правилах и контексте, не
-создавая навык.
+Контролируемые группы тегов:
 
-**Что делает:** инвентаризирует project-relative `AGENTS.md` с Git/line
-provenance; по разрешению изучает документацию, выбранные файлы, ограниченную
-историю и подтверждённые summaries чатов или handoff; ранжирует кандидатов и
-сравнивает с каталогами; предлагает contribution, локальную реализацию или
-отсрочку; экспортирует очищенный digest-bound пакет.
+- этап жизненного цикла: `prepare`, `investigate`, `implement`, `verify`,
+  `publish`, `operate`, `document` и `handoff`;
+- область действия: `project`, `repository`, `multi-repository`, `workstation`,
+  `external-service` и `skill-collection`;
+- поведение: `read-only-planning`, `mutation`, `evidence-producing`,
+  `orchestration` и `notification`;
+- интеграция: `git`, `github`, `telegram`, `google-drive` и `yandex-cloud`.
 
-**Чего не делает:** не меняет правила, не создаёт и не устанавливает навык; не
-перечисляет чаты, не читает raw transcripts и не сканирует код широко; не
-экспортирует правила, пути, секреты, URL и email; не продвигает одноразовые или
-чувствительные соглашения без review.
+### Разработка и качество кода
+
+#### `develop-with-test-first-evidence` (experimental)
+
+Реализует поведение через подтверждённый red-green-refactor.
+
+**Что делает:** фиксирует focused test, падающий по нужной причине до кода;
+привязывает focused и broader green к финальному состоянию и валидирует evidence.
+
+**Чего не делает:** не создаёт red поломкой постороннего поведения, не называет
+последующие тесты test-first и не скрывает старые/environment/final failures.
 
 **Вызов:**
 
 ```text
-$discover-skill-candidates Проанализируй локальные правила проекта и подготовь подтверждённый список идей навыков, ничего не создавая.
+$develop-with-test-first-evidence Реализуй поведение с зафиксированным циклом red-green-refactor.
 ```
 
-### `coordinate-code-documentation-repositories` (experimental)
+#### `review-code-changes` (experimental)
+
+Проверяет заданное изменение на корректность, security, reliability и compatibility.
+
+**Что делает:** определяет baseline/change, сообщает evidence-backed findings с
+impact, trigger, priority и точным location, раскрывает uncertainty и test gaps.
+
+**Чего не делает:** не выдаёт вкусовые предпочтения за дефекты, не реализует и
+не публикует findings без разрешения и не заменяет review общим объяснением.
+
+**Вызов:**
+
+```text
+$review-code-changes Проверь эту ветку относительно baseline и сообщи подтверждённые дефекты.
+```
+
+#### `diagnose-software-defects` (experimental)
+
+Исследует failures и regressions до подтверждённой причины или ранжированных гипотез.
+
+**Что делает:** ограничивает и безопасно воспроизводит симптом, проверяет
+конкурирующие гипотезы и сообщает root cause, условия, blast radius, confidence
+и план проверки исправления.
+
+**Чего не делает:** не выводит причинность из корреляции, не мутирует production,
+не уничтожает evidence и не реализует speculative fix вместо диагностики.
+
+**Вызов:**
+
+```text
+$diagnose-software-defects Диагностируй regression и отдели evidence от гипотез.
+```
+
+#### `resolve-git-conflicts` (experimental)
+
+Семантически разрешает одобренные merge/rebase/cherry-pick конфликты.
+
+**Что делает:** изучает active operation, base, стороны и каждый unmerged path;
+объединяет только понятное поведение, проверяет paths и явно называет следующий
+Git-шаг.
+
+**Чего не делает:** не считает обычную divergence файловым конфликтом, не
+stash/reset/abort/continue/force-push автоматически, не stage постороннее и не
+угадывает неоднозначные binary/generated/schema решения.
+
+**Вызов:**
+
+```text
+$resolve-git-conflicts Разреши активные конфликты по файлам и проверь результат.
+```
+
+
+### Репозитории и доставка изменений
+
+#### `synchronize-git-repositories`
+
+Устанавливает актуальное remote-состояние без перезаписи локальной работы.
+
+**Что делает:** находит только относящиеся к задаче репозитории, fetch их
+tracked remotes, fast-forward чистых behind-only веток, сообщает опасные
+состояния и при требовании публикует feature-ветку от проверенного main до edit.
+
+**Чего не делает:** автоматически не stash/reset/rebase/merge/clean/switch и не
+force-push; не скрывает divergence и не сканирует посторонние репозитории.
+
+**Вызов:**
+
+```text
+$synchronize-git-repositories Настрой политику синхронизации репозиториев проекта.
+```
+
+#### `verify-before-push`
+
+Привязывает объявленные проектом проверки к точному Git-состоянию push.
+
+**Что делает:** настраивает repository-owned policy вне навыка, запускает checks
+и записывает evidence для commits, worktree, upstream и config; fail closed при
+отсутствующем, повреждённом или stale evidence.
+
+**Чего не делает:** не блокирует неохваченные репозитории, не разбирает
+произвольный shell и не считает старый успешный check актуальным.
+
+**Вызов:**
+
+```text
+$verify-before-push Настрой политику проверок этого проекта.
+```
+
+#### `coordinate-code-documentation-repositories` (experimental)
 
 Координирует одно проверяемое изменение, когда код и каноническая документация
 живут в разных репозиториях.
@@ -296,7 +404,7 @@ $discover-skill-candidates Проанализируй локальные пра�
 $coordinate-code-documentation-repositories Реализуй изменение в объявленных репозиториях кода и документации и проверь оба опубликованных результата.
 ```
 
-### `execute-configured-gitflow-releases` (experimental)
+#### `execute-configured-gitflow-releases` (experimental)
 
 Выполняет standard и hotfix routes по объявленному проектом GitFlow-контракту.
 
@@ -315,58 +423,36 @@ $execute-configured-gitflow-releases Выполни объявленный ст�
 $execute-configured-gitflow-releases Выполни явный hotfix и проверь его возврат в development line.
 ```
 
-### `release-skill-collection`
+#### `execute-verified-development-lifecycle` (experimental)
 
-Планирует, проверяет, аудитирует и очищает детерминированные релизы коллекции.
+Планирует и проверяет объявленный проектом путь от feature preparation до
+reviewed dev integration, delivery observation, документации и cleanup.
 
-**Что делает:** проверяет версии, changelog, Git, тесты, security, архивы и
-checksums; валидирует commit-bound gates; аудитирует assets, manifest и
-attestation; доказывает представленность веток перед cleanup.
+**Что делает:** фиксирует digest-bound plan до edit, продвигает ordered
+checkpoints по retained evidence; проверяет feature-before-edit, test-first,
+preflight, review, push, pipeline, docs, integration, production delegation,
+delivery, smoke, notifications и cleanup; после ошибки возвращает к объявленной
+точке и инвалидирует downstream evidence.
 
-**Чего не делает:** не предполагает разрешение на commit/tag/push/workflow; не
-перемещает тег, не заменяет assets и не удаляет ветки по имени или stale plan.
+**Чего не делает:** не угадывает adapters, repo roles, gates или authorization;
+сам не push/open/merge/deploy/notify/edit docs/delete; production остаётся у
+одобренного процесса вроде `$execute-configured-gitflow-releases`.
 
-**Вызов:**
-
-```text
-$release-skill-collection Спланируй и проверь релиз vX.Y.Z, но пока не публикуй.
-```
-
-### `verify-before-push`
-
-Привязывает объявленные проектом проверки к точному Git-состоянию push.
-
-**Что делает:** настраивает repository-owned policy вне навыка, запускает checks
-и записывает evidence для commits, worktree, upstream и config; fail closed при
-отсутствующем, повреждённом или stale evidence.
-
-**Чего не делает:** не блокирует неохваченные репозитории, не разбирает
-произвольный shell и не считает старый успешный check актуальным.
+Сначала установите обязательные `$synchronize-git-repositories`,
+`$develop-with-test-first-evidence`, `$verify-before-push` и
+`$review-code-changes`, затем project-owned v1 lifecycle contract. Опциональные
+навыки устанавливаются только для включённых checkpoints.
 
 **Вызов:**
 
 ```text
-$verify-before-push Настрой политику проверок этого проекта.
+$execute-verified-development-lifecycle Спланируй и проверь изменение по настроенному development lifecycle проекта.
 ```
 
-### `synchronize-git-repositories`
 
-Устанавливает актуальное remote-состояние без перезаписи локальной работы.
+### Знания и непрерывность проекта
 
-**Что делает:** находит только относящиеся к задаче репозитории, fetch их
-tracked remotes, fast-forward чистых behind-only веток, сообщает опасные
-состояния и при требовании публикует feature-ветку от проверенного main до edit.
-
-**Чего не делает:** автоматически не stash/reset/rebase/merge/clean/switch и не
-force-push; не скрывает divergence и не сканирует посторонние репозитории.
-
-**Вызов:**
-
-```text
-$synchronize-git-repositories Настрой политику синхронизации репозиториев проекта.
-```
-
-### `maintain-work-log`
+#### `maintain-work-log`
 
 Ведёт канонический датированный журнал `docs/reports/work-log.md`.
 
@@ -383,7 +469,7 @@ application logs, time tracking или неподтверждённые собы
 $maintain-work-log Настрой ведение датированного журнала проекта.
 ```
 
-### `maintain-project-digest` (experimental)
+#### `maintain-project-digest` (experimental)
 
 Ведёт ежедневный понятный пользователям дайджест завершённых изменений.
 
@@ -401,46 +487,7 @@ $maintain-work-log Настрой ведение датированного жу
 $maintain-project-digest Добавь завершённые сегодня пользовательские изменения в дайджест проекта.
 ```
 
-### `notify-via-telegram`
-
-Отправляет Telegram-обновления жизненного цикла долгих задач агента.
-
-**Что делает:** сообщает start/milestone/problem/blocker/completion; настраивает
-бота и чат, предлагает безопасную Windows-форму, хранит credential в user config,
-поддерживает отдельный чат/topic проекта и экспортирует secret-free routing для
-`sync-project-context`; работает на Python standard library.
-
-**Чего не делает:** не помещает token в чат, shell history или repo; не переносит
-bot auth между ПК, не уведомляет против просьбы пользователя и не является
-framework разработки Telegram-ботов.
-
-**Вызов:**
-
-```text
-$notify-via-telegram Настрой Telegram-уведомления для долгих задач.
-$notify-via-telegram Настрой проект на уведомления только в командный чат вместо глобального канала.
-```
-
-### `operate-yandex-cloud`
-
-Работает с явно настроенной инфраструктурой Yandex Cloud в scope проекта.
-
-**Что делает:** хранит Cloud/Folder IDs в project config, локальный `yc` profile
-в ignored config; проверяет tools/versions/context; поддерживает scoped CLI,
-SSH, Terraform, Ansible, Helm, Kubernetes, deployment, DB, storage, DNS,
-monitoring, backup и incident workflows.
-
-**Чего не делает:** не выводит Yandex Cloud из общего SSH/Kubernetes запроса, не
-хранит credentials в shared config и не мутирует до определения target,
-context и authorization.
-
-**Вызов:**
-
-```text
-$operate-yandex-cloud Настрой проект для работы с Yandex Cloud.
-```
-
-### `sync-project-context`
+#### `sync-project-context`
 
 Синхронизирует приватное очищенное состояние проекта и задач между компьютерами.
 Навык stable после двух независимых real-device Google Drive прогонов.
@@ -478,7 +525,10 @@ $sync-project-context Синхронизируй все задачи двуна�
 
 В Claude Code заменяйте `$` на `/`.
 
-### `orchestrate-agent-work` (experimental)
+
+### Координация и коммуникации
+
+#### `orchestrate-agent-work` (experimental)
 
 Координирует явно разрешённых subagents и отвечает за общий результат.
 
@@ -495,97 +545,88 @@ destructive cleanup или внешние mutations и не считает от�
 $orchestrate-agent-work Делегируй независимые подзадачи агентам и проверь общий результат.
 ```
 
-### `develop-with-test-first-evidence` (experimental)
+#### `notify-via-telegram`
 
-Реализует поведение через подтверждённый red-green-refactor.
+Отправляет Telegram-обновления жизненного цикла долгих задач агента.
 
-**Что делает:** фиксирует focused test, падающий по нужной причине до кода;
-привязывает focused и broader green к финальному состоянию и валидирует evidence.
+**Что делает:** сообщает start/milestone/problem/blocker/completion; настраивает
+бота и чат, предлагает безопасную Windows-форму, хранит credential в user config,
+поддерживает отдельный чат/topic проекта и экспортирует secret-free routing для
+`sync-project-context`; работает на Python standard library.
 
-**Чего не делает:** не создаёт red поломкой постороннего поведения, не называет
-последующие тесты test-first и не скрывает старые/environment/final failures.
+**Чего не делает:** не помещает token в чат, shell history или repo; не переносит
+bot auth между ПК, не уведомляет против просьбы пользователя и не является
+framework разработки Telegram-ботов.
 
 **Вызов:**
 
 ```text
-$develop-with-test-first-evidence Реализуй поведение с зафиксированным циклом red-green-refactor.
+$notify-via-telegram Настрой Telegram-уведомления для долгих задач.
+$notify-via-telegram Настрой проект на уведомления только в командный чат вместо глобального канала.
 ```
 
-### `review-code-changes` (experimental)
 
-Проверяет заданное изменение на корректность, security, reliability и compatibility.
+### Инфраструктура и эксплуатация
 
-**Что делает:** определяет baseline/change, сообщает evidence-backed findings с
-impact, trigger, priority и точным location, раскрывает uncertainty и test gaps.
+#### `operate-yandex-cloud`
 
-**Чего не делает:** не выдаёт вкусовые предпочтения за дефекты, не реализует и
-не публикует findings без разрешения и не заменяет review общим объяснением.
+Работает с явно настроенной инфраструктурой Yandex Cloud в scope проекта.
+
+**Что делает:** хранит Cloud/Folder IDs в project config, локальный `yc` profile
+в ignored config; проверяет tools/versions/context; поддерживает scoped CLI,
+SSH, Terraform, Ansible, Helm, Kubernetes, deployment, DB, storage, DNS,
+monitoring, backup и incident workflows.
+
+**Чего не делает:** не выводит Yandex Cloud из общего SSH/Kubernetes запроса, не
+хранит credentials в shared config и не мутирует до определения target,
+context и authorization.
 
 **Вызов:**
 
 ```text
-$review-code-changes Проверь эту ветку относительно baseline и сообщи подтверждённые дефекты.
+$operate-yandex-cloud Настрой проект для работы с Yandex Cloud.
 ```
 
-### `diagnose-software-defects` (experimental)
 
-Исследует failures и regressions до подтверждённой причины или ранжированных гипотез.
+### Развитие коллекции навыков
 
-**Что делает:** ограничивает и безопасно воспроизводит симптом, проверяет
-конкурирующие гипотезы и сообщает root cause, условия, blast radius, confidence
-и план проверки исправления.
+#### `discover-skill-candidates` (experimental)
 
-**Чего не делает:** не выводит причинность из корреляции, не мутирует production,
-не уничтожает evidence и не реализует speculative fix вместо диагностики.
+Находит переиспользуемые идеи навыков в ограниченных правилах и контексте, не
+создавая навык.
+
+**Что делает:** инвентаризирует project-relative `AGENTS.md` с Git/line
+provenance; по разрешению изучает документацию, выбранные файлы, ограниченную
+историю и подтверждённые summaries чатов или handoff; ранжирует кандидатов и
+сравнивает с каталогами; предлагает contribution, локальную реализацию или
+отсрочку; экспортирует очищенный digest-bound пакет.
+
+**Чего не делает:** не меняет правила, не создаёт и не устанавливает навык; не
+перечисляет чаты, не читает raw transcripts и не сканирует код широко; не
+экспортирует правила, пути, секреты, URL и email; не продвигает одноразовые или
+чувствительные соглашения без review.
 
 **Вызов:**
 
 ```text
-$diagnose-software-defects Диагностируй regression и отдели evidence от гипотез.
+$discover-skill-candidates Проанализируй локальные правила проекта и подготовь подтверждённый список идей навыков, ничего не создавая.
 ```
 
-### `resolve-git-conflicts` (experimental)
+#### `release-skill-collection`
 
-Семантически разрешает одобренные merge/rebase/cherry-pick конфликты.
+Планирует, проверяет, аудитирует и очищает детерминированные релизы коллекции.
 
-**Что делает:** изучает active operation, base, стороны и каждый unmerged path;
-объединяет только понятное поведение, проверяет paths и явно называет следующий
-Git-шаг.
+**Что делает:** проверяет версии, changelog, Git, тесты, security, архивы и
+checksums; валидирует commit-bound gates; аудитирует assets, manifest и
+attestation; доказывает представленность веток перед cleanup.
 
-**Чего не делает:** не считает обычную divergence файловым конфликтом, не
-stash/reset/abort/continue/force-push автоматически, не stage постороннее и не
-угадывает неоднозначные binary/generated/schema решения.
-
-**Вызов:**
-
-```text
-$resolve-git-conflicts Разреши активные конфликты по файлам и проверь результат.
-```
-
-### `execute-verified-development-lifecycle` (experimental)
-
-Планирует и проверяет объявленный проектом путь от feature preparation до
-reviewed dev integration, delivery observation, документации и cleanup.
-
-**Что делает:** фиксирует digest-bound plan до edit, продвигает ordered
-checkpoints по retained evidence; проверяет feature-before-edit, test-first,
-preflight, review, push, pipeline, docs, integration, production delegation,
-delivery, smoke, notifications и cleanup; после ошибки возвращает к объявленной
-точке и инвалидирует downstream evidence.
-
-**Чего не делает:** не угадывает adapters, repo roles, gates или authorization;
-сам не push/open/merge/deploy/notify/edit docs/delete; production остаётся у
-одобренного процесса вроде `$execute-configured-gitflow-releases`.
-
-Сначала установите обязательные `$synchronize-git-repositories`,
-`$develop-with-test-first-evidence`, `$verify-before-push` и
-`$review-code-changes`, затем project-owned v1 lifecycle contract. Опциональные
-навыки устанавливаются только для включённых checkpoints.
+**Чего не делает:** не предполагает разрешение на commit/tag/push/workflow; не
+перемещает тег, не заменяет assets и не удаляет ветки по имени или stale plan.
 
 **Вызов:**
 
 ```text
-$execute-verified-development-lifecycle Спланируй и проверь изменение по настроенному development lifecycle проекта.
+$release-skill-collection Спланируй и проверь релиз vX.Y.Z, но пока не публикуй.
 ```
 
 ## Поддерживаемые композиции

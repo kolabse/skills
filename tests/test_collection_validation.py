@@ -16,6 +16,7 @@ sys.path.insert(0, str(SCRIPTS_DIRECTORY))
 from validate_skills import (  # noqa: E402
     canonical_digest,
     validate,
+    validate_catalog_taxonomy,
     validate_marketplace_manifests,
     validate_documentation,
     validate_publication_materials,
@@ -304,6 +305,31 @@ class CollectionValidationTests(unittest.TestCase):
             errors = validate_documentation(repository, {"demo-skill"})
             self.assertTrue(any("Supported compositions" in error for error in errors))
             self.assertTrue(any("1.2.3" in error for error in errors))
+
+    def test_catalog_taxonomy_rejects_unknown_tags_and_unordered_categories(self) -> None:
+        repository = Path(__file__).resolve().parents[1]
+        catalog = json.loads((repository / "skill-catalog.json").read_text(encoding="utf-8"))
+        entries = catalog["skills"]
+        entries[0]["tags"].append("unknown-tag")
+        entries[0]["category"], entries[-1]["category"] = (
+            entries[-1]["category"], entries[0]["category"]
+        )
+
+        errors = validate_catalog_taxonomy(repository, catalog, entries)
+
+        self.assertTrue(any("unsupported values" in error for error in errors))
+        self.assertTrue(any("breaks category_order" in error for error in errors))
+
+    def test_documentation_places_skills_inside_catalog_categories(self) -> None:
+        repository = Path(__file__).resolve().parents[1]
+        catalog = json.loads((repository / "skill-catalog.json").read_text(encoding="utf-8"))
+        entries = catalog["skills"]
+
+        errors = validate_documentation(
+            repository, {entry["name"] for entry in entries}, entries
+        )
+
+        self.assertFalse(any("category" in error for error in errors))
 
 
 if __name__ == "__main__":
