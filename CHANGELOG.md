@@ -2,6 +2,8 @@
 
 ## [Unreleased]
 
+## [1.18.0] - 2026-08-25
+
 ### Added
 
 - Experimental `synchronize-team-skills` support for declaring a pinned,
@@ -509,6 +511,7 @@ First versioned release of the kolabse skill collection.
 - Tests for configuration migration, fake cloud and infrastructure CLIs,
   installation confirmation, and collection metadata.
 
+[1.18.0]: https://github.com/kolabse/skills/releases/tag/v1.18.0
 [1.17.0]: https://github.com/kolabse/skills/releases/tag/v1.17.0
 [1.16.0]: https://github.com/kolabse/skills/releases/tag/v1.16.0
 [1.15.1]: https://github.com/kolabse/skills/releases/tag/v1.15.1

@@ -32,7 +32,7 @@ class TeamSkillsTests(unittest.TestCase):
         values: dict[str, object] = {
             "project_root": str(self.root),
             "documentation_root": str(self.docs),
-            "collection_version": "1.17.0",
+            "collection_version": "1.18.0",
             "agent": ["codex"],
             "skill": [
                 "synchronize-git-repositories",
@@ -55,7 +55,7 @@ class TeamSkillsTests(unittest.TestCase):
         values.update(overrides)
         return argparse.Namespace(**values)
 
-    def install(self, name: str, version: str = "1.17.0", agent: str = "codex") -> Path:
+    def install(self, name: str, version: str = "1.18.0", agent: str = "codex") -> Path:
         layout = self.root / team_skills.AGENT_LAYOUTS[agent]
         skill = layout / name
         skill.mkdir(parents=True, exist_ok=True)
@@ -115,7 +115,7 @@ class TeamSkillsTests(unittest.TestCase):
         self.assertEqual([], plan["blockers"])
         self.assertEqual(["verify-before-push"], plan["installers"][0]["selected"])
         argv = plan["installers"][0]["argv"]
-        self.assertIn("kolabse/skills@v1.17.0", argv)
+        self.assertIn("kolabse/skills@v1.18.0", argv)
         self.assertEqual(3, argv.count("--skill"))
         self.assertNotIn("notify-via-telegram", argv)
 
