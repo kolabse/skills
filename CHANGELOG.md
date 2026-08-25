@@ -4,12 +4,21 @@
 
 ### Added
 
+- Spanish translations of the public README, contribution guide, support,
+  privacy, and terms documents under `docs/i18n/es/`, with three-language
+  navigation across the English, Russian, and Spanish document sets.
 - Russian translations of the public README, contribution guide, support,
   privacy, and terms documents under `docs/i18n/ru/`, with canonical-language
   navigation and automated structure, command, relative-link, and anchor
   validation.
 - Linked tables of contents for the canonical English README and its Russian
   translation, including direct navigation to every documented skill.
+
+### Changed
+
+- Localization validation now derives required language navigation from the
+  locale manifest, reports locale identifiers safely on legacy Windows
+  encodings, and supports multiple complete translation sets.
 
 ## [1.17.0] - 2026-08-24
 

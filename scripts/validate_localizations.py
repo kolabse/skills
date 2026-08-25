@@ -149,6 +149,10 @@ def validate(root: Path) -> int:
         if not isinstance(name, str) or not name or not isinstance(documents, list):
             raise LocalizationError(f"invalid locale configuration: {locale}")
         locale_names.append(name)
+
+    navigation_names = ["English", *locale_names]
+    for locale, config in sorted(manifest["locales"].items()):
+        documents = config["documents"]
         for index, entry in enumerate(documents):
             if not isinstance(entry, dict) or set(entry) != {"canonical", "translation"}:
                 raise LocalizationError(f"invalid document mapping: {locale}[{index}]")
@@ -168,15 +172,25 @@ def validate(root: Path) -> int:
                     f"heading structure differs: {canonical.relative_to(root)} and "
                     f"{translation.relative_to(root)}"
                 )
-            if not any("Русский" in line for line in canonical_text.splitlines()[:12]):
-                raise LocalizationError(f"canonical language navigation is missing: {canonical}")
-            if not any("English" in line for line in translation_text.splitlines()[:12]):
-                raise LocalizationError(f"translated language navigation is missing: {translation}")
+            canonical_navigation = "\n".join(canonical_text.splitlines()[:12])
+            translation_navigation = "\n".join(translation_text.splitlines()[:12])
+            for navigation_name in navigation_names:
+                if navigation_name not in canonical_navigation:
+                    raise LocalizationError(
+                        f"canonical language navigation is missing {navigation_name}: {canonical}"
+                    )
+                if navigation_name not in translation_navigation:
+                    raise LocalizationError(
+                        f"translated language navigation is missing {navigation_name}: {translation}"
+                    )
             validate_relative_links(root, canonical, canonical_text)
             validate_relative_links(root, translation, translation_text)
             total += 1
-    names = ", ".join(locale_names)
-    print(f"Validated {total} {names} translation(s).")
+    locale_ids = ", ".join(sorted(manifest["locales"]))
+    print(
+        f"Validated {total} translation(s) across "
+        f"{len(locale_names)} locale(s): {locale_ids}."
+    )
     return total
 
 

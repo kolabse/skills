@@ -1,6 +1,6 @@
 # Privacy Policy
 
-English | [Русский](docs/i18n/ru/PRIVACY.md)
+English | [Русский](docs/i18n/ru/PRIVACY.md) | [Español](docs/i18n/es/PRIVACY.md)
 
 Effective date: 2026-08-24
 
