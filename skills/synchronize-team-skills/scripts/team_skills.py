@@ -10,6 +10,7 @@ import subprocess
 import sys
 from pathlib import Path
 from typing import Any
+from urllib.parse import urlparse
 
 
 SKILL_NAME = "synchronize-team-skills"
@@ -264,21 +265,31 @@ def read_lock_entries(project_root: Path) -> dict[str, dict[str, Any]]:
     return {name: entry for name, entry in entries.items() if isinstance(entry, dict)}
 
 
+def canonical_github_source(source: str) -> bool:
+    value = source.strip().replace("\\", "/")
+    if value.startswith("git@github.com:"):
+        value = value.removeprefix("git@github.com:")
+    elif value.startswith("ssh://git@github.com/"):
+        value = value.removeprefix("ssh://git@github.com/")
+    elif "://" in value:
+        parsed = urlparse(value)
+        if parsed.hostname not in {"github.com", "www.github.com"}:
+            return False
+        value = parsed.path.lstrip("/")
+    if value.endswith(".git"):
+        value = value[:-4]
+    if "/tree/" in value:
+        value, _ref = value.split("/tree/", 1)
+    elif "@" in value:
+        value, _ref = value.rsplit("@", 1)
+    return value.casefold() == SOURCE
+
+
 def canonical_lock_entry(entry: dict[str, Any] | None) -> bool:
     if not isinstance(entry, dict) or entry.get("sourceType") not in {None, "github"}:
         return False
     source = entry.get("source")
-    if not isinstance(source, str):
-        return False
-    normalized = source.strip().lower().replace("\\", "/")
-    normalized = re.sub(r"@v?[0-9]+\.[0-9]+\.[0-9]+(?:[-+][0-9a-z.-]+)?$", "", normalized)
-    normalized = re.sub(r"/tree/v?[0-9]+\.[0-9]+\.[0-9]+(?:[-+][0-9a-z.-]+)?$", "", normalized)
-    normalized = normalized.removesuffix(".git").rstrip("/")
-    return normalized in {
-        SOURCE,
-        CANONICAL_SOURCE,
-        "git@github.com:kolabse/skills",
-    }
+    return isinstance(source, str) and canonical_github_source(source)
 
 
 def skill_folder_hash(path: Path) -> str | None:
@@ -340,8 +351,10 @@ def observe_skill(
         isinstance(metadata, dict)
         and metadata.get("collection") == "kolabse-skills"
         and metadata.get("skill") == name
-        and metadata.get("source") == CANONICAL_SOURCE
-        and metadata.get("canonical_repository") == CANONICAL_SOURCE
+        and isinstance(metadata.get("source"), str)
+        and canonical_github_source(metadata["source"])
+        and isinstance(metadata.get("canonical_repository"), str)
+        and canonical_github_source(metadata["canonical_repository"])
     )
     version = metadata.get("version") if isinstance(metadata, dict) else None
     expected_hash = lock_entry.get("computedHash") if isinstance(lock_entry, dict) else None

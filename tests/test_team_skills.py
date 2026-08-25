@@ -118,6 +118,50 @@ class TeamSkillsTests(unittest.TestCase):
             team_skills.KNOWN_SKILLS,
         )
 
+    def test_canonical_github_source_matches_installer_forms(self) -> None:
+        for source in (
+            "kolabse/skills",
+            "https://github.com/kolabse/skills",
+            "https://www.github.com/kolabse/skills.git",
+            "git@github.com:kolabse/skills",
+            "ssh://git@github.com/kolabse/skills",
+            "https://github.com/kolabse/skills/tree/v1.18.0",
+            "kolabse/skills@v1.18.0",
+        ):
+            with self.subTest(source=source):
+                self.assertTrue(team_skills.canonical_github_source(source))
+        self.assertFalse(team_skills.canonical_github_source("example/skills"))
+        self.assertFalse(
+            team_skills.canonical_github_source(
+                "https://example.com/kolabse/skills"
+            )
+        )
+
+    def test_observation_accepts_normalized_metadata_provenance(self) -> None:
+        skill = self.install("verify-before-push")
+        metadata_path = skill / "collection-metadata.json"
+        metadata = json.loads(metadata_path.read_text(encoding="utf-8"))
+        metadata["source"] = "ssh://git@github.com/kolabse/skills"
+        metadata["canonical_repository"] = (
+            "https://www.github.com/kolabse/skills.git"
+        )
+        metadata_path.write_text(json.dumps(metadata), encoding="utf-8")
+        lock_path = self.root / "skills-lock.json"
+        lock = json.loads(lock_path.read_text(encoding="utf-8"))
+        lock["skills"]["verify-before-push"]["computedHash"] = (
+            team_skills.skill_folder_hash(skill)
+        )
+        lock_path.write_text(json.dumps(lock), encoding="utf-8")
+
+        observed = team_skills.observe_skill(
+            skill,
+            "verify-before-push",
+            "1.18.0",
+            lock["skills"]["verify-before-push"],
+        )
+
+        self.assertEqual("verified", observed["provenance"])
+
     def test_managed_document_accepts_crlf_line_endings(self) -> None:
         team_skills.configure(self.configure_args())
         path = self.docs / team_skills.DOCUMENT_NAME
