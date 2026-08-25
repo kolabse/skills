@@ -51,6 +51,16 @@ def digest(value: object) -> str:
     return hashlib.sha256(canonical(value).encode("utf-8")).hexdigest()
 
 
+def plan_binding(value: object, field: str = "") -> object:
+    if isinstance(value, dict):
+        return {key: plan_binding(item, key) for key, item in value.items()}
+    if isinstance(value, list):
+        return [plan_binding(item, field) for item in value]
+    if isinstance(value, str) and field in {"document", "layout", "path"}:
+        return os.path.normcase(value)
+    return value
+
+
 def load_object(path: Path, label: str) -> dict[str, Any]:
     try:
         value = json.loads(path.read_text(encoding="utf-8"))
@@ -187,23 +197,47 @@ def version_state(observed: str, required: str) -> str:
     required_match = VERSION_PATTERN.fullmatch(required)
     if not observed_match or not required_match:
         return "version-mismatch"
-    observed_core = tuple(int(item) for item in observed.split("-", 1)[0].split("."))
-    required_core = tuple(int(item) for item in required.split("-", 1)[0].split("."))
+    observed_precedence = observed.split("+", 1)[0]
+    required_precedence = required.split("+", 1)[0]
+    if observed_precedence == required_precedence:
+        return "version-mismatch"
+    observed_parts = observed_precedence.split("-", 1)
+    required_parts = required_precedence.split("-", 1)
+    observed_core = tuple(int(item) for item in observed_parts[0].split("."))
+    required_core = tuple(int(item) for item in required_parts[0].split("."))
     if observed_core < required_core:
         return "outdated"
     if observed_core > required_core:
         return "newer-than-required"
-    return "version-mismatch"
+    observed_pre = observed_parts[1].split(".") if len(observed_parts) == 2 else None
+    required_pre = required_parts[1].split(".") if len(required_parts) == 2 else None
+    if observed_pre is None:
+        return "newer-than-required"
+    if required_pre is None:
+        return "outdated"
+    for observed_item, required_item in zip(observed_pre, required_pre):
+        if observed_item == required_item:
+            continue
+        observed_numeric = observed_item.isdigit()
+        required_numeric = required_item.isdigit()
+        if observed_numeric and required_numeric:
+            return "outdated" if int(observed_item) < int(required_item) else "newer-than-required"
+        if observed_numeric != required_numeric:
+            return "outdated" if observed_numeric else "newer-than-required"
+        return "outdated" if observed_item < required_item else "newer-than-required"
+    return "outdated" if len(observed_pre) < len(required_pre) else "newer-than-required"
 
 
 def read_lock_entries(project_root: Path) -> dict[str, dict[str, Any]]:
     try:
         value = json.loads((project_root / "skills-lock.json").read_text(encoding="utf-8"))
-    except (FileNotFoundError, json.JSONDecodeError, UnicodeDecodeError, OSError):
+    except FileNotFoundError:
         return {}
+    except (json.JSONDecodeError, UnicodeDecodeError, OSError) as error:
+        raise TeamSkillsError(f"skills-lock.json is unreadable or invalid: {error}") from error
     entries = value.get("skills") if isinstance(value, dict) else None
     if not isinstance(entries, dict):
-        return {}
+        raise TeamSkillsError("skills-lock.json field 'skills' must be an object")
     return {name: entry for name, entry in entries.items() if isinstance(entry, dict)}
 
 
@@ -448,7 +482,7 @@ def make_plan(project_root: Path, documentation_root: str | None) -> dict[str, A
                 argv.extend(["--skill", name])
             argv.extend(["--agent", agent["agent"], "--copy", "-y"])
             installers.append({"agent": agent["agent"], "selected": selected, "argv": argv})
-    return {
+    result = {
         "schema_version": 1,
         "mode": "plan",
         "document": status["document"],
@@ -461,6 +495,8 @@ def make_plan(project_root: Path, documentation_root: str | None) -> dict[str, A
         "status": status,
         "mutates_environment": False,
     }
+    result["plan_sha256"] = digest(plan_binding(result))
+    return result
 
 
 def apply(args: argparse.Namespace) -> dict[str, Any]:
@@ -470,6 +506,8 @@ def apply(args: argparse.Namespace) -> dict[str, Any]:
     plan = make_plan(project_root, args.documentation_root)
     if args.expected_manifest_sha256 != plan["manifest_sha256"]:
         raise TeamSkillsError("team manifest changed after planning")
+    if args.expected_plan_sha256 != plan["plan_sha256"]:
+        raise TeamSkillsError("team skill plan changed after review")
     if plan["blockers"]:
         raise TeamSkillsError(f"team skill alignment is blocked: {plan['blockers']}")
     if plan["installers"] and shutil.which("npx") is None:
@@ -531,6 +569,7 @@ def parser() -> argparse.ArgumentParser:
     common("plan")
     apply_parser = common("apply")
     apply_parser.add_argument("--expected-manifest-sha256", required=True)
+    apply_parser.add_argument("--expected-plan-sha256", required=True)
     apply_parser.add_argument("--yes", action="store_true")
     return result
 

@@ -98,13 +98,14 @@ contain no machine paths or secrets, and are ready for ordinary code review.
    ```shell
    python <skill-root>/scripts/team_skills.py apply \
      --project-root <project-root> \
-     --expected-manifest-sha256 <plan-value> --yes --json
+     --expected-manifest-sha256 <plan-value> \
+     --expected-plan-sha256 <plan-value> --yes --json
    ```
 
-5. Stop if the document changed after planning, a declared path has unverified
-   provenance, `npx` is unavailable, or an installer fails. Never delete an
-   extra skill, downgrade a newer project copy, change global installations, or
-   force an overwrite.
+5. Stop if the document or observed installation plan changed after review, a
+   declared path has unverified provenance, `npx` is unavailable, or an
+   installer fails. Never delete an extra skill, downgrade a newer project copy,
+   change global installations, or force an overwrite.
 6. Re-run `status`. Report observable remaining drift and ask the user to start
    a new agent task when files changed.
 

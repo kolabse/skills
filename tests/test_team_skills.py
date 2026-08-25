@@ -45,10 +45,12 @@ class TeamSkillsTests(unittest.TestCase):
         return argparse.Namespace(**values)
 
     def apply_args(self, expected: str, **overrides: object) -> argparse.Namespace:
+        current_plan = team_skills.make_plan(self.root, str(self.docs))
         values: dict[str, object] = {
             "project_root": str(self.root),
             "documentation_root": str(self.docs),
             "expected_manifest_sha256": expected,
+            "expected_plan_sha256": current_plan["plan_sha256"],
             "yes": True,
             "json": True,
         }
@@ -174,6 +176,28 @@ class TeamSkillsTests(unittest.TestCase):
         self.assertIn("codex:synchronize-team-skills:unverified", plan["blockers"])
         self.assertIn("codex:verify-before-push:newer-than-required", plan["blockers"])
 
+    def test_prerelease_version_orders_before_same_core_release(self) -> None:
+        self.assertEqual("outdated", team_skills.version_state("1.18.0-rc.1", "1.18.0"))
+        self.assertEqual(
+            "newer-than-required",
+            team_skills.version_state("1.18.0", "1.18.0-rc.1"),
+        )
+        self.assertEqual(
+            "outdated",
+            team_skills.version_state("1.18.0-rc.2", "1.18.0-rc.10"),
+        )
+        self.assertEqual(
+            "version-mismatch",
+            team_skills.version_state("1.18.0+build.1", "1.18.0"),
+        )
+
+    def test_malformed_lock_file_fails_closed(self) -> None:
+        team_skills.configure(self.configure_args())
+        (self.root / "skills-lock.json").write_text("{broken", encoding="utf-8")
+
+        with self.assertRaisesRegex(team_skills.TeamSkillsError, "invalid"):
+            team_skills.inspect(self.root, str(self.docs))
+
     def test_status_rejects_content_drift_with_unchanged_metadata(self) -> None:
         team_skills.configure(self.configure_args())
         for name in (
@@ -210,6 +234,19 @@ class TeamSkillsTests(unittest.TestCase):
             team_skills.apply(self.apply_args(configured["manifest_sha256"], yes=False))
         with self.assertRaisesRegex(team_skills.TeamSkillsError, "changed after planning"):
             team_skills.apply(self.apply_args("0" * 64))
+
+    def test_apply_rejects_installation_drift_after_review(self) -> None:
+        configured = team_skills.configure(self.configure_args())
+        reviewed = team_skills.make_plan(self.root, str(self.docs))
+        self.install("synchronize-team-skills")
+
+        with self.assertRaisesRegex(team_skills.TeamSkillsError, "plan changed after review"):
+            team_skills.apply(
+                self.apply_args(
+                    configured["manifest_sha256"],
+                    expected_plan_sha256=reviewed["plan_sha256"],
+                )
+            )
 
     def test_apply_installs_then_verifies_and_preserves_extras(self) -> None:
         configured = team_skills.configure(self.configure_args())
