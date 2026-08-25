@@ -15,23 +15,29 @@ Licensed under the [Apache License 2.0](LICENSE). Copyright 2026 kolabse.
   - [Inspect global installations](#inspect-global-installations)
 - [Install or update a local-development Codex plugin](#install-or-update-a-local-development-codex-plugin)
 - [Available skills](#available-skills)
-  - [`discover-skill-candidates`](#discover-skill-candidates-experimental)
-  - [`coordinate-code-documentation-repositories`](#coordinate-code-documentation-repositories-experimental)
-  - [`execute-configured-gitflow-releases`](#execute-configured-gitflow-releases-experimental)
-  - [`release-skill-collection`](#release-skill-collection)
-  - [`verify-before-push`](#verify-before-push)
-  - [`synchronize-git-repositories`](#synchronize-git-repositories)
-  - [`maintain-work-log`](#maintain-work-log)
-  - [`maintain-project-digest`](#maintain-project-digest-experimental)
-  - [`notify-via-telegram`](#notify-via-telegram)
-  - [`operate-yandex-cloud`](#operate-yandex-cloud)
-  - [`sync-project-context`](#sync-project-context)
-  - [`orchestrate-agent-work`](#orchestrate-agent-work-experimental)
-  - [`develop-with-test-first-evidence`](#develop-with-test-first-evidence-experimental)
-  - [`review-code-changes`](#review-code-changes-experimental)
-  - [`diagnose-software-defects`](#diagnose-software-defects-experimental)
-  - [`resolve-git-conflicts`](#resolve-git-conflicts-experimental)
-  - [`execute-verified-development-lifecycle`](#execute-verified-development-lifecycle-experimental)
+  - [Development and code quality](#development-and-code-quality)
+    - [`develop-with-test-first-evidence`](#develop-with-test-first-evidence-experimental)
+    - [`review-code-changes`](#review-code-changes-experimental)
+    - [`diagnose-software-defects`](#diagnose-software-defects-experimental)
+    - [`resolve-git-conflicts`](#resolve-git-conflicts-experimental)
+  - [Repositories and change delivery](#repositories-and-change-delivery)
+    - [`synchronize-git-repositories`](#synchronize-git-repositories)
+    - [`verify-before-push`](#verify-before-push)
+    - [`coordinate-code-documentation-repositories`](#coordinate-code-documentation-repositories-experimental)
+    - [`execute-configured-gitflow-releases`](#execute-configured-gitflow-releases-experimental)
+    - [`execute-verified-development-lifecycle`](#execute-verified-development-lifecycle-experimental)
+  - [Project knowledge and continuity](#project-knowledge-and-continuity)
+    - [`maintain-work-log`](#maintain-work-log)
+    - [`maintain-project-digest`](#maintain-project-digest-experimental)
+    - [`sync-project-context`](#sync-project-context)
+  - [Coordination and communication](#coordination-and-communication)
+    - [`orchestrate-agent-work`](#orchestrate-agent-work-experimental)
+    - [`notify-via-telegram`](#notify-via-telegram)
+  - [Infrastructure and operations](#infrastructure-and-operations)
+    - [`operate-yandex-cloud`](#operate-yandex-cloud)
+  - [Skill collection evolution](#skill-collection-evolution)
+    - [`discover-skill-candidates`](#discover-skill-candidates-experimental)
+    - [`release-skill-collection`](#release-skill-collection)
 - [Supported compositions](#supported-compositions)
 - [Add a skill](#add-a-skill)
 - [Verify a release](#verify-a-release)
@@ -282,40 +288,175 @@ command, capabilities, prerequisites, and optional integrations. Stateful
 skills also declare an idempotent configure command; versioned JSON/YAML
 configurations publish a JSON Schema and migration command next to the skill.
 
-### `discover-skill-candidates` (experimental)
+The catalog is grouped by its primary user-facing purpose, in the priority order
+shown below. Each skill has exactly one primary category. Orthogonal tags
+describe its lifecycle phase, scope, behavior, and integrations; maturity status
+remains independent. The authoritative machine-readable assignments and
+controlled vocabulary live in [`skill-catalog.json`](skill-catalog.json),
+validated against
+[`schemas/skill-catalog.schema.json`](schemas/skill-catalog.schema.json).
 
-Find reusable skill ideas in bounded project and contextual evidence without
-creating a skill.
+The controlled tag axes are:
+
+- lifecycle phase: `prepare`, `investigate`, `implement`, `verify`, `publish`,
+  `operate`, `document`, and `handoff`;
+- scope: `project`, `repository`, `multi-repository`, `workstation`,
+  `external-service`, and `skill-collection`;
+- behavior: `read-only-planning`, `mutation`, `evidence-producing`,
+  `orchestration`, and `notification`;
+- integration: `git`, `github`, `telegram`, `google-drive`, and `yandex-cloud`.
+
+### Development and code quality
+
+#### `develop-with-test-first-evidence` (experimental)
+
+Implement behavior through evidence-backed red-green-refactor cycles.
 
 **What it does:**
 
-- inventories bounded project-relative `AGENTS.md` files with Git and
-  line-level provenance;
-- optionally inventories project documentation, selected files, bounded Git
-  history, structure metadata, and user-confirmed summaries from available
-  chats or `sync-project-context` handoffs;
-- ranks candidates as recommended, investigate, or rejected and compares them
-  with existing catalogs;
-- proactively offers every eligible candidate for safe contribution to
-  `kolabse/skills`, local creation, or deferral;
-- exports a selected idea as a sanitized, digest-bound contribution package
-  that maintainers can validate independently.
+- records a focused test failing for the intended behavioral reason before
+  implementation;
+- binds focused and broader green results to the final change state;
+- validates durable evidence with its bundled schema and helper.
 
 **What it does not do:**
 
-- modify project rules or scaffold, publish, or install a skill;
-- enumerate chats, ingest raw transcripts, or broadly scan source code;
-- export raw rules, local paths, secrets, URLs, or email addresses;
-- promote policy-only, volatile, sensitive, or one-off conventions as reusable
-  workflows without review.
+- manufacture a red result by breaking unrelated behavior;
+- call after-the-fact tests test-first development;
+- hide pre-existing, environmental, or final-state failures.
 
 **How to invoke it:**
 
 ```text
-$discover-skill-candidates Analyze this project's local rules and prepare an evidence-backed backlog of reusable skill ideas without creating anything.
+$develop-with-test-first-evidence Implement this behavior with a recorded red-green-refactor cycle.
 ```
 
-### `coordinate-code-documentation-repositories` (experimental)
+#### `review-code-changes` (experimental)
+
+Review a defined change for actionable correctness, security, reliability, and
+compatibility defects.
+
+**What it does:**
+
+- resolves an exact baseline and changed state;
+- reports evidence-backed findings with impact, trigger, priority, and tight
+  locations;
+- makes uncertainty and meaningful test gaps explicit.
+
+**What it does not do:**
+
+- report style preferences or unsupported speculation as defects;
+- implement findings, publish comments, or approve a review without separate
+  authorization;
+- substitute a general code explanation for a scoped review.
+
+**How to invoke it:**
+
+```text
+$review-code-changes Review this branch against its declared baseline and report actionable findings.
+```
+
+#### `diagnose-software-defects` (experimental)
+
+Investigate failures and regressions to produce a supported causal explanation
+or ranked hypotheses.
+
+**What it does:**
+
+- bounds and safely reproduces the symptom where possible;
+- tests competing hypotheses with relevant evidence;
+- reports root cause, contributing conditions, blast radius, confidence, and
+  a fix-verification plan.
+
+**What it does not do:**
+
+- infer causation from correlation;
+- mutate production or discard failing evidence;
+- implement a speculative fix when only diagnosis was requested.
+
+**How to invoke it:**
+
+```text
+$diagnose-software-defects Diagnose this regression and distinguish evidence from hypotheses.
+```
+
+#### `resolve-git-conflicts` (experimental)
+
+Resolve authorized merge, rebase, or cherry-pick conflicts semantically while
+preserving unrelated work.
+
+**What it does:**
+
+- inspects the active operation, base, both sides, and each unmerged path;
+- reconciles only conflicts whose intended combined behavior is understood;
+- validates resolved paths and makes the remaining Git operation step explicit.
+
+**What it does not do:**
+
+- treat ordinary repository divergence as a file-conflict task;
+- automatically stash, reset, abort, continue, force-push, or stage unrelated
+  paths;
+- guess through ambiguous generated, binary, schema, or product decisions.
+
+**How to invoke it:**
+
+```text
+$resolve-git-conflicts Resolve the active merge conflicts path by path and validate the result.
+```
+
+
+### Repositories and change delivery
+
+#### `synchronize-git-repositories`
+
+Establish current remote state without overwriting local work.
+
+**What it does:**
+
+- discovers only task-relevant repositories and fetches their tracked remotes;
+- fast-forwards clean behind-only branches;
+- reports dirty, ahead, diverged, detached, untracked, and in-progress states;
+- publishes an authorized feature branch from verified current `main` before
+  the first edit when project policy requires it.
+
+**What it does not do:**
+
+- automatically stash, reset, rebase, merge, clean, switch, or force-push;
+- hide divergence or treat a successful fetch as proof that the local branch
+  was updated;
+- scan or update unrelated repositories.
+
+**How to invoke it:**
+
+```text
+$synchronize-git-repositories Configure this project's repository synchronization policy.
+```
+
+#### `verify-before-push`
+
+Bind project-declared checks to the exact Git state being pushed.
+
+**What it does:**
+
+- configures a repository-owned verification policy outside the installed
+  skill folder;
+- runs declared checks and records evidence for exact commits, worktrees,
+  upstream state, and verification configuration;
+- fails closed when protected evidence is missing, failed, malformed, or stale.
+
+**What it does not do:**
+
+- block unrelated repositories that are not covered by the policy;
+- parse arbitrary shell commands or install an IDE- or agent-specific hook;
+- treat a successful check from an older Git state as current evidence.
+
+**How to invoke it:**
+
+```text
+$verify-before-push Configure this project's verification policy and checks.
+```
+
+#### `coordinate-code-documentation-repositories` (experimental)
 
 Coordinate one auditable project change when implementation and canonical
 documentation live in separate Git repositories.
@@ -344,7 +485,7 @@ documentation live in separate Git repositories.
 $coordinate-code-documentation-repositories Implement this change across the declared code and canonical documentation repositories and verify both published outcomes.
 ```
 
-### `execute-configured-gitflow-releases` (experimental)
+#### `execute-configured-gitflow-releases` (experimental)
 
 Execute standard and hotfix release routes from a project-declared GitFlow
 contract.
@@ -374,84 +515,50 @@ $execute-configured-gitflow-releases Run the standard release route declared by 
 $execute-configured-gitflow-releases Run an explicit hotfix release and verify its reintegration into the declared development line.
 ```
 
-### `release-skill-collection`
+#### `execute-verified-development-lifecycle` (experimental)
 
-Plan, verify, audit, and clean up deterministic skill-collection releases.
+Plan and verify a project-declared path from feature preparation through
+reviewed development integration, delivery observation, documentation, and
+proved cleanup.
 
 **What it does:**
 
-- checks versions, changelog readiness, repository state, tests, security,
-  deterministic archives, and checksums;
-- validates commit-bound holdout, consumer, platform, review, and local-check
-  evidence;
-- audits immutable GitHub assets, manifests, checksums, and attestations;
-- proves whether temporary branches are merged, identical-tree, or
-  patch-equivalent before cleanup;
-- applies an explicitly confirmed cleanup only from an unchanged safe plan and
-  a digest-valid audit of the published release.
+- freezes a digest-bound plan before editing and advances ordered checkpoints
+  using retained evidence;
+- verifies feature-before-edit, test-first, changed-scope preflight, review,
+  exact-state push, pipeline, documentation, development integration,
+  delegated production, delivery, smoke, notification, and cleanup gates;
+- rewinds to a declared checkpoint after failure and invalidates stale
+  downstream evidence.
 
 **What it does not do:**
 
-- infer permission to commit, tag, push, dispatch workflows, or publish assets;
-- move an existing tag or replace published assets;
-- delete branches from names alone, a stale plan, or an unaudited release.
+- infer provider adapters, repository roles, gates, or authorization;
+- push, open or merge reviews, deploy, notify, edit documentation, or delete
+  resources itself;
+- execute production delivery, which remains delegated to the approved release
+  workflow such as `$execute-configured-gitflow-releases`.
+
+Install and configure its required skills first: `$synchronize-git-repositories`,
+`$develop-with-test-first-evidence`, `$verify-before-push`, and
+`$review-code-changes`. Configure the project-owned version-1 lifecycle
+contract before the first plan. Install optional skills only when the project
+enables their corresponding checkpoints: `$orchestrate-agent-work`,
+`$diagnose-software-defects`, `$resolve-git-conflicts`,
+`$coordinate-code-documentation-repositories`, `$maintain-work-log`,
+`$maintain-project-digest`, `$notify-via-telegram`, and
+`$execute-configured-gitflow-releases`.
 
 **How to invoke it:**
 
 ```text
-$release-skill-collection Plan and verify release vX.Y.Z of this skill collection, but do not publish it yet.
+$execute-verified-development-lifecycle Plan and verify this change through the project's configured development lifecycle.
 ```
 
-### `verify-before-push`
 
-Bind project-declared checks to the exact Git state being pushed.
+### Project knowledge and continuity
 
-**What it does:**
-
-- configures a repository-owned verification policy outside the installed
-  skill folder;
-- runs declared checks and records evidence for exact commits, worktrees,
-  upstream state, and verification configuration;
-- fails closed when protected evidence is missing, failed, malformed, or stale.
-
-**What it does not do:**
-
-- block unrelated repositories that are not covered by the policy;
-- parse arbitrary shell commands or install an IDE- or agent-specific hook;
-- treat a successful check from an older Git state as current evidence.
-
-**How to invoke it:**
-
-```text
-$verify-before-push Configure this project's verification policy and checks.
-```
-
-### `synchronize-git-repositories`
-
-Establish current remote state without overwriting local work.
-
-**What it does:**
-
-- discovers only task-relevant repositories and fetches their tracked remotes;
-- fast-forwards clean behind-only branches;
-- reports dirty, ahead, diverged, detached, untracked, and in-progress states;
-- publishes an authorized feature branch from verified current `main` before
-  the first edit when project policy requires it.
-
-**What it does not do:**
-
-- automatically stash, reset, rebase, merge, clean, switch, or force-push;
-- hide divergence or treat a successful fetch as proof that the local branch
-  was updated;
-- scan or update unrelated repositories.
-
-**How to invoke it:**
-
-```text
-$synchronize-git-repositories Configure this project's repository synchronization policy.
-```
-
-### `maintain-work-log`
+#### `maintain-work-log`
 
 Maintain the canonical dated project journal at `docs/reports/work-log.md`.
 
@@ -474,7 +581,7 @@ Maintain the canonical dated project journal at `docs/reports/work-log.md`.
 $maintain-work-log Configure this project to maintain its dated work log.
 ```
 
-### `maintain-project-digest` (experimental)
+#### `maintain-project-digest` (experimental)
 
 Maintain a daily, user-facing digest of completed project changes in the
 project documentation.
@@ -504,66 +611,7 @@ project documentation.
 $maintain-project-digest Add today's completed user-visible changes to the project digest.
 ```
 
-### `notify-via-telegram`
-
-Send lifecycle updates for long-running agent tasks through Telegram.
-
-**What it does:**
-
-- reports starts, milestones, intermediate results, problems, blockers, and
-  completion;
-- interactively validates the bot and helps discover a destination chat;
-- provides a masked, paste-friendly first-use form for Codex Desktop on Windows;
-- stores credentials in the user configuration directory and sends a test
-  notification during setup;
-- supports a separate chat or forum topic per project, with an explicit choice
-  between global-plus-project delivery and project-only delivery;
-- exports secret-free project routing values for reconciliation through
-  `sync-project-context`;
-- runs with the Python 3 standard library on Windows, macOS, and Linux.
-
-**What it does not do:**
-
-- place the bot token in the conversation, shell history, or repository;
-- copy the global bot token or Telegram authentication state between computers;
-- send notifications when the user asks to keep progress in the current task;
-- act as a general Telegram bot-development framework.
-
-**How to invoke it:**
-
-```text
-$notify-via-telegram Configure Telegram notifications for long tasks.
-$notify-via-telegram Configure this project to notify its team chat only, instead of the global destination.
-```
-
-### `operate-yandex-cloud`
-
-Operate explicitly configured, project-scoped Yandex Cloud infrastructure.
-
-**What it does:**
-
-- stores shared Cloud/Folder IDs in project configuration and the workstation
-  `yc` profile in ignored local configuration;
-- detects required toolsets, checks minimum versions, and runs a read-only
-  context preflight;
-- supports scoped CLI, SSH, Terraform, Ansible, Helm, Kubernetes, deployment,
-  database, storage, DNS, monitoring, backup, and incident workflows;
-- provides JSON output and cross-platform Python helpers.
-
-**What it does not do:**
-
-- infer Yandex Cloud from generic SSH, Kubernetes, Terraform, or deployment
-  requests without provider context;
-- store credentials in shared project configuration;
-- apply a mutation before target, context, and authorization are established.
-
-**How to invoke it:**
-
-```text
-$operate-yandex-cloud Configure this project for Yandex Cloud operations.
-```
-
-### `sync-project-context`
+#### `sync-project-context`
 
 Synchronize private, sanitized project and per-chat continuation state between
 computers. The skill is stable after two independent real-device Google Drive
@@ -621,7 +669,10 @@ $sync-project-context Synchronize all project tasks bidirectionally and show con
 
 In Claude Code, replace the `$` prefix in these examples with `/`.
 
-### `orchestrate-agent-work` (experimental)
+
+### Coordination and communication
+
+#### `orchestrate-agent-work` (experimental)
 
 Coordinate explicitly authorized subagents while retaining responsibility for
 the integrated result.
@@ -645,140 +696,130 @@ the integrated result.
 $orchestrate-agent-work Delegate these independent subtasks to agents and verify the integrated result.
 ```
 
-### `develop-with-test-first-evidence` (experimental)
+#### `notify-via-telegram`
 
-Implement behavior through evidence-backed red-green-refactor cycles.
+Send lifecycle updates for long-running agent tasks through Telegram.
 
 **What it does:**
 
-- records a focused test failing for the intended behavioral reason before
-  implementation;
-- binds focused and broader green results to the final change state;
-- validates durable evidence with its bundled schema and helper.
+- reports starts, milestones, intermediate results, problems, blockers, and
+  completion;
+- interactively validates the bot and helps discover a destination chat;
+- provides a masked, paste-friendly first-use form for Codex Desktop on Windows;
+- stores credentials in the user configuration directory and sends a test
+  notification during setup;
+- supports a separate chat or forum topic per project, with an explicit choice
+  between global-plus-project delivery and project-only delivery;
+- exports secret-free project routing values for reconciliation through
+  `sync-project-context`;
+- runs with the Python 3 standard library on Windows, macOS, and Linux.
 
 **What it does not do:**
 
-- manufacture a red result by breaking unrelated behavior;
-- call after-the-fact tests test-first development;
-- hide pre-existing, environmental, or final-state failures.
+- place the bot token in the conversation, shell history, or repository;
+- copy the global bot token or Telegram authentication state between computers;
+- send notifications when the user asks to keep progress in the current task;
+- act as a general Telegram bot-development framework.
 
 **How to invoke it:**
 
 ```text
-$develop-with-test-first-evidence Implement this behavior with a recorded red-green-refactor cycle.
+$notify-via-telegram Configure Telegram notifications for long tasks.
+$notify-via-telegram Configure this project to notify its team chat only, instead of the global destination.
 ```
 
-### `review-code-changes` (experimental)
 
-Review a defined change for actionable correctness, security, reliability, and
-compatibility defects.
+### Infrastructure and operations
+
+#### `operate-yandex-cloud`
+
+Operate explicitly configured, project-scoped Yandex Cloud infrastructure.
 
 **What it does:**
 
-- resolves an exact baseline and changed state;
-- reports evidence-backed findings with impact, trigger, priority, and tight
-  locations;
-- makes uncertainty and meaningful test gaps explicit.
+- stores shared Cloud/Folder IDs in project configuration and the workstation
+  `yc` profile in ignored local configuration;
+- detects required toolsets, checks minimum versions, and runs a read-only
+  context preflight;
+- supports scoped CLI, SSH, Terraform, Ansible, Helm, Kubernetes, deployment,
+  database, storage, DNS, monitoring, backup, and incident workflows;
+- provides JSON output and cross-platform Python helpers.
 
 **What it does not do:**
 
-- report style preferences or unsupported speculation as defects;
-- implement findings, publish comments, or approve a review without separate
-  authorization;
-- substitute a general code explanation for a scoped review.
+- infer Yandex Cloud from generic SSH, Kubernetes, Terraform, or deployment
+  requests without provider context;
+- store credentials in shared project configuration;
+- apply a mutation before target, context, and authorization are established.
 
 **How to invoke it:**
 
 ```text
-$review-code-changes Review this branch against its declared baseline and report actionable findings.
+$operate-yandex-cloud Configure this project for Yandex Cloud operations.
 ```
 
-### `diagnose-software-defects` (experimental)
 
-Investigate failures and regressions to produce a supported causal explanation
-or ranked hypotheses.
+### Skill collection evolution
+
+#### `discover-skill-candidates` (experimental)
+
+Find reusable skill ideas in bounded project and contextual evidence without
+creating a skill.
 
 **What it does:**
 
-- bounds and safely reproduces the symptom where possible;
-- tests competing hypotheses with relevant evidence;
-- reports root cause, contributing conditions, blast radius, confidence, and
-  a fix-verification plan.
+- inventories bounded project-relative `AGENTS.md` files with Git and
+  line-level provenance;
+- optionally inventories project documentation, selected files, bounded Git
+  history, structure metadata, and user-confirmed summaries from available
+  chats or `sync-project-context` handoffs;
+- ranks candidates as recommended, investigate, or rejected and compares them
+  with existing catalogs;
+- proactively offers every eligible candidate for safe contribution to
+  `kolabse/skills`, local creation, or deferral;
+- exports a selected idea as a sanitized, digest-bound contribution package
+  that maintainers can validate independently.
 
 **What it does not do:**
 
-- infer causation from correlation;
-- mutate production or discard failing evidence;
-- implement a speculative fix when only diagnosis was requested.
+- modify project rules or scaffold, publish, or install a skill;
+- enumerate chats, ingest raw transcripts, or broadly scan source code;
+- export raw rules, local paths, secrets, URLs, or email addresses;
+- promote policy-only, volatile, sensitive, or one-off conventions as reusable
+  workflows without review.
 
 **How to invoke it:**
 
 ```text
-$diagnose-software-defects Diagnose this regression and distinguish evidence from hypotheses.
+$discover-skill-candidates Analyze this project's local rules and prepare an evidence-backed backlog of reusable skill ideas without creating anything.
 ```
 
-### `resolve-git-conflicts` (experimental)
+#### `release-skill-collection`
 
-Resolve authorized merge, rebase, or cherry-pick conflicts semantically while
-preserving unrelated work.
+Plan, verify, audit, and clean up deterministic skill-collection releases.
 
 **What it does:**
 
-- inspects the active operation, base, both sides, and each unmerged path;
-- reconciles only conflicts whose intended combined behavior is understood;
-- validates resolved paths and makes the remaining Git operation step explicit.
+- checks versions, changelog readiness, repository state, tests, security,
+  deterministic archives, and checksums;
+- validates commit-bound holdout, consumer, platform, review, and local-check
+  evidence;
+- audits immutable GitHub assets, manifests, checksums, and attestations;
+- proves whether temporary branches are merged, identical-tree, or
+  patch-equivalent before cleanup;
+- applies an explicitly confirmed cleanup only from an unchanged safe plan and
+  a digest-valid audit of the published release.
 
 **What it does not do:**
 
-- treat ordinary repository divergence as a file-conflict task;
-- automatically stash, reset, abort, continue, force-push, or stage unrelated
-  paths;
-- guess through ambiguous generated, binary, schema, or product decisions.
+- infer permission to commit, tag, push, dispatch workflows, or publish assets;
+- move an existing tag or replace published assets;
+- delete branches from names alone, a stale plan, or an unaudited release.
 
 **How to invoke it:**
 
 ```text
-$resolve-git-conflicts Resolve the active merge conflicts path by path and validate the result.
-```
-
-### `execute-verified-development-lifecycle` (experimental)
-
-Plan and verify a project-declared path from feature preparation through
-reviewed development integration, delivery observation, documentation, and
-proved cleanup.
-
-**What it does:**
-
-- freezes a digest-bound plan before editing and advances ordered checkpoints
-  using retained evidence;
-- verifies feature-before-edit, test-first, changed-scope preflight, review,
-  exact-state push, pipeline, documentation, development integration,
-  delegated production, delivery, smoke, notification, and cleanup gates;
-- rewinds to a declared checkpoint after failure and invalidates stale
-  downstream evidence.
-
-**What it does not do:**
-
-- infer provider adapters, repository roles, gates, or authorization;
-- push, open or merge reviews, deploy, notify, edit documentation, or delete
-  resources itself;
-- execute production delivery, which remains delegated to the approved release
-  workflow such as `$execute-configured-gitflow-releases`.
-
-Install and configure its required skills first: `$synchronize-git-repositories`,
-`$develop-with-test-first-evidence`, `$verify-before-push`, and
-`$review-code-changes`. Configure the project-owned version-1 lifecycle
-contract before the first plan. Install optional skills only when the project
-enables their corresponding checkpoints: `$orchestrate-agent-work`,
-`$diagnose-software-defects`, `$resolve-git-conflicts`,
-`$coordinate-code-documentation-repositories`, `$maintain-work-log`,
-`$maintain-project-digest`, `$notify-via-telegram`, and
-`$execute-configured-gitflow-releases`.
-
-**How to invoke it:**
-
-```text
-$execute-verified-development-lifecycle Plan and verify this change through the project's configured development lifecycle.
+$release-skill-collection Plan and verify release vX.Y.Z of this skill collection, but do not publish it yet.
 ```
 
 ## Supported compositions
