@@ -6,6 +6,36 @@ Reusable agent skills maintained by kolabse.
 
 Licensed under the [Apache License 2.0](LICENSE). Copyright 2026 kolabse.
 
+## Table of contents
+
+- [Install skills](#install-skills)
+  - [Install from the Git marketplaces](#install-from-the-git-marketplaces)
+- [Update installed skills](#update-installed-skills)
+  - [Run without cloning the repository](#run-without-cloning-the-repository)
+  - [Inspect global installations](#inspect-global-installations)
+- [Install or update a local-development Codex plugin](#install-or-update-a-local-development-codex-plugin)
+- [Available skills](#available-skills)
+  - [`discover-skill-candidates`](#discover-skill-candidates-experimental)
+  - [`coordinate-code-documentation-repositories`](#coordinate-code-documentation-repositories-experimental)
+  - [`execute-configured-gitflow-releases`](#execute-configured-gitflow-releases-experimental)
+  - [`release-skill-collection`](#release-skill-collection)
+  - [`verify-before-push`](#verify-before-push)
+  - [`synchronize-git-repositories`](#synchronize-git-repositories)
+  - [`maintain-work-log`](#maintain-work-log)
+  - [`maintain-project-digest`](#maintain-project-digest-experimental)
+  - [`notify-via-telegram`](#notify-via-telegram)
+  - [`operate-yandex-cloud`](#operate-yandex-cloud)
+  - [`sync-project-context`](#sync-project-context)
+  - [`orchestrate-agent-work`](#orchestrate-agent-work-experimental)
+  - [`develop-with-test-first-evidence`](#develop-with-test-first-evidence-experimental)
+  - [`review-code-changes`](#review-code-changes-experimental)
+  - [`diagnose-software-defects`](#diagnose-software-defects-experimental)
+  - [`resolve-git-conflicts`](#resolve-git-conflicts-experimental)
+  - [`execute-verified-development-lifecycle`](#execute-verified-development-lifecycle-experimental)
+- [Supported compositions](#supported-compositions)
+- [Add a skill](#add-a-skill)
+- [Verify a release](#verify-a-release)
+
 ## Install skills
 
 Install one or more skills into the current project with the cross-agent

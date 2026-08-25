@@ -64,6 +64,42 @@ class LocalizationValidationTests(unittest.TestCase):
         self.assertNotEqual(result.returncode, 0)
         self.assertIn("shell code blocks differ", result.stdout + result.stderr)
 
+    def test_rejects_broken_table_of_contents_anchor(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            (root / "docs/i18n/ru").mkdir(parents=True)
+            canonical = "# Project\n\nEnglish | Русский\n\n- [Missing](#missing)\n"
+            translation = "# Проект\n\nEnglish | Русский\n\n- [Нет](#missing)\n"
+            (root / "README.md").write_text(canonical, encoding="utf-8")
+            (root / "docs/i18n/ru/README.md").write_text(
+                translation, encoding="utf-8"
+            )
+            (root / "docs/i18n/locales.json").write_text(
+                json.dumps(
+                    {
+                        "schema_version": 1,
+                        "canonical_locale": "en",
+                        "locales": {
+                            "ru": {
+                                "name": "Russian",
+                                "documents": [
+                                    {
+                                        "canonical": "README.md",
+                                        "translation": "docs/i18n/ru/README.md",
+                                    }
+                                ],
+                            }
+                        },
+                    }
+                ),
+                encoding="utf-8",
+            )
+
+            result = self.run_validator(root)
+
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn("broken Markdown anchor", result.stdout + result.stderr)
+
 
 if __name__ == "__main__":
     unittest.main()
