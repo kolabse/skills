@@ -85,6 +85,27 @@ class TeamSkillsTests(unittest.TestCase):
                 self.configure_args(skill=["verify-before-push"])
             )
 
+    def test_managed_document_accepts_crlf_line_endings(self) -> None:
+        team_skills.configure(self.configure_args())
+        path = self.docs / team_skills.DOCUMENT_NAME
+        path.write_bytes(path.read_bytes().replace(b"\n", b"\r\n"))
+
+        status = team_skills.inspect(self.root, str(self.docs))
+
+        self.assertTrue(status["configured"])
+        self.assertEqual("1.18.0", status["collection_version"])
+
+    def test_relative_documentation_root_is_resolved_from_project_root(self) -> None:
+        args = self.configure_args(documentation_root="docs")
+
+        configured = team_skills.configure(args)
+
+        self.assertTrue(
+            Path(configured["document"]).samefile(
+                self.docs / team_skills.DOCUMENT_NAME
+            )
+        )
+
     def test_status_reports_versions_extras_and_shadowing_without_writes(self) -> None:
         team_skills.configure(self.configure_args())
         self.install("synchronize-git-repositories")

@@ -124,7 +124,9 @@ def parse_document(text: str) -> dict[str, Any]:
         raise TeamSkillsError("team document managed markers are out of order")
     managed = text[start:end]
     match = re.fullmatch(
-        re.escape(START) + r"\n```json\n(?P<payload>.*?)\n```\n" + re.escape(END),
+        re.escape(START)
+        + r"\r?\n```json\r?\n(?P<payload>.*?)\r?\n```\r?\n"
+        + re.escape(END),
         managed,
         flags=re.DOTALL,
     )
@@ -139,7 +141,12 @@ def parse_document(text: str) -> dict[str, Any]:
 
 def resolve_documentation_root(project_root: Path, explicit: str | None) -> Path:
     if explicit:
-        root = Path(explicit).resolve()
+        requested = Path(explicit)
+        root = (
+            requested.resolve()
+            if requested.is_absolute()
+            else (project_root / requested).resolve()
+        )
         if not root.is_dir():
             raise TeamSkillsError(f"documentation root does not exist: {root}")
         return root
