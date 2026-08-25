@@ -154,6 +154,7 @@ class TeamSkillsTests(unittest.TestCase):
         lock_path.write_text(json.dumps(lock), encoding="utf-8")
 
         observed = team_skills.observe_skill(
+            self.root,
             skill,
             "verify-before-push",
             "1.18.0",
@@ -193,7 +194,7 @@ class TeamSkillsTests(unittest.TestCase):
             )
         )
 
-    def test_status_reports_versions_extras_and_shadowing_without_writes(self) -> None:
+    def test_status_reports_versions_extras_and_project_overrides_without_writes(self) -> None:
         team_skills.configure(self.configure_args())
         self.install("synchronize-git-repositories")
         self.install("synchronize-team-skills")
@@ -208,10 +209,49 @@ class TeamSkillsTests(unittest.TestCase):
         self.assertEqual("current", states["synchronize-team-skills"]["state"])
         self.assertEqual("current", states["synchronize-git-repositories"]["state"])
         self.assertEqual("outdated", states["verify-before-push"]["state"])
-        self.assertTrue(states["verify-before-push"]["shadowing_risk"])
+        self.assertTrue(states["verify-before-push"]["project_override"])
         self.assertEqual(["notify-via-telegram"], [item["name"] for item in status["agents"][0]["extras"]])
         self.assertFalse(status["ready"])
         self.assertEqual(before, after)
+
+    def test_status_accepts_verified_canonical_local_checkout(self) -> None:
+        team_skills.configure(self.configure_args())
+        checkout = self.root / "checkout"
+        (checkout / ".codex-plugin").mkdir(parents=True)
+        (checkout / "skills/verify-before-push").mkdir(parents=True)
+        (checkout / ".codex-plugin/plugin.json").write_text(
+            json.dumps(
+                {
+                    "name": "kolabse-skills",
+                    "repository": "https://github.com/kolabse/skills",
+                }
+            ),
+            encoding="utf-8",
+        )
+        (checkout / "skill-catalog.json").write_text(
+            json.dumps({"skills": [{"name": "verify-before-push"}]}),
+            encoding="utf-8",
+        )
+        (checkout / "skills/verify-before-push/SKILL.md").write_text(
+            "fixture", encoding="utf-8"
+        )
+        skill = self.install("verify-before-push")
+        lock_path = self.root / "skills-lock.json"
+        lock = json.loads(lock_path.read_text(encoding="utf-8"))
+        lock["skills"]["verify-before-push"].update(
+            {"source": str(checkout), "sourceType": "local"}
+        )
+        lock_path.write_text(json.dumps(lock), encoding="utf-8")
+
+        observed = team_skills.observe_skill(
+            self.root,
+            skill,
+            "verify-before-push",
+            "1.18.0",
+            lock["skills"]["verify-before-push"],
+        )
+
+        self.assertEqual("verified", observed["provenance"])
 
     def test_plan_is_digest_bound_and_targets_only_declared_names(self) -> None:
         configured = team_skills.configure(self.configure_args())

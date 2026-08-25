@@ -709,7 +709,8 @@ manifest revisado en la documentación del proyecto.
 - compara las habilidades declaradas para Codex y Claude Code con copias de
   proyecto verificadas;
 - informa sin cambios sobre habilidades ausentes, antiguas, más nuevas, no
-  verificadas, que ocultan otras versiones y adicionales conservadas;
+  verificadas, copias de proyecto que prevalecen sobre ámbitos más amplios y
+  adicionales conservadas;
 - crea un plan ligado al digest del manifest para una versión fijada;
 - instala solo el conjunto revisado tras la aprobación y verifica el resultado.
 

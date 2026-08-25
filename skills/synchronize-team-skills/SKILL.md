@@ -39,7 +39,7 @@ Claude Code layouts. Report:
 - missing, current, outdated, newer-than-required, and unverified installations;
 - the observed collection version and provenance metadata;
 - additional verified kolabse skills, which remain preserved;
-- project copies that can shadow a newer global or plugin installation.
+- whether each declared skill has a project copy that overrides broader scopes.
 
 Do not equate installation with availability in an already open agent task.
 Recommend a new task after an installation changes. Do not inspect or copy

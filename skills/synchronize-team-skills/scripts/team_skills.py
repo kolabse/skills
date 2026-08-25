@@ -285,11 +285,45 @@ def canonical_github_source(source: str) -> bool:
     return value.casefold() == SOURCE
 
 
-def canonical_lock_entry(entry: dict[str, Any] | None) -> bool:
-    if not isinstance(entry, dict) or entry.get("sourceType") not in {None, "github"}:
+def verified_lock_source(
+    project_root: Path,
+    name: str,
+    entry: dict[str, Any] | None,
+) -> bool:
+    if not isinstance(entry, dict):
         return False
     source = entry.get("source")
-    return isinstance(source, str) and canonical_github_source(source)
+    source_type = entry.get("sourceType")
+    if not isinstance(source, str) or not source.strip():
+        return False
+    if source_type in {None, "github"}:
+        return canonical_github_source(source)
+    if source_type != "local":
+        return False
+    checkout = Path(source).expanduser()
+    if not checkout.is_absolute():
+        checkout = project_root / checkout
+    try:
+        checkout = checkout.resolve()
+        plugin = load_object(
+            checkout / ".codex-plugin/plugin.json", "local source plugin manifest"
+        )
+        catalog = load_object(checkout / "skill-catalog.json", "local source catalog")
+    except (OSError, TeamSkillsError):
+        return False
+    entries = catalog.get("skills")
+    names = {
+        item.get("name")
+        for item in entries
+        if isinstance(item, dict)
+    } if isinstance(entries, list) else set()
+    return (
+        plugin.get("name") == "kolabse-skills"
+        and isinstance(plugin.get("repository"), str)
+        and canonical_github_source(plugin["repository"])
+        and name in names
+        and (checkout / "skills" / name / "SKILL.md").is_file()
+    )
 
 
 def skill_folder_hash(path: Path) -> str | None:
@@ -322,6 +356,7 @@ def skill_folder_hash(path: Path) -> str | None:
 
 
 def observe_skill(
+    project_root: Path,
     path: Path,
     name: str,
     required_version: str,
@@ -334,7 +369,7 @@ def observe_skill(
         "version": "missing",
         "provenance": "missing",
         "state": "missing",
-        "shadowing_risk": path.is_dir(),
+        "project_override": path.is_dir(),
     }
     if not path.is_dir():
         return result
@@ -360,7 +395,7 @@ def observe_skill(
     expected_hash = lock_entry.get("computedHash") if isinstance(lock_entry, dict) else None
     actual_hash = skill_folder_hash(path)
     content_verified = (
-        canonical_lock_entry(lock_entry)
+        verified_lock_source(project_root, name, lock_entry)
         and isinstance(expected_hash, str)
         and HASH_PATTERN.fullmatch(expected_hash) is not None
         and actual_hash == expected_hash
@@ -373,6 +408,7 @@ def observe_skill(
 
 
 def verified_extra(
+    project_root: Path,
     path: Path,
     desired: set[str],
     lock_entry: dict[str, Any] | None,
@@ -388,7 +424,7 @@ def verified_extra(
     version = metadata.get("version")
     if not isinstance(version, str):
         return None
-    observed = observe_skill(path, path.name, version, lock_entry)
+    observed = observe_skill(project_root, path, path.name, version, lock_entry)
     if observed["state"] != "current":
         return None
     return {"name": path.name, "version": version, "action": "preserve"}
@@ -406,6 +442,7 @@ def inspect(project_root: Path, documentation_root: str | None) -> dict[str, Any
         if layout_safe:
             skills = [
                 observe_skill(
+                    project_root,
                     layout / name,
                     name,
                     manifest["collection_version"],
@@ -422,7 +459,7 @@ def inspect(project_root: Path, documentation_root: str | None) -> dict[str, Any
                     "version": "unknown",
                     "provenance": "unsafe-layout",
                     "state": "unverified",
-                    "shadowing_risk": (layout / name).is_dir(),
+                    "project_override": (layout / name).is_dir(),
                 }
                 for name in manifest["skills"]
             ]
@@ -445,7 +482,7 @@ def inspect(project_root: Path, documentation_root: str | None) -> dict[str, Any
                 item
                 for child in sorted(layout.iterdir())
                 if not child.is_symlink()
-                and (item := verified_extra(child, desired, lock_entries.get(child.name)))
+                and (item := verified_extra(project_root, child, desired, lock_entries.get(child.name)))
             ]
         agent_ready = (
             all(item["state"] == "current" for item in skills)

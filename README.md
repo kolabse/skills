@@ -706,7 +706,7 @@ manifest in the project documentation.
 
 - creates or reads `team-agent-skills.md` in an approved documentation root;
 - compares declared Codex and Claude Code skills with verified project copies;
-- reports missing, outdated, newer, unverified, shadowing, and preserved-extra
+- reports missing, outdated, newer, unverified, project-override, and preserved-extra
   states without changing the environment;
 - builds a manifest-digest-bound installation plan for one pinned collection
   version;
