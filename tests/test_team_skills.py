@@ -99,6 +99,25 @@ class TeamSkillsTests(unittest.TestCase):
                 self.configure_args(skill=["verify-before-push"])
             )
 
+    def test_manifest_rejects_unknown_collection_skill(self) -> None:
+        with self.assertRaisesRegex(team_skills.TeamSkillsError, "unknown collection"):
+            team_skills.configure(
+                self.configure_args(
+                    skill=[
+                        "synchronize-git-repositories",
+                        "synchronize-team-skills",
+                        "verify-before-puhs",
+                    ]
+                )
+            )
+
+    def test_known_skills_match_collection_catalog(self) -> None:
+        catalog = json.loads((ROOT / "skill-catalog.json").read_text(encoding="utf-8"))
+        self.assertEqual(
+            {item["name"] for item in catalog["skills"]},
+            team_skills.KNOWN_SKILLS,
+        )
+
     def test_managed_document_accepts_crlf_line_endings(self) -> None:
         team_skills.configure(self.configure_args())
         path = self.docs / team_skills.DOCUMENT_NAME
@@ -244,6 +263,29 @@ class TeamSkillsTests(unittest.TestCase):
         extra.assert_not_called()
         self.assertFalse(status["agents"][0]["layout_safe"])
         self.assertEqual([], status["agents"][0]["extras"])
+
+    def test_symlinked_extra_is_reported_and_blocks_plan(self) -> None:
+        team_skills.configure(self.configure_args())
+        layout = self.root / ".agents/skills"
+        extra_path = layout / "notify-via-telegram"
+        extra_path.mkdir(parents=True)
+
+        original = Path.is_symlink
+
+        def fake_is_symlink(path: Path) -> bool:
+            if path == extra_path:
+                return True
+            return original(path)
+
+        with mock.patch.object(Path, "is_symlink", fake_is_symlink):
+            plan = team_skills.make_plan(self.root, str(self.docs))
+
+        unsafe = plan["status"]["agents"][0]["unsafe_extras"]
+        self.assertEqual(["notify-via-telegram"], [item["name"] for item in unsafe])
+        self.assertIn(
+            "codex:extra:notify-via-telegram:unsafe-symlink",
+            plan["blockers"],
+        )
 
     def test_apply_rejects_missing_confirmation_and_stale_manifest(self) -> None:
         configured = team_skills.configure(self.configure_args())

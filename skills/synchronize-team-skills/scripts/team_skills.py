@@ -21,6 +21,26 @@ DOCUMENT_NAME = "team-agent-skills.md"
 START = "<!-- synchronize-team-skills:manifest:start -->"
 END = "<!-- synchronize-team-skills:manifest:end -->"
 AGENT_LAYOUTS = {"codex": ".agents/skills", "claude-code": ".claude/skills"}
+KNOWN_SKILLS = {
+    "coordinate-code-documentation-repositories",
+    "develop-with-test-first-evidence",
+    "diagnose-software-defects",
+    "discover-skill-candidates",
+    "execute-configured-gitflow-releases",
+    "execute-verified-development-lifecycle",
+    "maintain-project-digest",
+    "maintain-work-log",
+    "notify-via-telegram",
+    "operate-yandex-cloud",
+    "orchestrate-agent-work",
+    "release-skill-collection",
+    "resolve-git-conflicts",
+    "review-code-changes",
+    "sync-project-context",
+    "synchronize-git-repositories",
+    "synchronize-team-skills",
+    "verify-before-push",
+}
 NAME_PATTERN = re.compile(r"^[a-z0-9]+(?:-[a-z0-9]+)*$")
 VERSION_PATTERN = re.compile(
     r"^[0-9]+\.[0-9]+\.[0-9]+(?:-[0-9A-Za-z]+(?:[.-][0-9A-Za-z]+)*)?$"
@@ -114,6 +134,9 @@ def validate_manifest(value: object) -> dict[str, Any]:
         raise TeamSkillsError(
             f"team manifest must include bootstrap dependencies {missing_dependencies}"
         )
+    unknown_skills = sorted(set(skills) - KNOWN_SKILLS)
+    if unknown_skills:
+        raise TeamSkillsError(f"team manifest contains unknown collection skills {unknown_skills}")
     normalized = dict(value)
     normalized["agents"] = sorted(agents)
     normalized["skills"] = sorted(skills)
@@ -391,13 +414,30 @@ def inspect(project_root: Path, documentation_root: str | None) -> dict[str, Any
                 for name in manifest["skills"]
             ]
         extras = []
+        unsafe_extras = []
         if layout_safe and layout.is_dir():
+            unsafe_extras = [
+                {
+                    "name": child.name,
+                    "path": str(child),
+                    "version": "unknown",
+                    "provenance": "unsafe-symlink",
+                    "state": "unverified",
+                    "action": "preserve",
+                }
+                for child in sorted(layout.iterdir())
+                if child.name not in desired and child.is_symlink()
+            ]
             extras = [
                 item
                 for child in sorted(layout.iterdir())
-                if (item := verified_extra(child, desired, lock_entries.get(child.name)))
+                if not child.is_symlink()
+                and (item := verified_extra(child, desired, lock_entries.get(child.name)))
             ]
-        agent_ready = all(item["state"] == "current" for item in skills)
+        agent_ready = (
+            all(item["state"] == "current" for item in skills)
+            and not unsafe_extras
+        )
         ready = ready and agent_ready
         agents.append(
             {
@@ -407,6 +447,7 @@ def inspect(project_root: Path, documentation_root: str | None) -> dict[str, Any
                 "ready": agent_ready,
                 "skills": skills,
                 "extras": extras,
+                "unsafe_extras": unsafe_extras,
             }
         )
     return {
@@ -479,6 +520,10 @@ def make_plan(project_root: Path, documentation_root: str | None) -> dict[str, A
         for name, state in states.items():
             if state in {"unverified", "newer-than-required", "version-mismatch"}:
                 blockers.append(f"{agent['agent']}:{name}:{state}")
+        for extra in agent["unsafe_extras"]:
+            blockers.append(
+                f"{agent['agent']}:extra:{extra['name']}:{extra['provenance']}"
+            )
         selected = [name for name, state in states.items() if state in {"missing", "outdated"}]
         if selected and not any(item.startswith(f"{agent['agent']}:") for item in blockers):
             argv = ["npx", "--yes", f"skills@{CLI_VERSION}", "add", f"{SOURCE}@v{status['collection_version']}"]
