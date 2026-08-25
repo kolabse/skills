@@ -452,11 +452,12 @@ class TeamSkillsTests(unittest.TestCase):
         layout = self.root / ".agents/skills"
         extra_path = layout / "notify-via-telegram"
         extra_path.mkdir(parents=True)
+        resolved_extra_path = extra_path.resolve()
 
         original = Path.is_symlink
 
         def fake_is_symlink(path: Path) -> bool:
-            if path == extra_path:
+            if path in {extra_path, resolved_extra_path}:
                 return True
             return original(path)
 
