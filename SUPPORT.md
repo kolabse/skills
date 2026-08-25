@@ -1,5 +1,7 @@
 # Support
 
+English | [Русский](docs/i18n/ru/SUPPORT.md)
+
 Use the following public channels for `kolabse-skills`:
 
 - installation, compatibility, or workflow problems:

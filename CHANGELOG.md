@@ -2,6 +2,12 @@
 
 ## [Unreleased]
 
+### Added
+
+- Russian translations of the public README, contribution guide, support,
+  privacy, and terms documents under `docs/i18n/ru/`, with canonical-language
+  navigation and automated structure, command, and relative-link validation.
+
 ## [1.17.0] - 2026-08-24
 
 ### Added

@@ -1,5 +1,7 @@
 # kolabse/skills
 
+English | [Русский](docs/i18n/ru/README.md)
+
 Reusable agent skills maintained by kolabse.
 
 Licensed under the [Apache License 2.0](LICENSE). Copyright 2026 kolabse.
@@ -785,6 +787,7 @@ Run the collection checks locally with:
 
 ```shell
 python scripts/validate_skills.py
+python scripts/validate_localizations.py
 python -m unittest discover -s tests -v
 npx skills@1.5.22 add . --list
 python scripts/smoke_install.py

@@ -1,5 +1,7 @@
 # Terms of Use
 
+English | [Русский](docs/i18n/ru/TERMS.md)
+
 Effective date: 2026-08-24
 
 These terms apply to the `kolabse-skills` open-source plugin and skill

@@ -1,5 +1,7 @@
 # Contributing skills
 
+English | [Русский](docs/i18n/ru/CONTRIBUTING.md)
+
 This repository is the canonical home for reusable kolabse skills. Keep each
 skill focused, portable, attributable, and independently installable.
 
@@ -219,6 +221,7 @@ Run:
 
 ```shell
 python scripts/validate_skills.py
+python scripts/validate_localizations.py
 python -m unittest discover -s tests -v
 npx skills@1.5.22 add . --list
 python scripts/smoke_install.py --agent codex
