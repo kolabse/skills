@@ -264,8 +264,50 @@ class TeamSkillsTests(unittest.TestCase):
         self.assertEqual(["verify-before-push"], plan["installers"][0]["selected"])
         argv = plan["installers"][0]["argv"]
         self.assertIn("kolabse/skills@v1.18.0", argv)
-        self.assertEqual(3, argv.count("--skill"))
+        self.assertNotIn("synchronize-team-skills", argv)
+        self.assertNotIn("synchronize-git-repositories", argv)
+        self.assertEqual(1, argv.count("--skill"))
         self.assertNotIn("notify-via-telegram", argv)
+
+    def test_plan_blocks_outdated_verified_local_skill(self) -> None:
+        team_skills.configure(self.configure_args())
+        self.install("synchronize-git-repositories")
+        self.install("synchronize-team-skills")
+        skill = self.install("verify-before-push", "1.17.0")
+        checkout = self.root / "checkout"
+        (checkout / ".codex-plugin").mkdir(parents=True)
+        (checkout / "skills/verify-before-push").mkdir(parents=True)
+        (checkout / ".codex-plugin/plugin.json").write_text(
+            json.dumps(
+                {
+                    "name": "kolabse-skills",
+                    "repository": "https://github.com/kolabse/skills",
+                }
+            ),
+            encoding="utf-8",
+        )
+        (checkout / "skill-catalog.json").write_text(
+            json.dumps({"skills": [{"name": "verify-before-push"}]}),
+            encoding="utf-8",
+        )
+        (checkout / "skills/verify-before-push/SKILL.md").write_text(
+            "fixture", encoding="utf-8"
+        )
+        lock_path = self.root / "skills-lock.json"
+        lock = json.loads(lock_path.read_text(encoding="utf-8"))
+        lock["skills"]["verify-before-push"].update(
+            {
+                "source": str(checkout),
+                "sourceType": "local",
+                "computedHash": team_skills.skill_folder_hash(skill),
+            }
+        )
+        lock_path.write_text(json.dumps(lock), encoding="utf-8")
+
+        plan = team_skills.make_plan(self.root, str(self.docs))
+
+        self.assertIn("codex:verify-before-push:outdated-local-source", plan["blockers"])
+        self.assertEqual([], plan["installers"])
 
     def test_plan_blocks_unverified_collision_and_newer_version(self) -> None:
         team_skills.configure(self.configure_args())

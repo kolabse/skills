@@ -368,6 +368,7 @@ def observe_skill(
         "installed": path.is_dir(),
         "version": "missing",
         "provenance": "missing",
+        "source_kind": "missing",
         "state": "missing",
         "project_override": path.is_dir(),
     }
@@ -403,7 +404,13 @@ def observe_skill(
     if not valid_identity or not isinstance(version, str) or not content_verified:
         result.update(version=str(version or "unknown"), provenance="unverified", state="unverified")
         return result
-    result.update(version=version, provenance="verified", state=version_state(version, required_version))
+    source_kind = "local" if lock_entry.get("sourceType") == "local" else "github"
+    result.update(
+        version=version,
+        provenance="verified",
+        source_kind=source_kind,
+        state=version_state(version, required_version),
+    )
     return result
 
 
@@ -458,6 +465,7 @@ def inspect(project_root: Path, documentation_root: str | None) -> dict[str, Any
                     "installed": (layout / name).is_dir(),
                     "version": "unknown",
                     "provenance": "unsafe-layout",
+                    "source_kind": "unknown",
                     "state": "unverified",
                     "project_override": (layout / name).is_dir(),
                 }
@@ -566,18 +574,26 @@ def make_plan(project_root: Path, documentation_root: str | None) -> dict[str, A
     blockers: list[str] = []
     installers: list[dict[str, Any]] = []
     for agent in status["agents"]:
-        states = {item["name"]: item["state"] for item in agent["skills"]}
+        observed = {item["name"]: item for item in agent["skills"]}
+        states = {name: item["state"] for name, item in observed.items()}
         for name, state in states.items():
             if state in {"unverified", "newer-than-required", "version-mismatch"}:
                 blockers.append(f"{agent['agent']}:{name}:{state}")
+            elif state == "outdated" and observed[name]["source_kind"] == "local":
+                blockers.append(f"{agent['agent']}:{name}:outdated-local-source")
         for extra in agent["unsafe_extras"]:
             blockers.append(
                 f"{agent['agent']}:extra:{extra['name']}:{extra['provenance']}"
             )
-        selected = [name for name, state in states.items() if state in {"missing", "outdated"}]
+        selected = [
+            name
+            for name, state in states.items()
+            if state in {"missing", "outdated"}
+            and observed[name]["source_kind"] != "local"
+        ]
         if selected and not any(item.startswith(f"{agent['agent']}:") for item in blockers):
             argv = ["npx", "--yes", f"skills@{CLI_VERSION}", "add", f"{SOURCE}@v{status['collection_version']}"]
-            for name in sorted(states):
+            for name in sorted(selected):
                 argv.extend(["--skill", name])
             argv.extend(["--agent", agent["agent"], "--copy", "-y"])
             installers.append({"agent": agent["agent"], "selected": selected, "argv": argv})
