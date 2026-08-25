@@ -443,6 +443,7 @@ def verified_extra(
 
 
 def inspect(project_root: Path, documentation_root: str | None) -> dict[str, Any]:
+    project_root = project_root.resolve()
     path, manifest = read_manifest(project_root, documentation_root)
     desired = set(manifest["skills"])
     lock_entries = read_lock_entries(project_root)

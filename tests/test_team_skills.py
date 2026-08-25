@@ -204,6 +204,16 @@ class TeamSkillsTests(unittest.TestCase):
             )
         )
 
+    def test_inspect_reports_a_resolved_project_layout(self) -> None:
+        team_skills.configure(self.configure_args())
+
+        status = team_skills.inspect(self.root, str(self.docs))
+
+        self.assertEqual(
+            str(self.root.resolve() / team_skills.AGENT_LAYOUTS["codex"]),
+            status["agents"][0]["layout"],
+        )
+
     def test_status_reports_versions_extras_and_project_overrides_without_writes(self) -> None:
         team_skills.configure(self.configure_args())
         self.install("synchronize-git-repositories")
