@@ -401,11 +401,19 @@ def observe_skill(
     version = metadata.get("version") if isinstance(metadata, dict) else None
     expected_hash = lock_entry.get("computedHash") if isinstance(lock_entry, dict) else None
     actual_hash = skill_folder_hash(path)
+    source_content_verified = True
+    if source_kind == "local":
+        source = Path(lock_entry["source"]).expanduser()
+        if not source.is_absolute():
+            source = project_root / source
+        source_hash = skill_folder_hash(source.resolve() / "skills" / name)
+        source_content_verified = source_hash is not None and actual_hash == source_hash
     content_verified = (
         lock_verified
         and isinstance(expected_hash, str)
         and HASH_PATTERN.fullmatch(expected_hash) is not None
         and actual_hash == expected_hash
+        and source_content_verified
     )
     if not valid_identity or not isinstance(version, str) or not content_verified:
         result.update(version=str(version or "unknown"), provenance="unverified", state="unverified")

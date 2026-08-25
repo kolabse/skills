@@ -3,6 +3,7 @@ from __future__ import annotations
 import argparse
 import importlib.util
 import json
+import shutil
 import subprocess
 import tempfile
 import unittest
@@ -72,6 +73,7 @@ class TeamSkillsTests(unittest.TestCase):
         (skill / "collection-metadata.json").write_text(
             json.dumps(metadata), encoding="utf-8"
         )
+        (skill / "SKILL.md").write_text("fixture", encoding="utf-8")
         lock_path = self.root / "skills-lock.json"
         lock = (
             json.loads(lock_path.read_text(encoding="utf-8"))
@@ -85,6 +87,29 @@ class TeamSkillsTests(unittest.TestCase):
         }
         lock_path.write_text(json.dumps(lock), encoding="utf-8")
         return skill
+
+    def local_checkout(self, name: str, installed: Path | None = None) -> Path:
+        checkout = self.root / "checkout"
+        (checkout / ".codex-plugin").mkdir(parents=True, exist_ok=True)
+        (checkout / ".codex-plugin/plugin.json").write_text(
+            json.dumps(
+                {
+                    "name": "kolabse-skills",
+                    "repository": "https://github.com/kolabse/skills",
+                }
+            ),
+            encoding="utf-8",
+        )
+        (checkout / "skill-catalog.json").write_text(
+            json.dumps({"skills": [{"name": name}]}), encoding="utf-8"
+        )
+        source = checkout / "skills" / name
+        if installed is None:
+            source.mkdir(parents=True)
+            (source / "SKILL.md").write_text("fixture", encoding="utf-8")
+        else:
+            shutil.copytree(installed, source)
+        return checkout
 
     def test_configure_is_idempotent_and_requires_bootstrap_skill(self) -> None:
         first = team_skills.configure(self.configure_args())
@@ -236,26 +261,8 @@ class TeamSkillsTests(unittest.TestCase):
 
     def test_status_accepts_verified_canonical_local_checkout(self) -> None:
         team_skills.configure(self.configure_args())
-        checkout = self.root / "checkout"
-        (checkout / ".codex-plugin").mkdir(parents=True)
-        (checkout / "skills/verify-before-push").mkdir(parents=True)
-        (checkout / ".codex-plugin/plugin.json").write_text(
-            json.dumps(
-                {
-                    "name": "kolabse-skills",
-                    "repository": "https://github.com/kolabse/skills",
-                }
-            ),
-            encoding="utf-8",
-        )
-        (checkout / "skill-catalog.json").write_text(
-            json.dumps({"skills": [{"name": "verify-before-push"}]}),
-            encoding="utf-8",
-        )
-        (checkout / "skills/verify-before-push/SKILL.md").write_text(
-            "fixture", encoding="utf-8"
-        )
         skill = self.install("verify-before-push")
+        checkout = self.local_checkout("verify-before-push", skill)
         lock_path = self.root / "skills-lock.json"
         lock = json.loads(lock_path.read_text(encoding="utf-8"))
         lock["skills"]["verify-before-push"].update(
@@ -272,6 +279,31 @@ class TeamSkillsTests(unittest.TestCase):
         )
 
         self.assertEqual("verified", observed["provenance"])
+
+    def test_local_source_content_must_match_installed_copy(self) -> None:
+        skill = self.install("verify-before-push")
+        checkout = self.local_checkout("verify-before-push", skill)
+        (skill / "tampered.txt").write_text("tampered", encoding="utf-8")
+        lock_path = self.root / "skills-lock.json"
+        lock = json.loads(lock_path.read_text(encoding="utf-8"))
+        lock["skills"]["verify-before-push"].update(
+            {
+                "source": str(checkout),
+                "sourceType": "local",
+                "computedHash": team_skills.skill_folder_hash(skill),
+            }
+        )
+        lock_path.write_text(json.dumps(lock), encoding="utf-8")
+
+        observed = team_skills.observe_skill(
+            self.root,
+            skill,
+            "verify-before-push",
+            "1.18.0",
+            lock["skills"]["verify-before-push"],
+        )
+
+        self.assertEqual("unverified", observed["provenance"])
 
     def test_plan_is_digest_bound_and_targets_only_declared_names(self) -> None:
         configured = team_skills.configure(self.configure_args())
@@ -294,25 +326,7 @@ class TeamSkillsTests(unittest.TestCase):
         self.install("synchronize-git-repositories")
         self.install("synchronize-team-skills")
         skill = self.install("verify-before-push", "1.17.0")
-        checkout = self.root / "checkout"
-        (checkout / ".codex-plugin").mkdir(parents=True)
-        (checkout / "skills/verify-before-push").mkdir(parents=True)
-        (checkout / ".codex-plugin/plugin.json").write_text(
-            json.dumps(
-                {
-                    "name": "kolabse-skills",
-                    "repository": "https://github.com/kolabse/skills",
-                }
-            ),
-            encoding="utf-8",
-        )
-        (checkout / "skill-catalog.json").write_text(
-            json.dumps({"skills": [{"name": "verify-before-push"}]}),
-            encoding="utf-8",
-        )
-        (checkout / "skills/verify-before-push/SKILL.md").write_text(
-            "fixture", encoding="utf-8"
-        )
+        checkout = self.local_checkout("verify-before-push", skill)
         lock_path = self.root / "skills-lock.json"
         lock = json.loads(lock_path.read_text(encoding="utf-8"))
         lock["skills"]["verify-before-push"].update(
@@ -333,25 +347,7 @@ class TeamSkillsTests(unittest.TestCase):
         team_skills.configure(self.configure_args())
         self.install("synchronize-git-repositories")
         self.install("synchronize-team-skills")
-        checkout = self.root / "checkout"
-        (checkout / ".codex-plugin").mkdir(parents=True)
-        (checkout / "skills/verify-before-push").mkdir(parents=True)
-        (checkout / ".codex-plugin/plugin.json").write_text(
-            json.dumps(
-                {
-                    "name": "kolabse-skills",
-                    "repository": "https://github.com/kolabse/skills",
-                }
-            ),
-            encoding="utf-8",
-        )
-        (checkout / "skill-catalog.json").write_text(
-            json.dumps({"skills": [{"name": "verify-before-push"}]}),
-            encoding="utf-8",
-        )
-        (checkout / "skills/verify-before-push/SKILL.md").write_text(
-            "fixture", encoding="utf-8"
-        )
+        checkout = self.local_checkout("verify-before-push")
         lock_path = self.root / "skills-lock.json"
         lock = json.loads(lock_path.read_text(encoding="utf-8"))
         lock["skills"]["verify-before-push"] = {
