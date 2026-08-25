@@ -107,6 +107,16 @@ class TeamSkillsTests(unittest.TestCase):
         self.assertTrue(status["configured"])
         self.assertEqual("1.18.0", status["collection_version"])
 
+    def test_managed_document_rejects_end_before_start_without_traceback(self) -> None:
+        path = self.docs / team_skills.DOCUMENT_NAME
+        path.write_text(
+            f"{team_skills.END}\n{team_skills.START}\n",
+            encoding="utf-8",
+        )
+
+        with self.assertRaisesRegex(team_skills.TeamSkillsError, "out of order"):
+            team_skills.inspect(self.root, str(self.docs))
+
     def test_relative_documentation_root_is_resolved_from_project_root(self) -> None:
         args = self.configure_args(documentation_root="docs")
 

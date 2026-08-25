@@ -121,9 +121,10 @@ def parse_document(text: str) -> dict[str, Any]:
     if start_count != 1 or end_count != 1:
         raise TeamSkillsError("team document must contain exactly one complete managed manifest block")
     start = text.index(START)
-    end = text.index(END, start) + len(END)
-    if text.find(END) < start:
+    end = text.index(END)
+    if end < start:
         raise TeamSkillsError("team document managed markers are out of order")
+    end += len(END)
     managed = text[start:end]
     match = re.fullmatch(
         re.escape(START)
