@@ -23,7 +23,7 @@ python <skill-root>/scripts/development_lifecycle.py configure --project-root <r
 python <skill-root>/scripts/development_lifecycle.py status --project-root <root> --json
 ```
 
-The contract must declare every repository, applicable rule source, canonical reference, required check, evidence gate, provider-neutral adapter and required capability, notification audience, documentation target, development integration target, delegated production route, and cleanup proof method. Never infer these from provider conventions. Use `migrate --json` after a skill update; unknown newer versions fail closed.
+The contract must declare every repository, applicable rule source, canonical reference, required check, evidence gate, provider-neutral adapter and required capability, notification audience, documentation target, development integration target, delegated production route, and cleanup proof method. Never infer these from provider conventions. A repository may explicitly declare unchanged feature-bootstrap CI suppression; absence of that declaration means its bootstrap pipeline runs normally. Use `migrate --json` after a skill update; unknown newer versions fail closed.
 
 Install and inspect one managed skill reference in each configured repository only with explicit confirmation:
 
@@ -53,7 +53,7 @@ Read [`references/lifecycle-and-rewinds.md`](references/lifecycle-and-rewinds.md
 python <skill-root>/scripts/development_lifecycle.py plan --project-root <root> --input <plan-input.json> --output <plan.json> --state-output <state.json> --json
 ```
 
-Keep plan and state outside every configured repository. Planning independently inspects each exact Git root, operation/worktree/branch/base/upstream state, and declared regular rule/reference file; supplied booleans are not evidence. A feature workspace/branch must be prepared from the verified base before the first edit. The plan reports reminders for declared notifications and documentation but does not satisfy those gates.
+Keep plan and state outside every configured repository. Planning independently inspects each exact Git root, operation/worktree/branch/base/upstream state, and declared regular rule/reference file; supplied booleans are not evidence. A feature workspace/branch must be prepared and remotely published from the verified base before the first edit. When `feature_bootstrap` is present in the plan, read [`references/bootstrap-ci-suppression.md`](references/bootstrap-ci-suppression.md) before publishing. Use only the repository-declared GitHub Actions or GitLab CI mechanism, never tags, empty commits, commit-message markers, or permanent branch exclusions. If suppression is unavailable or unproved, run the bootstrap pipeline and require it to pass. The plan reports reminders for declared notifications and documentation but does not satisfy those gates.
 
 ## Advance with retained evidence
 
@@ -63,7 +63,7 @@ After each external action, retain a JSON evidence file matching [`schemas/retai
 python <skill-root>/scripts/development_lifecycle.py advance --project-root <root> --plan <plan.json> --state <state.json> --checkpoint <checkpoint.json> --json
 ```
 
-Checkpoints are ordered and digest-bound to the plan, configuration, repositories, commits, refs, and retained evidence. The normal route proves: task claim; feature-before-edit; TDD red then green; changed-scope preflight; review; exact-state push verification; feature pipeline; documentation readiness and publication; reviewed merge-request integration into development; delegated production handoff; deployment, marker, and smoke observations; documentation completion; and cleanup representation proof.
+Checkpoints are ordered and digest-bound to the plan, configuration, repositories, commits, refs, and retained evidence. The normal route proves: task claim; remotely published feature-before-edit with an observed bootstrap-CI disposition; TDD red then green; changed-scope preflight; review; exact-state push verification; full feature pipeline for the implementation commit; documentation readiness and publication; reviewed merge-request integration into development; delegated production handoff; deployment, marker, and smoke observations; documentation completion; and cleanup representation proof.
 
 A failed checkpoint enters the declared failure loop. Record failure evidence and rewind only to the configured checkpoint; invalidate every downstream checkpoint and rerun it. Never relabel failed, missing, stale, or subject-mismatched evidence as passed.
 
