@@ -529,6 +529,12 @@ class VerifiedDevelopmentLifecycleTests(unittest.TestCase):
             }],
             plan["feature_bootstrap"],
         )
+        plan_schema = json.loads(
+            (SCRIPT.parent.parent / "schemas" / "plan.schema.json").read_text(
+                encoding="utf-8"
+            )
+        )
+        self.assertIn("feature_bootstrap", plan_schema["required"])
 
         original_state = read_json(state_path)
         tampered_plan = read_json(plan_path)
@@ -581,10 +587,15 @@ class VerifiedDevelopmentLifecycleTests(unittest.TestCase):
 
         checkpoint["subjects"].append({
             "kind": "pipeline",
-            "role": "bootstrap-ci-suppressed",
+            "role": "bootstrap-ci-fallback-passed",
             "repository": "app",
             "identity": "gitlab-pipeline-12345",
         })
+        self.rebind_evidence(checkpoint)
+        with self.assertRaisesRegex(LIFECYCLE.LifecycleError, "does not match its ref"):
+            self.advance(plan_path, state_path, checkpoint)
+
+        checkpoint["subjects"][-1]["role"] = "bootstrap-ci-suppressed"
         self.rebind_evidence(checkpoint)
         result = self.advance(plan_path, state_path, checkpoint)
         self.assertEqual("feature-prepared", result["current_checkpoint"])
