@@ -2,6 +2,16 @@
 
 ## [Unreleased]
 
+## [1.18.1] - 2026-08-26
+
+### Fixed
+
+- `execute-verified-development-lifecycle` can now publish an unchanged feature
+  ref before editing without running duplicate heavy CI jobs. Projects opt in
+  per repository to a GitHub Actions unchanged-ref guard or GitLab `ci.skip`
+  push option, retain an observable suppression or passed-fallback disposition,
+  and still require the full pipeline for the implementation commit.
+
 ## [1.18.0] - 2026-08-25
 
 ### Added
@@ -511,6 +521,7 @@ First versioned release of the kolabse skill collection.
 - Tests for configuration migration, fake cloud and infrastructure CLIs,
   installation confirmation, and collection metadata.
 
+[1.18.1]: https://github.com/kolabse/skills/releases/tag/v1.18.1
 [1.18.0]: https://github.com/kolabse/skills/releases/tag/v1.18.0
 [1.17.0]: https://github.com/kolabse/skills/releases/tag/v1.17.0
 [1.16.0]: https://github.com/kolabse/skills/releases/tag/v1.16.0
