@@ -125,6 +125,12 @@ one observed disposition:
 - `bootstrap-ci-fallback-passed`: suppression was unavailable or not honored,
   and the resulting pipeline completed successfully.
 
+Add exactly one `check-run` or `pipeline` subject for that repository. Its role
+must equal the `ref` disposition and its identity must be the immutable provider
+ID of the classifier check or pipeline that proved the outcome. Each configured
+adapter must explicitly list the supported `bootstrap_mechanisms`; configuration
+fails closed when a repository selects a mechanism its adapter does not list.
+
 Bind the retained evidence to the remote ref, exact base commit, provider
 observation, plan, and configuration digests. A request receipt, intended push
 option, skipped local command, or absence of a visible result is not proof.
