@@ -20,7 +20,7 @@ Evidence for a later identity must trace to the earlier immutable subject. A suc
 The helper requires exactly these checkpoint-specific assertion names (except an optional skipped gate, which uses only `not-required-by-config`):
 
 - `task-claimed`: `task-identity-observed`, `single-owner-confirmed`.
-- `feature-prepared`: `feature-ref-created`, `base-identity-matches`, `no-edits-before-feature`.
+- `feature-prepared`: `feature-ref-created`, `base-identity-matches`, `no-edits-before-feature`. For every repository whose plan contains `feature_bootstrap`, the bound `ref` subject role is `bootstrap-ci-suppressed` or `bootstrap-ci-fallback-passed` as defined in [`bootstrap-ci-suppression.md`](bootstrap-ci-suppression.md).
 - `tdd-red`: `relevant-test-failed`, `failure-matches-missing-behavior`.
 - `tdd-green`: `relevant-test-passed`, `required-local-checks-passed`.
 - `changed-scope-preflight`: `changed-scope-covered`, `repository-rules-covered`, `references-covered`.
@@ -46,7 +46,7 @@ Assertions use stable names and `passed` results. `changed-scope-preflight` must
 
 `cleanup-proved` lists exact resource identities and one configured representation method per deletable resource. Each `cleanup-resource` subject uses its `role` field to name that method; the value must appear in `cleanup.proof_methods`. The helper validates evidence structure and declared coverage but does not delete anything.
 
-Every subject names `kind`, `role`, `repository`, and immutable `identity`; `repository` is null only for genuinely non-repository subjects. Source-state checkpoints must cover every configured repository. Commit identity is carried from green verification through review, push verification, feature publication, and feature pipeline. `production-delegated` and `deployment-observed` both carry the exact `development-integration` identity observed at `development-integrated`; deployment must also match the production handoff. Marker and smoke checkpoints carry the exact deployment identity.
+Every subject names `kind`, `role`, `repository`, and immutable `identity`; `repository` is null only for genuinely non-repository subjects. Source-state checkpoints must cover every configured repository. At `feature-prepared`, configured bootstrap-CI subject roles record observed outcomes, not requested behavior. Commit identity is carried from green verification through review, push verification, feature publication, and feature pipeline. `production-delegated` and `deployment-observed` both carry the exact `development-integration` identity observed at `development-integrated`; deployment must also match the production handoff. Marker and smoke checkpoints carry the exact deployment identity.
 
 Verification does not trust `completed`, `attempts`, flags, or the state digest alone. It validates state structure and ordered-prefix invariants, then deterministically replays the complete history through the advancement validator. Replay reopens and rehashes every retained evidence file, including evidence for checkpoints later invalidated by a failure rewind, and the reconstructed state must equal the supplied state. The supplied state file is never modified.
 

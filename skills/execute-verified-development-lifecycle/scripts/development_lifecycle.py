@@ -38,6 +38,7 @@ ORDER = [
 ]
 CAPABILITIES = {
     "task.claim", "scope.preflight", "scm.review", "scm.pipeline",
+    "scm.suppress-bootstrap-pipeline",
     "scm.integrate-development", "development.publish",
     "delivery.observe-deployment", "delivery.observe-marker", "delivery.observe-smoke",
 }
@@ -101,6 +102,14 @@ SOURCE_CHECKPOINTS = {
     "review-complete", "push-verified", "feature-published", "feature-pipeline",
 }
 FUTURE_SKEW_SECONDS = 300
+BOOTSTRAP_CI_MECHANISMS = {
+    "github-actions-unchanged-ref-guard",
+    "gitlab-ci-skip-push-option",
+}
+BOOTSTRAP_CI_DISPOSITIONS = {
+    "bootstrap-ci-suppressed",
+    "bootstrap-ci-fallback-passed",
+}
 
 
 class LifecycleError(Exception):
@@ -191,12 +200,34 @@ def validate_config(config: dict[str, Any]) -> None:
         raise LifecycleError("configured collections must be arrays")
     repos = unique_ids(config["repositories"], "repositories")
     for item in config["repositories"]:
-        exact_keys(item, {"name", "path", "base_ref", "require_clean", "require_upstream_current"}, f"repository {item.get('name')}")
+        repository_fields = {
+            "name", "path", "base_ref", "require_clean", "require_upstream_current"
+        }
+        if "bootstrap_ci" in item:
+            repository_fields.add("bootstrap_ci")
+        exact_keys(item, repository_fields, f"repository {item.get('name')}")
         safe_path(item["path"], "repository.path")
         if not REF_RE.fullmatch(str(item["base_ref"])):
             raise LifecycleError("repository.base_ref is invalid")
         if item["require_clean"] is not True or item["require_upstream_current"] is not True:
             raise LifecycleError("version-1 repositories require clean and upstream-current state")
+        bootstrap = item.get("bootstrap_ci")
+        if bootstrap is not None:
+            exact_keys(
+                bootstrap,
+                {"policy", "adapter", "mechanism", "fallback", "evidence_required"},
+                f"repository {item.get('name')} bootstrap_ci",
+            )
+            if bootstrap.get("policy") != "suppress-unchanged":
+                raise LifecycleError("bootstrap_ci policy must be suppress-unchanged")
+            if bootstrap.get("mechanism") not in BOOTSTRAP_CI_MECHANISMS:
+                raise LifecycleError("bootstrap_ci mechanism is unsupported")
+            if bootstrap.get("fallback") != "run-pipeline":
+                raise LifecycleError("bootstrap_ci fallback must be run-pipeline")
+            if bootstrap.get("evidence_required") is not True:
+                raise LifecycleError("bootstrap_ci evidence_required must be true")
+            if not isinstance(bootstrap.get("adapter"), str):
+                raise LifecycleError("bootstrap_ci adapter must name a configured adapter")
     unique_ids(config["rules"], "rules")
     unique_ids(config["references"], "references")
     unique_ids(config["checks"], "checks")
@@ -220,7 +251,7 @@ def validate_config(config: dict[str, Any]) -> None:
         if ORDER.index(item["failure_rewind"]) > ORDER.index(item["id"]):
             raise LifecycleError(f"gate {item['id']} failure_rewind must be the same or earlier checkpoint")
     adapter_ids = unique_ids(config["adapters"], "adapters")
-    del adapter_ids
+    adapters_by_id = {item["id"]: item for item in config["adapters"]}
     provided: set[str] = set()
     for item in config["adapters"]:
         exact_keys(item, {"id", "kind", "capabilities"}, "adapter")
@@ -228,9 +259,24 @@ def validate_config(config: dict[str, Any]) -> None:
         if not isinstance(caps, list) or not caps or len(caps) != len(set(caps)) or not set(caps) <= CAPABILITIES:
             raise LifecycleError(f"adapter {item['id']} has invalid capabilities")
         provided.update(caps)
+    for repository in config["repositories"]:
+        bootstrap = repository.get("bootstrap_ci")
+        if bootstrap is None:
+            continue
+        adapter = adapters_by_id.get(bootstrap["adapter"])
+        if adapter is None:
+            raise LifecycleError("bootstrap_ci adapter is not configured")
+        if "scm.suppress-bootstrap-pipeline" not in adapter["capabilities"]:
+            raise LifecycleError(
+                "bootstrap_ci adapter lacks scm.suppress-bootstrap-pipeline capability"
+            )
     required_caps = config["required_capabilities"]
     if len(required_caps) != len(set(required_caps)) or not set(required_caps) <= CAPABILITIES:
         raise LifecycleError("required_capabilities contains invalid values")
+    if feature_bootstrap(config) and "scm.suppress-bootstrap-pipeline" not in required_caps:
+        raise LifecycleError(
+            "bootstrap_ci requires scm.suppress-bootstrap-pipeline"
+        )
     missing_caps = sorted(set(required_caps) - provided)
     if missing_caps:
         raise LifecycleError(f"required capabilities have no configured adapter: {', '.join(missing_caps)}")
@@ -491,7 +537,7 @@ def cmd_configure(args: argparse.Namespace) -> dict[str, Any]:
 
 def cmd_status(args: argparse.Namespace) -> dict[str, Any]:
     config, config_hash = load_config(Path(args.project_root))
-    return {"mode": "status", "configured": True, "version": config["version"], "config_path": str(project_config(Path(args.project_root))), "config_sha256": config_hash, "repositories": [x["name"] for x in config["repositories"]], "gates": enabled_order(config), "adapters": [x["id"] for x in config["adapters"]], "required_capabilities": config["required_capabilities"], "mutates_repository": False}
+    return {"mode": "status", "configured": True, "version": config["version"], "config_path": str(project_config(Path(args.project_root))), "config_sha256": config_hash, "repositories": [x["name"] for x in config["repositories"]], "feature_bootstrap": feature_bootstrap(config), "gates": enabled_order(config), "adapters": [x["id"] for x in config["adapters"]], "required_capabilities": config["required_capabilities"], "mutates_repository": False}
 
 
 def cmd_migrate(args: argparse.Namespace) -> dict[str, Any]:
@@ -501,6 +547,14 @@ def cmd_migrate(args: argparse.Namespace) -> dict[str, Any]:
 
 def declared(config: dict[str, Any], key: str) -> list[str]:
     return [str(x.get("id", x.get("name"))) for x in config[key]]
+
+
+def feature_bootstrap(config: dict[str, Any]) -> list[dict[str, Any]]:
+    return [
+        {"repository": repository["name"], **repository["bootstrap_ci"]}
+        for repository in config["repositories"]
+        if "bootstrap_ci" in repository
+    ]
 
 
 def require_exact(label: str, actual: list[str], expected: list[str], blockers: list[str]) -> None:
@@ -561,10 +615,10 @@ def cmd_plan(args: argparse.Namespace) -> dict[str, Any]:
         "schema_version": 1, "mode": "plan", "lifecycle_id": data.get("lifecycle_id", ""), "outcome": data.get("outcome", ""),
         "config_sha256": config_hash, "feature_ref": data.get("feature_ref", ""), "changed_scope": data.get("changed_scope", []),
         "repositories": repository_observations, "rules": declared(config, "rules"), "rule_installations": [{"repository": x["repository"], "status": x["status"], "installed": x["installed"]} for x in installations], "references": declared(config, "references"), "declared_files": declared_files,
-        "checks": config["checks"], "gates": config["gates"], "adapters": config["adapters"], "required_capabilities": config["required_capabilities"], "documentation_targets": declared(config, "documentation"),
+        "checks": config["checks"], "gates": config["gates"], "adapters": config["adapters"], "required_capabilities": config["required_capabilities"], "feature_bootstrap": feature_bootstrap(config), "documentation_targets": declared(config, "documentation"),
         "notifications": declared(config, "notifications"), "integration": config["integration"], "production": config["production"],
         "delivery": config["delivery"], "cleanup": config["cleanup"],
-        "reminders": ["Prepare feature ref before the first edit", "Complete declared documentation readiness and completion gates", "Record every declared notification disposition", "Production execution is delegated; record only observed handoff and delivery evidence"],
+        "reminders": ["Publish the unchanged feature ref before the first edit; use only its declared bootstrap CI policy and fall back to a passed pipeline", "Complete declared documentation readiness and completion gates", "Record every declared notification disposition", "Production execution is delegated; record only observed handoff and delivery evidence"],
         "blockers": blockers, "ready": not blockers, "mutates_repository": False,
     }
     plan["plan_sha256"] = digest(plan)
@@ -625,6 +679,8 @@ def load_bound(root: Path, plan_path: Path, state_path: Path) -> tuple[dict[str,
         raise LifecycleError("configuration changed after planning")
     if state.get("plan_sha256") != plan.get("plan_sha256"):
         raise LifecycleError("state is bound to another plan")
+    if plan.get("feature_bootstrap", []) != feature_bootstrap(config):
+        raise LifecycleError("plan feature_bootstrap does not match configuration")
     if not plan.get("ready"):
         raise LifecycleError("plan contains blockers")
     validate_state_invariants(config, plan, state)
@@ -717,13 +773,53 @@ def cmd_advance(args: argparse.Namespace) -> dict[str, Any]:
             for x in document.get("subjects", []) if x.get("kind") == kind
         }
     if name == "feature-prepared":
+        ref_subjects = [item for item in checkpoint["subjects"] if item["kind"] == "ref"]
         expected_refs = {
             (repository, plan["feature_ref"])
             for repository in declared(config, "repositories")
         }
-        if repository_identities(checkpoint, "ref") != expected_refs:
+        if (
+            len(ref_subjects) != len(expected_refs)
+            or repository_identities(checkpoint, "ref") != expected_refs
+        ):
             raise LifecycleError(
                 "feature-prepared ref does not match planned feature_ref for every repository"
+            )
+        bootstrap_repositories = {
+            item["repository"] for item in plan.get("feature_bootstrap", [])
+        }
+        planned_heads = {
+            item["name"]: item["head"]
+            for item in plan.get("repositories", [])
+            if item.get("name") in bootstrap_repositories
+        }
+        bootstrap_commits = [
+            item for item in checkpoint["subjects"]
+            if item["kind"] == "commit" and item["repository"] in bootstrap_repositories
+        ]
+        if (
+            len(bootstrap_commits) != len(bootstrap_repositories)
+            or {
+                item["repository"]: item["identity"] for item in bootstrap_commits
+            } != planned_heads
+        ):
+            raise LifecycleError(
+                "feature-prepared bootstrap commit does not match the planned unchanged base"
+            )
+        dispositions = {
+            item["repository"]: item["role"]
+            for item in checkpoint["subjects"]
+            if item["kind"] == "ref" and item["repository"] in bootstrap_repositories
+        }
+        invalid = sorted(
+            repository
+            for repository in bootstrap_repositories
+            if dispositions.get(repository) not in BOOTSTRAP_CI_DISPOSITIONS
+        )
+        if invalid:
+            raise LifecycleError(
+                "feature-prepared lacks an observable bootstrap CI disposition for: "
+                + ", ".join(invalid)
             )
     green = state["completed"].get("tdd-green")
     if green and name in {"review-complete", "push-verified", "feature-published", "feature-pipeline"}:

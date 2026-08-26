@@ -434,6 +434,149 @@ class VerifiedDevelopmentLifecycleTests(unittest.TestCase):
         with self.assertRaisesRegex(LIFECYCLE.LifecycleError, "route_label"):
             LIFECYCLE.validate_config(bad)
 
+    def test_bootstrap_ci_supports_github_and_gitlab_without_commit_markers(self) -> None:
+        for mechanism in (
+            "github-actions-unchanged-ref-guard",
+            "gitlab-ci-skip-push-option",
+        ):
+            config = self.make_config()
+            config["repositories"][0]["bootstrap_ci"] = {
+                "policy": "suppress-unchanged",
+                "adapter": "project-adapter",
+                "mechanism": mechanism,
+                "fallback": "run-pipeline",
+                "evidence_required": True,
+            }
+            config["adapters"][0]["capabilities"] = sorted(
+                set(config["adapters"][0]["capabilities"])
+                | {"scm.suppress-bootstrap-pipeline"}
+            )
+            config["required_capabilities"] = sorted(
+                set(config["required_capabilities"])
+                | {"scm.suppress-bootstrap-pipeline"}
+            )
+            LIFECYCLE.validate_config(config)
+
+        bad = self.make_config()
+        bad["repositories"][0]["bootstrap_ci"] = {
+            "policy": "suppress-unchanged",
+            "adapter": "project-adapter",
+            "mechanism": "commit-message-skip-marker",
+            "fallback": "run-pipeline",
+            "evidence_required": True,
+        }
+        with self.assertRaisesRegex(LIFECYCLE.LifecycleError, "bootstrap_ci mechanism"):
+            LIFECYCLE.validate_config(bad)
+
+        missing_capability = self.make_config()
+        missing_capability["repositories"][0]["bootstrap_ci"] = {
+            "policy": "suppress-unchanged",
+            "adapter": "project-adapter",
+            "mechanism": "gitlab-ci-skip-push-option",
+            "fallback": "run-pipeline",
+            "evidence_required": True,
+        }
+        missing_capability["adapters"][0]["capabilities"].remove(
+            "scm.suppress-bootstrap-pipeline"
+        )
+        missing_capability["required_capabilities"].remove(
+            "scm.suppress-bootstrap-pipeline"
+        )
+        with self.assertRaisesRegex(LIFECYCLE.LifecycleError, "adapter lacks"):
+            LIFECYCLE.validate_config(missing_capability)
+
+    def test_plan_and_feature_prepared_bind_bootstrap_ci_disposition(self) -> None:
+        self.config["repositories"][0]["bootstrap_ci"] = {
+            "policy": "suppress-unchanged",
+            "adapter": "project-adapter",
+            "mechanism": "gitlab-ci-skip-push-option",
+            "fallback": "run-pipeline",
+            "evidence_required": True,
+        }
+        write_json(self.source, self.config)
+        self.configure()
+        plan_path, state_path, plan = self.make_plan()
+
+        self.assertEqual(
+            [{
+                "repository": "app",
+                "policy": "suppress-unchanged",
+                "adapter": "project-adapter",
+                "mechanism": "gitlab-ci-skip-push-option",
+                "fallback": "run-pipeline",
+                "evidence_required": True,
+            }],
+            plan["feature_bootstrap"],
+        )
+
+        original_state = read_json(state_path)
+        tampered_plan = read_json(plan_path)
+        tampered_plan["feature_bootstrap"] = []
+        tampered_plan["plan_sha256"] = LIFECYCLE.digest(tampered_plan, "plan_sha256")
+        tampered_state = dict(original_state)
+        tampered_state["plan_sha256"] = tampered_plan["plan_sha256"]
+        tampered_state["state_sha256"] = LIFECYCLE.digest(
+            tampered_state, "state_sha256"
+        )
+        write_json(plan_path, tampered_plan)
+        write_json(state_path, tampered_state)
+        with self.assertRaisesRegex(LIFECYCLE.LifecycleError, "does not match configuration"):
+            self.advance(plan_path, state_path, self.checkpoint(tampered_plan, "task-claimed"))
+        write_json(plan_path, plan)
+        write_json(state_path, original_state)
+
+        self.advance(plan_path, state_path, self.checkpoint(plan, "task-claimed"))
+        checkpoint = self.checkpoint(plan, "feature-prepared")
+        next(subject for subject in checkpoint["subjects"] if subject["kind"] == "commit")[
+            "identity"
+        ] = plan["repositories"][0]["head"]
+        self.rebind_evidence(checkpoint)
+        with self.assertRaisesRegex(LIFECYCLE.LifecycleError, "bootstrap CI disposition"):
+            self.advance(plan_path, state_path, checkpoint)
+
+        next(subject for subject in checkpoint["subjects"] if subject["kind"] == "ref")[
+            "role"
+        ] = "bootstrap-ci-suppressed"
+        commit_subject = next(
+            subject for subject in checkpoint["subjects"] if subject["kind"] == "commit"
+        )
+        commit_subject["identity"] = "b" * 40
+        self.rebind_evidence(checkpoint)
+        with self.assertRaisesRegex(LIFECYCLE.LifecycleError, "planned unchanged base"):
+            self.advance(plan_path, state_path, checkpoint)
+
+        commit_subject["identity"] = plan["repositories"][0]["head"]
+        checkpoint["subjects"].append(dict(
+            next(subject for subject in checkpoint["subjects"] if subject["kind"] == "ref")
+        ))
+        self.rebind_evidence(checkpoint)
+        with self.assertRaisesRegex(LIFECYCLE.LifecycleError, "planned feature_ref"):
+            self.advance(plan_path, state_path, checkpoint)
+
+        checkpoint["subjects"].pop()
+        self.rebind_evidence(checkpoint)
+        result = self.advance(plan_path, state_path, checkpoint)
+        self.assertEqual("feature-prepared", result["current_checkpoint"])
+
+        fallback_plan = self.replan("bootstrap-fallback")
+        fallback_plan_path = self.artifacts / "plan-bootstrap-fallback.json"
+        fallback_state_path = self.artifacts / "state-bootstrap-fallback.json"
+        self.advance(
+            fallback_plan_path,
+            fallback_state_path,
+            self.checkpoint(fallback_plan, "task-claimed"),
+        )
+        fallback = self.checkpoint(fallback_plan, "feature-prepared")
+        next(subject for subject in fallback["subjects"] if subject["kind"] == "commit")[
+            "identity"
+        ] = fallback_plan["repositories"][0]["head"]
+        next(subject for subject in fallback["subjects"] if subject["kind"] == "ref")[
+            "role"
+        ] = "bootstrap-ci-fallback-passed"
+        self.rebind_evidence(fallback)
+        fallback_result = self.advance(fallback_plan_path, fallback_state_path, fallback)
+        self.assertEqual("feature-prepared", fallback_result["current_checkpoint"])
+
     def test_plan_and_state_outputs_must_be_distinct(self) -> None:
         self.configure()
         self.make_plan()

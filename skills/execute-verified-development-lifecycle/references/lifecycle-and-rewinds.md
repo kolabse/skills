@@ -5,7 +5,7 @@ The lifecycle is provider-neutral. External systems perform actions; this skill 
 ## Ordered checkpoints
 
 1. `task-claimed`: the configured task adapter reports one active owner and immutable task identity.
-2. `feature-prepared`: the isolated feature ref/workspace exists at the planned base before edits.
+2. `feature-prepared`: the isolated feature ref/workspace is remotely published at the planned base before edits. Every repository with `bootstrap_ci` records either proved suppression of unchanged bootstrap jobs or a successfully completed fallback pipeline.
 3. `tdd-red`: a relevant test failed for the expected missing behavior before implementation.
 4. `tdd-green`: the same behavior and configured local checks pass on the implementation commit.
 5. `changed-scope-preflight`: changed paths were compared with configured repository rules and references; all applicable checks, documentation, and notification duties are enumerated.
@@ -23,7 +23,7 @@ The lifecycle is provider-neutral. External systems perform actions; this skill 
 17. `documentation-complete`: final behavior, validation, delivery, limitations, and notification outcomes are documented as configured.
 18. `cleanup-proved`: each enumerated temporary resource is merged, identical-tree, patch-equivalent, or otherwise represented by a configured proof method; retained resources have explicit reasons.
 
-The configuration may disable only gates explicitly marked optional. Required gates cannot be skipped because a provider or environment is unavailable.
+The configuration may disable only gates explicitly marked optional. Required gates cannot be skipped because a provider or environment is unavailable. Bootstrap suppression applies only to the unchanged pre-edit publication; it never makes the later `feature-pipeline` optional.
 
 Planning runs Git with argv and `shell=False` for every configured repository. It requires the configured path to be the exact, non-symlink Git root; no operation in progress; a clean worktree including untracked files; an attached branch; and one matching HEAD, configured base, upstream, and supplied start/upstream identity. It also inspects every declared rule/reference as a regular non-symlink file within the project or repository boundary. Caller booleans are never accepted as proof of repository state.
 
