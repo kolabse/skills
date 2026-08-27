@@ -169,6 +169,154 @@ class VerifiedDevelopmentLifecycleTests(unittest.TestCase):
         self.assertFalse(status["mutates_repository"])
         self.assertFalse(migrated["changed"])
 
+    def test_missing_status_is_structured_and_points_to_bootstrap(self) -> None:
+        status = LIFECYCLE.cmd_status(Namespace(project_root=str(self.project)))
+
+        self.assertFalse(status["configured"])
+        self.assertTrue(status["bootstrap_required"])
+        self.assertTrue(status["valid"])
+        self.assertFalse(status["mutates_repository"])
+
+    def test_bootstrap_plans_then_creates_defaults_from_verified_project_contract(self) -> None:
+        verify_config = {
+            "version": 1,
+            "evidence_file": ".agents/verify-before-push/evidence.json",
+            "repositories": [
+                {
+                    "name": "application",
+                    "path": "app",
+                    "require_clean": True,
+                    "require_upstream_current": True,
+                }
+            ],
+            "checks": [
+                {
+                    "name": "unit-tests",
+                    "cwd": "app",
+                    "command": ["python", "-m", "unittest"],
+                    "timeout_seconds": 60,
+                    "required": True,
+                }
+            ],
+        }
+        write_json(
+            self.project / ".agents/verify-before-push/config.json", verify_config
+        )
+
+        planned = LIFECYCLE.cmd_bootstrap(
+            Namespace(project_root=str(self.project), agent="codex", apply=False, yes=False)
+        )
+
+        self.assertTrue(planned["ready"])
+        self.assertFalse(planned["configured"])
+        self.assertFalse(planned["mutates_repository"])
+        self.assertFalse(LIFECYCLE.project_config(self.project).exists())
+        self.assertEqual("origin/main", planned["config"]["repositories"][0]["base_ref"])
+        self.assertEqual("unit-tests", planned["config"]["checks"][0]["id"])
+        self.assertEqual("origin/main", planned["config"]["integration"]["development_ref"])
+
+        applied = LIFECYCLE.cmd_bootstrap(
+            Namespace(project_root=str(self.project), agent="codex", apply=True, yes=True)
+        )
+
+        self.assertTrue(applied["configured"])
+        self.assertTrue(applied["created"])
+        self.assertTrue(applied["mutates_repository"])
+        installed = LIFECYCLE.read_json(LIFECYCLE.project_config(self.project))
+        LIFECYCLE.validate_config(installed)
+
+        repeated = LIFECYCLE.cmd_bootstrap(
+            Namespace(project_root=str(self.project), agent="codex", apply=True, yes=True)
+        )
+        self.assertFalse(repeated["created"])
+        self.assertFalse(repeated["mutates_repository"])
+
+    def test_bootstrap_does_not_write_when_repository_scope_is_unknown(self) -> None:
+        empty_project = self.base / "empty-project"
+        empty_project.mkdir()
+
+        result = LIFECYCLE.cmd_bootstrap(
+            Namespace(project_root=str(empty_project), agent="codex", apply=True, yes=True)
+        )
+
+        self.assertFalse(result["ready"])
+        self.assertFalse(result["configured"])
+        self.assertTrue(result["blockers"])
+        self.assertFalse(LIFECYCLE.project_config(empty_project).exists())
+
+    def test_bootstrap_blocks_ambiguous_multi_repository_integration_role(self) -> None:
+        second = self.project / "docs-repository"
+        second.mkdir()
+        git(second, "init", "-b", "main")
+        git(second, "config", "user.email", "tests@example.invalid")
+        git(second, "config", "user.name", "Lifecycle Tests")
+        second_remote = self.base / "docs-remote.git"
+        subprocess.run(["git", "init", "--bare", str(second_remote)], capture_output=True, check=True)
+        git(second, "remote", "add", "origin", str(second_remote))
+        (second / "README.md").write_text("docs\n", encoding="utf-8")
+        git(second, "add", ".")
+        git(second, "commit", "-m", "Initial docs")
+        git(second, "push", "-u", "origin", "main")
+        verify_config = {
+            "version": 1,
+            "evidence_file": ".agents/verify-before-push/evidence.json",
+            "repositories": [
+                {"name": "application", "path": "app", "require_clean": True, "require_upstream_current": True},
+                {"name": "documentation", "path": "docs-repository", "require_clean": True, "require_upstream_current": True},
+            ],
+            "checks": [{"name": "unit-tests", "cwd": "app", "command": ["python", "-m", "unittest"], "timeout_seconds": 60, "required": True}],
+        }
+        write_json(self.project / ".agents/verify-before-push/config.json", verify_config)
+
+        result = LIFECYCLE.cmd_bootstrap(
+            Namespace(project_root=str(self.project), agent="codex", apply=True, yes=True)
+        )
+
+        self.assertFalse(result["ready"])
+        self.assertTrue(any("multiple repositories" in item for item in result["blockers"]))
+        self.assertFalse(LIFECYCLE.project_config(self.project).exists())
+
+    def test_bootstrap_does_not_use_feature_upstream_as_development_target(self) -> None:
+        git(self.repository, "switch", "-c", "feature/bootstrap-test")
+        git(self.repository, "push", "-u", "origin", "feature/bootstrap-test")
+        git(self.remote, "symbolic-ref", "HEAD", "refs/heads/main")
+        git(self.repository, "remote", "set-head", "origin", "--auto")
+        verify_config = {
+            "version": 1,
+            "evidence_file": ".agents/verify-before-push/evidence.json",
+            "repositories": [{"name": "application", "path": "app", "require_clean": True, "require_upstream_current": True}],
+            "checks": [{"name": "unit-tests", "cwd": "app", "command": ["python", "-m", "unittest"], "timeout_seconds": 60, "required": True}],
+        }
+        write_json(self.project / ".agents/verify-before-push/config.json", verify_config)
+
+        result = LIFECYCLE.cmd_bootstrap(
+            Namespace(project_root=str(self.project), agent="codex", apply=False, yes=False)
+        )
+
+        self.assertTrue(result["ready"])
+        self.assertEqual("origin/main", result["config"]["repositories"][0]["base_ref"])
+        self.assertEqual("origin/main", result["config"]["integration"]["development_ref"])
+
+    def test_bootstrap_blocks_feature_branch_when_remote_default_is_unknown(self) -> None:
+        git(self.repository, "switch", "-c", "feature/no-remote-head")
+        git(self.repository, "push", "-u", "origin", "feature/no-remote-head")
+        verify_config = {
+            "version": 1,
+            "evidence_file": ".agents/verify-before-push/evidence.json",
+            "repositories": [{"name": "application", "path": "app", "require_clean": True, "require_upstream_current": True}],
+            "checks": [{"name": "unit-tests", "cwd": "app", "command": ["python", "-m", "unittest"], "timeout_seconds": 60, "required": True}],
+        }
+        write_json(self.project / ".agents/verify-before-push/config.json", verify_config)
+
+        result = LIFECYCLE.cmd_bootstrap(
+            Namespace(project_root=str(self.project), agent="codex", apply=True, yes=True)
+        )
+
+        self.assertFalse(result["ready"])
+        self.assertFalse(result["configured"])
+        self.assertTrue(any("remote default is unknown" in item for item in result["blockers"]))
+        self.assertFalse(LIFECYCLE.project_config(self.project).exists())
+
     def test_newer_configuration_is_rejected(self) -> None:
         self.config["version"] = 2
         write_json(self.source, self.config)

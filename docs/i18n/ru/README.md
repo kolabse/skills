@@ -73,6 +73,17 @@ npx skills@1.5.22 add kolabse/skills --agent codex --copy -y
 npx skills@1.5.22 add kolabse/skills --agent claude-code --copy -y
 ```
 
+Для project-scoped установки сразу создайте lifecycle contract, если
+наблюдаемых defaults достаточно (используйте путь своего агента):
+
+```shell
+python .agents/skills/execute-verified-development-lifecycle/scripts/development_lifecycle.py bootstrap --project-root . --agent codex --apply --yes --json
+python .claude/skills/execute-verified-development-lifecycle/scripts/development_lifecycle.py bootstrap --project-root . --agent claude-code --apply --yes --json
+```
+
+Глобальная marketplace/plugin-установка не знает active project root, поэтому
+тот же bootstrap выполняется при первом использовании навыка в проекте.
+
 Codex ищет проектные навыки в `.agents/skills/` и вызывает их как
 `$skill-name`. Claude Code использует `.claude/skills/` и `/skill-name`.
 Инструкции и скрипты общие; правила проекта и синтаксис вызова выбираются при
@@ -171,6 +182,9 @@ Plan сообщает источник, текущие и целевые вер�
 Без имён manager выбирает только установленные навыки kolabse из project lock;
 посторонние навыки не обновляются. Для global scope имена указываются явно.
 Проектное обновление заканчивается той же fail-closed диагностикой, что doctor.
+Если обновляется `execute-verified-development-lifecycle`, manager также
+создаёт отсутствующий config там, где проектных фактов достаточно, и возвращает
+configuration outcome `created`, `configured` или `blocked`.
 
 `--include-user-config` нужен только для миграции пользовательской конфигурации
 Telegram. `status` и `doctor` read-only. `migrate` меняет только существующую
@@ -429,20 +443,25 @@ $execute-configured-gitflow-releases Выполни явный hotfix и про�
 Планирует и проверяет объявленный проектом путь от feature preparation до
 reviewed dev integration, delivery observation, документации и cleanup.
 
-**Что делает:** фиксирует digest-bound plan до edit, продвигает ordered
+**Что делает:** при managed update или первом вызове создаёт консервативный
+project config из наблюдаемых Git roots, upstream refs, checks и документации
+и сообщает все defaults; фиксирует digest-bound plan до edit, продвигает ordered
 checkpoints по retained evidence; проверяет feature-before-edit, test-first,
 preflight, review, push, pipeline, docs, integration, production delegation,
 delivery, smoke, notifications и cleanup; после ошибки возвращает к объявленной
 точке и инвалидирует downstream evidence.
 
-**Чего не делает:** не угадывает adapters, repo roles, gates или authorization;
+**Чего не делает:** не угадывает provider-specific adapters, repo roles,
+delivery policy или authorization при неоднозначных данных;
 сам не push/open/merge/deploy/notify/edit docs/delete; production остаётся у
 одобренного процесса вроде `$execute-configured-gitflow-releases`.
 
 Сначала установите обязательные `$synchronize-git-repositories`,
 `$develop-with-test-first-evidence`, `$verify-before-push` и
-`$review-code-changes`, затем project-owned v1 lifecycle contract. Опциональные
-навыки устанавливаются только для включённых checkpoints.
+`$review-code-changes`. Отсутствующий project-owned v1 lifecycle contract
+создаётся из наблюдаемых фактов до первого plan; проверьте и уточните defaults,
+если правила проекта задают более точную политику. Опциональные навыки
+устанавливаются только для включённых checkpoints.
 
 **Вызов:**
 

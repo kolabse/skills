@@ -70,6 +70,18 @@ npx skills@1.5.22 add kolabse/skills --agent codex --copy -y
 npx skills@1.5.22 add kolabse/skills --agent claude-code --copy -y
 ```
 
+Para una instalación con alcance de proyecto, cree inmediatamente el contrato
+del ciclo de vida cuando los valores observables sean suficientes (use la ruta
+de su agente):
+
+```shell
+python .agents/skills/execute-verified-development-lifecycle/scripts/development_lifecycle.py bootstrap --project-root . --agent codex --apply --yes --json
+python .claude/skills/execute-verified-development-lifecycle/scripts/development_lifecycle.py bootstrap --project-root . --agent claude-code --apply --yes --json
+```
+
+Una instalación global de marketplace/plugin no conoce el proyecto activo, por
+lo que la habilidad ejecuta el mismo bootstrap en el primer uso del proyecto.
+
 Codex descubre habilidades de proyecto bajo `.agents/skills/` y los invoca como
 `$skill-name`. Código de Claude los descubre bajo `.claude/skills/` e invocaciones
 como ellos `/skill-name`. Las instrucciones de habilidad y los scripts agrupados son compartidos;
@@ -178,6 +190,9 @@ cierre del proyecto y pasa esos nombres explícitamente al CLI externo; no relac
 las habilidades del proyecto nunca son parte de la actualización. Las actualizaciones mundiales requieren actualizaciones explícitas
 nombres de habilidades de colección. Las actualizaciones del proyecto terminan con el mismo cierre
 diagnóstico `doctor`.
+Cuando se actualiza `execute-verified-development-lifecycle`, el manager también
+crea la configuración ausente cuando los hechos del proyecto son suficientes y
+devuelve `created`, `configured` o `blocked` como resultado de configuración.
 
 Añadir `--include-user-config` sólo cuando la configuración del usuario de Telegram debe ser
 Migraron también. `status` y `doctor` son sólo lectura. `migrate` cambios
@@ -527,6 +542,9 @@ probada limpieza.
 
 - Congela un plan con digestión antes de la edición y avanza los puestos de control ordenados
   utilizar pruebas retenidas;
+- crea una configuración conservadora del proyecto durante una actualización
+  gestionada o el primer uso cuando los repositorios, upstream refs, checks y
+  documentación son observables, e informa cada valor predeterminado aplicado;
 - verifica características antes de editar, prueba-primero, cambio-scopio preflight, revisión,
   presión de estado exacto, tubería, documentación, integración de desarrollo,
   Delegadas de producción, entrega, humo, notificación y puertas de limpieza;
@@ -535,7 +553,8 @@ probada limpieza.
 
 **Lo que no hace:**
 
-- adaptadores de proveedores de inferencia, papeles de repositorio, puertas o autorización;
+- adivinar adaptadores específicos del proveedor, roles de repositorio,
+  política de entrega o autorización cuando la evidencia es ambigua;
 - push, open or merge reviews, deployment, notify, edit documentation, or delete
   los propios recursos;
 - ejecutar la producción, que sigue delegada en la versión aprobada
@@ -543,8 +562,10 @@ probada limpieza.
 
 Instalar y configurar sus habilidades requeridas primero: `$synchronize-git-repositories`,
 `$develop-with-test-first-evidence`, `$verify-before-push`, y
-`$review-code-changes`. Configurar el ciclo de vida de la versión-1 del proyecto
-contrato antes del primer plan. Instalar habilidades opcionales sólo cuando el proyecto
+`$review-code-changes`. Un contrato de ciclo de vida v1 ausente se crea a partir
+de hechos observables antes del primer plan; revise y refine sus valores
+predeterminados cuando el proyecto declare una política más específica.
+Instalar habilidades opcionales sólo cuando el proyecto
 permite sus puestos de control correspondientes: `$orchestrate-agent-work`,
 `$diagnose-software-defects`, `$resolve-git-conflicts`,
 `$coordinate-code-documentation-repositories`, `$maintain-work-log`,

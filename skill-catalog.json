@@ -1,6 +1,6 @@
 {
   "schema_version": 2,
-  "collection_version": "1.18.1",
+  "collection_version": "1.18.2",
   "supported_agents": [
     "claude-code",
     "codex"
@@ -247,7 +247,7 @@
       "configuration": {
         "scope": "project",
         "format": "managed-markdown",
-        "configure": [
+      "configure": [
           "python",
           "scripts/configure_project.py",
           "configure",
@@ -530,9 +530,19 @@
           "--project-root",
           "<project-root>",
           "--config-source",
-          "<config.json>"
-        ],
-        "status": [
+        "<config.json>"
+      ],
+      "bootstrap": [
+        "python",
+        "scripts/development_lifecycle.py",
+        "bootstrap",
+        "--project-root",
+        "<project-root>",
+        "--apply",
+        "--yes",
+        "--json"
+      ],
+      "status": [
           "python",
           "scripts/development_lifecycle.py",
           "status",

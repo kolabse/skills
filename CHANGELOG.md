@@ -2,6 +2,19 @@
 
 ## [Unreleased]
 
+## [1.18.2] - 2026-08-27
+
+### Fixed
+
+- `execute-verified-development-lifecycle` now bootstraps a missing project
+  configuration after project-scoped managed updates and on first use. It
+  reuses declared `verify-before-push` repositories and checks, verifies exact
+  Git roots and tracked upstreams, reports every conservative default, refuses
+  ambiguous repository scopes, and never overwrites an existing contract.
+- Missing lifecycle configuration now has structured `status` output instead
+  of an opaque file-read error, so project diagnostics can distinguish an
+  unconfigured skill from a broken configuration.
+
 ## [1.18.1] - 2026-08-26
 
 ### Fixed
@@ -522,6 +535,7 @@ First versioned release of the kolabse skill collection.
 - Tests for configuration migration, fake cloud and infrastructure CLIs,
   installation confirmation, and collection metadata.
 
+[1.18.2]: https://github.com/kolabse/skills/releases/tag/v1.18.2
 [1.18.1]: https://github.com/kolabse/skills/releases/tag/v1.18.1
 [1.18.0]: https://github.com/kolabse/skills/releases/tag/v1.18.0
 [1.17.0]: https://github.com/kolabse/skills/releases/tag/v1.17.0

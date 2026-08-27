@@ -29,6 +29,19 @@
         "additionalProperties": false
       }
     },
+    "configuration": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["skill", "status", "result"],
+        "properties": {
+          "skill": {"type": "string"},
+          "status": {"enum": ["created", "configured", "blocked"]},
+          "result": {"type": "object"}
+        },
+        "additionalProperties": false
+      }
+    },
     "migrations": {"type": "array"},
     "migration": {"type": "object"}
   },
