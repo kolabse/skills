@@ -67,7 +67,11 @@ Every `configure` call must then pass the planned `--backend` explicitly.
 
 For `google-drive`, read
 [references/google-drive-backend.md](references/google-drive-backend.md) before
-any connector action and follow its verified download/hydration/upload flow.
+any connector action. An unconfigured computer must completely enumerate and
+validate the approved Drive namespace, then run `drive-mapping-plan` before any
+remote write. Reuse its unique fingerprint match; create a new mapping only
+from a sealed zero-match plan. Follow the reference's verified
+download/hydration/upload flow.
 For `local-folder`, continue below.
 
 ## Configure a local folder on each computer

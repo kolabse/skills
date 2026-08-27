@@ -2,6 +2,16 @@
 
 ## [Unreleased]
 
+## [1.18.3] - 2026-08-27
+
+### Fixed
+
+- `sync-project-context` now discovers and reuses a unique existing Google
+  Drive mapping by repository fingerprint on a newly configured computer
+  before any remote write. The new digest-sealed mapping plan validates a
+  complete paginated private-Drive inventory, blocks duplicate or untrusted
+  namespaces, and permits creation only after a verified zero-match result.
+
 ## [1.18.2] - 2026-08-27
 
 ### Fixed
@@ -535,6 +545,7 @@ First versioned release of the kolabse skill collection.
 - Tests for configuration migration, fake cloud and infrastructure CLIs,
   installation confirmation, and collection metadata.
 
+[1.18.3]: https://github.com/kolabse/skills/releases/tag/v1.18.3
 [1.18.2]: https://github.com/kolabse/skills/releases/tag/v1.18.2
 [1.18.1]: https://github.com/kolabse/skills/releases/tag/v1.18.1
 [1.18.0]: https://github.com/kolabse/skills/releases/tag/v1.18.0

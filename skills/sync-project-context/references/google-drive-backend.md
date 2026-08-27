@@ -7,25 +7,74 @@ serialization boundary.
 
 ## Configure
 
-1. Create a temporary directory outside every Git worktree.
-2. Prepare the immutable marker:
+1. Create a temporary directory outside every Git worktree. Search the whole
+   approved My Drive scope for every unshared folder named
+   `Codex Project Context`; never select only the first same-named result, use
+   a Shared Drive, or use a folder whose private visibility cannot be verified.
+2. Before creating anything, enumerate every discovered namespace completely
+   with paginated Drive `search` calls. A one-page `list_folder` result is not
+   proof of completeness. Follow every `next_page_token` until the terminal
+   response, and download every existing `project.json` as raw bytes.
+3. Normalize the observed metadata, complete page evidence, downloaded marker
+   paths, SHA-256 digests, a new opaque `observation_id`, and the current UTC
+   `observed_at` into
+   [drive-mapping-inventory.schema.json](../schemas/drive-mapping-inventory.schema.json).
+   Include the complete parent search, every same-named namespace, every direct
+   project folder, its complete direct children, and the complete contents of
+   its `checkpoints` folder. Then produce a sealed, read-only decision:
+
+   ```shell
+   python <skill-root>/scripts/context_sync.py drive-mapping-plan \
+     --project-path <project-root> \
+     --inventory <temporary-directory>/drive-inventory.json \
+     --output <temporary-directory>/drive-mapping-plan.json --json
+   ```
+
+   Stop on an incomplete listing, an unexpected object, unverifiable sharing,
+   an invalid marker, or multiple matching repository fingerprints. Do not
+   guess which duplicate is canonical.
+4. If no parent exists, the plan says `create-parent`. Create only the private,
+   unshared `Codex Project Context` parent, read its metadata back, and restart
+   the complete inventory and planning sequence. Do not create a project folder
+   from a `create-parent` plan.
+5. If the plan says `reuse`, immediately repeat the complete connector
+   enumeration and raw marker downloads into a fresh inventory. Save the
+   existing mapping locally only when this readback still has exactly the
+   planned IDs, private metadata, repository fingerprint, and marker digest.
+   Give the readback a different observation ID and later UTC timestamp; both
+   observations expire after five minutes. No remote write is allowed in this
+   path:
+
+   ```shell
+   python <skill-root>/scripts/context_sync.py configure \
+     --backend google-drive --project-path <project-root> \
+     --mapping-plan <temporary-directory>/drive-mapping-plan.json \
+     --readback-inventory <temporary-directory>/fresh-drive-inventory.json \
+     --mode metadata-only --acknowledge-storage-policy --json
+   ```
+
+6. Only if the sealed plan says `create`, prepare the immutable marker:
 
    ```shell
    python <skill-root>/scripts/context_sync.py prepare-drive-marker \
      --project-path <project-root> \
+     --mapping-plan <temporary-directory>/drive-mapping-plan.json \
      --output <temporary-directory>/project.json \
      --acknowledge-storage-policy --json
    ```
 
-3. Through `$google-drive`, locate or create an unshared parent folder named
-   `Codex Project Context`. Under it create a folder named with the returned
-   opaque `project_id`, then create its `checkpoints` child folder. Do not alter
-   existing sharing or reuse a same-named folder until its IDs and contents
-   have been inspected.
-4. Upload `project.json` to the project folder. Read back its metadata and raw
-   content. Continue only when the observed file ID, name, parent, and bytes
-   match the prepared marker.
-5. Save the verified IDs locally:
+   Immediately before the first write, repeat the complete search and regenerate
+   the plan. Continue only if it is still the same zero-match create decision.
+   Under its sole verified parent, create exactly one folder named with the
+   deterministic planned `project_id`. Search again before creating its
+   children; continue only if exactly that one folder exists. Then create the
+   `checkpoints` child and `project.json`. Search the whole namespace again and
+   block if a duplicate appeared. Google Drive has no atomic unique-name
+   constraint, so these before/after checks are mandatory and a detected race
+   is never reported as successful configuration.
+7. Read back the new objects' metadata and raw marker bytes. Continue only when
+   IDs, names, parents, privacy metadata, and bytes match the prepared marker.
+   Save the verified IDs locally with the explicit legacy arguments:
 
    ```shell
    python <skill-root>/scripts/context_sync.py configure \
