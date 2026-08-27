@@ -20,7 +20,7 @@ Evidence for a later identity must trace to the earlier immutable subject. A suc
 The helper requires exactly these checkpoint-specific assertion names (except an optional skipped gate, which uses only `not-required-by-config`):
 
 - `task-claimed`: `task-identity-observed`, `single-owner-confirmed`.
-- `feature-prepared`: `feature-ref-created`, `base-identity-matches`, `no-edits-before-feature`; when the plan contains `feature_bootstrap`, also `bootstrap-ci-outcome-observed`. For every configured bootstrap repository, the bound `ref` subject role is `bootstrap-ci-suppressed` or `bootstrap-ci-fallback-passed` and exactly one `check-run` or `pipeline` subject binds the same disposition to its immutable provider ID, as defined in [`bootstrap-ci-suppression.md`](bootstrap-ci-suppression.md).
+- `feature-prepared`: `feature-ref-created`, `base-identity-matches`, `no-edits-before-feature`; when the plan contains `feature_bootstrap`, also `bootstrap-ci-outcome-observed`. For every configured bootstrap repository, the bound `ref` subject role is `bootstrap-ci-suppressed` or `bootstrap-ci-fallback-passed` and exactly one mechanism-specific `check-run` or `pipeline` subject binds the same disposition to its positive decimal provider run ID, as defined in [`bootstrap-ci-suppression.md`](bootstrap-ci-suppression.md).
 - `tdd-red`: `relevant-test-failed`, `failure-matches-missing-behavior`.
 - `tdd-green`: `relevant-test-passed`, `required-local-checks-passed`.
 - `changed-scope-preflight`: `changed-scope-covered`, `repository-rules-covered`, `references-covered`.

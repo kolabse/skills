@@ -111,6 +111,11 @@ BOOTSTRAP_CI_DISPOSITIONS = {
     "bootstrap-ci-fallback-passed",
 }
 BOOTSTRAP_CI_OBSERVATION_KINDS = {"check-run", "pipeline"}
+BOOTSTRAP_CI_OBSERVATION_KIND_BY_MECHANISM = {
+    "github-actions-unchanged-ref-guard": "check-run",
+    "gitlab-ci-skip-push-option": "pipeline",
+}
+PROVIDER_RUN_ID_RE = re.compile(r"^[1-9][0-9]{0,31}$")
 
 
 class LifecycleError(Exception):
@@ -776,8 +781,14 @@ def cmd_advance(args: argparse.Namespace) -> dict[str, Any]:
             raise LifecycleError(f"subject {kind} identity is not a commit-like SHA")
         if kind == "ref" and not REF_RE.fullmatch(identity):
             raise LifecycleError("subject ref identity is invalid")
-        if kind in BOOTSTRAP_CI_OBSERVATION_KINDS and not REF_RE.fullmatch(identity):
-            raise LifecycleError(f"subject {kind} identity is invalid")
+        if (
+            name == "feature-prepared"
+            and kind in BOOTSTRAP_CI_OBSERVATION_KINDS
+            and not PROVIDER_RUN_ID_RE.fullmatch(identity)
+        ):
+            raise LifecycleError(
+                f"subject {kind} identity must be a positive decimal provider run ID"
+            )
         seen_kinds.add(kind)
     missing_kinds = sorted(SUBJECT_KINDS[name] - seen_kinds)
     if missing_kinds:
@@ -865,6 +876,22 @@ def cmd_advance(args: argparse.Namespace) -> dict[str, Any]:
             raise LifecycleError(
                 "feature-prepared bootstrap CI observation disposition does not match its ref for: "
                 + ", ".join(mismatched_observations)
+            )
+        bootstrap_by_repository = {
+            item["repository"]: item for item in plan.get("feature_bootstrap", [])
+        }
+        mismatched_kinds = sorted(
+            item["repository"]
+            for item in observations
+            if item["kind"]
+            != BOOTSTRAP_CI_OBSERVATION_KIND_BY_MECHANISM[
+                bootstrap_by_repository[item["repository"]]["mechanism"]
+            ]
+        )
+        if mismatched_kinds:
+            raise LifecycleError(
+                "feature-prepared bootstrap CI observation kind does not match its configured mechanism for: "
+                + ", ".join(mismatched_kinds)
             )
         if len({(item["kind"], item["identity"]) for item in observations}) != len(observations):
             raise LifecycleError("feature-prepared bootstrap CI observation identities must be unique")

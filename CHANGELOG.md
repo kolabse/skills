@@ -9,8 +9,9 @@
 - `execute-verified-development-lifecycle` can now publish an unchanged feature
   ref before editing without running duplicate heavy CI jobs. Projects opt in
   per repository to a GitHub Actions unchanged-ref guard or GitLab `ci.skip`
-  push option, retain an observable suppression or passed-fallback disposition,
-  and still require the full pipeline for the implementation commit.
+  push option, bind the observed suppression or passed-fallback disposition to
+  the declared mechanism and provider-issued run ID, and still require the full
+  pipeline for the implementation commit.
 
 ## [1.18.0] - 2026-08-25
 

@@ -587,10 +587,24 @@ class VerifiedDevelopmentLifecycleTests(unittest.TestCase):
 
         checkpoint["subjects"].append({
             "kind": "pipeline",
-            "role": "bootstrap-ci-fallback-passed",
+            "role": "bootstrap-ci-suppressed",
             "repository": "app",
             "identity": "gitlab-pipeline-12345",
         })
+        for invalid_provider_id in ("gitlab-pipeline-12345", "0", "0123"):
+            checkpoint["subjects"][-1]["identity"] = invalid_provider_id
+            self.rebind_evidence(checkpoint)
+            with self.assertRaisesRegex(LIFECYCLE.LifecycleError, "provider run ID"):
+                self.advance(plan_path, state_path, checkpoint)
+
+        checkpoint["subjects"][-1]["identity"] = "12345"
+        checkpoint["subjects"][-1]["kind"] = "check-run"
+        self.rebind_evidence(checkpoint)
+        with self.assertRaisesRegex(LIFECYCLE.LifecycleError, "configured mechanism"):
+            self.advance(plan_path, state_path, checkpoint)
+
+        checkpoint["subjects"][-1]["kind"] = "pipeline"
+        checkpoint["subjects"][-1]["role"] = "bootstrap-ci-fallback-passed"
         self.rebind_evidence(checkpoint)
         with self.assertRaisesRegex(LIFECYCLE.LifecycleError, "does not match its ref"):
             self.advance(plan_path, state_path, checkpoint)
@@ -619,11 +633,45 @@ class VerifiedDevelopmentLifecycleTests(unittest.TestCase):
             "kind": "pipeline",
             "role": "bootstrap-ci-fallback-passed",
             "repository": "app",
-            "identity": "gitlab-pipeline-12346",
+            "identity": "12346",
         })
         self.rebind_evidence(fallback)
         fallback_result = self.advance(fallback_plan_path, fallback_state_path, fallback)
         self.assertEqual("feature-prepared", fallback_result["current_checkpoint"])
+
+    def test_feature_prepared_binds_github_classifier_check_run(self) -> None:
+        self.config["repositories"][0]["bootstrap_ci"] = {
+            "policy": "suppress-unchanged",
+            "adapter": "project-adapter",
+            "mechanism": "github-actions-unchanged-ref-guard",
+            "fallback": "run-pipeline",
+            "evidence_required": True,
+        }
+        self.config["adapters"][0]["bootstrap_mechanisms"] = [
+            "github-actions-unchanged-ref-guard"
+        ]
+        write_json(self.source, self.config)
+        self.configure()
+        plan_path, state_path, plan = self.make_plan()
+        self.advance(plan_path, state_path, self.checkpoint(plan, "task-claimed"))
+
+        checkpoint = self.checkpoint(plan, "feature-prepared")
+        next(subject for subject in checkpoint["subjects"] if subject["kind"] == "commit")[
+            "identity"
+        ] = plan["repositories"][0]["head"]
+        next(subject for subject in checkpoint["subjects"] if subject["kind"] == "ref")[
+            "role"
+        ] = "bootstrap-ci-suppressed"
+        checkpoint["subjects"].append({
+            "kind": "check-run",
+            "role": "bootstrap-ci-suppressed",
+            "repository": "app",
+            "identity": "987654321",
+        })
+        self.rebind_evidence(checkpoint)
+
+        result = self.advance(plan_path, state_path, checkpoint)
+        self.assertEqual("feature-prepared", result["current_checkpoint"])
 
     def test_plan_and_state_outputs_must_be_distinct(self) -> None:
         self.configure()
