@@ -1,6 +1,6 @@
 {
   "schema_version": 2,
-  "collection_version": "1.18.1",
+  "collection_version": "1.18.2",
   "supported_agents": [
     "claude-code",
     "codex"

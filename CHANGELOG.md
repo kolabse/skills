@@ -2,6 +2,8 @@
 
 ## [Unreleased]
 
+## [1.18.2] - 2026-08-27
+
 ### Fixed
 
 - `execute-verified-development-lifecycle` now bootstraps a missing project
@@ -533,6 +535,7 @@ First versioned release of the kolabse skill collection.
 - Tests for configuration migration, fake cloud and infrastructure CLIs,
   installation confirmation, and collection metadata.
 
+[1.18.2]: https://github.com/kolabse/skills/releases/tag/v1.18.2
 [1.18.1]: https://github.com/kolabse/skills/releases/tag/v1.18.1
 [1.18.0]: https://github.com/kolabse/skills/releases/tag/v1.18.0
 [1.17.0]: https://github.com/kolabse/skills/releases/tag/v1.17.0
