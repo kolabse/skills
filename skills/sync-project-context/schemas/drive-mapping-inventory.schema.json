@@ -1,0 +1,75 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/kolabse/skills/sync-project-context/drive-mapping-inventory.schema.json",
+  "title": "Complete private Google Drive mapping inventory",
+  "$defs": {
+    "object": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "title", "mime_type", "parent_ids", "file_or_folder", "drive_id", "shared", "source_visibility_status", "can_list_children", "can_download"],
+      "properties": {
+        "id": {"type": "string", "pattern": "^[A-Za-z0-9_-]+$"},
+        "title": {"type": "string", "minLength": 1},
+        "mime_type": {"enum": ["application/vnd.google-apps.folder", "application/json"]},
+        "parent_ids": {"type": "array", "minItems": 1, "uniqueItems": true, "items": {"type": "string", "pattern": "^[A-Za-z0-9_-]+$"}},
+        "file_or_folder": {"enum": ["file", "folder"]},
+        "drive_id": {"type": "null"},
+        "shared": {"const": false},
+        "source_visibility_status": {"const": "not_shared"},
+        "can_list_children": {"type": ["boolean", "null"]},
+        "can_download": {"type": ["boolean", "null"]}
+      }
+    },
+    "listing": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["complete", "page_count", "terminal_page_token", "children"],
+      "properties": {
+        "complete": {"const": true},
+        "page_count": {"type": "integer", "minimum": 1},
+        "terminal_page_token": {"type": "null"},
+        "children": {"type": "array", "items": {"$ref": "#/$defs/object"}}
+      }
+    },
+    "project": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["folder", "listing", "marker", "checkpoints_listing"],
+      "properties": {
+        "folder": {"$ref": "#/$defs/object"},
+        "listing": {"$ref": "#/$defs/listing"},
+        "marker": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["file_id", "path", "sha256"],
+          "properties": {
+            "file_id": {"type": "string", "pattern": "^[A-Za-z0-9_-]+$"},
+            "path": {"type": "string", "minLength": 1},
+            "sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"}
+          }
+        },
+        "checkpoints_listing": {"$ref": "#/$defs/listing"}
+      }
+    },
+    "namespace": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["parent", "listing", "projects"],
+      "properties": {
+        "parent": {"$ref": "#/$defs/object"},
+        "listing": {"$ref": "#/$defs/listing"},
+        "projects": {"type": "array", "items": {"$ref": "#/$defs/project"}}
+      }
+    }
+  },
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "observation_id", "observed_at", "parent_search", "namespaces"],
+  "properties": {
+    "schema_version": {"const": 1},
+    "observation_id": {"type": "string", "pattern": "^observation-[0-9a-f]{32}$"},
+    "observed_at": {"type": "string", "format": "date-time"},
+    "parent_search": {"$ref": "#/$defs/listing"},
+    "namespaces": {"type": "array", "items": {"$ref": "#/$defs/namespace"}}
+  }
+}

@@ -29,6 +29,22 @@ MAX_ITEM = 2000
 MAX_ITEMS = 100
 MAX_THREAD_ID = 512
 MAX_SOURCE_MARKER = 512
+MAX_DRIVE_MARKER_BYTES = 16 * 1024
+MAX_DRIVE_INVENTORY_AGE_SECONDS = 5 * 60
+DRIVE_FOLDER_MIME = "application/vnd.google-apps.folder"
+DRIVE_JSON_MIME = "application/json"
+DRIVE_OBJECT_FIELDS = {
+    "id",
+    "title",
+    "mime_type",
+    "parent_ids",
+    "file_or_folder",
+    "drive_id",
+    "shared",
+    "source_visibility_status",
+    "can_list_children",
+    "can_download",
+}
 CONTEXT_LIST_FIELDS = (
     "rationale",
     "discussions",
@@ -697,6 +713,455 @@ def load_project_marker_file(path: Path) -> dict[str, Any]:
     return marker
 
 
+def load_discovery_project_marker(path: Path, expected_sha256: str) -> dict[str, Any]:
+    if not re.fullmatch(r"[0-9a-f]{64}", expected_sha256):
+        raise ContextSyncError("Drive marker digest is invalid")
+    try:
+        payload = path.read_bytes()
+    except OSError as error:
+        raise ContextSyncError(f"Drive marker cannot be read: {path}") from error
+    if len(payload) > MAX_DRIVE_MARKER_BYTES:
+        raise ContextSyncError("Drive marker is too large")
+    if hashlib.sha256(payload).hexdigest() != expected_sha256:
+        raise ContextSyncError("Drive marker digest does not match downloaded bytes")
+    try:
+        marker = json.loads(payload.decode("utf-8"))
+    except (UnicodeDecodeError, json.JSONDecodeError) as error:
+        raise ContextSyncError(f"Drive marker is invalid: {error}") from error
+    if not isinstance(marker, dict) or marker.get("schema_version") != 1:
+        raise ContextSyncError("Drive marker version is unsupported")
+    if scan_secrets(marker):
+        raise ContextSyncError("Drive marker contains a possible secret")
+    if set(marker) != {
+        "schema_version",
+        "project_id",
+        "repository_fingerprint",
+        "created_at",
+    }:
+        raise ContextSyncError("Drive marker has unexpected or missing fields")
+    project_id = marker.get("project_id")
+    fingerprint = marker.get("repository_fingerprint")
+    created_at = marker.get("created_at")
+    if not isinstance(project_id, str) or not PROJECT_ID_PATTERN.fullmatch(project_id):
+        raise ContextSyncError("Drive marker project_id is invalid")
+    if not isinstance(fingerprint, str) or not re.fullmatch(r"[0-9a-f]{64}", fingerprint):
+        raise ContextSyncError("Drive marker repository fingerprint is invalid")
+    if not isinstance(created_at, str) or not created_at.endswith("Z"):
+        raise ContextSyncError("Drive marker timestamp is invalid")
+    try:
+        datetime.fromisoformat(created_at[:-1] + "+00:00")
+    except ValueError as error:
+        raise ContextSyncError("Drive marker timestamp is invalid") from error
+    return marker
+
+
+def validate_drive_object(
+    value: object,
+    *,
+    expected_parent: str | None,
+    expected_kind: str,
+    expected_title: str | None = None,
+) -> dict[str, Any]:
+    if not isinstance(value, dict) or set(value) != DRIVE_OBJECT_FIELDS:
+        raise ContextSyncError("Drive inventory object shape is invalid")
+    identifier = value.get("id")
+    title = value.get("title")
+    parent_ids = value.get("parent_ids")
+    if not isinstance(identifier, str) or not re.fullmatch(r"[A-Za-z0-9_-]+", identifier):
+        raise ContextSyncError("Drive inventory object id is invalid")
+    if not isinstance(title, str) or not title.strip():
+        raise ContextSyncError("Drive inventory object title is invalid")
+    if expected_title is not None and title != expected_title:
+        raise ContextSyncError("Drive inventory object title is unexpected")
+    if (
+        not isinstance(parent_ids, list)
+        or not parent_ids
+        or not all(isinstance(item, str) and item for item in parent_ids)
+        or len(parent_ids) != len(set(parent_ids))
+    ):
+        raise ContextSyncError("Drive inventory parent ids are invalid")
+    if expected_parent is not None and parent_ids != [expected_parent]:
+        raise ContextSyncError("Drive inventory object has an unexpected parent")
+    if value.get("drive_id") is not None:
+        raise ContextSyncError("Drive inventory object is stored in a shared drive")
+    if value.get("shared") is not False:
+        raise ContextSyncError("Drive inventory object is shared")
+    if value.get("source_visibility_status") != "not_shared":
+        raise ContextSyncError("Drive inventory object visibility is not verified private")
+    if expected_kind == "folder":
+        if (
+            value.get("file_or_folder") != "folder"
+            or value.get("mime_type") != DRIVE_FOLDER_MIME
+            or value.get("can_list_children") is not True
+            or value.get("can_download") is not None
+        ):
+            raise ContextSyncError("Drive inventory folder metadata is invalid")
+    elif (
+        value.get("file_or_folder") != "file"
+        or value.get("mime_type") != DRIVE_JSON_MIME
+        or value.get("can_download") is not True
+        or value.get("can_list_children") is not None
+    ):
+        raise ContextSyncError("Drive inventory file metadata is invalid")
+    return value
+
+
+def validate_drive_listing(value: object) -> list[dict[str, Any]]:
+    if not isinstance(value, dict) or set(value) != {
+        "complete",
+        "page_count",
+        "terminal_page_token",
+        "children",
+    }:
+        raise ContextSyncError("Drive inventory listing shape is invalid")
+    if value.get("complete") is not True or value.get("terminal_page_token") is not None:
+        raise ContextSyncError("Drive inventory listing is incomplete")
+    page_count = value.get("page_count")
+    children = value.get("children")
+    if not isinstance(page_count, int) or isinstance(page_count, bool) or page_count < 1:
+        raise ContextSyncError("Drive inventory page count is invalid")
+    if not isinstance(children, list):
+        raise ContextSyncError("Drive inventory children must be an array")
+    return children
+
+
+def validate_drive_observation(
+    observation_id: object, observed_at: object
+) -> tuple[str, datetime]:
+    if not isinstance(observation_id, str) or not re.fullmatch(
+        r"observation-[0-9a-f]{32}", observation_id
+    ):
+        raise ContextSyncError("Drive inventory observation id is invalid")
+    if not isinstance(observed_at, str) or not observed_at.endswith("Z"):
+        raise ContextSyncError("Drive inventory observation timestamp is invalid")
+    try:
+        observed = datetime.fromisoformat(observed_at[:-1] + "+00:00")
+    except ValueError as error:
+        raise ContextSyncError("Drive inventory observation timestamp is invalid") from error
+    now = datetime.now(timezone.utc)
+    age = (now - observed).total_seconds()
+    if age < -30 or age > MAX_DRIVE_INVENTORY_AGE_SECONDS:
+        raise ContextSyncError("Drive inventory observation is stale or in the future")
+    return observation_id, observed
+
+
+def validate_drive_mapping_inventory(
+    inventory: object, project_root: Path
+) -> tuple[list[dict[str, Any]], list[dict[str, Any]], str, datetime]:
+    if not isinstance(inventory, dict) or set(inventory) != {
+        "schema_version",
+        "observation_id",
+        "observed_at",
+        "parent_search",
+        "namespaces",
+    }:
+        raise ContextSyncError("Drive mapping inventory root is invalid")
+    if inventory.get("schema_version") != 1 or scan_secrets(inventory):
+        raise ContextSyncError("Drive mapping inventory is invalid")
+    observation_id, observed_at = validate_drive_observation(
+        inventory.get("observation_id"), inventory.get("observed_at")
+    )
+    discovered_parents = validate_drive_listing(inventory.get("parent_search"))
+    parents: list[dict[str, Any]] = []
+    parent_by_id: dict[str, dict[str, Any]] = {}
+    for value in discovered_parents:
+        parent = validate_drive_object(
+            value,
+            expected_parent=None,
+            expected_kind="folder",
+            expected_title="Codex Project Context",
+        )
+        if parent["id"] in parent_by_id:
+            raise ContextSyncError("Drive parent search contains a duplicate id")
+        parent_by_id[parent["id"]] = parent
+        parents.append(parent)
+    namespaces = inventory.get("namespaces")
+    if not isinstance(namespaces, list):
+        raise ContextSyncError("Drive inventory namespaces must be an array")
+    observed_ids: set[str] = set(parent_by_id)
+    candidates: list[dict[str, Any]] = []
+    inspected_parent_ids: set[str] = set()
+    for namespace in namespaces:
+        if not isinstance(namespace, dict) or set(namespace) != {
+            "parent",
+            "listing",
+            "projects",
+        }:
+            raise ContextSyncError("Drive namespace inventory shape is invalid")
+        parent = validate_drive_object(
+            namespace.get("parent"),
+            expected_parent=None,
+            expected_kind="folder",
+            expected_title="Codex Project Context",
+        )
+        if parent["id"] not in parent_by_id or parent_by_id[parent["id"]] != parent:
+            raise ContextSyncError("Drive namespace is missing from parent search")
+        if parent["id"] in inspected_parent_ids:
+            raise ContextSyncError("Drive namespace inventory is duplicated")
+        inspected_parent_ids.add(parent["id"])
+        root_children = validate_drive_listing(namespace.get("listing"))
+        projects = namespace.get("projects")
+        if not isinstance(projects, list):
+            raise ContextSyncError("Drive mapping inventory projects must be an array")
+        root_names: set[str] = set()
+        root_by_id: dict[str, dict[str, Any]] = {}
+        for child in root_children:
+            item = validate_drive_object(
+                child, expected_parent=parent["id"], expected_kind="folder"
+            )
+            if item["id"] in observed_ids or item["title"] in root_names:
+                raise ContextSyncError("Drive inventory has duplicate ids or names")
+            observed_ids.add(item["id"])
+            root_names.add(item["title"])
+            root_by_id[item["id"]] = item
+
+        project_folder_ids: set[str] = set()
+        for project in projects:
+            if not isinstance(project, dict) or set(project) != {
+                "folder",
+                "listing",
+                "marker",
+                "checkpoints_listing",
+            }:
+                raise ContextSyncError("Drive project inventory shape is invalid")
+            folder = validate_drive_object(
+                project.get("folder"),
+                expected_parent=parent["id"],
+                expected_kind="folder",
+            )
+            if folder["id"] not in root_by_id or root_by_id[folder["id"]] != folder:
+                raise ContextSyncError("Drive project folder is missing from the parent listing")
+            if folder["id"] in project_folder_ids:
+                raise ContextSyncError("Drive project folder inventory is duplicated")
+            project_folder_ids.add(folder["id"])
+
+            children = validate_drive_listing(project.get("listing"))
+            if len(children) != 2:
+                raise ContextSyncError("Drive project folder has unexpected children")
+            by_title: dict[str, dict[str, Any]] = {}
+            for child in children:
+                title = child.get("title") if isinstance(child, dict) else None
+                kind = "folder" if title == "checkpoints" else "file"
+                item = validate_drive_object(
+                    child, expected_parent=folder["id"], expected_kind=kind
+                )
+                if item["id"] in observed_ids or item["title"] in by_title:
+                    raise ContextSyncError("Drive inventory has duplicate ids or names")
+                observed_ids.add(item["id"])
+                by_title[item["title"]] = item
+            if set(by_title) != {"project.json", "checkpoints"}:
+                raise ContextSyncError("Drive project folder shape is invalid")
+
+            marker_evidence = project.get("marker")
+            if not isinstance(marker_evidence, dict) or set(marker_evidence) != {
+                "file_id",
+                "path",
+                "sha256",
+            }:
+                raise ContextSyncError("Drive marker evidence shape is invalid")
+            if marker_evidence.get("file_id") != by_title["project.json"]["id"]:
+                raise ContextSyncError("Drive marker evidence uses another file id")
+            marker_path = resolved(str(marker_evidence.get("path", "")))
+            validate_external_path(marker_path, project_root, "Drive marker evidence")
+            marker_sha256 = str(marker_evidence.get("sha256", ""))
+            marker = load_discovery_project_marker(marker_path, marker_sha256)
+            if marker["project_id"] != folder["title"]:
+                raise ContextSyncError("Drive marker project_id does not match its folder")
+
+            checkpoint_children = validate_drive_listing(project.get("checkpoints_listing"))
+            checkpoint_names: set[str] = set()
+            for child in checkpoint_children:
+                item = validate_drive_object(
+                    child,
+                    expected_parent=by_title["checkpoints"]["id"],
+                    expected_kind="file",
+                )
+                if item["id"] in observed_ids or item["title"] in checkpoint_names:
+                    raise ContextSyncError("Drive checkpoint inventory is duplicated")
+                if not re.fullmatch(
+                    r"(?:checkpoint|environment)-[0-9a-f]{32}\.json", item["title"]
+                ):
+                    raise ContextSyncError("Drive checkpoints folder has an unexpected child")
+                observed_ids.add(item["id"])
+                checkpoint_names.add(item["title"])
+
+            candidates.append(
+                {
+                    "project_id": marker["project_id"],
+                    "repository_fingerprint": marker["repository_fingerprint"],
+                    "drive_parent_folder_id": parent["id"],
+                    "drive_project_folder_id": folder["id"],
+                    "drive_checkpoints_folder_id": by_title["checkpoints"]["id"],
+                    "drive_marker_file_id": by_title["project.json"]["id"],
+                    "marker_file": str(marker_path),
+                    "marker_sha256": marker_sha256,
+                }
+            )
+        if project_folder_ids != set(root_by_id):
+            raise ContextSyncError("Drive parent listing has an uninspected project folder")
+    if inspected_parent_ids != set(parent_by_id):
+        raise ContextSyncError("Drive parent search has an uninspected namespace")
+    return parents, candidates, observation_id, observed_at
+
+
+def seal_drive_mapping_plan(plan: dict[str, Any]) -> dict[str, Any]:
+    sealed = dict(plan)
+    sealed["plan_sha256"] = canonical_digest(plan)
+    return sealed
+
+
+def command_drive_mapping_plan(args: argparse.Namespace) -> dict[str, Any]:
+    project_root = resolved(args.project_path)
+    if not project_root.is_dir():
+        raise ContextSyncError(f"Project directory does not exist: {project_root}")
+    inventory_path = resolved(args.inventory)
+    output_path = resolved(args.output)
+    validate_external_path(inventory_path, project_root, "Drive mapping inventory")
+    validate_external_path(output_path, project_root, "Drive mapping plan output")
+    try:
+        inventory = json.loads(inventory_path.read_text(encoding="utf-8"))
+    except (OSError, UnicodeDecodeError, json.JSONDecodeError) as error:
+        raise ContextSyncError(f"Drive mapping inventory is invalid: {error}") from error
+    inventory_sha256 = canonical_digest(inventory)
+    fingerprint = repository_fingerprint(project_root)
+    base: dict[str, Any] = {
+        "schema_version": 1,
+        "project_path": str(project_root),
+        "repository_fingerprint": fingerprint,
+        "inventory_sha256": inventory_sha256,
+        "observation_id": None,
+        "observed_at": None,
+        "parent_ids": [],
+        "match_count": 0,
+        "matches": [],
+        "mapping": None,
+        "blockers": [],
+    }
+    if fingerprint is None:
+        plan = seal_drive_mapping_plan(
+            {**base, "status": "blocked", "action": None, "blockers": ["repository-identity-unavailable"]}
+        )
+    else:
+        try:
+            parents, candidates, observation_id, observed_at = validate_drive_mapping_inventory(
+                inventory, project_root
+            )
+        except ContextSyncError:
+            plan = seal_drive_mapping_plan(
+                {**base, "status": "blocked", "action": None, "blockers": ["untrusted-drive-structure"]}
+            )
+        else:
+            matches = [item for item in candidates if item["repository_fingerprint"] == fingerprint]
+            common = {
+                **base,
+                "observation_id": observation_id,
+                "observed_at": observed_at.isoformat().replace("+00:00", "Z"),
+                "parent_ids": [parent["id"] for parent in parents],
+                "match_count": len(matches),
+                "matches": [item["project_id"] for item in matches],
+            }
+            if len(matches) > 1:
+                plan = seal_drive_mapping_plan(
+                    {**common, "status": "blocked", "action": None, "blockers": ["duplicate-mapping"]}
+                )
+            elif matches:
+                mapping = {key: value for key, value in matches[0].items() if key != "repository_fingerprint"}
+                plan = seal_drive_mapping_plan(
+                    {**common, "status": "ready", "action": "reuse", "mapping": mapping}
+                )
+            elif not parents:
+                plan = seal_drive_mapping_plan(
+                    {
+                        **common,
+                        "status": "ready",
+                        "action": "create-parent",
+                        "mapping": {"parent_title": "Codex Project Context"},
+                    }
+                )
+            elif len(parents) > 1:
+                plan = seal_drive_mapping_plan(
+                    {**common, "status": "blocked", "action": None, "blockers": ["ambiguous-parent"]}
+                )
+            else:
+                parent = parents[0]
+                project_id = "proj-" + hashlib.sha256(
+                    f"{parent['id']}\0{fingerprint}".encode("utf-8")
+                ).hexdigest()[:16]
+                plan = seal_drive_mapping_plan(
+                    {
+                        **common,
+                        "status": "ready",
+                        "action": "create",
+                        "mapping": {
+                            "project_id": project_id,
+                            "drive_parent_folder_id": parent["id"],
+                        },
+                    }
+                )
+    atomic_write_json(output_path, plan)
+    return plan
+
+
+def load_drive_mapping_plan(
+    path_value: str, project_root: Path, expected_action: str
+) -> dict[str, Any]:
+    path = resolved(path_value)
+    validate_external_path(path, project_root, "Drive mapping plan")
+    try:
+        plan = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, UnicodeDecodeError, json.JSONDecodeError) as error:
+        raise ContextSyncError(f"Drive mapping plan is invalid: {error}") from error
+    if not isinstance(plan, dict) or set(plan) != {
+        "schema_version",
+        "project_path",
+        "repository_fingerprint",
+        "inventory_sha256",
+        "observation_id",
+        "observed_at",
+        "parent_ids",
+        "match_count",
+        "matches",
+        "mapping",
+        "blockers",
+        "status",
+        "action",
+        "plan_sha256",
+    } or plan.get("plan_sha256") != canonical_digest(
+        {key: value for key, value in plan.items() if key != "plan_sha256"}
+    ):
+        raise ContextSyncError("Drive mapping plan digest does not match")
+    if plan.get("schema_version") != 1:
+        raise ContextSyncError("Drive mapping plan version is unsupported")
+    validate_drive_observation(
+        plan.get("observation_id"), plan.get("observed_at")
+    )
+    if plan.get("status") != "ready" or plan.get("action") != expected_action:
+        raise ContextSyncError(f"Drive mapping plan does not authorize {expected_action}")
+    if plan.get("project_path") != str(project_root):
+        raise ContextSyncError("Drive mapping plan belongs to another project path")
+    if plan.get("repository_fingerprint") != repository_fingerprint(project_root):
+        raise ContextSyncError("Drive mapping plan belongs to another repository")
+    mapping = plan.get("mapping")
+    if not isinstance(mapping, dict):
+        raise ContextSyncError("Drive mapping plan has no mapping")
+    expected_mapping_fields = (
+        {"project_id", "drive_parent_folder_id"}
+        if expected_action == "create"
+        else {
+            "project_id",
+            "drive_parent_folder_id",
+            "drive_project_folder_id",
+            "drive_checkpoints_folder_id",
+            "drive_marker_file_id",
+            "marker_file",
+            "marker_sha256",
+        }
+    )
+    if set(mapping) != expected_mapping_fields:
+        raise ContextSyncError("Drive mapping plan mapping shape is invalid")
+    return plan
+
+
 def load_project_marker(directory: Path) -> dict[str, Any]:
     return load_project_marker_file(directory / "project.json")
 
@@ -1013,7 +1478,20 @@ def command_prepare_drive_marker(args: argparse.Namespace) -> dict[str, Any]:
         raise ContextSyncError(f"Project directory does not exist: {project_root}")
     output = resolved(args.output)
     validate_external_path(output, project_root, "Marker output")
-    project_id = args.project_id or f"proj-{uuid.uuid4().hex[:16]}"
+    mapping_plan_value = getattr(args, "mapping_plan", None)
+    planned_project_id: str | None = None
+    if mapping_plan_value:
+        mapping_plan = load_drive_mapping_plan(
+            mapping_plan_value, project_root, "create"
+        )
+        planned_project_id = mapping_plan["mapping"].get("project_id")
+    project_id = args.project_id or planned_project_id
+    if project_id is None:
+        raise ContextSyncError(
+            "prepare-drive-marker requires a verified zero-match --mapping-plan"
+        )
+    if planned_project_id and args.project_id and args.project_id != planned_project_id:
+        raise ContextSyncError("Explicit project_id conflicts with the Drive mapping plan")
     if not PROJECT_ID_PATTERN.fullmatch(project_id):
         raise ContextSyncError(
             "project_id must be 3-64 lowercase letters, digits, or hyphens"
@@ -1059,11 +1537,15 @@ def command_backend_plan(args: argparse.Namespace) -> dict[str, Any]:
         requested_backend=getattr(args, "requested_backend", None),
         google_drive_connected=getattr(args, "google_drive_connected", False),
     )
-    return {
+    result = {
         "project_path": str(project_root),
         "configured": configured_backend is not None,
         **plan,
     }
+    if configured_backend is None and plan.get("backend") == "google-drive":
+        result["requires_mapping_discovery"] = True
+        result["next_steps"] = ["enumerate-drive-mappings", "run-drive-mapping-plan"]
+    return result
 
 
 def command_configure(args: argparse.Namespace) -> dict[str, Any]:
@@ -1078,14 +1560,94 @@ def command_configure(args: argparse.Namespace) -> dict[str, Any]:
         )
     backend = getattr(args, "backend", "local-folder")
     marker_file = getattr(args, "marker_file", None)
+    mapping_plan_value = getattr(args, "mapping_plan", None)
+    mapping_plan: dict[str, Any] | None = None
+    if backend == "google-drive" and mapping_plan_value:
+        mapping_plan = load_drive_mapping_plan(
+            mapping_plan_value, project_root, "reuse"
+        )
+        planned = mapping_plan["mapping"]
+        for label, explicit in (
+            ("project_id", getattr(args, "project_id", None)),
+            ("marker_file", marker_file),
+            ("drive_project_folder_id", getattr(args, "drive_project_folder_id", None)),
+            ("drive_checkpoints_folder_id", getattr(args, "drive_checkpoints_folder_id", None)),
+            ("drive_marker_file_id", getattr(args, "drive_marker_file_id", None)),
+        ):
+            if explicit is not None and str(explicit) != str(planned.get(label)):
+                raise ContextSyncError(f"Explicit {label} conflicts with the Drive mapping plan")
+        readback_value = getattr(args, "readback_inventory", None)
+        if not readback_value:
+            raise ContextSyncError(
+                "Drive mapping reuse requires a fresh --readback-inventory"
+            )
+        readback_path = resolved(readback_value)
+        validate_external_path(readback_path, project_root, "Drive readback inventory")
+        try:
+            readback = json.loads(readback_path.read_text(encoding="utf-8"))
+            (
+                _,
+                fresh_candidates,
+                fresh_observation_id,
+                fresh_observed_at,
+            ) = validate_drive_mapping_inventory(readback, project_root)
+        except (OSError, UnicodeDecodeError, json.JSONDecodeError, ContextSyncError) as error:
+            raise ContextSyncError(
+                f"Drive mapping readback no longer matches the plan: {error}"
+            ) from error
+        fingerprint = repository_fingerprint(project_root)
+        planned_observation_id = mapping_plan.get("observation_id")
+        planned_observed_at_value = mapping_plan.get("observed_at")
+        try:
+            planned_observed_at = datetime.fromisoformat(
+                str(planned_observed_at_value)[:-1] + "+00:00"
+            )
+        except ValueError as error:
+            raise ContextSyncError("Drive mapping plan observation is invalid") from error
+        if (
+            fresh_observation_id == planned_observation_id
+            or fresh_observed_at <= planned_observed_at
+        ):
+            raise ContextSyncError(
+                "Drive mapping reuse requires a newer Drive observation"
+            )
+        fresh_matches = [
+            item
+            for item in fresh_candidates
+            if item["repository_fingerprint"] == fingerprint
+        ]
+        if len(fresh_matches) != 1:
+            raise ContextSyncError(
+                "Drive mapping readback no longer matches the plan"
+            )
+        fresh = fresh_matches[0]
+        bound_fields = {
+            "project_id",
+            "drive_parent_folder_id",
+            "drive_project_folder_id",
+            "drive_checkpoints_folder_id",
+            "drive_marker_file_id",
+            "marker_sha256",
+        }
+        if any(fresh.get(field) != planned.get(field) for field in bound_fields):
+            raise ContextSyncError(
+                "Drive mapping readback no longer matches the plan"
+            )
+        marker_file = fresh["marker_file"]
     marker: dict[str, Any] | None = None
     if backend == "google-drive":
         if not marker_file:
             raise ContextSyncError("Google Drive configuration requires --marker-file")
         marker_path = resolved(marker_file)
         validate_external_path(marker_path, project_root, "Marker file")
-        marker = load_project_marker_file(marker_path)
-    project_id = args.project_id or (
+        if mapping_plan:
+            marker = load_discovery_project_marker(
+                marker_path, mapping_plan["mapping"]["marker_sha256"]
+            )
+        else:
+            marker = load_project_marker_file(marker_path)
+    planned_project_id = mapping_plan["mapping"]["project_id"] if mapping_plan else None
+    project_id = args.project_id or planned_project_id or (
         str(marker.get("project_id")) if marker else f"proj-{uuid.uuid4().hex[:16]}"
     )
     if not PROJECT_ID_PATTERN.fullmatch(project_id):
@@ -1124,10 +1686,11 @@ def command_configure(args: argparse.Namespace) -> dict[str, Any]:
         }
         storage_project = str(directory)
     else:
+        planned_mapping = mapping_plan["mapping"] if mapping_plan else {}
         drive_fields = {
-            "drive_project_folder_id": getattr(args, "drive_project_folder_id", None),
-            "drive_checkpoints_folder_id": getattr(args, "drive_checkpoints_folder_id", None),
-            "drive_marker_file_id": getattr(args, "drive_marker_file_id", None),
+            "drive_project_folder_id": getattr(args, "drive_project_folder_id", None) or planned_mapping.get("drive_project_folder_id"),
+            "drive_checkpoints_folder_id": getattr(args, "drive_checkpoints_folder_id", None) or planned_mapping.get("drive_checkpoints_folder_id"),
+            "drive_marker_file_id": getattr(args, "drive_marker_file_id", None) or planned_mapping.get("drive_marker_file_id"),
         }
         if not all(isinstance(value, str) and value.strip() for value in drive_fields.values()):
             raise ContextSyncError("Google Drive configuration requires all Drive file and folder IDs")
@@ -2386,6 +2949,8 @@ def build_parser() -> argparse.ArgumentParser:
     configure.add_argument("--drive-checkpoints-folder-id")
     configure.add_argument("--drive-marker-file-id")
     configure.add_argument("--marker-file")
+    configure.add_argument("--mapping-plan")
+    configure.add_argument("--readback-inventory")
     configure.add_argument("--project-id")
     configure.add_argument(
         "--mode", choices=("metadata-only", "paths"), default="metadata-only"
@@ -2399,8 +2964,18 @@ def build_parser() -> argparse.ArgumentParser:
     marker.add_argument("--project-path", required=True)
     marker.add_argument("--output", required=True)
     marker.add_argument("--project-id")
+    marker.add_argument("--mapping-plan")
     marker.add_argument("--acknowledge-storage-policy", action="store_true")
     marker.add_argument("--json", action="store_true")
+
+    mapping_plan = subparsers.add_parser(
+        "drive-mapping-plan",
+        help="Plan reuse or creation from a complete Drive metadata inventory",
+    )
+    mapping_plan.add_argument("--project-path", required=True)
+    mapping_plan.add_argument("--inventory", required=True)
+    mapping_plan.add_argument("--output", required=True)
+    mapping_plan.add_argument("--json", action="store_true")
 
     transport = subparsers.add_parser("transport")
     transport.add_argument("--project-path", required=True)
@@ -2515,6 +3090,7 @@ def main() -> int:
     try:
         handler = {
             "backend-plan": command_backend_plan,
+            "drive-mapping-plan": command_drive_mapping_plan,
             "configure": command_configure,
             "prepare-drive-marker": command_prepare_drive_marker,
             "transport": command_transport,

@@ -645,6 +645,9 @@ runs passed its deterministic promotion gate.
 - defaults unqualified synchronization requests to connected Google Drive,
   while preserving an existing backend and requiring explicit opt-in before
   using a local synchronized folder;
+- discovers a verified existing Google Drive mapping by repository fingerprint
+  on a new computer before it creates any remote folder, and blocks on
+  incomplete listings, untrusted visibility, or duplicate matches;
 - keeps one opaque stream per project task: a detailed baseline followed by
   short deltas, exact visible titles, decisions, verification, open questions,
   next steps, and Git fingerprints;
