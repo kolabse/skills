@@ -84,7 +84,7 @@ class ManageInstalledSkillsTests(unittest.TestCase):
             helper.write_text("# fixture\n", encoding="utf-8")
 
             commands = manager.lifecycle_bootstrap_commands(
-                project, ["execute-verified-development-lifecycle"], "codex"
+                project, ["execute-verified-development-lifecycle"], "codex", confirmed=True
             )
 
             self.assertEqual(1, len(commands))
@@ -94,6 +94,22 @@ class ManageInstalledSkillsTests(unittest.TestCase):
             self.assertEqual(str(project.resolve()), command[command.index("--project-root") + 1])
             self.assertIn("--apply", command)
             self.assertIn("--yes", command)
+
+    def test_lifecycle_bootstrap_command_is_plan_only_without_update_confirmation(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            project = self.make_project(
+                Path(directory), {"execute-verified-development-lifecycle": "1.18.1"}
+            )
+            helper = project / ".agents/skills/execute-verified-development-lifecycle/scripts/development_lifecycle.py"
+            helper.parent.mkdir(parents=True)
+            helper.write_text("# fixture\n", encoding="utf-8")
+
+            command = manager.lifecycle_bootstrap_commands(
+                project, ["execute-verified-development-lifecycle"], "codex", confirmed=False
+            )[0][1]
+
+            self.assertNotIn("--apply", command)
+            self.assertNotIn("--yes", command)
 
     def test_lifecycle_bootstrap_is_not_planned_for_global_or_unselected_updates(self) -> None:
         with tempfile.TemporaryDirectory() as directory:

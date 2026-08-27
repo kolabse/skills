@@ -480,6 +480,10 @@ def bootstrap_repository_entries(root: Path) -> tuple[list[dict[str, Any]], list
                 "require_upstream_current": True,
             }
         )
+    if len(repositories) > 1:
+        blockers.append(
+            "multiple repositories are configured but no explicit lifecycle contract identifies the development integration repository"
+        )
     return repositories, defaults, blockers
 
 

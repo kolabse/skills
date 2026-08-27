@@ -244,6 +244,38 @@ class VerifiedDevelopmentLifecycleTests(unittest.TestCase):
         self.assertTrue(result["blockers"])
         self.assertFalse(LIFECYCLE.project_config(empty_project).exists())
 
+    def test_bootstrap_blocks_ambiguous_multi_repository_integration_role(self) -> None:
+        second = self.project / "docs-repository"
+        second.mkdir()
+        git(second, "init", "-b", "main")
+        git(second, "config", "user.email", "tests@example.invalid")
+        git(second, "config", "user.name", "Lifecycle Tests")
+        second_remote = self.base / "docs-remote.git"
+        subprocess.run(["git", "init", "--bare", str(second_remote)], capture_output=True, check=True)
+        git(second, "remote", "add", "origin", str(second_remote))
+        (second / "README.md").write_text("docs\n", encoding="utf-8")
+        git(second, "add", ".")
+        git(second, "commit", "-m", "Initial docs")
+        git(second, "push", "-u", "origin", "main")
+        verify_config = {
+            "version": 1,
+            "evidence_file": ".agents/verify-before-push/evidence.json",
+            "repositories": [
+                {"name": "application", "path": "app", "require_clean": True, "require_upstream_current": True},
+                {"name": "documentation", "path": "docs-repository", "require_clean": True, "require_upstream_current": True},
+            ],
+            "checks": [{"name": "unit-tests", "cwd": "app", "command": ["python", "-m", "unittest"], "timeout_seconds": 60, "required": True}],
+        }
+        write_json(self.project / ".agents/verify-before-push/config.json", verify_config)
+
+        result = LIFECYCLE.cmd_bootstrap(
+            Namespace(project_root=str(self.project), agent="codex", apply=True, yes=True)
+        )
+
+        self.assertFalse(result["ready"])
+        self.assertTrue(any("multiple repositories" in item for item in result["blockers"]))
+        self.assertFalse(LIFECYCLE.project_config(self.project).exists())
+
     def test_bootstrap_does_not_use_feature_upstream_as_development_target(self) -> None:
         git(self.repository, "switch", "-c", "feature/bootstrap-test")
         git(self.repository, "push", "-u", "origin", "feature/bootstrap-test")

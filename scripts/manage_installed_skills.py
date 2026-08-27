@@ -692,7 +692,9 @@ def update_skills(
     after_by_name = {item["name"]: item for item in state["skills"]}
     configuration: list[dict[str, Any]] = []
     if scope == "project":
-        for name, command in lifecycle_bootstrap_commands(project, selected, agent):
+        for name, command in lifecycle_bootstrap_commands(
+            project, selected, agent, confirmed=yes
+        ):
             completed = run_checked(command, project.resolve(), timeout)
             try:
                 payload = json.loads(completed.stdout)
@@ -771,6 +773,7 @@ def lifecycle_bootstrap_commands(
     project: Path,
     selected: list[str],
     agent: str = DEFAULT_AGENT,
+    confirmed: bool = False,
 ) -> list[tuple[str, list[str]]]:
     agent = verified_agent(agent)
     name = "execute-verified-development-lifecycle"
@@ -780,14 +783,16 @@ def lifecycle_bootstrap_commands(
     helper = project_install_root(root, agent) / name / "scripts/development_lifecycle.py"
     if not helper.is_file():
         return []
+    command = [
+        python_executable(), str(helper), "bootstrap",
+        "--project-root", str(root), "--agent", agent, "--json",
+    ]
+    if confirmed:
+        command.extend(["--apply", "--yes"])
     return [
         (
             name,
-            [
-                python_executable(), str(helper), "bootstrap",
-                "--project-root", str(root), "--agent", agent,
-                "--apply", "--yes", "--json",
-            ],
+            command,
         )
     ]
 
