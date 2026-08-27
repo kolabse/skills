@@ -12,6 +12,10 @@
     {
       "prompt": "После сбоя feature pipeline зафиксируй evidence, откатись к объявленному checkpoint, аннулируй последующие доказательства и заверши настроенный цикл разработки.",
       "reason": "Failure rewind and downstream evidence invalidation belong to lifecycle state coordination."
+    },
+    {
+      "prompt": "Навык установлен, но lifecycle config в проекте отсутствует. Создай безопасную конфигурацию по умолчанию из наблюдаемых репозиториев, проверок и upstream refs, затем спланируй изменение.",
+      "reason": "First-use bootstrap of an observable project contract is part of making the lifecycle operational after installation."
     }
   ],
   "negative": [

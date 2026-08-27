@@ -16,11 +16,31 @@ its `AGENTS.md` rules as the default.
 
 ## Resolve the contract
 
-Inspect project instructions and install a version-1 project-owned configuration matching [`schemas/config.schema.json`](schemas/config.schema.json):
+Start by inspecting status. After a project-scoped managed update, or on first
+use following a marketplace/plugin install, bootstrap a missing configuration:
+
+```shell
+python <skill-root>/scripts/development_lifecycle.py status --project-root <root> --json
+python <skill-root>/scripts/development_lifecycle.py bootstrap --project-root <root> --agent codex --json
+python <skill-root>/scripts/development_lifecycle.py bootstrap --project-root <root> --agent codex --apply --yes --json
+```
+
+The read-only bootstrap plan reuses declared repositories and checks from
+`verify-before-push` when available, verifies exact Git roots and tracked
+upstreams, and selects existing rule, reference, documentation, and optional
+project-notification files. It installs a conservative 18-gate contract only
+when repository scope and required local files are observable. It never
+overwrites an existing configuration. Report every applied default and refine
+it when project rules declare more specific development refs, adapters,
+documentation targets, notification audiences, delivery policy, or cleanup
+proofs. If bootstrap reports blockers, resolve those facts instead of inventing
+values.
+
+For a fully project-authored contract, install a version-1 configuration
+matching [`schemas/config.schema.json`](schemas/config.schema.json):
 
 ```shell
 python <skill-root>/scripts/development_lifecycle.py configure --project-root <root> --config-source <config.json>
-python <skill-root>/scripts/development_lifecycle.py status --project-root <root> --json
 ```
 
 The contract must declare every repository, applicable rule source, canonical reference, required check, evidence gate, provider-neutral adapter and required capability, notification audience, documentation target, development integration target, delegated production route, and cleanup proof method. Never infer these from provider conventions. A repository may explicitly declare unchanged feature-bootstrap CI suppression; absence of that declaration means its bootstrap pipeline runs normally. Use `migrate --json` after a skill update; unknown newer versions fail closed.
@@ -83,6 +103,6 @@ Completion requires every configured gate, rule, reference, notification reminde
 
 - Obtain authorization independently for every external mutation; evidence of one action does not authorize the next.
 - Preserve dirty, behind, diverged, detached, or untracked repositories. Never repair them automatically.
-- Commands named `plan`, `status`, `rules-status`, and `verify` are read-only. `advance` changes only the explicit state artifact. `configure`, `migrate`, and explicitly confirmed `configure-rules` have only their documented project-local writes.
+- Commands named `plan`, `status`, `rules-status`, and `verify` are read-only. `bootstrap` is read-only unless both `--apply` and `--yes` are present. `advance` changes only the explicit state artifact. `configure`, `migrate`, applied `bootstrap`, and explicitly confirmed `configure-rules` have only their documented project-local writes.
 - Do not store secrets, credentials, private URLs, raw logs, or personal data in configuration or evidence. Store stable labels, immutable identities, timestamps, and SHA-256 digests.
 - Cleanup requires fresh proof that every enumerated feature resource is represented in its configured durable target. A name pattern is not proof.

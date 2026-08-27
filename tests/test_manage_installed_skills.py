@@ -74,6 +74,67 @@ class ManageInstalledSkillsTests(unittest.TestCase):
             self.assertIn("execute-verified-development-lifecycle", commands)
             self.assertEqual("migrate", commands["execute-verified-development-lifecycle"][2])
 
+    def test_lifecycle_bootstrap_command_uses_installed_helper_and_shared_project_config(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            project = self.make_project(
+                Path(directory), {"execute-verified-development-lifecycle": "1.18.1"}
+            )
+            helper = project / ".agents/skills/execute-verified-development-lifecycle/scripts/development_lifecycle.py"
+            helper.parent.mkdir(parents=True)
+            helper.write_text("# fixture\n", encoding="utf-8")
+
+            commands = manager.lifecycle_bootstrap_commands(
+                project, ["execute-verified-development-lifecycle"], "codex"
+            )
+
+            self.assertEqual(1, len(commands))
+            name, command = commands[0]
+            self.assertEqual("execute-verified-development-lifecycle", name)
+            self.assertEqual("bootstrap", command[2])
+            self.assertEqual(str(project.resolve()), command[command.index("--project-root") + 1])
+            self.assertIn("--apply", command)
+            self.assertIn("--yes", command)
+
+    def test_lifecycle_bootstrap_is_not_planned_for_global_or_unselected_updates(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            project = self.make_project(
+                Path(directory), {"execute-verified-development-lifecycle": "1.18.1"}
+            )
+            self.assertEqual([], manager.lifecycle_bootstrap_commands(project, [], "codex"))
+
+    def test_project_update_runs_lifecycle_bootstrap_after_skill_update(self) -> None:
+        with tempfile.TemporaryDirectory() as directory, patch.object(
+            shutil, "which", return_value="npx"
+        ), patch.object(manager, "run_checked") as run:
+            project = self.make_project(
+                Path(directory), {"execute-verified-development-lifecycle": "1.18.1"}
+            )
+            helper = project / ".agents/skills/execute-verified-development-lifecycle/scripts/development_lifecycle.py"
+            helper.parent.mkdir(parents=True)
+            helper.write_text("# fixture\n", encoding="utf-8")
+            update_result = type("Result", (), {})()
+            update_result.stdout = "unchanged"
+            update_result.stderr = ""
+            bootstrap_result = type("Result", (), {})()
+            bootstrap_result.stdout = json.dumps(
+                {"configured": True, "created": True, "ready": True}
+            )
+            bootstrap_result.stderr = ""
+            run.side_effect = [update_result, bootstrap_result]
+
+            report = manager.update_skills(
+                project,
+                ["execute-verified-development-lifecycle"],
+                "project",
+                "1.5.22",
+                True,
+                30,
+            )
+
+            self.assertEqual("update", run.call_args_list[0].args[0][3])
+            self.assertEqual("bootstrap", run.call_args_list[1].args[0][2])
+            self.assertEqual("created", report["configuration"][0]["status"])
+
     def make_project(
         self, root: Path, versions: dict[str, str], agent: str = "codex"
     ) -> Path:

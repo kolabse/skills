@@ -690,6 +690,30 @@ def update_skills(
         detail = "; ".join(state["problems"])
         raise ManagerError(f"post-update diagnosis failed: {detail}")
     after_by_name = {item["name"]: item for item in state["skills"]}
+    configuration: list[dict[str, Any]] = []
+    if scope == "project":
+        for name, command in lifecycle_bootstrap_commands(project, selected, agent):
+            completed = run_checked(command, project.resolve(), timeout)
+            try:
+                payload = json.loads(completed.stdout)
+            except json.JSONDecodeError as error:
+                raise ManagerError(f"{name} bootstrap returned invalid JSON") from error
+            if not isinstance(payload, dict):
+                raise ManagerError(f"{name} bootstrap returned a non-object result")
+            configuration.append(
+                {
+                    "skill": name,
+                    "status": (
+                        "created" if payload.get("created")
+                        else "configured" if payload.get("configured")
+                        else "blocked"
+                    ),
+                    "result": payload,
+                }
+            )
+    if not as_json:
+        for item in configuration:
+            print(f"[{item['status']}] {item['skill']} configuration")
     outcomes: list[dict[str, Any]] = []
     for name in selected:
         old = before_by_name[name]
@@ -712,6 +736,7 @@ def update_skills(
         "layout": agent_layout(agent),
         "scope": scope,
         "outcomes": outcomes,
+        "configuration": configuration,
         "healthy": True,
     }
 
@@ -740,6 +765,31 @@ def sync_project_context_config_path(environment: dict[str, str] | None = None) 
 
 def python_executable() -> str:
     return shutil.which("python") or sys.executable
+
+
+def lifecycle_bootstrap_commands(
+    project: Path,
+    selected: list[str],
+    agent: str = DEFAULT_AGENT,
+) -> list[tuple[str, list[str]]]:
+    agent = verified_agent(agent)
+    name = "execute-verified-development-lifecycle"
+    if name not in selected:
+        return []
+    root = project.resolve()
+    helper = project_install_root(root, agent) / name / "scripts/development_lifecycle.py"
+    if not helper.is_file():
+        return []
+    return [
+        (
+            name,
+            [
+                python_executable(), str(helper), "bootstrap",
+                "--project-root", str(root), "--agent", agent,
+                "--apply", "--yes", "--json",
+            ],
+        )
+    ]
 
 
 def migration_commands(

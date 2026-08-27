@@ -28,6 +28,7 @@ sys.dont_write_bytecode = True
 
 SKILL_ROOT = Path(__file__).resolve().parents[1]
 CONFIG_REL = Path(".agents/execute-verified-development-lifecycle/config.json")
+VERIFY_CONFIG_REL = Path(".agents/verify-before-push/config.json")
 DEPENDENCIES = SKILL_ROOT / "references" / "dependencies.json"
 ORDER = [
     "task-claimed", "feature-prepared", "tdd-red", "tdd-green", "changed-scope-preflight",
@@ -395,6 +396,217 @@ def run_git(repo: Path, argv: list[str]) -> str:
     return completed.stdout.strip()
 
 
+def identifier(value: str, fallback: str) -> str:
+    normalized = re.sub(r"[^a-z0-9]+", "-", value.casefold()).strip("-")
+    return normalized or fallback
+
+
+def bootstrap_repository_entries(root: Path) -> tuple[list[dict[str, Any]], list[str], list[str]]:
+    blockers: list[str] = []
+    defaults: list[str] = []
+    verify_path = root / VERIFY_CONFIG_REL
+    declared: list[dict[str, Any]] = []
+    if verify_path.is_file() and not verify_path.is_symlink() and not path_has_symlink(verify_path, root):
+        try:
+            verify = read_json(verify_path)
+            candidates = verify.get("repositories")
+            if not isinstance(candidates, list) or not candidates:
+                raise LifecycleError("verify-before-push repositories are missing")
+            declared = [item for item in candidates if isinstance(item, dict)]
+            if len(declared) != len(candidates):
+                raise LifecycleError("verify-before-push repositories are malformed")
+            defaults.append("repositories-from-verify-before-push")
+        except LifecycleError as exc:
+            blockers.append(str(exc))
+            return [], defaults, blockers
+    else:
+        try:
+            top = Path(run_git(root, ["rev-parse", "--show-toplevel"])).resolve()
+        except LifecycleError:
+            blockers.append(
+                "repository scope is unknown; configure verify-before-push repositories or run bootstrap at an exact Git root"
+            )
+            return [], defaults, blockers
+        if top != root:
+            blockers.append("project root is inside a Git repository but is not its exact root")
+            return [], defaults, blockers
+        declared = [{"name": identifier(root.name, "project"), "path": "."}]
+        defaults.append("single-project-git-root")
+
+    repositories: list[dict[str, Any]] = []
+    used: set[str] = set()
+    for index, item in enumerate(declared, 1):
+        try:
+            relative = safe_path(item.get("path"), "bootstrap repository.path")
+        except LifecycleError as exc:
+            blockers.append(str(exc))
+            continue
+        lexical = root / relative
+        repository = lexical.resolve()
+        if root not in (repository, *repository.parents) or path_has_symlink(lexical, root):
+            blockers.append(f"repository path escapes the project boundary: {relative}")
+            continue
+        try:
+            top = Path(run_git(repository, ["rev-parse", "--show-toplevel"])).resolve()
+            if top != repository:
+                raise LifecycleError("path is not the exact Git root")
+            branch = run_git(repository, ["symbolic-ref", "--quiet", "--short", "HEAD"])
+            upstream = run_git(repository, ["rev-parse", "--abbrev-ref", "@{upstream}"])
+            base_ref = upstream
+            if branch.casefold() not in {"main", "master", "dev", "develop", "development"}:
+                remote = upstream.split("/", 1)[0]
+                try:
+                    base_ref = run_git(
+                        repository,
+                        ["symbolic-ref", "--quiet", "--short", f"refs/remotes/{remote}/HEAD"],
+                    )
+                except LifecycleError as exc:
+                    raise LifecycleError(
+                        "active branch is not a recognized development branch and the tracked remote default is unknown"
+                    ) from exc
+        except LifecycleError as exc:
+            blockers.append(f"repository {relative} cannot provide an exact tracked upstream: {exc}")
+            continue
+        name = identifier(str(item.get("name", repository.name)), f"repository-{index}")
+        if name in used:
+            name = f"{name}-{index}"
+        used.add(name)
+        repositories.append(
+            {
+                "name": name,
+                "path": relative,
+                "base_ref": base_ref,
+                "require_clean": True,
+                "require_upstream_current": True,
+            }
+        )
+    return repositories, defaults, blockers
+
+
+def bootstrap_checks(root: Path) -> tuple[list[dict[str, Any]], list[str]]:
+    verify_path = root / VERIFY_CONFIG_REL
+    if (
+        not verify_path.is_file()
+        or verify_path.is_symlink()
+        or path_has_symlink(verify_path, root)
+    ):
+        return [{"id": "project-tests", "phase": "green", "required": True}], [
+            "generic-project-tests-check"
+        ]
+    verify = read_json(verify_path)
+    declared = verify.get("checks", [])
+    checks: list[dict[str, Any]] = []
+    used: set[str] = set()
+    for index, item in enumerate(declared, 1):
+        if not isinstance(item, dict) or item.get("enabled") is False or item.get("required") is False:
+            continue
+        check_id = identifier(str(item.get("name", f"check-{index}")), f"check-{index}")
+        if check_id in used:
+            check_id = f"{check_id}-{index}"
+        used.add(check_id)
+        folded = check_id.casefold()
+        if "red" in folded:
+            phase = "red"
+        elif "smoke" in folded:
+            phase = "smoke"
+        elif "pipeline" in folded:
+            phase = "feature-pipeline"
+        elif any(token in folded for token in ("preflight", "lint", "security", "build")):
+            phase = "preflight"
+        else:
+            phase = "green"
+        checks.append({"id": check_id, "phase": phase, "required": True})
+    return checks or [{"id": "project-tests", "phase": "green", "required": True}], [
+        "checks-from-verify-before-push"
+    ]
+
+
+def existing_declaration_path(root: Path, repositories: list[dict[str, Any]], candidates: list[str]) -> str | None:
+    boundaries = [root, *[(root / item["path"]).resolve() for item in repositories]]
+    for candidate in candidates:
+        relative = Path(candidate)
+        for boundary in boundaries:
+            path = boundary / relative
+            if path.is_file() and not path.is_symlink() and not path_has_symlink(path, boundary):
+                return candidate
+    return None
+
+
+def build_bootstrap_config(root: Path, agent: str) -> dict[str, Any]:
+    root = root.resolve()
+    repositories, defaults, blockers = bootstrap_repository_entries(root)
+    if blockers:
+        return {"ready": False, "config": None, "defaults": defaults, "blockers": blockers}
+    checks, check_defaults = bootstrap_checks(root)
+    defaults.extend(check_defaults)
+    rule_path = AGENTS[agent]["filename"]
+    reference_path = existing_declaration_path(
+        root,
+        repositories,
+        ["README.md", "docs/requirements.md", "docs/architecture.md", rule_path],
+    )
+    documentation_path = existing_declaration_path(
+        root,
+        repositories,
+        ["CHANGELOG.md", "docs/reports/work-log.md", "docs/project-digest.md", "README.md", "docs/requirements.md"],
+    )
+    if reference_path is None:
+        blockers.append("no regular project reference was found (README.md, requirements, architecture, or rules)")
+    if documentation_path is None:
+        blockers.append("no regular documentation target was found (CHANGELOG, work log, digest, README, or requirements)")
+    if blockers:
+        return {"ready": False, "config": None, "defaults": defaults, "blockers": blockers}
+    notifications: list[dict[str, str]] = []
+    notification_path = Path(".agents/notify-via-telegram/config.json")
+    if (
+        (root / notification_path).is_file()
+        and not (root / notification_path).is_symlink()
+        and not path_has_symlink(root / notification_path, root)
+    ):
+        notifications.append({"id": "project-notifications", "path": notification_path.as_posix()})
+        defaults.append("project-notification-profile")
+    gates = [{"id": name, "required": True, "failure_rewind": name} for name in ORDER]
+    gates[ORDER.index("tdd-green")]["failure_rewind"] = "tdd-red"
+    capabilities = sorted(CAPABILITIES)
+    required_capabilities = sorted(CAPABILITIES - {"scm.suppress-bootstrap-pipeline"})
+    config = {
+        "version": 1,
+        "repositories": repositories,
+        "rules": [{"id": "project-rules", "path": rule_path}],
+        "references": [{"id": "project-reference", "path": reference_path}],
+        "checks": checks,
+        "gates": gates,
+        "adapters": [
+            {"id": "agent-observation", "kind": "agent-observation", "capabilities": capabilities}
+        ],
+        "required_capabilities": required_capabilities,
+        "notifications": notifications,
+        "documentation": [{"id": "project-documentation", "path": documentation_path}],
+        "integration": {
+            "development_repository": repositories[0]["name"],
+            "development_ref": repositories[0]["base_ref"],
+            "review_required": True,
+        },
+        "production": {"delegated": True, "route_label": "project-approved-release-process"},
+        "delivery": {"deployment_required": True, "marker_required": True, "smoke_required": True},
+        "cleanup": {"proof_methods": ["merged"]},
+    }
+    defaults.extend(
+        [
+            "existing-project-rules-or-configure-rules-target",
+            "existing-project-reference",
+            "existing-documentation-target",
+            "agent-observation-adapter",
+            "all-18-gates-required",
+            "tracked-upstream-development-target",
+            "delegated-project-release-route",
+            "merged-cleanup-proof",
+        ]
+    )
+    validate_config(config)
+    return {"ready": True, "config": config, "defaults": defaults, "blockers": []}
+
+
 def inspect_git_repository(root: Path, configured: dict[str, Any], supplied: dict[str, Any]) -> dict[str, Any]:
     lexical = root.absolute() / configured["path"]
     repo = lexical.resolve()
@@ -555,9 +767,46 @@ def cmd_configure(args: argparse.Namespace) -> dict[str, Any]:
     return {"mode": "configure", "configured": True, "config_path": str(destination), "config_sha256": digest(config), "mutates_repository": True}
 
 
+def cmd_bootstrap(args: argparse.Namespace) -> dict[str, Any]:
+    root = Path(args.project_root).resolve()
+    destination = project_config(root)
+    if destination.exists():
+        config, config_hash = load_config(root)
+        return {
+            "mode": "bootstrap", "ready": True, "configured": True,
+            "created": False, "config_path": str(destination),
+            "config_sha256": config_hash, "config": config, "defaults": [],
+            "blockers": [], "mutates_repository": False,
+        }
+    result = build_bootstrap_config(root, getattr(args, "agent", "codex"))
+    payload = {
+        "mode": "bootstrap", "ready": result["ready"], "configured": False,
+        "created": False, "config_path": str(destination), "config": result["config"],
+        "defaults": result["defaults"], "blockers": result["blockers"],
+        "mutates_repository": False,
+    }
+    if not result["ready"] or not getattr(args, "apply", False):
+        return payload
+    if not getattr(args, "yes", False):
+        raise LifecycleError("bootstrap configuration requires both --apply and --yes")
+    atomic_write(destination, result["config"])
+    payload.update({
+        "configured": True, "created": True,
+        "config_sha256": digest(result["config"]), "mutates_repository": True,
+    })
+    return payload
+
+
 def cmd_status(args: argparse.Namespace) -> dict[str, Any]:
+    destination = project_config(Path(args.project_root))
+    if not destination.exists():
+        return {
+            "mode": "status", "configured": False, "valid": True,
+            "bootstrap_required": True, "config_path": str(destination),
+            "mutates_repository": False,
+        }
     config, config_hash = load_config(Path(args.project_root))
-    return {"mode": "status", "configured": True, "version": config["version"], "config_path": str(project_config(Path(args.project_root))), "config_sha256": config_hash, "repositories": [x["name"] for x in config["repositories"]], "feature_bootstrap": feature_bootstrap(config), "gates": enabled_order(config), "adapters": [x["id"] for x in config["adapters"]], "required_capabilities": config["required_capabilities"], "mutates_repository": False}
+    return {"mode": "status", "configured": True, "valid": True, "bootstrap_required": False, "version": config["version"], "config_path": str(destination), "config_sha256": config_hash, "repositories": [x["name"] for x in config["repositories"]], "feature_bootstrap": feature_bootstrap(config), "gates": enabled_order(config), "adapters": [x["id"] for x in config["adapters"]], "required_capabilities": config["required_capabilities"], "mutates_repository": False}
 
 
 def cmd_migrate(args: argparse.Namespace) -> dict[str, Any]:
@@ -1025,6 +1274,7 @@ def parser() -> argparse.ArgumentParser:
         item.add_argument("--json", action="store_true")
         return item
     c = common("configure"); c.add_argument("--config-source", required=True); c.set_defaults(func=cmd_configure)
+    bs = common("bootstrap"); bs.add_argument("--agent", choices=sorted(AGENTS), default="codex"); bs.add_argument("--apply", action="store_true"); bs.add_argument("--yes", action="store_true"); bs.set_defaults(func=cmd_bootstrap)
     common("status").set_defaults(func=cmd_status)
     common("migrate").set_defaults(func=cmd_migrate)
     rs = common("rules-status"); rs.add_argument("--agent", choices=sorted(AGENTS), default="codex"); rs.set_defaults(func=cmd_rules_status)

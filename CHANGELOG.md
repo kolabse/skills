@@ -2,6 +2,17 @@
 
 ## [Unreleased]
 
+### Fixed
+
+- `execute-verified-development-lifecycle` now bootstraps a missing project
+  configuration after project-scoped managed updates and on first use. It
+  reuses declared `verify-before-push` repositories and checks, verifies exact
+  Git roots and tracked upstreams, reports every conservative default, refuses
+  ambiguous repository scopes, and never overwrites an existing contract.
+- Missing lifecycle configuration now has structured `status` output instead
+  of an opaque file-read error, so project diagnostics can distinguish an
+  unconfigured skill from a broken configuration.
+
 ## [1.18.1] - 2026-08-26
 
 ### Fixed

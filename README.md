@@ -70,6 +70,17 @@ npx skills@1.5.22 add kolabse/skills --agent codex --copy -y
 npx skills@1.5.22 add kolabse/skills --agent claude-code --copy -y
 ```
 
+For a project-scoped install, initialize the lifecycle contract immediately
+when its observable defaults are sufficient (use the path for your agent):
+
+```shell
+python .agents/skills/execute-verified-development-lifecycle/scripts/development_lifecycle.py bootstrap --project-root . --agent codex --apply --yes --json
+python .claude/skills/execute-verified-development-lifecycle/scripts/development_lifecycle.py bootstrap --project-root . --agent claude-code --apply --yes --json
+```
+
+Marketplace/plugin installs are global and have no active project root, so the
+skill performs this same bootstrap on first project use.
+
 Codex discovers project skills under `.agents/skills/` and invokes them as
 `$skill-name`. Claude Code discovers them under `.claude/skills/` and invokes
 them as `/skill-name`. The skill instructions and bundled scripts are shared;
@@ -177,7 +188,10 @@ With no names, the manager resolves the installed kolabse skills from the
 project lock and passes those names explicitly to the external CLI; unrelated
 project skills are never part of the update. Global updates require explicit
 collection skill names. Project updates finish with the same fail-closed
-diagnosis as `doctor`.
+diagnosis as `doctor`. When `execute-verified-development-lifecycle` is part of
+a project update, the manager also bootstraps its missing configuration where
+the project facts are sufficient and returns a `created`, `configured`, or
+`blocked` configuration outcome.
 
 Add `--include-user-config` only when the Telegram user configuration should be
 migrated too. `status` and `doctor` are read-only. `migrate` changes only
@@ -526,6 +540,9 @@ proved cleanup.
 
 - freezes a digest-bound plan before editing and advances ordered checkpoints
   using retained evidence;
+- creates a conservative project configuration on managed update or first use
+  when repository roots, tracked upstreams, checks, and documentation are
+  observable, and reports every default it applied;
 - verifies feature-before-edit, test-first, changed-scope preflight, review,
   exact-state push, pipeline, documentation, development integration,
   delegated production, delivery, smoke, notification, and cleanup gates;
@@ -534,7 +551,8 @@ proved cleanup.
 
 **What it does not do:**
 
-- infer provider adapters, repository roles, gates, or authorization;
+- guess provider-specific adapters, repository roles, delivery policy, or
+  authorization when project evidence is ambiguous;
 - push, open or merge reviews, deploy, notify, edit documentation, or delete
   resources itself;
 - execute production delivery, which remains delegated to the approved release
@@ -542,8 +560,10 @@ proved cleanup.
 
 Install and configure its required skills first: `$synchronize-git-repositories`,
 `$develop-with-test-first-evidence`, `$verify-before-push`, and
-`$review-code-changes`. Configure the project-owned version-1 lifecycle
-contract before the first plan. Install optional skills only when the project
+`$review-code-changes`. A missing project-owned version-1 lifecycle contract is
+bootstrapped from observable project facts before the first plan; review and
+refine its reported defaults when the project declares more specific policy.
+Install optional skills only when the project
 enables their corresponding checkpoints: `$orchestrate-agent-work`,
 `$diagnose-software-defects`, `$resolve-git-conflicts`,
 `$coordinate-code-documentation-repositories`, `$maintain-work-log`,
