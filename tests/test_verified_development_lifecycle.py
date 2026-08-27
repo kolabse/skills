@@ -107,7 +107,10 @@ class VerifiedDevelopmentLifecycleTests(unittest.TestCase):
             identity = "a" * 40 if kind in {"commit", "tree"} else ("feature/change-53" if kind == "ref" else f"{kind}-identity")
             role = "merged" if kind == "cleanup-resource" else "checkpoint-subject"
             subjects.append({"kind": kind, "role": role, "repository": "app" if name in LIFECYCLE.SOURCE_CHECKPOINTS else None, "identity": identity})
-        assertions = [{"name": assertion, "passed": status == "passed"} for assertion in sorted(LIFECYCLE.ASSERTIONS[name])]
+        expected_assertions = set(LIFECYCLE.ASSERTIONS[name])
+        if name == "feature-prepared" and plan.get("feature_bootstrap", []):
+            expected_assertions.add("bootstrap-ci-outcome-observed")
+        assertions = [{"name": assertion, "passed": status == "passed"} for assertion in sorted(expected_assertions)]
         value = {
             "schema_version": 1, "checkpoint": name, "status": status,
             "plan_sha256": plan["plan_sha256"], "config_sha256": plan["config_sha256"],
@@ -451,6 +454,7 @@ class VerifiedDevelopmentLifecycleTests(unittest.TestCase):
                 set(config["adapters"][0]["capabilities"])
                 | {"scm.suppress-bootstrap-pipeline"}
             )
+            config["adapters"][0]["bootstrap_mechanisms"] = [mechanism]
             config["required_capabilities"] = sorted(
                 set(config["required_capabilities"])
                 | {"scm.suppress-bootstrap-pipeline"}
@@ -485,6 +489,20 @@ class VerifiedDevelopmentLifecycleTests(unittest.TestCase):
         with self.assertRaisesRegex(LIFECYCLE.LifecycleError, "adapter lacks"):
             LIFECYCLE.validate_config(missing_capability)
 
+        mismatched = self.make_config()
+        mismatched["repositories"][0]["bootstrap_ci"] = {
+            "policy": "suppress-unchanged",
+            "adapter": "project-adapter",
+            "mechanism": "gitlab-ci-skip-push-option",
+            "fallback": "run-pipeline",
+            "evidence_required": True,
+        }
+        mismatched["adapters"][0]["bootstrap_mechanisms"] = [
+            "github-actions-unchanged-ref-guard"
+        ]
+        with self.assertRaisesRegex(LIFECYCLE.LifecycleError, "not supported"):
+            LIFECYCLE.validate_config(mismatched)
+
     def test_plan_and_feature_prepared_bind_bootstrap_ci_disposition(self) -> None:
         self.config["repositories"][0]["bootstrap_ci"] = {
             "policy": "suppress-unchanged",
@@ -493,6 +511,9 @@ class VerifiedDevelopmentLifecycleTests(unittest.TestCase):
             "fallback": "run-pipeline",
             "evidence_required": True,
         }
+        self.config["adapters"][0]["bootstrap_mechanisms"] = [
+            "gitlab-ci-skip-push-option"
+        ]
         write_json(self.source, self.config)
         self.configure()
         plan_path, state_path, plan = self.make_plan()
@@ -508,6 +529,12 @@ class VerifiedDevelopmentLifecycleTests(unittest.TestCase):
             }],
             plan["feature_bootstrap"],
         )
+        plan_schema = json.loads(
+            (SCRIPT.parent.parent / "schemas" / "plan.schema.json").read_text(
+                encoding="utf-8"
+            )
+        )
+        self.assertIn("feature_bootstrap", plan_schema["required"])
 
         original_state = read_json(state_path)
         tampered_plan = read_json(plan_path)
@@ -555,6 +582,21 @@ class VerifiedDevelopmentLifecycleTests(unittest.TestCase):
 
         checkpoint["subjects"].pop()
         self.rebind_evidence(checkpoint)
+        with self.assertRaisesRegex(LIFECYCLE.LifecycleError, "immutable bootstrap CI observation"):
+            self.advance(plan_path, state_path, checkpoint)
+
+        checkpoint["subjects"].append({
+            "kind": "pipeline",
+            "role": "bootstrap-ci-fallback-passed",
+            "repository": "app",
+            "identity": "gitlab-pipeline-12345",
+        })
+        self.rebind_evidence(checkpoint)
+        with self.assertRaisesRegex(LIFECYCLE.LifecycleError, "does not match its ref"):
+            self.advance(plan_path, state_path, checkpoint)
+
+        checkpoint["subjects"][-1]["role"] = "bootstrap-ci-suppressed"
+        self.rebind_evidence(checkpoint)
         result = self.advance(plan_path, state_path, checkpoint)
         self.assertEqual("feature-prepared", result["current_checkpoint"])
 
@@ -573,6 +615,12 @@ class VerifiedDevelopmentLifecycleTests(unittest.TestCase):
         next(subject for subject in fallback["subjects"] if subject["kind"] == "ref")[
             "role"
         ] = "bootstrap-ci-fallback-passed"
+        fallback["subjects"].append({
+            "kind": "pipeline",
+            "role": "bootstrap-ci-fallback-passed",
+            "repository": "app",
+            "identity": "gitlab-pipeline-12346",
+        })
         self.rebind_evidence(fallback)
         fallback_result = self.advance(fallback_plan_path, fallback_state_path, fallback)
         self.assertEqual("feature-prepared", fallback_result["current_checkpoint"])

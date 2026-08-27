@@ -110,6 +110,7 @@ BOOTSTRAP_CI_DISPOSITIONS = {
     "bootstrap-ci-suppressed",
     "bootstrap-ci-fallback-passed",
 }
+BOOTSTRAP_CI_OBSERVATION_KINDS = {"check-run", "pipeline"}
 
 
 class LifecycleError(Exception):
@@ -254,10 +255,20 @@ def validate_config(config: dict[str, Any]) -> None:
     adapters_by_id = {item["id"]: item for item in config["adapters"]}
     provided: set[str] = set()
     for item in config["adapters"]:
-        exact_keys(item, {"id", "kind", "capabilities"}, "adapter")
+        adapter_fields = {"id", "kind", "capabilities"}
+        if "bootstrap_mechanisms" in item:
+            adapter_fields.add("bootstrap_mechanisms")
+        exact_keys(item, adapter_fields, "adapter")
         caps = item["capabilities"]
         if not isinstance(caps, list) or not caps or len(caps) != len(set(caps)) or not set(caps) <= CAPABILITIES:
             raise LifecycleError(f"adapter {item['id']} has invalid capabilities")
+        mechanisms = item.get("bootstrap_mechanisms", [])
+        if (
+            not isinstance(mechanisms, list)
+            or len(mechanisms) != len(set(mechanisms))
+            or not set(mechanisms) <= BOOTSTRAP_CI_MECHANISMS
+        ):
+            raise LifecycleError(f"adapter {item['id']} has invalid bootstrap_mechanisms")
         provided.update(caps)
     for repository in config["repositories"]:
         bootstrap = repository.get("bootstrap_ci")
@@ -269,6 +280,10 @@ def validate_config(config: dict[str, Any]) -> None:
         if "scm.suppress-bootstrap-pipeline" not in adapter["capabilities"]:
             raise LifecycleError(
                 "bootstrap_ci adapter lacks scm.suppress-bootstrap-pipeline capability"
+            )
+        if bootstrap["mechanism"] not in adapter.get("bootstrap_mechanisms", []):
+            raise LifecycleError(
+                "bootstrap_ci mechanism is not supported by its configured adapter"
             )
     required_caps = config["required_capabilities"]
     if len(required_caps) != len(set(required_caps)) or not set(required_caps) <= CAPABILITIES:
@@ -737,7 +752,9 @@ def cmd_advance(args: argparse.Namespace) -> dict[str, Any]:
         if not isinstance(item["name"], str) or not isinstance(item["passed"], bool):
             raise LifecycleError("checkpoint assertion is malformed")
         assertion_names.add(item["name"])
-    expected_assertions = {"not-required-by-config"} if status == "not-required" else ASSERTIONS[name]
+    expected_assertions = {"not-required-by-config"} if status == "not-required" else set(ASSERTIONS[name])
+    if status != "not-required" and name == "feature-prepared" and plan.get("feature_bootstrap", []):
+        expected_assertions.add("bootstrap-ci-outcome-observed")
     missing_assertions = sorted(expected_assertions - assertion_names)
     if missing_assertions or assertion_names != expected_assertions:
         raise LifecycleError(f"checkpoint {name} assertions must exactly equal: {', '.join(sorted(expected_assertions))}")
@@ -745,7 +762,10 @@ def cmd_advance(args: argparse.Namespace) -> dict[str, Any]:
     for subject in checkpoint["subjects"]:
         exact_keys(subject, {"kind", "role", "repository", "identity"}, "checkpoint subject")
         kind, identity = subject["kind"], subject["identity"]
-        if kind not in SUBJECT_KINDS[name]:
+        allowed_kinds = set(SUBJECT_KINDS[name])
+        if name == "feature-prepared":
+            allowed_kinds.update(BOOTSTRAP_CI_OBSERVATION_KINDS)
+        if kind not in allowed_kinds:
             raise LifecycleError(f"subject kind {kind!r} is not valid for checkpoint {name}")
         repository = subject["repository"]
         if repository is not None and repository not in declared(config, "repositories"):
@@ -756,6 +776,8 @@ def cmd_advance(args: argparse.Namespace) -> dict[str, Any]:
             raise LifecycleError(f"subject {kind} identity is not a commit-like SHA")
         if kind == "ref" and not REF_RE.fullmatch(identity):
             raise LifecycleError("subject ref identity is invalid")
+        if kind in BOOTSTRAP_CI_OBSERVATION_KINDS and not REF_RE.fullmatch(identity):
+            raise LifecycleError(f"subject {kind} identity is invalid")
         seen_kinds.add(kind)
     missing_kinds = sorted(SUBJECT_KINDS[name] - seen_kinds)
     if missing_kinds:
@@ -821,6 +843,31 @@ def cmd_advance(args: argparse.Namespace) -> dict[str, Any]:
                 "feature-prepared lacks an observable bootstrap CI disposition for: "
                 + ", ".join(invalid)
             )
+        observations = [
+            item for item in checkpoint["subjects"]
+            if item["kind"] in BOOTSTRAP_CI_OBSERVATION_KINDS
+        ]
+        observation_repositories = [item["repository"] for item in observations]
+        if (
+            len(observations) != len(bootstrap_repositories)
+            or len(observation_repositories) != len(set(observation_repositories))
+            or set(observation_repositories) != bootstrap_repositories
+        ):
+            raise LifecycleError(
+                "feature-prepared requires exactly one immutable bootstrap CI observation for every configured repository"
+            )
+        mismatched_observations = sorted(
+            item["repository"]
+            for item in observations
+            if item["role"] != dispositions[item["repository"]]
+        )
+        if mismatched_observations:
+            raise LifecycleError(
+                "feature-prepared bootstrap CI observation disposition does not match its ref for: "
+                + ", ".join(mismatched_observations)
+            )
+        if len({(item["kind"], item["identity"]) for item in observations}) != len(observations):
+            raise LifecycleError("feature-prepared bootstrap CI observation identities must be unique")
     green = state["completed"].get("tdd-green")
     if green and name in {"review-complete", "push-verified", "feature-published", "feature-pipeline"}:
         if repository_identities(checkpoint, "commit") != repository_identities(green, "commit"):
