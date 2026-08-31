@@ -136,6 +136,7 @@ def validate_relative_links(root: Path, path: Path, text: str) -> None:
 
 
 def validate(root: Path) -> int:
+    root = root.resolve()
     manifest = load_manifest(root)
     total = 0
     locale_names: list[str] = []
@@ -186,6 +187,15 @@ def validate(root: Path) -> int:
             validate_relative_links(root, canonical, canonical_text)
             validate_relative_links(root, translation, translation_text)
             total += 1
+    if (root / "docs/i18n/translation-status.json").exists():
+        from translation_freshness import status
+        try:
+            freshness = status(root)
+        except (ValueError, OSError, RuntimeError) as error:
+            raise LocalizationError(f"invalid translation freshness metadata: {error}") from error
+        if not freshness["aligned"]:
+            affected = sorted({row["locale"] for row in freshness["documents"] if row["status"] != "aligned"})
+            raise LocalizationError(f"translation freshness needs review: {', '.join(affected)}")
     locale_ids = ", ".join(sorted(manifest["locales"]))
     print(
         f"Validated {total} translation(s) across "

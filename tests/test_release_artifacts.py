@@ -40,7 +40,7 @@ class ReleaseArtifactTests(unittest.TestCase):
         manifest = json.loads(
             (REPOSITORY_DIRECTORY / "docs/i18n/locales.json").read_text(encoding="utf-8")
         )
-        expected = {"docs/i18n/locales.json", "docs/i18n/README.md"}
+        expected = {"docs/i18n/locales.json", "docs/i18n/README.md", "docs/collection-reliability.md", "scripts/skill_doctor.py"}
         for locale in manifest["locales"].values():
             for document in locale["documents"]:
                 expected.update((document["canonical"], document["translation"]))
@@ -65,6 +65,17 @@ class ReleaseArtifactTests(unittest.TestCase):
                 prefix = f"{ARCHIVE_BASENAME}/"
                 with zipfile.ZipFile(first / f"{ARCHIVE_BASENAME}.zip") as archive:
                     zip_names = set(archive.namelist())
+                    archive.extractall(first / "extracted")
+                extracted = first / "extracted" / ARCHIVE_BASENAME
+                project = first / "empty-project"
+                project.mkdir()
+                diagnostic = subprocess.run(
+                    [sys.executable, str(extracted / "scripts/manage_installed_skills.py"),
+                     "doctor", "--project", str(project), "--inspect-sources", "--json"],
+                    capture_output=True, text=True, encoding="utf-8", timeout=30, check=False,
+                )
+                self.assertEqual(1, diagnostic.returncode, diagnostic.stderr)
+                self.assertIn("source_diagnostics", json.loads(diagnostic.stdout))
                 with tarfile.open(first / f"{ARCHIVE_BASENAME}.tar.gz") as archive:
                     tar_names = set(archive.getnames())
                 public_docs = (repository / "docs/i18n").rglob("*")

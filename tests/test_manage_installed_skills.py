@@ -564,6 +564,47 @@ class ManageInstalledSkillsTests(unittest.TestCase):
             self.assertEqual("partial", state["runtime_checks"][0]["status"])
             self.assertTrue(any("partially configured" in item for item in state["problems"]))
 
+    def test_deep_doctor_user_configuration_stays_opt_in(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            project = self.make_project(root, {"notify-via-telegram": "1.19.1"})
+            (root / "skill-catalog.json").write_text(json.dumps({"skills": [{
+                "name": "notify-via-telegram", "configuration": {
+                    "scope": "user", "status": ["python", "scripts/status.py"],
+                },
+            }]}), encoding="utf-8")
+            with patch.object(manager.subprocess, "run") as run:
+                state = manager.doctor(project, deep=True, repository_root=root)
+                run.assert_not_called()
+                self.assertEqual("skipped", state["runtime_checks"][0]["status"])
+            with patch.object(manager.subprocess, "run", return_value=subprocess.CompletedProcess(
+                [], 0, stdout='{"configured": true, "valid": true}', stderr=""
+            )) as run:
+                state = manager.doctor(project, deep=True, include_user_config=True, repository_root=root)
+                run.assert_called_once()
+                self.assertEqual("healthy", state["runtime_checks"][0]["status"])
+
+    def test_deep_doctor_retains_fail_closed_error_classification(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            project = self.make_project(root, {"verify-before-push": "1.19.1"})
+            (root / "skill-catalog.json").write_text(json.dumps({"skills": [{
+                "name": "verify-before-push", "configuration": {
+                    "scope": "project", "status": ["python", "scripts/status.py"],
+                },
+            }]}), encoding="utf-8")
+            for output, returncode, expected in (("not-json", 0, "error"),
+                                                  ('{"valid": false}', 0, "invalid"),
+                                                  ('{"configured": true}', 1, "error")):
+                with self.subTest(output=output), patch.object(
+                    manager.subprocess, "run", return_value=subprocess.CompletedProcess(
+                        [], returncode, stdout=output, stderr=""
+                    )
+                ):
+                    state = manager.doctor(project, deep=True, repository_root=root)
+                    self.assertFalse(state["healthy"])
+                    self.assertEqual(expected, state["runtime_checks"][0]["status"])
+
     def test_update_delegates_to_pinned_cli_without_shell(self) -> None:
         with tempfile.TemporaryDirectory() as directory, patch.object(
             shutil, "which", return_value="npx"

@@ -1,0 +1,24 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/kolabse/skills/release-skill-collection/route-plan.schema.json",
+  "title": "Read-only GitHub collection release route plan",
+  "type": "object",
+  "required": ["schema_version", "mode", "project_root", "tag", "policy", "policy_sha256", "candidate_commit", "candidate_tree", "primary_commit", "primary_tree", "remote_observation", "github_observation", "github_observation_sha256", "selected_method", "permitted_methods", "tag_target", "new_commit_requires_new_evidence", "steps", "blockers", "ready", "mutates_repository", "report_sha256"],
+  "properties": {
+    "schema_version": {"const": 2},
+    "mode": {"const": "route-plan"},
+    "policy": {"$ref": "route-policy.schema.json"},
+    "policy_sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "github_observation_sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "selected_method": {"enum": ["merge", "squash", "rebase"]},
+    "permitted_methods": {"type": "array", "items": {"enum": ["merge", "squash", "rebase"]}, "uniqueItems": true},
+    "tag_target": {"const": "actual-integrated-primary"},
+    "new_commit_requires_new_evidence": {"const": true},
+    "steps": {"type": "array", "items": {"type": "string"}},
+    "blockers": {"type": "array", "items": {"type": "string"}},
+    "ready": {"type": "boolean"},
+    "mutates_repository": {"const": false},
+    "report_sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"}
+  },
+  "additionalProperties": true
+}

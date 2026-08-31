@@ -1,0 +1,28 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/kolabse/skills/schemas/skill-doctor-observations.schema.json",
+  "title": "Sanitized user-reported skill observations (not independently verified)",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "agent", "context_id", "observed_at", "skills"],
+  "properties": {
+    "schema_version": {"const": 1},
+    "agent": {"enum": ["codex", "claude-code"]},
+    "context_id": {"type": "string", "maxLength": 80, "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{0,79}$"},
+    "observed_at": {"type": "string", "format": "date-time", "maxLength": 40, "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}(Z|[+-][0-9]{2}:[0-9]{2})$"},
+    "skills": {
+      "type": "array", "maxItems": 512,
+      "items": {
+        "type": "object", "additionalProperties": false,
+        "required": ["skill", "availability", "invocation"],
+        "properties": {
+          "skill": {"type": "string", "maxLength": 63, "pattern": "^[a-z0-9]+(-[a-z0-9]+)*$"},
+          "availability": {"enum": ["available", "unavailable", "unknown"]},
+          "invocation": {"enum": ["invoked", "not-invoked", "unknown"]},
+          "copy_path": {"type": ["string", "null"], "description": "Optional absolute path of an already inventoried copy; no filesystem reads are performed through this reference."}
+        }
+      }
+    }
+  },
+  "description": "Explicit opt-in only. Use an opaque context identifier; do not include prompts, transcripts, secrets or free-form reasons. Rows must have unique skill names. The agent must match --agent. The reader also enforces byte limits, safe paths and valid timestamps. States are independent user reports, not proof of current task availability, precedence, invocation or freshness."
+}

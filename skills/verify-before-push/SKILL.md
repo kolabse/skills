@@ -116,6 +116,67 @@ Completion criterion: evidence records the configuration digest, repository
 HEAD/upstream/worktree fingerprints, check results, and UTC time for an
 unchanged state.
 
+## Opt in to exact-state result reuse
+
+Reuse is disabled by default. Configuration version 1 may explicitly set
+`reuse_verified_results: true`; configure and migrate never enable it silently.
+Keep it disabled unless a trusted project-owned attestor can identify the
+complete check environment, including ignored dependencies, toolchains,
+containers, external services, and every non-Git input that can affect results.
+
+Supply its fresh lowercase SHA-256 digest on every `run`, `verify`, and `gate`
+invocation with `--trusted-environment-fingerprint <fresh-environment-sha256>`
+or the `VERIFY_BEFORE_PUSH_TRUSTED_ENVIRONMENT_SHA256` environment variable.
+The explicit argument takes precedence. This is a **caller-supplied trust
+assertion**, not an environment attestation independently produced or verified
+by the helper. Never use a static placeholder, arbitrary label, or a digest of
+only Git files. If environment stability is unknown, omit the digest and rerun
+checks; do not enable reuse for convenience.
+
+A full successful opt-in run writes version-2 evidence described by
+`schemas/evidence.schema.json`. It additionally binds the helper and resolved
+check executables, Python/Git runtime, local environment digest, caller's
+trusted environment digest, branch, Git directory, upstream configuration,
+fetch refspecs, and hashed fetch/push URL identities. Raw environment values
+and remote URLs are not stored. The receipt digest detects accidental changes;
+it is not a signature and does not protect against someone who can rewrite the
+receipt and recompute its digest. Treat evidence as trusted local material.
+Relative or empty PATH entries and implicit current-directory executable
+lookup disable reuse: the helper runs ordinary full checks without pinning a
+potentially different executable from its own working directory.
+Executable pinning preserves the absolute launch path (including virtualenv
+aliases) and separately binds the resolved target and its content digest.
+
+Reuse permits only the exact original state or this narrow delivery change:
+the same configured upstream moves from a proven ancestor of the checked HEAD
+to that exact HEAD, with behind=0 before and ahead=behind=0 afterward. Commit,
+worktree/index/untracked content, configuration, runtime, environment, branch,
+remote and tracking identities must remain identical. A new commit with an
+identical tree, partial delivery, changed tracking or remote, or any other
+upstream change cannot reuse results. Every gated invocation independently
+fetches and checks the exact advertised remote branch; offline, missing, or
+ambiguous remote state fails closed. Reuse requires upstream-current checks
+for every configured repository, even if only one repository is being pushed.
+
+`run` reuses only a valid version-2 receipt with every enabled check passed.
+It preserves the receipt bytes, original verification time, and file timestamp;
+it never rewrites evidence to make it appear fresh. A stale, malformed, legacy,
+or failed receipt does not authorize reuse: a full run is required. Full runs
+without an available trusted identity, or with an allowed optional check
+failure, retain version-1 strict evidence. A failed rerun invalidates the old
+receipt, including failures during fresh remote checks.
+
+Existing version-1 configuration and valid evidence remain supported without
+migration. Legacy evidence is accepted only for its exact original Git state,
+never as a reusable receipt. Malformed evidence, duplicate JSON/check keys,
+unexpected results, and inconsistent status/exit codes fail closed for both
+versions. A version-2 gate requires the same trusted environment digest even
+when no Git state changed. An unconfigured repository remains outside the gate.
+
+Completion criterion: any reused result proves the same checked subject and
+identities, fresh remote state, and an unchanged original receipt. Report reuse
+explicitly; do not describe reused results as newly executed checks.
+
 ## Validate before push
 
 Validate all configured repositories with:
@@ -146,9 +207,11 @@ evidence immediately before push; unrelated repositories remain unaffected.
 
 ## Invalidation and reporting
 
-Evidence becomes stale after any configured repository commit, tracked edit,
+By default, evidence becomes stale after any configured repository commit, tracked edit,
 untracked-file change, staging change, upstream ref change, or configuration
-change. Rerun the declared checks; never edit evidence to refresh it.
+change. The explicit version-2 reuse contract above permits only delivery of
+the same checked HEAD; it does not waive any other invalidation. Rerun the
+declared checks for every other change; never edit evidence to refresh it.
 
 Report repositories covered, checks passed or intentionally skipped, evidence
 path, verification time, and any stale-state reason. Do not claim that a push

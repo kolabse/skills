@@ -15,7 +15,7 @@ jobs:
         os: [ubuntu-latest, windows-latest, macos-latest]
         python-version: ["3.11", "3.13"]
     runs-on: ${{ matrix.os }}
-    timeout-minutes: 10
+    timeout-minutes: 30
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -23,10 +23,8 @@ jobs:
       - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
         with:
           python-version: ${{ matrix.python-version }}
-      - name: Validate collection
-        run: python scripts/validate_skills.py
-      - name: Smoke-test Git marketplaces
-        run: python scripts/smoke_marketplaces.py
+      - name: Run shared checks (fast gates before unit tests)
+        run: python scripts/check_collection.py run --profile full
       - name: Prepare blind trigger suite
         run: python scripts/trigger_evals.py prepare --output .trigger-evals/suite.json
       - name: Prepare locked release holdout
@@ -34,12 +32,6 @@ jobs:
       - name: Reject changes to published holdout versions
         if: github.event_name == 'pull_request' && matrix.os == 'ubuntu-latest' && matrix.python-version == '3.13'
         run: git diff --diff-filter=MD --exit-code "${{ github.event.pull_request.base.sha }}" -- 'evals/release-holdout-v*.json' 'evals/baselines/*.json'
-      - name: Run unit tests
-        run: python -m unittest discover -s tests -v
-      - name: Smoke-test standalone bootstrap
-        run: python scripts/smoke_bootstrap.py --agent codex
-      - name: Smoke-test standalone bootstrap for Claude Code
-        run: python scripts/smoke_bootstrap.py --agent claude-code
 
   skills-cli-discovery:
     runs-on: ubuntu-latest
@@ -56,13 +48,5 @@ jobs:
       - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
         with:
           python-version: "3.13"
-      - name: Verify skills CLI discovery
-        run: npx --yes skills@1.5.22 add . --list
-      - name: Smoke-test copied installation
-        run: python scripts/smoke_install.py --agent codex
-      - name: Smoke-test copied Claude Code installation
-        run: python scripts/smoke_install.py --agent claude-code
-      - name: Smoke-test consumer upgrade
-        run: python scripts/smoke_upgrade.py --agent codex
-      - name: Smoke-test Claude Code consumer upgrade
-        run: python scripts/smoke_upgrade.py --agent claude-code
+      - name: Run shared consumer checks
+        run: python scripts/check_collection.py run --profile consumers

@@ -78,9 +78,18 @@ def file_digest(path: Path) -> str:
     return digest.hexdigest()
 
 
+def unique_json_object(pairs: list[tuple[str, Any]]) -> dict[str, Any]:
+    result: dict[str, Any] = {}
+    for key, value in pairs:
+        if key in result:
+            raise ReleaseError("JSON object contains a duplicate key")
+        result[key] = value
+    return result
+
+
 def load_object(path: Path, label: str | None = None) -> dict[str, Any]:
     try:
-        value = json.loads(path.read_text(encoding="utf-8"))
+        value = json.loads(path.read_text(encoding="utf-8"), object_pairs_hook=unique_json_object)
     except FileNotFoundError as error:
         raise ReleaseError(f"{label or path} is missing: {path}") from error
     except (OSError, UnicodeDecodeError, json.JSONDecodeError) as error:
@@ -356,6 +365,11 @@ def check(root: Path, tag: str, output_root: Path | None) -> dict[str, Any]:
     plan = inspect(root, tag)
     blockers = list(plan["blockers"])
     results: list[dict[str, Any]] = []
+    active_checks = CHECKS
+    if (root / "collection-checks.json").exists():
+        active_checks = (("collection-full", ("scripts/check_collection.py", "run", "--profile", "full"), 1800),)
+        if not (root / "scripts/check_collection.py").is_file():
+            blockers.append("declared shared check program requires scripts/check_collection.py")
     if plan["repository"].get("dirty"):
         blockers.append("local release checks require a clean worktree")
     output: Path | None = None
@@ -365,13 +379,13 @@ def check(root: Path, tag: str, output_root: Path | None) -> dict[str, Any]:
     )
     try:
         if not blockers and output is not None:
-            for name, arguments, timeout in CHECKS:
+            for name, arguments, timeout in active_checks:
                 command = [sys.executable, *arguments]
                 result = run_command(root, name, command, timeout)
                 results.append(result)
                 if not result["passed"]:
                     break
-            if len(results) == len(CHECKS) and all(item["passed"] for item in results):
+            if len(results) == len(active_checks) and all(item["passed"] for item in results):
                 build = run_command(
                     root,
                     "build",
@@ -405,7 +419,7 @@ def check(root: Path, tag: str, output_root: Path | None) -> dict[str, Any]:
         post_check_state = repository_state(root)
         if not blockers and post_check_state.get("dirty"):
             blockers.append("local release checks mutated the repository worktree")
-        passed = not blockers and len(results) == len(CHECKS) + 2 and all(
+        passed = not blockers and len(results) == len(active_checks) + 2 and all(
             item["passed"] for item in results
         )
         response = {
@@ -447,6 +461,13 @@ def verify_digest(value: dict[str, Any], field: str, label: str) -> None:
 
 def verify_evidence(root: Path, tag: str, evidence_path: Path) -> dict[str, Any]:
     root = root.resolve()
+    return verify_commit_evidence(root, tag, evidence_path, git_text(root, "rev-parse", "HEAD"))
+
+
+def verify_commit_evidence(
+    root: Path, tag: str, evidence_path: Path, expected_commit: str | None,
+) -> dict[str, Any]:
+    """Validate unchanged gate requirements against an explicitly resolved commit."""
     evidence = load_object(evidence_path.resolve(), "release evidence")
     verify_digest(evidence, "evidence_sha256", "release evidence")
     required = {"schema_version", "tag", "commit", "gates", "evidence_sha256"}
@@ -455,9 +476,8 @@ def verify_evidence(root: Path, tag: str, evidence_path: Path) -> dict[str, Any]
     if evidence["tag"] != tag or not TAG_PATTERN.fullmatch(tag):
         raise ReleaseError("release evidence tag does not match the requested tag")
     commit = evidence["commit"]
-    head = git_text(root, "rev-parse", "HEAD")
-    if not isinstance(commit, str) or not re.fullmatch(r"[0-9a-f]{40}", commit) or commit != head:
-        raise ReleaseError("release evidence is not bound to the current HEAD")
+    if not isinstance(commit, str) or not re.fullmatch(r"[0-9a-f]{40}", commit) or commit != expected_commit:
+        raise ReleaseError("release evidence is not bound to the required commit (current HEAD for verify-evidence)")
     gates = evidence["gates"]
     if not isinstance(gates, dict) or set(gates) != REQUIRED_GATES:
         raise ReleaseError("release evidence must contain every required gate exactly once")
@@ -655,16 +675,189 @@ def audit_release(root: Path, tag: str, repository: str) -> dict[str, Any]:
     return result
 
 
-def cleanup_plan(root: Path, tag: str, primary: str, branches: list[str]) -> dict[str, Any]:
+def remote_repository(root: Path, remote: str) -> str | None:
+    value = git_text(root, "remote", "get-url", remote) or ""
+    match = re.fullmatch(r"(?:https://github\.com/|git@github\.com:|ssh://git@github\.com/)([A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+?)(?:\.git)?/?", value)
+    return match.group(1) if match else None
+
+
+def remote_observation(root: Path, remote: str, refs: list[str]) -> dict[str, Any]:
+    if not remote or remote.startswith("-") or remote not in (git_text(root, "remote") or "").splitlines():
+        raise ReleaseError("selected remote does not exist")
+    fetch_url = git_text(root, "remote", "get-url", "--all", remote)
+    push_url = git_text(root, "remote", "get-url", "--push", "--all", remote)
+    if not fetch_url or "\n" in fetch_url or fetch_url != push_url:
+        raise ReleaseError("remote must have one identical fetch and push destination")
+    result = run_git(root, "ls-remote", remote, *refs)
+    if result.returncode:
+        raise ReleaseError("remote freshness inspection failed")
+    observed: dict[str, str] = {}
+    for line in result.stdout.splitlines():
+        fields = line.split()
+        if len(fields) != 2 or not re.fullmatch(r"[0-9a-f]{40,64}", fields[0]) or fields[1] not in refs or fields[1] in observed:
+            raise ReleaseError("remote ref observation is malformed or ambiguous")
+        observed[fields[1]] = fields[0]
+    return {"remote": remote, "url_sha256": hashlib.sha256(fetch_url.encode()).hexdigest(),
+            "refs": {ref: observed.get(ref) for ref in sorted(refs)}}
+
+
+def github_route_observation(repository: str, primary: str, pull_request: int) -> dict[str, Any]:
+    from urllib.parse import quote
+
+    prefix = f"repos/{repository}"
+    branch = quote(primary, safe="")
+    repo = run_json_command(["gh", "api", prefix], 60, "GitHub repository settings")
+    branch_state = run_json_command(["gh", "api", f"{prefix}/branches/{branch}"], 60, "GitHub branch state")
+    if not isinstance(branch_state, dict) or not isinstance(branch_state.get("protected"), bool):
+        raise ReleaseError("GitHub branch protection visibility is incomplete")
+    # A protected branch with an unreadable classic protection endpoint is unknown,
+    # not unprotected. Never infer absence from an empty effective-rules response.
+    protection = run_json_command(["gh", "api", f"{prefix}/branches/{branch}/protection"], 60,
+                                  "GitHub classic branch protection") if branch_state["protected"] else {}
+    pages = run_json_command(["gh", "api", "--paginate", "--slurp", f"{prefix}/rules/branches/{branch}"],
+                             60, "GitHub effective branch rules")
+    if not isinstance(pages, list) or not all(isinstance(page, list) for page in pages):
+        raise ReleaseError("GitHub effective rules pagination is incomplete")
+    pr = run_json_command(["gh", "api", f"{prefix}/pulls/{pull_request}"], 60, "GitHub pull request")
+    if not isinstance(repo, dict) or not isinstance(pr, dict) or not isinstance(protection, dict):
+        raise ReleaseError("GitHub route payload is malformed")
+    if branch_state["protected"] and (not isinstance(protection.get("required_linear_history"), dict)
+                                      or type(protection["required_linear_history"].get("enabled")) is not bool):
+        raise ReleaseError("classic linear-history visibility is incomplete")
+    head, base = pr.get("head"), pr.get("base")
+    if not isinstance(head, dict) or not isinstance(base, dict) or not isinstance(base.get("repo"), dict):
+        raise ReleaseError("GitHub pull request identity is incomplete")
+    # Keep only routing facts, not unrelated private repository or PR body text.
+    return {"repository": {key: repo.get(key) for key in ("full_name", "allow_merge_commit", "allow_squash_merge", "allow_rebase_merge")},
+            "protection": protection,
+            "rules": [rule for page in pages for rule in page],
+            "pull_request": {"number": pr.get("number"), "state": pr.get("state"), "merged": pr.get("merged"),
+                             "head": {"sha": head.get("sha")},
+                             "base": {"sha": base.get("sha"), "ref": base.get("ref"),
+                                      "repo": {"full_name": base["repo"].get("full_name")}}}}
+
+
+def route_plan(root: Path, tag: str, policy_path: Path, pull_request: int) -> dict[str, Any]:
+    root = root.resolve()
+    policy = load_object(policy_path, "release route policy")
+    if (set(policy) != {"schema_version", "repository", "remote", "primary", "merge_method"}
+        or type(policy["schema_version"]) is not int or policy["schema_version"] != 1):
+        raise ReleaseError("release route policy has an unsupported contract")
+    repository, remote, primary, method = (policy[key] for key in ("repository", "remote", "primary", "merge_method"))
+    if not isinstance(repository, str) or not REPOSITORY_PATTERN.fullmatch(repository):
+        raise ReleaseError("route policy requires a GitHub owner/repository")
+    if method not in ("merge", "squash", "rebase"):
+        raise ReleaseError("route policy must explicitly select merge, squash, or rebase")
+    if not isinstance(primary, str) or run_git(root, "check-ref-format", "--branch", primary).returncode:
+        raise ReleaseError("route policy requires an explicit primary branch")
+    if not isinstance(remote, str) or not TAG_PATTERN.fullmatch(tag) or type(pull_request) is not int or pull_request < 1:
+        raise ReleaseError("invalid remote, release tag, or pull request number")
+    state = repository_state(root)
+    blockers: list[str] = []
+    remote_repo = remote_repository(root, remote)
+    if not remote_repo or remote_repo.casefold() != repository.casefold():
+        blockers.append("selected remote does not identify the policy GitHub repository")
+    if not state.get("head") or not state.get("branch") or state.get("dirty") or state.get("operation"):
+        blockers.append("route planning requires a clean attached candidate with no operation in progress")
+    local_primary = git_text(root, "rev-parse", "--verify", f"refs/heads/{primary}^{{commit}}")
+    refs = [f"refs/heads/{primary}", f"refs/tags/{tag}", f"refs/tags/{tag}^{{}}"]
+    observed = remote_observation(root, remote, refs)
+    if not local_primary or observed["refs"][refs[0]] != local_primary:
+        blockers.append("local primary does not match freshly observed remote primary")
+    if observed["refs"][refs[1]] or git_text(root, "rev-parse", "--verify", f"refs/tags/{tag}"):
+        blockers.append("release tag already exists; audit it without moving or republishing it")
+    facts = github_route_observation(repository, primary, pull_request)
+    repo, protection, rules, pr = (facts.get(key) for key in ("repository", "protection", "rules", "pull_request"))
+    if not isinstance(repo, dict) or repo.get("full_name") != repository or not isinstance(protection, dict) or not isinstance(rules, list) or not isinstance(pr, dict):
+        raise ReleaseError("GitHub route observation is malformed or belongs to another repository")
+    allowed = set()
+    for candidate, flag in (("merge", "allow_merge_commit"), ("squash", "allow_squash_merge"), ("rebase", "allow_rebase_merge")):
+        if type(repo.get(flag)) is not bool:
+            raise ReleaseError("GitHub merge-method availability is incomplete")
+        if repo[flag]:
+            allowed.add(candidate)
+    linear_rule = protection.get("required_linear_history", {})
+    if not isinstance(linear_rule, dict):
+        raise ReleaseError("classic linear-history protection is malformed")
+    linear = linear_rule.get("enabled", False)
+    if type(linear) is not bool:
+        raise ReleaseError("classic linear-history protection is malformed")
+    for rule in rules:
+        if not isinstance(rule, dict) or not isinstance(rule.get("type"), str):
+            raise ReleaseError("effective branch rule is malformed")
+        kind = rule["type"]
+        if kind == "required_linear_history":
+            linear = True
+        if kind == "merge_queue":
+            blockers.append("merge queue requires a separately supported integration workflow; no bypass")
+        if "parameters" in rule and not isinstance(rule["parameters"], dict):
+            raise ReleaseError("effective branch rule parameters are malformed")
+        if kind == "pull_request" and "allowed_merge_methods" in rule.get("parameters", {}):
+            methods = rule["parameters"]["allowed_merge_methods"]
+            if not isinstance(methods, list) or not methods or not all(item in ("merge", "squash", "rebase") for item in methods):
+                raise ReleaseError("pull-request merge-method constraint is malformed")
+            allowed.intersection_update(methods)
+    if linear:
+        allowed.discard("merge")
+        if method == "merge":
+            blockers.append("selected merge method conflicts with required linear history")
+    if method not in allowed:
+        blockers.append("explicit project merge method is not permitted by observed GitHub rules")
+    head = pr.get("head", {})
+    base = pr.get("base", {})
+    if (pr.get("number") != pull_request or pr.get("state") != "open" or pr.get("merged") is not False
+        or not isinstance(head, dict) or not isinstance(base, dict) or head.get("sha") != state.get("head")
+        or base.get("sha") != local_primary or base.get("ref") != primary
+        or not isinstance(base.get("repo"), dict) or base["repo"].get("full_name") != repository):
+        blockers.append("pull request head/base/state does not match the observed candidate and primary")
+    # Re-observe refs after provider calls; snapshots are not publication authority.
+    if remote_observation(root, remote, refs) != observed or repository_state(root) != state:
+        blockers.append("repository or remote refs changed during route planning")
+    if load_object(policy_path, "release route policy") != policy:
+        blockers.append("project route policy changed during planning")
+    result = {"schema_version": SCHEMA_VERSION, "mode": "route-plan", "project_root": str(root),
+              "tag": tag, "policy": policy, "policy_sha256": canonical_digest(policy),
+              "candidate_commit": state.get("head"),
+              "candidate_tree": git_text(root, "rev-parse", "HEAD^{tree}"),
+              "primary_commit": local_primary, "primary_tree": git_text(root, "rev-parse", f"{local_primary}^{{tree}}") if local_primary else None,
+              "remote_observation": observed, "github_observation": facts,
+              "github_observation_sha256": canonical_digest(facts), "selected_method": method,
+              "permitted_methods": sorted(allowed), "tag_target": "actual-integrated-primary",
+              "new_commit_requires_new_evidence": True,
+              "steps": ["revalidate policy, PR, effective rules and remote identities before authorized integration",
+                        "integrate only with the explicit permitted method and required GitHub gates",
+                        "observe the merged PR and actual integrated primary commit; never predict its SHA",
+                        "run and bind every required gate to that exact commit, including review",
+                        "only after explicit authorization create the annotated tag at verified integrated primary",
+                        "publish immutably, audit, then separately plan and authorize cleanup"],
+              "blockers": blockers, "ready": not blockers, "mutates_repository": False}
+    result["report_sha256"] = canonical_digest(result)
+    return result
+
+
+def cleanup_plan(root: Path, tag: str, primary: str, branches: list[str], *,
+                 remote: str = "origin", release_evidence: Path | None = None) -> dict[str, Any]:
     root = root.resolve()
     if not branches or len(branches) != len(set(branches)):
         raise ReleaseError("cleanup-plan requires unique branch names")
     if git_text(root, "cat-file", "-t", f"refs/tags/{tag}") != "tag":
         raise ReleaseError("cleanup-plan requires an annotated local release tag")
-    primary_commit = git_text(root, "rev-parse", primary)
+    if not TAG_PATTERN.fullmatch(tag) or run_git(root, "check-ref-format", "--branch", primary).returncode:
+        raise ReleaseError("cleanup requires a valid tag and local primary branch")
+    if primary in branches:
+        raise ReleaseError("cleanup cannot delete the primary branch")
+    primary_commit = git_text(root, "rev-parse", "--verify", f"refs/heads/{primary}^{{commit}}")
     tag_commit = git_text(root, "rev-list", "-n", "1", tag)
-    if not primary_commit or tag_commit != primary_commit:
-        raise ReleaseError("release tag must point at the selected primary ref")
+    tag_object = git_text(root, "rev-parse", f"refs/tags/{tag}")
+    release_tree = git_text(root, "rev-parse", f"{tag_commit}^{{tree}}")
+    primary_tree = git_text(root, "rev-parse", f"{primary_commit}^{{tree}}")
+    if not primary_commit or not release_tree or release_tree != primary_tree:
+        raise ReleaseError("release tag and selected primary must have identical trees")
+    evidence = None
+    if tag_commit != primary_commit:
+        if release_evidence is None:
+            raise ReleaseError("different release and primary commits require release evidence including review")
+        evidence = verify_commit_evidence(root, tag, release_evidence, tag_commit)
     rows: list[dict[str, Any]] = []
     for branch in branches:
         if run_git(root, "check-ref-format", "--branch", branch).returncode != 0:
@@ -692,13 +885,33 @@ def cleanup_plan(root: Path, tag: str, primary: str, branches: list[str]) -> dic
                 "reason": reason,
             }
         )
+    observation = remote_observation(root, remote, [f"refs/heads/{primary}", f"refs/tags/{tag}", f"refs/tags/{tag}^{{}}", *[f"refs/heads/{branch}" for branch in branches]])
+    refs = observation["refs"]
+    blockers = []
+    if refs.get(f"refs/heads/{primary}") != primary_commit:
+        blockers.append("remote primary does not match selected local primary")
+    if refs.get(f"refs/tags/{tag}") != tag_object or refs.get(f"refs/tags/{tag}^{{}}") != tag_commit:
+        blockers.append("published remote tag does not match the annotated local release tag")
+    for item in rows:
+        remote_commit = refs.get(f"refs/heads/{item['branch']}")
+        if remote_commit and remote_commit != item.get("commit"):
+            blockers.append(f"remote branch differs from proved local branch: {item['branch']}")
     result = {
         "schema_version": SCHEMA_VERSION,
         "mode": "cleanup-plan",
         "tag": tag,
         "primary": primary,
         "primary_commit": primary_commit,
-        "safe_to_delete": all(item["safe_to_delete"] for item in rows),
+        "release_commit": tag_commit,
+        "tag_object": tag_object,
+        "release_tree": release_tree,
+        "primary_tree": primary_tree,
+        "representation": "same-commit" if tag_commit == primary_commit else "identical-tree",
+        "release_evidence_sha256": evidence["evidence_sha256"] if evidence else None,
+        "project_root": str(root),
+        "remote_observation": observation,
+        "blockers": blockers,
+        "safe_to_delete": not blockers and all(item["safe_to_delete"] for item in rows),
         "branches": rows,
         "mutates_repository": False,
     }
@@ -712,6 +925,8 @@ def cleanup_apply(
     audit_value: object,
     confirmation: str,
     remote: str,
+    *,
+    release_evidence: Path | None = None,
 ) -> dict[str, Any]:
     root = root.resolve()
     if not isinstance(plan_value, dict) or not isinstance(audit_value, dict):
@@ -750,7 +965,7 @@ def cleanup_apply(
         or audit.get("attestation_verified") is not True
         or audit.get("mutates_repository") is not False
         or audit.get("tag") != tag
-        or audit.get("commit") != primary_commit
+        or audit.get("commit") != plan.get("release_commit")
     ):
         raise ReleaseError("release audit does not authorize this cleanup plan")
     assets = audit.get("assets")
@@ -770,7 +985,13 @@ def cleanup_apply(
         )
     ):
         raise ReleaseError("release audit asset or repository evidence is malformed")
+    selected_repository = remote_repository(root, remote)
+    if (not selected_repository or selected_repository.casefold() != audit["repository"].casefold()
+        or audit["release_url"] != f"https://github.com/{audit['repository']}/releases/tag/{tag}"):
+        raise ReleaseError("release audit repository does not match the selected GitHub remote and release URL")
     state = repository_state(root)
+    if plan.get("project_root") != str(root) or plan.get("remote_observation", {}).get("remote") != remote:
+        raise ReleaseError("cleanup plan belongs to another project or remote")
     if state.get("dirty") or state.get("operation"):
         raise ReleaseError("cleanup requires a clean repository with no operation in progress")
     upstream = git_text(
@@ -781,11 +1002,15 @@ def cleanup_apply(
     fetched = run_git(root, "fetch", "--prune", remote)
     if fetched.returncode != 0:
         raise ReleaseError(f"cleanup fetch failed: {redact_output(fetched.stderr)[-500:]}")
-    if git_text(root, "rev-parse", f"{remote}/{primary}") != primary_commit:
-        raise ReleaseError("remote primary no longer matches the audited release commit")
-    refreshed = cleanup_plan(root, str(tag), primary, [str(name) for name in branch_names])
+    if git_text(root, "rev-parse", f"refs/remotes/{remote}/{primary}") != primary_commit:
+        raise ReleaseError("remote primary no longer matches the planned integrated primary commit")
+    refreshed = cleanup_plan(root, str(tag), primary, [str(name) for name in branch_names],
+                             remote=remote, release_evidence=release_evidence)
     if refreshed["report_sha256"] != plan["report_sha256"]:
         raise ReleaseError("cleanup plan is stale; generate and review a new plan")
+    observed_refs = refreshed["remote_observation"]["refs"]
+    if observed_refs.get(f"refs/tags/{tag}") != plan.get("tag_object") or observed_refs.get(f"refs/tags/{tag}^{{}}") != plan.get("release_commit"):
+        raise ReleaseError("published remote tag no longer matches the audited annotated tag")
     for item in branches:
         branch = str(item["branch"])
         remote_commit = git_text(root, "rev-parse", f"refs/remotes/{remote}/{branch}")
@@ -794,39 +1019,85 @@ def cleanup_apply(
     switched = run_git(root, "switch", primary)
     if switched.returncode != 0:
         raise ReleaseError(f"cannot switch to primary branch: {redact_output(switched.stderr)[-500:]}")
-    pulled = run_git(root, "pull", "--ff-only")
+    pulled = run_git(root, "merge", "--ff-only", f"refs/remotes/{remote}/{primary}")
     if pulled.returncode != 0 or git_text(root, "rev-parse", "HEAD") != primary_commit:
-        raise ReleaseError("primary branch cannot be fast-forwarded to the audited release commit")
+        raise ReleaseError("primary branch cannot be fast-forwarded to the planned integrated primary commit")
     deleted_remote: list[str] = []
     deleted_local: list[str] = []
+    failure: str | None = None
     for item in branches:
         branch = str(item["branch"])
-        if git_text(root, "rev-parse", f"refs/remotes/{remote}/{branch}"):
-            deletion = run_git(root, "push", remote, "--delete", branch)
+        worktrees = git_text(root, "worktree", "list", "--porcelain")
+        if worktrees is None or f"branch refs/heads/{branch}" in worktrees.splitlines():
+            failure = f"cannot delete branch checked out in a worktree or with unknown worktree state: {branch}"
+            break
+        try:
+            current_remote = remote_observation(root, remote, list(observed_refs))
+        except ReleaseError as error:
+            failure = str(error)
+            break
+        stable_refs = [f"refs/heads/{primary}", f"refs/tags/{tag}", f"refs/tags/{tag}^{{}}", f"refs/heads/{branch}"]
+        if (current_remote["url_sha256"] != plan["remote_observation"]["url_sha256"]
+            or any(current_remote["refs"][ref] != observed_refs[ref] for ref in stable_refs)):
+            failure = f"remote identity changed before deletion: {branch}"
+            break
+        if git_text(root, "rev-parse", f"refs/heads/{branch}") != item["commit"]:
+            failure = f"local branch changed before deletion: {branch}"
+            break
+        expected = observed_refs.get(f"refs/heads/{branch}")
+        if expected:
+            # Compare-and-delete, never a history-rewriting update refspec.
+            try:
+                deletion = run_git(root, "push", remote, f"--force-with-lease=refs/heads/{branch}:{expected}", f":refs/heads/{branch}")
+            except ReleaseError as error:
+                failure = f"remote deletion outcome uncertain for {branch}; inspect refs before retrying: {error}"
+                break
             if deletion.returncode != 0:
-                raise ReleaseError(f"remote branch deletion failed for {branch}: {redact_output(deletion.stderr)[-500:]}")
+                failure = f"remote branch deletion failed for {branch}: {redact_output(deletion.stderr)[-500:]}"
+                break
             deleted_remote.append(branch)
-        deletion = run_git(root, "branch", "-D", branch)
+        try:
+            worktrees = git_text(root, "worktree", "list", "--porcelain")
+            if worktrees is None or f"branch refs/heads/{branch}" in worktrees.splitlines():
+                failure = f"local branch became checked out before deletion: {branch}"
+                break
+            if git_text(root, "symbolic-ref", "-q", f"refs/heads/{branch}") is not None:
+                failure = f"local branch became a symbolic ref before deletion: {branch}"
+                break
+            deletion = run_git(root, "update-ref", "--no-deref", "-d", f"refs/heads/{branch}", str(item["commit"]))
+        except ReleaseError as error:
+            failure = f"local deletion outcome uncertain for {branch}; inspect refs before retrying: {error}"
+            break
         if deletion.returncode != 0:
-            raise ReleaseError(f"local branch deletion failed for {branch}: {redact_output(deletion.stderr)[-500:]}")
+            failure = f"local branch deletion failed for {branch}: {redact_output(deletion.stderr)[-500:]}"
+            break
         deleted_local.append(branch)
     final_state = repository_state(root)
+    try:
+        final_remote = remote_observation(root, remote, [f"refs/heads/{primary}", f"refs/tags/{tag}", f"refs/tags/{tag}^{{}}"])
+        if any(final_remote["refs"][ref] != observed_refs[ref] for ref in final_remote["refs"]):
+            failure = failure or "remote primary or tag changed during cleanup; inspect retained refs"
+    except ReleaseError as error:
+        failure = failure or str(error)
     if (
         final_state.get("branch") != primary
         or final_state.get("dirty")
         or final_state.get("ahead") != 0
         or final_state.get("behind") != 0
     ):
-        raise ReleaseError("cleanup did not finish on a clean current primary branch")
+        failure = failure or "cleanup did not finish on a clean current primary branch"
     result = {
         "schema_version": SCHEMA_VERSION,
         "mode": "cleanup-apply",
-        "passed": True,
+        "passed": failure is None,
         "tag": tag,
         "primary": primary,
         "commit": primary_commit,
+        "release_commit": plan["release_commit"],
         "deleted_local": deleted_local,
         "deleted_remote": deleted_remote,
+        "retained_local": [str(item["branch"]) for item in branches if item["branch"] not in deleted_local],
+        "failure": failure,
         "mutates_repository": True,
     }
     result["report_sha256"] = canonical_digest(result)
@@ -838,7 +1109,7 @@ def emit(result: dict[str, Any], as_json: bool) -> None:
         print(json.dumps(result, ensure_ascii=False, indent=2, sort_keys=True))
         return
     mode = result["mode"]
-    passed = result.get("passed", result.get("valid", not result.get("blockers")))
+    passed = result.get("passed", result.get("valid", result.get("safe_to_delete", not result.get("blockers"))))
     print(f"{mode}: {'passed' if passed else 'blocked'}")
     for blocker in result.get("blockers", []):
         print(f"BLOCKER: {blocker}")
@@ -866,6 +1137,12 @@ def main(argv: list[str] | None = None) -> int:
     evidence.add_argument("--tag", required=True)
     evidence.add_argument("--evidence", type=Path, required=True)
     evidence.add_argument("--json", action="store_true")
+    route = subparsers.add_parser("route-plan")
+    route.add_argument("--project-root", type=Path, required=True)
+    route.add_argument("--tag", required=True)
+    route.add_argument("--policy", type=Path, required=True)
+    route.add_argument("--pull-request", type=int, required=True)
+    route.add_argument("--json", action="store_true")
     audit = subparsers.add_parser("audit-release")
     audit.add_argument("--project-root", type=Path, required=True)
     audit.add_argument("--tag", required=True)
@@ -874,8 +1151,10 @@ def main(argv: list[str] | None = None) -> int:
     cleanup = subparsers.add_parser("cleanup-plan")
     cleanup.add_argument("--project-root", type=Path, required=True)
     cleanup.add_argument("--tag", required=True)
-    cleanup.add_argument("--primary", default="origin/main")
+    cleanup.add_argument("--primary", required=True)
     cleanup.add_argument("--branch", action="append", required=True)
+    cleanup.add_argument("--remote", default="origin")
+    cleanup.add_argument("--release-evidence", type=Path)
     cleanup.add_argument("--json", action="store_true")
     apply_cleanup = subparsers.add_parser("cleanup-apply")
     apply_cleanup.add_argument("--project-root", type=Path, required=True)
@@ -883,6 +1162,7 @@ def main(argv: list[str] | None = None) -> int:
     apply_cleanup.add_argument("--audit", type=Path, required=True)
     apply_cleanup.add_argument("--confirm", required=True)
     apply_cleanup.add_argument("--remote", default="origin")
+    apply_cleanup.add_argument("--release-evidence", type=Path)
     apply_cleanup.add_argument("--json", action="store_true")
     args = parser.parse_args(argv)
     try:
@@ -895,10 +1175,13 @@ def main(argv: list[str] | None = None) -> int:
             result = check(root, args.tag, args.output_root)
         elif args.command == "verify-evidence":
             result = verify_evidence(root, args.tag, args.evidence)
+        elif args.command == "route-plan":
+            result = route_plan(root, args.tag, args.policy, args.pull_request)
         elif args.command == "audit-release":
             result = audit_release(root, args.tag, args.repository)
         elif args.command == "cleanup-plan":
-            result = cleanup_plan(root, args.tag, args.primary, args.branch)
+            result = cleanup_plan(root, args.tag, args.primary, args.branch,
+                                  remote=args.remote, release_evidence=args.release_evidence)
         else:
             result = cleanup_apply(
                 root,
@@ -906,9 +1189,10 @@ def main(argv: list[str] | None = None) -> int:
                 load_object(args.audit.resolve(), "release audit"),
                 args.confirm,
                 args.remote,
+                release_evidence=args.release_evidence,
             )
         emit(result, args.json)
-        passed = result.get("passed", result.get("valid", not result.get("blockers")))
+        passed = result.get("passed", result.get("valid", result.get("safe_to_delete", not result.get("blockers"))))
         return 0 if passed else 1
     except (ReleaseError, OSError, ValueError) as error:
         if getattr(args, "json", False):

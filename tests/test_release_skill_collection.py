@@ -145,11 +145,16 @@ def release_audit(tag: str, commit: str) -> dict[str, object]:
 
 
 class ReleaseSkillCollectionTests(unittest.TestCase):
+    def setUp(self) -> None:
+        identity = patch.object(release_collection, "remote_repository", return_value="kolabse/skills")
+        identity.start()
+        self.addCleanup(identity.stop)
+
     def test_public_json_schemas_are_well_formed(self) -> None:
         schemas = ROOT / "skills/release-skill-collection/schemas"
         documents = [json.loads(path.read_text(encoding="utf-8")) for path in schemas.glob("*.json")]
 
-        self.assertEqual(7, len(documents))
+        self.assertEqual(9, len(documents))
         self.assertTrue(all(document.get("$schema") for document in documents))
 
     def test_status_is_read_only_and_reports_aligned_fixture_versions(self) -> None:
@@ -396,6 +401,7 @@ class ReleaseSkillCollectionTests(unittest.TestCase):
             git(fixture.root, "merge", "--ff-only", "feature")
             git(fixture.root, "push", "-q", "origin", "main")
             git(fixture.root, "tag", "-am", "release", fixture.tag)
+            git(fixture.root, "push", "-q", "origin", fixture.tag)
             plan = release_collection.cleanup_plan(fixture.root, fixture.tag, "main", ["feature"])
             audit = release_audit(fixture.tag, str(plan["primary_commit"]))
 
@@ -412,11 +418,351 @@ class ReleaseSkillCollectionTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as directory:
             fixture = ReleaseFixture(Path(directory))
             git(fixture.root, "tag", "-am", "release", fixture.tag)
+            git(fixture.root, "push", "-q", "origin", fixture.tag)
             git(fixture.root, "branch", "feature")
             plan = release_collection.cleanup_plan(fixture.root, fixture.tag, "main", ["feature"])
             audit = release_audit(fixture.tag, str(plan["primary_commit"]))
             with self.assertRaisesRegex(release_collection.ReleaseError, "confirmation"):
                 release_collection.cleanup_apply(fixture.root, plan, audit, "wrong", "origin")
+
+
+class ReleaseRouteTests(unittest.TestCase):
+    def setUp(self) -> None:
+        # Fixture remotes are local bare repositories; provider identity is mocked,
+        # while every remote ref and conditional deletion uses real Git.
+        identity = patch.object(release_collection, "remote_repository", return_value="kolabse/skills", create=True)
+        identity.start()
+        self.addCleanup(identity.stop)
+
+    def policy(self, parent: Path, method: str = "squash") -> Path:
+        path = parent / "route-policy.json"
+        path.write_text(json.dumps({"schema_version": 1, "repository": "kolabse/skills",
+                                    "remote": "origin", "primary": "main",
+                                    "merge_method": method}), encoding="utf-8")
+        return path
+
+    def observation(self, fixture: ReleaseFixture) -> dict[str, object]:
+        commit = git(fixture.root, "rev-parse", "HEAD")
+        return {"repository": {"full_name": "kolabse/skills", "allow_merge_commit": True,
+                               "allow_squash_merge": True, "allow_rebase_merge": True},
+                "protection": {"required_linear_history": {"enabled": True}},
+                "rules": [], "pull_request": {"number": 1, "state": "open", "merged": False,
+                "head": {"sha": commit}, "base": {"sha": commit, "ref": "main",
+                "repo": {"full_name": "kolabse/skills"}}}}
+
+    def test_route_plan_honors_classic_linear_history_even_with_empty_rules(self) -> None:
+        self.assertTrue(callable(getattr(release_collection, "route_plan", None)),
+                        "read-only route-plan capability is required")
+        with tempfile.TemporaryDirectory() as directory:
+            parent = Path(directory)
+            fixture = ReleaseFixture(parent)
+            with patch.object(release_collection, "github_route_observation", return_value=self.observation(fixture)):
+                result = release_collection.route_plan(fixture.root, fixture.tag, self.policy(parent, "merge"), 1)
+            self.assertFalse(result["ready"])
+            self.assertTrue(any("linear" in text for text in result["blockers"]))
+            self.assertFalse(result["mutates_repository"])
+
+    def test_route_plan_squash_requires_fresh_integrated_commit_evidence(self) -> None:
+        self.assertTrue(callable(getattr(release_collection, "route_plan", None)),
+                        "read-only route-plan capability is required")
+        with tempfile.TemporaryDirectory() as directory:
+            parent = Path(directory)
+            fixture = ReleaseFixture(parent)
+            with patch.object(release_collection, "github_route_observation", return_value=self.observation(fixture)):
+                result = release_collection.route_plan(fixture.root, fixture.tag, self.policy(parent), 1)
+            self.assertTrue(result["ready"], result["blockers"])
+            self.assertEqual("actual-integrated-primary", result["tag_target"])
+            self.assertTrue(result["new_commit_requires_new_evidence"])
+
+    def evidence(self, parent: Path, tag: str, commit: str) -> Path:
+        gates = {name: signed_gate(commit) for name in release_collection.REQUIRED_GATES}
+        gates["locked_holdout"] = signed_gate(commit, assertion_digest="c" * 64)
+        gates["supported_platform_ci"] = signed_gate(commit, platforms=["linux", "macos", "windows"])
+        gates["consumer_smoke"] = signed_gate(commit, agents=["claude-code", "codex"])
+        value = {"schema_version": 1, "tag": tag, "commit": commit, "gates": gates}
+        value["evidence_sha256"] = release_collection.canonical_digest(value)
+        path = parent / "release-evidence.json"
+        path.write_text(json.dumps(value), encoding="utf-8")
+        return path
+
+    def squash_fixture(self, parent: Path) -> tuple[ReleaseFixture, str]:
+        fixture = ReleaseFixture(parent)
+        git(fixture.root, "switch", "-qc", "feature")
+        (fixture.root / "feature.txt").write_text("done\n", encoding="utf-8")
+        git(fixture.root, "add", "feature.txt")
+        git(fixture.root, "commit", "-qm", "candidate")
+        candidate = git(fixture.root, "rev-parse", "HEAD")
+        git(fixture.root, "push", "-qu", "origin", "feature")
+        git(fixture.root, "tag", "-am", "release", fixture.tag)
+        git(fixture.root, "push", "-q", "origin", fixture.tag)
+        git(fixture.root, "switch", "-q", "main")
+        git(fixture.root, "merge", "--squash", "feature")
+        git(fixture.root, "commit", "-qm", "integrated squash")
+        git(fixture.root, "push", "-q", "origin", "main")
+        return fixture, candidate
+
+    def test_cleanup_tree_identical_tag_preserves_separate_audit_identity(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            parent = Path(directory)
+            fixture, candidate = self.squash_fixture(parent)
+            evidence = self.evidence(parent, fixture.tag, candidate)
+            plan = release_collection.cleanup_plan(fixture.root, fixture.tag, "main", ["feature"],
+                                                  release_evidence=evidence)
+            self.assertEqual(candidate, plan["release_commit"])
+            self.assertNotEqual(candidate, plan["primary_commit"])
+            self.assertEqual("identical-tree", plan["representation"])
+            result = release_collection.cleanup_apply(fixture.root, plan, release_audit(fixture.tag, candidate),
+                                                     fixture.tag, "origin", release_evidence=evidence)
+            self.assertTrue(result["passed"])
+            self.assertEqual(candidate, result["release_commit"])
+
+    def test_route_plan_rejects_incomplete_and_conflicting_provider_constraints(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            parent = Path(directory)
+            fixture = ReleaseFixture(parent)
+            for rule in ({"type": "merge_queue"}, {"type": "pull_request", "parameters": {"allowed_merge_methods": ["rebase"]}}):
+                facts = self.observation(fixture)
+                facts["rules"] = [rule]
+                with patch.object(release_collection, "github_route_observation", return_value=facts):
+                    result = release_collection.route_plan(fixture.root, fixture.tag, self.policy(parent), 1)
+                self.assertFalse(result["ready"])
+            facts = self.observation(fixture)
+            facts["repository"].pop("allow_squash_merge")
+            with patch.object(release_collection, "github_route_observation", return_value=facts):
+                with self.assertRaisesRegex(release_collection.ReleaseError, "incomplete"):
+                    release_collection.route_plan(fixture.root, fixture.tag, self.policy(parent), 1)
+
+    def test_route_plan_requires_explicit_policy_and_matching_pr(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            parent = Path(directory)
+            fixture = ReleaseFixture(parent)
+            path = self.policy(parent)
+            policy = json.loads(path.read_text())
+            policy.pop("merge_method")
+            path.write_text(json.dumps(policy))
+            with patch.object(release_collection, "github_route_observation") as provider:
+                with self.assertRaises(release_collection.ReleaseError):
+                    release_collection.route_plan(fixture.root, fixture.tag, path, 1)
+                provider.assert_not_called()
+            facts = self.observation(fixture)
+            facts["pull_request"]["head"]["sha"] = "f" * 40
+            with patch.object(release_collection, "github_route_observation", return_value=facts):
+                result = release_collection.route_plan(fixture.root, fixture.tag, self.policy(parent, "rebase"), 1)
+            self.assertFalse(result["ready"])
+            self.assertTrue(any("head/base" in reason for reason in result["blockers"]))
+
+    def test_route_plan_merge_when_no_linear_constraint_and_read_only(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            parent = Path(directory)
+            fixture = ReleaseFixture(parent)
+            facts = self.observation(fixture)
+            facts["protection"] = {}
+            before = git(fixture.root, "show-ref")
+            with patch.object(release_collection, "github_route_observation", return_value=facts):
+                result = release_collection.route_plan(fixture.root, fixture.tag, self.policy(parent, "merge"), 1)
+            self.assertTrue(result["ready"], result["blockers"])
+            self.assertEqual(before, git(fixture.root, "show-ref"))
+            self.assertEqual("", git(fixture.root, "status", "--porcelain=v1"))
+
+    def test_cleanup_different_sha_rejects_missing_wrong_or_tampered_evidence(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            parent = Path(directory)
+            fixture, candidate = self.squash_fixture(parent)
+            with self.assertRaisesRegex(release_collection.ReleaseError, "require release evidence"):
+                release_collection.cleanup_plan(fixture.root, fixture.tag, "main", ["feature"])
+            path = self.evidence(parent, fixture.tag, git(fixture.root, "rev-parse", "HEAD"))
+            with self.assertRaisesRegex(release_collection.ReleaseError, "required commit"):
+                release_collection.cleanup_plan(fixture.root, fixture.tag, "main", ["feature"], release_evidence=path)
+            path = self.evidence(parent, fixture.tag, candidate)
+            value = json.loads(path.read_text())
+            value["gates"]["review"]["passed"] = False
+            path.write_text(json.dumps(value))
+            with self.assertRaisesRegex(release_collection.ReleaseError, "digest"):
+                release_collection.cleanup_plan(fixture.root, fixture.tag, "main", ["feature"], release_evidence=path)
+
+    def test_cleanup_rejects_nonidentical_tree_and_primary_as_deletion_target(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            parent = Path(directory)
+            fixture, candidate = self.squash_fixture(parent)
+            path = self.evidence(parent, fixture.tag, candidate)
+            with self.assertRaisesRegex(release_collection.ReleaseError, "primary branch"):
+                release_collection.cleanup_plan(fixture.root, fixture.tag, "main", ["main"], release_evidence=path)
+            (fixture.root / "new.txt").write_text("new")
+            git(fixture.root, "add", "new.txt")
+            git(fixture.root, "commit", "-qm", "more work")
+            with self.assertRaisesRegex(release_collection.ReleaseError, "identical trees"):
+                release_collection.cleanup_plan(fixture.root, fixture.tag, "main", ["feature"], release_evidence=path)
+
+    def test_cleanup_remote_race_is_conditional_and_reports_partial_failure(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            parent = Path(directory)
+            fixture, candidate = self.squash_fixture(parent)
+            path = self.evidence(parent, fixture.tag, candidate)
+            for branch in ("first", "second"):
+                git(fixture.root, "branch", branch, "feature")
+                git(fixture.root, "push", "-q", "origin", branch)
+            plan = release_collection.cleanup_plan(fixture.root, fixture.tag, "main", ["first", "second"], release_evidence=path)
+            original = release_collection.run_git
+            leases = []
+            def race(root: Path, *args: str) -> subprocess.CompletedProcess[str]:
+                if args[:2] == ("push", "origin") and args[-1] == ":refs/heads/second":
+                    leases.append(args[-2])
+                    git(fixture.remote, "update-ref", "refs/heads/second", plan["primary_commit"])
+                return original(root, *args)
+            with patch.object(release_collection, "run_git", side_effect=race):
+                result = release_collection.cleanup_apply(fixture.root, plan, release_audit(fixture.tag, candidate),
+                                                         fixture.tag, "origin", release_evidence=path)
+            self.assertFalse(result["passed"])
+            self.assertEqual(["first"], result["deleted_remote"])
+            self.assertEqual(["first"], result["deleted_local"])
+            self.assertEqual(["second"], result["retained_local"])
+            self.assertEqual([f"--force-with-lease=refs/heads/second:{candidate}"], leases)
+            self.assertEqual(plan["primary_commit"], git(fixture.remote, "rev-parse", "refs/heads/second"))
+
+    def test_cleanup_remote_primary_change_after_planning_fails_before_delete(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            parent = Path(directory)
+            fixture, candidate = self.squash_fixture(parent)
+            path = self.evidence(parent, fixture.tag, candidate)
+            plan = release_collection.cleanup_plan(fixture.root, fixture.tag, "main", ["feature"], release_evidence=path)
+            git(fixture.remote, "update-ref", "refs/heads/main", candidate)
+            with self.assertRaisesRegex(release_collection.ReleaseError, "remote primary"):
+                release_collection.cleanup_apply(fixture.root, plan, release_audit(fixture.tag, candidate),
+                                                 fixture.tag, "origin", release_evidence=path)
+            self.assertEqual(candidate, git(fixture.remote, "rev-parse", "refs/heads/feature"))
+
+    def test_route_plan_rejects_remote_mutation_during_provider_read(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            parent = Path(directory)
+            fixture = ReleaseFixture(parent)
+            facts = self.observation(fixture)
+            original = release_collection.remote_observation
+            calls = 0
+            def changed(*args: object) -> dict[str, object]:
+                nonlocal calls
+                result = original(*args)
+                calls += 1
+                if calls == 2:
+                    result["refs"]["refs/heads/main"] = "b" * 40
+                return result
+            with patch.object(release_collection, "remote_observation", side_effect=changed), patch.object(release_collection, "github_route_observation", return_value=facts):
+                result = release_collection.route_plan(fixture.root, fixture.tag, self.policy(parent), 1)
+            self.assertFalse(result["ready"])
+            self.assertTrue(any("changed during" in reason for reason in result["blockers"]))
+
+    def test_cleanup_plan_is_not_safe_with_missing_published_remote_tag(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            fixture = ReleaseFixture(Path(directory))
+            git(fixture.root, "tag", "-am", "release", fixture.tag)
+            git(fixture.root, "branch", "feature")
+            plan = release_collection.cleanup_plan(fixture.root, fixture.tag, "main", ["feature"])
+            self.assertFalse(plan["safe_to_delete"], "unpublished tag cannot authorize cleanup")
+
+    def test_remote_observation_rejects_multiple_push_destinations(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            fixture = ReleaseFixture(Path(directory))
+            git(fixture.root, "config", "--add", "remote.origin.pushurl", str(fixture.remote))
+            git(fixture.root, "config", "--add", "remote.origin.pushurl", str(fixture.root.parent / "other.git"))
+            with self.assertRaisesRegex(release_collection.ReleaseError, "destination"):
+                release_collection.remote_observation(fixture.root, "origin", ["refs/heads/main"])
+
+    def test_route_plan_rejects_policy_for_another_remote_repository(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            parent = Path(directory)
+            fixture = ReleaseFixture(parent)
+            with patch.object(release_collection, "remote_repository", return_value="other/collection"), patch.object(release_collection, "github_route_observation", return_value=self.observation(fixture)):
+                result = release_collection.route_plan(fixture.root, fixture.tag, self.policy(parent), 1)
+            self.assertFalse(result["ready"], "policy repository must match the selected remote")
+
+    def test_github_observation_reads_classic_protection_and_paginated_rules(self) -> None:
+        pr = {"number": 3, "state": "open", "merged": False, "body": "not a routing input",
+              "head": {"sha": "a" * 40}, "base": {"sha": "b" * 40, "ref": "main",
+              "repo": {"full_name": "kolabse/skills"}}}
+        repo = {"full_name": "kolabse/skills", "allow_merge_commit": True,
+                "allow_squash_merge": True, "allow_rebase_merge": True}
+        with patch.object(release_collection, "run_json_command", side_effect=[repo,
+                          {"protected": True}, {"required_linear_history": {"enabled": True}}, [[]], pr]) as read:
+            result = release_collection.github_route_observation("kolabse/skills", "main", 3)
+        self.assertTrue(result["protection"]["required_linear_history"]["enabled"])
+        self.assertEqual([], result["rules"])
+        self.assertNotIn("body", result["pull_request"])
+        commands = [call.args[0] for call in read.call_args_list]
+        self.assertTrue(any(command[-1].endswith("/protection") for command in commands))
+        self.assertTrue(any("--paginate" in command and "--slurp" in command for command in commands))
+
+    def test_github_unknown_classic_protection_never_becomes_unprotected(self) -> None:
+        with patch.object(release_collection, "run_json_command", side_effect=[{}, {"protected": True},
+                          release_collection.ReleaseError("classic protection unavailable")]):
+            with self.assertRaisesRegex(release_collection.ReleaseError, "unavailable"):
+                release_collection.github_route_observation("kolabse/skills", "main", 3)
+
+    def test_cleanup_rejects_changed_tag_object_and_plan_digest(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            parent = Path(directory)
+            fixture, candidate = self.squash_fixture(parent)
+            path = self.evidence(parent, fixture.tag, candidate)
+            plan = release_collection.cleanup_plan(fixture.root, fixture.tag, "main", ["feature"], release_evidence=path)
+            altered = dict(plan, release_commit="f" * 40)
+            with self.assertRaisesRegex(release_collection.ReleaseError, "digest"):
+                release_collection.cleanup_apply(fixture.root, altered, release_audit(fixture.tag, candidate),
+                                                 fixture.tag, "origin", release_evidence=path)
+            # A distinct annotated object at the same commit is still a moved tag.
+            git(fixture.root, "tag", "-f", "-am", "different annotation", fixture.tag, candidate)
+            with self.assertRaisesRegex(release_collection.ReleaseError, "stale"):
+                release_collection.cleanup_apply(fixture.root, plan, release_audit(fixture.tag, candidate),
+                                                 fixture.tag, "origin", release_evidence=path)
+            self.assertEqual(candidate, git(fixture.remote, "rev-parse", "refs/heads/feature"))
+
+    def test_cleanup_local_race_retains_unproved_local_commit(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            parent = Path(directory)
+            fixture, candidate = self.squash_fixture(parent)
+            path = self.evidence(parent, fixture.tag, candidate)
+            plan = release_collection.cleanup_plan(fixture.root, fixture.tag, "main", ["feature"], release_evidence=path)
+            original = release_collection.run_git
+            def race(root: Path, *args: str) -> subprocess.CompletedProcess[str]:
+                if args[:2] == ("push", "origin") and args[-1] == ":refs/heads/feature":
+                    git(root, "update-ref", "refs/heads/feature", plan["primary_commit"])
+                return original(root, *args)
+            with patch.object(release_collection, "run_git", side_effect=race):
+                result = release_collection.cleanup_apply(fixture.root, plan, release_audit(fixture.tag, candidate),
+                                                         fixture.tag, "origin", release_evidence=path)
+            self.assertFalse(result["passed"], "a local advance must not be removed")
+            self.assertEqual([], result["deleted_local"])
+            self.assertEqual(["feature"], result["deleted_remote"])
+            self.assertEqual(plan["primary_commit"], git(fixture.root, "rev-parse", "refs/heads/feature"))
+
+    def test_cleanup_rejects_other_repository_audit(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            parent = Path(directory)
+            fixture, candidate = self.squash_fixture(parent)
+            path = self.evidence(parent, fixture.tag, candidate)
+            plan = release_collection.cleanup_plan(fixture.root, fixture.tag, "main", ["feature"], release_evidence=path)
+            audit = release_audit(fixture.tag, candidate)
+            audit["repository"] = "other/skills"
+            audit["release_url"] = f"https://github.com/other/skills/releases/tag/{fixture.tag}"
+            audit.pop("report_sha256")
+            audit["report_sha256"] = release_collection.canonical_digest(audit)
+            with self.assertRaisesRegex(release_collection.ReleaseError, "repository"):
+                release_collection.cleanup_apply(fixture.root, plan, audit, fixture.tag, "origin", release_evidence=path)
+
+    def test_route_policy_rejects_boolean_version_and_duplicate_keys(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            parent = Path(directory)
+            fixture = ReleaseFixture(parent)
+            path = self.policy(parent)
+            original = path.read_text(encoding="utf-8")
+            malformed = [original.replace('"schema_version": 1', '"schema_version": true'),
+                         original.replace('"merge_method": "squash"', '"merge_method": "merge", "merge_method": "squash"')]
+            for raw in malformed:
+                with self.subTest(raw=raw):
+                    path.write_text(raw, encoding="utf-8")
+                    with patch.object(release_collection, "github_route_observation", return_value=self.observation(fixture)):
+                        with self.assertRaises(release_collection.ReleaseError):
+                            release_collection.route_plan(fixture.root, fixture.tag, path, 1)
+            path.write_text('{"outer": {"method": "merge", "method": "squash"}}', encoding="utf-8")
+            with self.assertRaisesRegex(release_collection.ReleaseError, "duplicate"):
+                release_collection.load_object(path, "route policy")
 
 
 if __name__ == "__main__":

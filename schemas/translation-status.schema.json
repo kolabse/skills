@@ -1,0 +1,103 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Translation revision metadata",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "snapshots",
+    "translations"
+  ],
+  "properties": {
+    "schema_version": {
+      "const": 1
+    },
+    "snapshots": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "propertyNames": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$"
+        },
+        "additionalProperties": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "sections"
+          ],
+          "properties": {
+            "sections": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": [
+                  "id",
+                  "heading",
+                  "sha256"
+                ],
+                "properties": {
+                  "id": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "heading": {
+                    "type": "string"
+                  },
+                  "sha256": {
+                    "type": "string",
+                    "pattern": "^[0-9a-f]{64}$"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "translations": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "locale",
+          "canonical",
+          "translation",
+          "source_sha256",
+          "translation_sha256",
+          "review"
+        ],
+        "properties": {
+          "locale": {
+            "type": "string",
+            "minLength": 1
+          },
+          "canonical": {
+            "type": "string",
+            "minLength": 1
+          },
+          "translation": {
+            "type": "string",
+            "minLength": 1
+          },
+          "source_sha256": {
+            "type": "string",
+            "pattern": "^[0-9a-f]{64}$"
+          },
+          "translation_sha256": {
+            "type": "string",
+            "pattern": "^[0-9a-f]{64}$"
+          },
+          "review": {
+            "enum": [
+              "baseline",
+              "reviewed"
+            ]
+          }
+        }
+      }
+    }
+  }
+}

@@ -12,7 +12,7 @@ from urllib.parse import urlparse
 
 
 COLLECTION = "kolabse-skills"
-COLLECTION_VERSION = "1.19.1"
+COLLECTION_VERSION = "1.20.0"
 SKILLS_CLI_VERSION = "1.5.22"
 LOCK_FILE = "skills-lock.json"
 METADATA_FILE = "collection-metadata.json"
@@ -407,6 +407,30 @@ def runtime_status_command(
     return command
 
 
+def bounded_runtime_status_command(
+    project: Path, installed_skill: Path, declared: object,
+) -> list[str]:
+    """Validate the lexical script and every ancestor before resolving/executing it."""
+    import skill_doctor
+
+    if not isinstance(declared, list) or len(declared) < 2 or not all(
+        isinstance(token, str) and token and "\x00" not in token for token in declared
+    ):
+        raise ManagerError("bounded runtime status requires a Python script argv")
+    script_name = Path(declared[1])
+    if (declared[0] not in {"python", "python3"} or script_name.is_absolute()
+            or script_name.drive or ".." in script_name.parts or script_name.suffix != ".py"):
+        raise ManagerError("bounded runtime status requires a relative installed Python script")
+    script = skill_doctor.absolute(installed_skill / script_name)
+    if (not skill_doctor.safe_path(script, project)
+            or not skill_doctor.safe_path(script, installed_skill)
+            or not script.is_file()):
+        raise ManagerError("bounded runtime script or ancestor is unsafe or missing")
+    command = runtime_status_command(project, installed_skill, declared)
+    command[1] = str(script)
+    return command
+
+
 def runtime_artifact_exists(payload: dict[str, Any]) -> bool:
     for key, value in payload.items():
         if not isinstance(value, str) or not value:
@@ -428,6 +452,7 @@ def deep_runtime_doctor(
     include_user_config: bool = False,
     timeout: int = 30,
     repository_root: Path | None = None,
+    bounded: bool = False,
 ) -> tuple[list[dict[str, Any]], list[str], list[str]]:
     root = (repository_root or REPOSITORY_ROOT).resolve()
     catalog = load_object(root / "skill-catalog.json", "Skill catalog")
@@ -441,6 +466,13 @@ def deep_runtime_doctor(
     warnings: list[str] = []
     for installed in state["skills"]:
         name = installed["name"]
+        if bounded and (
+            not installed.get("installed") or installed.get("metadata_valid") is not True
+            or installed.get("provenance_status") != "verified"
+        ):
+            checks.append({"skill": name, "status": "blocked-unverified"})
+            problems.append(f"{name} runtime check blocked: installed provenance is not verified")
+            continue
         catalog_entry = entries.get(name)
         if not catalog_entry:
             problems.append(f"{name} is missing from the collection catalog")
@@ -456,7 +488,8 @@ def deep_runtime_doctor(
             )
             continue
         try:
-            command = runtime_status_command(
+            resolve_command = bounded_runtime_status_command if bounded else runtime_status_command
+            command = resolve_command(
                 project, Path(installed["path"]), configuration.get("status")
             )
         except ManagerError as error:
@@ -896,18 +929,18 @@ def migration_commands(
                 [python, str(cloud_script), "--project-path", str(root), "--json"],
             )
         )
-    telegram_config = telegram_config_path()
     telegram_script = installed / "notify-via-telegram/scripts/telegram_notify.py"
-    if include_user_config and telegram_config.is_file() and telegram_script.is_file():
+    telegram_config = telegram_config_path() if include_user_config else None
+    if telegram_config is not None and telegram_config.is_file() and telegram_script.is_file():
         commands.append(
             (
                 "notify-via-telegram",
                 [python, str(telegram_script), "--config", str(telegram_config), "migrate", "--json"],
             )
         )
-    context_config = sync_project_context_config_path()
     context_script = installed / "sync-project-context/scripts/context_sync.py"
-    if include_user_config and context_config.is_file() and context_script.is_file():
+    context_config = sync_project_context_config_path() if include_user_config else None
+    if context_config is not None and context_config.is_file() and context_script.is_file():
         commands.append(
             (
                 "sync-project-context",
@@ -1041,14 +1074,37 @@ def doctor(
     runtime_timeout: int = 30,
     repository_root: Path | None = None,
     agent: str = DEFAULT_AGENT,
+    inspect_sources: bool = False,
+    skill_roots: list[Path] | None = None,
+    plugin_roots: list[Path] | None = None,
+    observations: Path | None = None,
 ) -> dict[str, Any]:
     agent = verified_agent(agent)
-    state = (
-        read_project_state(project, trusted_development_sources, agent)
-        if scope == "project"
-        else read_global_state(global_root, trusted_development_sources, agent)
-    )
+    if (skill_roots or plugin_roots or observations is not None) and not inspect_sources:
+        raise ManagerError("source roots and observations require --inspect-sources")
+    source_diagnostics = None
+    if inspect_sources:
+        if scope != "project":
+            raise ManagerError("--inspect-sources supports project scope; pass explicit --skill-root for user installations")
+        import skill_doctor
+
+        try:
+            source_diagnostics = skill_doctor.inspect_sources(
+                project, agent, skill_roots, plugin_roots, observations
+            )
+            state = skill_doctor.bounded_project_state(project, agent, source_diagnostics, KNOWN_SKILLS)
+        except skill_doctor.InspectionError as error:
+            raise ManagerError(f"source inspection failed: {error}") from error
+    else:
+        state = (
+            read_project_state(project, trusted_development_sources, agent)
+            if scope == "project"
+            else read_global_state(global_root, trusted_development_sources, agent)
+        )
     problems: list[str] = []
+    inspection_problem = state.pop("inspection_problem", None)
+    if inspection_problem:
+        problems.append(inspection_problem)
     if not state["skills"]:
         problems.append("no kolabse skills were found in skills-lock.json")
     versions = {
@@ -1086,6 +1142,7 @@ def doctor(
             include_user_config=include_user_config,
             timeout=runtime_timeout,
             repository_root=repository_root,
+            bounded=inspect_sources,
         )
         state["runtime_checks"] = runtime_checks
         problems.extend(runtime_problems)
@@ -1098,6 +1155,8 @@ def doctor(
         if scope == "project"
         else []
     )
+    if source_diagnostics is not None:
+        state["source_diagnostics"] = source_diagnostics
     return state
 
 
@@ -1116,6 +1175,10 @@ def build_parser() -> argparse.ArgumentParser:
             child.add_argument("--deep", action="store_true")
             child.add_argument("--include-user-config", action="store_true")
             child.add_argument("--runtime-timeout", type=int, default=30)
+            child.add_argument("--inspect-sources", action="store_true", help="read-only bounded source inventory; no inferred agent activation")
+            child.add_argument("--skill-root", type=Path, action="append", default=[], help="explicit directory of immediate user skill folders")
+            child.add_argument("--plugin-root", type=Path, action="append", default=[], help="explicit plugin directory; inspect only its skills/* folders")
+            child.add_argument("--observations", type=Path, help="sanitized user-reported availability/invocation JSON")
         if name == "migrate":
             child.add_argument("--include-user-config", action="store_true")
             child.add_argument("--timeout", type=int, default=120)
@@ -1167,8 +1230,24 @@ def main(argv: list[str] | None = None) -> int:
                 include_user_config=args.include_user_config,
                 runtime_timeout=args.runtime_timeout,
                 agent=args.agent,
+                inspect_sources=args.inspect_sources,
+                skill_roots=args.skill_root,
+                plugin_roots=args.plugin_root,
+                observations=args.observations,
             )
             print_state(state, args.json)
+            if not args.json and "source_diagnostics" in state:
+                diagnostic = state["source_diagnostics"]
+                print("Source inspection (read-only; effective copy and agent activation are not inferred):")
+                for source in diagnostic["sources"]:
+                    print(f"SOURCE [{source['status']}] {source['kind']}: {source['path']}")
+                for copy in diagnostic["copies"]:
+                    print(f"COPY {copy['skill']}: {copy['version'] or 'unknown'}; {copy['path']}; metadata={copy['metadata_status']}")
+                for conflict in diagnostic["conflicts"]:
+                    print(f"CONFLICT {conflict['skill']}: {', '.join(conflict['kinds'])}; effective copy unknown")
+                print(f"Agent observations: {diagnostic['observations']['status']} (not independently verified)")
+                for observation in diagnostic["observations"]["skills"]:
+                    print(f"OBSERVATION {observation['skill']}: availability={observation['availability']}; invocation={observation['invocation']}")
             if not args.json and state["problems"]:
                 for problem in state["problems"]:
                     print(f"PROBLEM: {problem}")

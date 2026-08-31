@@ -7,6 +7,7 @@
   "required": ["version", "repositories", "checks"],
   "properties": {
     "version": {"const": 1},
+    "reuse_verified_results": {"type": "boolean", "default": false},
     "evidence_file": {"type": "string", "minLength": 1},
     "repositories": {
       "type": "array",

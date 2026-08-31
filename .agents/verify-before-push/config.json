@@ -11,31 +11,17 @@
   ],
   "checks": [
     {
-      "name": "structural-validation",
+      "name": "collection-full",
       "cwd": ".",
-      "command": ["python", "scripts/validate_skills.py"],
-      "timeout_seconds": 120,
-      "required": true
-    },
-    {
-      "name": "security",
-      "cwd": ".",
-      "command": ["python", "scripts/security_checks.py"],
-      "timeout_seconds": 120,
-      "required": true
-    },
-    {
-      "name": "unit-tests",
-      "cwd": ".",
-      "command": ["python", "-m", "unittest", "discover", "-s", "tests", "-v"],
-      "timeout_seconds": 600,
+      "command": ["python", "scripts/check_collection.py", "run", "--profile", "full"],
+      "timeout_seconds": 1800,
       "required": true
     },
     {
       "name": "consumer-smoke",
       "cwd": ".",
-      "command": ["python", "scripts/smoke_install.py"],
-      "timeout_seconds": 300,
+      "command": ["python", "scripts/check_collection.py", "run", "--profile", "consumers"],
+      "timeout_seconds": 1500,
       "required": true
     }
   ]

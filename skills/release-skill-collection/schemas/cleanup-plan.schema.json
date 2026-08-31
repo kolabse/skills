@@ -3,11 +3,29 @@
   "$id": "https://github.com/kolabse/skills/release-skill-collection/cleanup-plan.schema.json",
   "title": "Post-release branch cleanup plan",
   "type": "object",
-  "required": ["schema_version", "mode", "tag", "primary", "primary_commit", "safe_to_delete", "branches", "mutates_repository", "report_sha256"],
+  "required": ["schema_version", "mode", "tag", "primary", "primary_commit", "release_commit", "tag_object", "release_tree", "primary_tree", "representation", "release_evidence_sha256", "project_root", "remote_observation", "safe_to_delete", "branches", "mutates_repository", "report_sha256"],
   "properties": {
     "schema_version": {"const": 2},
     "mode": {"const": "cleanup-plan"},
+    "primary_commit": {"type": "string", "pattern": "^[0-9a-f]{40,64}$"},
+    "release_commit": {"type": "string", "pattern": "^[0-9a-f]{40,64}$"},
+    "tag_object": {"type": "string", "pattern": "^[0-9a-f]{40,64}$"},
+    "release_tree": {"type": "string", "pattern": "^[0-9a-f]{40,64}$"},
+    "primary_tree": {"type": "string", "pattern": "^[0-9a-f]{40,64}$"},
+    "representation": {"enum": ["same-commit", "identical-tree"]},
+    "release_evidence_sha256": {"type": ["string", "null"], "pattern": "^[0-9a-f]{64}$"},
+    "project_root": {"type": "string"},
+    "remote_observation": {
+      "type": "object",
+      "required": ["remote", "url_sha256", "refs"],
+      "properties": {
+        "remote": {"type": "string"},
+        "url_sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+        "refs": {"type": "object", "additionalProperties": {"type": ["string", "null"], "pattern": "^[0-9a-f]{40,64}$"}}
+      }
+    },
     "safe_to_delete": {"type": "boolean"},
+    "blockers": {"type": "array", "items": {"type": "string"}},
     "branches": {"type": "array", "items": {"type": "object", "required": ["branch", "safe_to_delete", "reason"]}},
     "mutates_repository": {"const": false},
     "report_sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"}
