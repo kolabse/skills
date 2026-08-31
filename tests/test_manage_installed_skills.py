@@ -221,6 +221,10 @@ class ManageInstalledSkillsTests(unittest.TestCase):
                         self.assertEqual(confirmed, "--yes" in command)
                     self.assertEqual([sync, lifecycle], [item["skill"] for item in report["configuration"]])
                     self.assertEqual("created" if confirmed else "planned", report["configuration"][0]["status"])
+                    schema = json.loads((SCRIPTS.parent / "schemas/manager-result.schema.json").read_text(encoding="utf-8"))
+                    allowed = schema["properties"]["configuration"]["items"]["properties"]["status"]["enum"]
+                    for configuration in report["configuration"]:
+                        self.assertIn(configuration["status"], allowed)
 
     def test_update_skips_git_policy_for_global_and_unrelated_selections(self) -> None:
         sync = "synchronize-git-repositories"
