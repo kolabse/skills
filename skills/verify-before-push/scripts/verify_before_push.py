@@ -391,9 +391,9 @@ def file_sha256(path: Path) -> str:
 
 def executable_identity(command: str, cwd: Path) -> dict[str, str]:
     if Path(command).is_absolute():
-        path = Path(command).resolve()
+        path = Path(command)
     elif "/" in command or "\\" in command:
-        path = (cwd / command).resolve()
+        path = cwd / command
     else:
         if any(not Path(entry).is_absolute() for entry in os.get_exec_path()):
             raise ReuseUnavailable("Relative or empty PATH entries cannot establish reusable executable identity")
@@ -402,10 +402,12 @@ def executable_identity(command: str, cwd: Path) -> dict[str, str]:
             raise VerificationError(f"Cannot resolve check executable: {command}")
         if not Path(resolved).is_absolute():
             raise ReuseUnavailable("Implicit current-directory PATH lookup cannot establish reusable executable identity")
-        path = Path(resolved).resolve()
+        path = Path(resolved)
     if not path.is_file():
         raise VerificationError(f"Check executable is missing: {path}")
-    return {"path": str(path), "sha256": file_sha256(path)}
+    # The launch alias is semantically significant (notably for Python venvs).
+    # Bind the resolved target without replacing the executable's launch path.
+    return {"path": str(path), "target": str(path.resolve()), "sha256": file_sha256(path)}
 
 
 def runtime_fingerprint(config: dict[str, Any], project_root: Path) -> str:

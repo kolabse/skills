@@ -144,6 +144,8 @@ receipt and recompute its digest. Treat evidence as trusted local material.
 Relative or empty PATH entries and implicit current-directory executable
 lookup disable reuse: the helper runs ordinary full checks without pinning a
 potentially different executable from its own working directory.
+Executable pinning preserves the absolute launch path (including virtualenv
+aliases) and separately binds the resolved target and its content digest.
 
 Reuse permits only the exact original state or this narrow delivery change:
 the same configured upstream moves from a proven ancestor of the checked HEAD

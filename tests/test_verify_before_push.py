@@ -9,6 +9,7 @@ import subprocess
 import sys
 import tempfile
 import unittest
+import venv
 from pathlib import Path
 from unittest.mock import patch
 
@@ -490,6 +491,48 @@ class VerifyBeforePushTests(unittest.TestCase):
 
 
 class ExecutableIdentityTests(unittest.TestCase):
+    def test_executable_identity_preserves_launch_path_and_binds_target(self) -> None:
+        spec = importlib.util.spec_from_file_location("isolated_verification", SCRIPT)
+        assert spec is not None and spec.loader is not None
+        module = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(module)
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            launch = root / "venv/python.exe"
+            target = root / "base/python.exe"
+            launch.parent.mkdir()
+            target.parent.mkdir()
+            launch.write_bytes(b"interpreter")
+            target.write_bytes(b"interpreter")
+            # Emulate symlink resolution even on Windows without link privilege.
+            with patch.object(Path, "resolve", return_value=target), patch.object(module.shutil, "which", return_value=str(launch)), patch.object(module.os, "get_exec_path", return_value=[str(root)]):
+                for command in (str(launch), "venv/python.exe", "python.exe"):
+                    with self.subTest(command=command):
+                        identity = module.executable_identity(command, root)
+                        self.assertEqual(str(launch), identity["path"])
+                        self.assertEqual(str(target), identity["target"])
+                        self.assertEqual(hashlib.sha256(b"interpreter").hexdigest(), identity["sha256"])
+
+    def test_pinned_virtualenv_interpreter_preserves_prefix(self) -> None:
+        spec = importlib.util.spec_from_file_location("isolated_verification", SCRIPT)
+        assert spec is not None and spec.loader is not None
+        module = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(module)
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory).resolve()
+            subprocess.run(["git", "init", str(root)], capture_output=True, check=True)
+            environment = root / "venv"
+            venv.EnvBuilder(with_pip=False, symlinks=os.name != "nt").create(environment)
+            executable = environment / ("Scripts/python.exe" if os.name == "nt" else "bin/python")
+            if os.name != "nt":
+                self.assertTrue(executable.is_symlink())
+            config = {"repositories": [{"name": "fixture", "path": "."}], "checks": [{
+                "name": "virtualenv-prefix", "cwd": ".", "command": [str(executable), "-c",
+                "import sys; from pathlib import Path; " + f"assert Path(sys.prefix).resolve() == Path({str(environment)!r}).resolve(), sys.prefix"],
+            }]}
+            results = module.execute_checks(config, root, pin_executables=True)
+            self.assertEqual("passed", results[0]["status"])
+
     def test_relative_path_entries_disable_reuse(self) -> None:
         spec = importlib.util.spec_from_file_location("isolated_verification", SCRIPT)
         assert spec is not None and spec.loader is not None
