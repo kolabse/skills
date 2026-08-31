@@ -1,6 +1,6 @@
 # Nutzungsbedingungen
 
-[English](../../../TERMS.md) | [Русский](../ru/TERMS.md) | [Español](../es/TERMS.md) | [Français](../fr/TERMS.md) | Deutsch
+[English](../../../TERMS.md) | [Русский](../ru/TERMS.md) | [Español](../es/TERMS.md) | [Français](../fr/TERMS.md) | Deutsch | [Português (Brasil)](../pt-BR/TERMS.md) | [日本語](../ja/TERMS.md) | [Italiano](../it/TERMS.md) | [한국어](../ko/TERMS.md) | [简体中文](../zh-CN/TERMS.md) | [Türkçe](../tr/TERMS.md)
 
 Diese Übersetzung dient der Orientierung. Maßgeblich ist die [englische Originalfassung](../../../TERMS.md).
 

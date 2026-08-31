@@ -1,7 +1,7 @@
 {
   "schema_version": 2,
   "collection": "kolabse-skills",
-  "version": "1.19.0",
+  "version": "1.19.1",
   "skill": "operate-yandex-cloud",
   "source": "https://github.com/kolabse/skills",
   "canonical_repository": "https://github.com/kolabse/skills"

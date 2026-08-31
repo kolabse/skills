@@ -1,6 +1,6 @@
 # Soporte
 
-[English](../../../SUPPORT.md) | [Русский](../ru/SUPPORT.md) | Español | [Français](../fr/SUPPORT.md) | [Deutsch](../de/SUPPORT.md)
+[English](../../../SUPPORT.md) | [Русский](../ru/SUPPORT.md) | Español | [Français](../fr/SUPPORT.md) | [Deutsch](../de/SUPPORT.md) | [Português (Brasil)](../pt-BR/SUPPORT.md) | [日本語](../ja/SUPPORT.md) | [Italiano](../it/SUPPORT.md) | [한국어](../ko/SUPPORT.md) | [简体中文](../zh-CN/SUPPORT.md) | [Türkçe](../tr/SUPPORT.md)
 
 Utilice los siguientes canales públicos para `kolabse-skills`:
 

@@ -1,6 +1,6 @@
 # Contribuir con habilidades
 
-[English](../../../CONTRIBUTING.md) | [Русский](../ru/CONTRIBUTING.md) | Español | [Français](../fr/CONTRIBUTING.md) | [Deutsch](../de/CONTRIBUTING.md)
+[English](../../../CONTRIBUTING.md) | [Русский](../ru/CONTRIBUTING.md) | Español | [Français](../fr/CONTRIBUTING.md) | [Deutsch](../de/CONTRIBUTING.md) | [Português (Brasil)](../pt-BR/CONTRIBUTING.md) | [日本語](../ja/CONTRIBUTING.md) | [Italiano](../it/CONTRIBUTING.md) | [한국어](../ko/CONTRIBUTING.md) | [简体中文](../zh-CN/CONTRIBUTING.md) | [Türkçe](../tr/CONTRIBUTING.md)
 
 Este repositorio es la fuente canónica de las habilidades reutilizables de kolabse.
 Cada habilidad debe ser específica, portable, atribuible e instalable de forma independiente.

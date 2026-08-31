@@ -1,6 +1,6 @@
 # Política de privacidad
 
-[English](../../../PRIVACY.md) | [Русский](../ru/PRIVACY.md) | Español | [Français](../fr/PRIVACY.md) | [Deutsch](../de/PRIVACY.md)
+[English](../../../PRIVACY.md) | [Русский](../ru/PRIVACY.md) | Español | [Français](../fr/PRIVACY.md) | [Deutsch](../de/PRIVACY.md) | [Português (Brasil)](../pt-BR/PRIVACY.md) | [日本語](../ja/PRIVACY.md) | [Italiano](../it/PRIVACY.md) | [한국어](../ko/PRIVACY.md) | [简体中文](../zh-CN/PRIVACY.md) | [Türkçe](../tr/PRIVACY.md)
 
 Fecha de entrada en vigor: 2026-08-24
 

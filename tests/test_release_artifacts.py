@@ -28,10 +28,24 @@ ARCHIVE_BASENAME = f"kolabse-skills-{RELEASE_TAG}"
 sys.dont_write_bytecode = True
 sys.path.insert(0, str(SCRIPTS_DIRECTORY))
 
-from build_release import build_release, verify_checksums  # noqa: E402
+from build_release import build_release, release_files, verify_checksums  # noqa: E402
 
 
 class ReleaseArtifactTests(unittest.TestCase):
+    def test_release_includes_public_documentation_and_all_declared_translations(self) -> None:
+        names = {
+            path.relative_to(REPOSITORY_DIRECTORY).as_posix()
+            for path in release_files(REPOSITORY_DIRECTORY)
+        }
+        manifest = json.loads(
+            (REPOSITORY_DIRECTORY / "docs/i18n/locales.json").read_text(encoding="utf-8")
+        )
+        expected = {"docs/i18n/locales.json", "docs/i18n/README.md"}
+        for locale in manifest["locales"].values():
+            for document in locale["documents"]:
+                expected.update((document["canonical"], document["translation"]))
+        self.assertFalse(expected - names, f"Public documentation omitted: {sorted(expected - names)}")
+
     def test_release_build_is_deterministic_and_contains_distribution(self) -> None:
         repository = REPOSITORY_DIRECTORY
         with tempfile.TemporaryDirectory() as first_directory:
@@ -53,6 +67,14 @@ class ReleaseArtifactTests(unittest.TestCase):
                     zip_names = set(archive.namelist())
                 with tarfile.open(first / f"{ARCHIVE_BASENAME}.tar.gz") as archive:
                     tar_names = set(archive.getnames())
+                public_docs = (repository / "docs/i18n").rglob("*")
+                documentation_names = {
+                    path.relative_to(repository).as_posix()
+                    for path in public_docs if path.is_file()
+                } | {"README.md", "CONTRIBUTING.md", "SUPPORT.md", "PRIVACY.md", "TERMS.md"}
+                for name in documentation_names:
+                    self.assertIn(prefix + name, zip_names)
+                    self.assertIn(prefix + name, tar_names)
                 for skill in SKILL_NAMES:
                     expected = prefix + f"skills/{skill}/SKILL.md"
                     self.assertIn(expected, zip_names)
@@ -127,6 +149,7 @@ class ReleaseArtifactTests(unittest.TestCase):
                     "LICENSE": "Test license\r\n",
                     "CHANGELOG.md": "# Changes\r\n",
                     "skill-catalog.json": '{"schema_version": 1}\r\n',
+                    "docs/i18n/ru/README.md": "# Translation\r\n",
                     "skills/demo/SKILL.md": (
                         "---\r\nname: demo\r\ndescription: Demo.\r\n---\r\n"
                     ),
@@ -151,6 +174,19 @@ class ReleaseArtifactTests(unittest.TestCase):
                 )
                 self.assertEqual(b"# Test\n", readme)
                 self.assertFalse(manifest["source_commit"].endswith("-dirty"))
+
+                translation = source / "docs/i18n/ru/README.md"
+                translation.write_text("# Updated translation\n", encoding="utf-8", newline="")
+                build_release(source, "v1.2.3", output)
+                with zipfile.ZipFile(output / "kolabse-skills-v1.2.3.zip") as archive:
+                    self.assertEqual(
+                        b"# Updated translation\n",
+                        archive.read("kolabse-skills-v1.2.3/docs/i18n/ru/README.md"),
+                    )
+                manifest = json.loads(
+                    (output / "release-manifest.json").read_text(encoding="utf-8")
+                )
+                self.assertTrue(manifest["source_commit"].endswith("-dirty"))
 
     @staticmethod
     def run_git(directory: Path, *arguments: str) -> None:

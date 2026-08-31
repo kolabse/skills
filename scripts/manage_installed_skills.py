@@ -12,7 +12,7 @@ from urllib.parse import urlparse
 
 
 COLLECTION = "kolabse-skills"
-COLLECTION_VERSION = "1.19.0"
+COLLECTION_VERSION = "1.19.1"
 SKILLS_CLI_VERSION = "1.5.22"
 LOCK_FILE = "skills-lock.json"
 METADATA_FILE = "collection-metadata.json"
