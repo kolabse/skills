@@ -814,7 +814,10 @@ class ManageInstalledSkillsTests(unittest.TestCase):
             before = (project / "skills-lock.json").read_bytes()
             plan = manager.build_update_plan(project, [], "project")
             self.assertFalse(plan["mutates"])
-            self.assertEqual("1.19.0", plan["target_version"])
+            catalog = json.loads(
+                (SCRIPTS.parent / "skill-catalog.json").read_text(encoding="utf-8")
+            )
+            self.assertEqual(catalog["collection_version"], plan["target_version"])
             self.assertEqual("update", plan["outcomes"][0]["action"])
             self.assertEqual(["verify-before-push"], plan["migration_candidates"])
             self.assertEqual("codex", plan["agent"])
