@@ -1,6 +1,6 @@
 # kolabse/skills
 
-[English](../../../README.md) | [Русский](../ru/README.md) | Español
+[English](../../../README.md) | [Русский](../ru/README.md) | Español | [Français](../fr/README.md) | [Deutsch](../de/README.md)
 
 Habilidades reutilizables para agentes, mantenidas por kolabse.
 

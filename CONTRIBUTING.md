@@ -1,6 +1,6 @@
 # Contributing skills
 
-English | [Русский](docs/i18n/ru/CONTRIBUTING.md) | [Español](docs/i18n/es/CONTRIBUTING.md)
+English | [Русский](docs/i18n/ru/CONTRIBUTING.md) | [Español](docs/i18n/es/CONTRIBUTING.md) | [Français](docs/i18n/fr/CONTRIBUTING.md) | [Deutsch](docs/i18n/de/CONTRIBUTING.md)
 
 This repository is the canonical home for reusable kolabse skills. Keep each
 skill focused, portable, attributable, and independently installable.

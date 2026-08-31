@@ -1,6 +1,6 @@
 # Поддержка
 
-[English](../../../SUPPORT.md) | Русский | [Español](../es/SUPPORT.md)
+[English](../../../SUPPORT.md) | Русский | [Español](../es/SUPPORT.md) | [Français](../fr/SUPPORT.md) | [Deutsch](../de/SUPPORT.md)
 
 > Это перевод для удобства чтения. При расхождениях определяющей является
 > [английская версия](../../../SUPPORT.md).

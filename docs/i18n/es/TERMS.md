@@ -1,6 +1,6 @@
 # Términos de uso
 
-[English](../../../TERMS.md) | [Русский](../ru/TERMS.md) | Español
+[English](../../../TERMS.md) | [Русский](../ru/TERMS.md) | Español | [Français](../fr/TERMS.md) | [Deutsch](../de/TERMS.md)
 
 Fecha de entrada en vigor: 2026-08-24
 

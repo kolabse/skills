@@ -1,6 +1,6 @@
 # Support
 
-English | [Русский](docs/i18n/ru/SUPPORT.md) | [Español](docs/i18n/es/SUPPORT.md)
+English | [Русский](docs/i18n/ru/SUPPORT.md) | [Español](docs/i18n/es/SUPPORT.md) | [Français](docs/i18n/fr/SUPPORT.md) | [Deutsch](docs/i18n/de/SUPPORT.md)
 
 Use the following public channels for `kolabse-skills`:
 

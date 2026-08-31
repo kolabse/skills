@@ -1,6 +1,6 @@
 # Soporte
 
-[English](../../../SUPPORT.md) | [Русский](../ru/SUPPORT.md) | Español
+[English](../../../SUPPORT.md) | [Русский](../ru/SUPPORT.md) | Español | [Français](../fr/SUPPORT.md) | [Deutsch](../de/SUPPORT.md)
 
 Utilice los siguientes canales públicos para `kolabse-skills`:
 

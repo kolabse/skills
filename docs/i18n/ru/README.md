@@ -1,6 +1,6 @@
 # kolabse/skills
 
-[English](../../../README.md) | Русский | [Español](../es/README.md)
+[English](../../../README.md) | Русский | [Español](../es/README.md) | [Français](../fr/README.md) | [Deutsch](../de/README.md)
 
 > Это перевод для удобства чтения. Канонической и наиболее актуальной является
 > [английская версия](../../../README.md).

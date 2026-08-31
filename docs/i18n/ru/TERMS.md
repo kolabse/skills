@@ -1,6 +1,6 @@
 # Условия использования
 
-[English](../../../TERMS.md) | Русский | [Español](../es/TERMS.md)
+[English](../../../TERMS.md) | Русский | [Español](../es/TERMS.md) | [Français](../fr/TERMS.md) | [Deutsch](../de/TERMS.md)
 
 > Это перевод для удобства чтения. При расхождениях определяющей является
 > [английская версия](../../../TERMS.md).

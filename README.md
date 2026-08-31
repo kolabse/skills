@@ -1,6 +1,6 @@
 # kolabse/skills
 
-English | [Русский](docs/i18n/ru/README.md) | [Español](docs/i18n/es/README.md)
+English | [Русский](docs/i18n/ru/README.md) | [Español](docs/i18n/es/README.md) | [Français](docs/i18n/fr/README.md) | [Deutsch](docs/i18n/de/README.md)
 
 Reusable agent skills maintained by kolabse.
 

@@ -2,6 +2,12 @@
 
 ## [Unreleased]
 
+### Added
+
+- French and German translations of the public README, contribution guide,
+  support, privacy policy, and terms of use. Language navigation now connects
+  all five languages; English remains the canonical source.
+
 ## [1.19.0] - 2026-08-31
 
 ### Added

@@ -1,6 +1,6 @@
 # Политика конфиденциальности
 
-[English](../../../PRIVACY.md) | Русский | [Español](../es/PRIVACY.md)
+[English](../../../PRIVACY.md) | Русский | [Español](../es/PRIVACY.md) | [Français](../fr/PRIVACY.md) | [Deutsch](../de/PRIVACY.md)
 
 > Это перевод для удобства чтения. При расхождениях определяющей является
 > [английская версия](../../../PRIVACY.md).
