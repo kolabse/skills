@@ -70,6 +70,21 @@ npx skills@1.5.22 add kolabse/skills --agent codex --copy -y
 npx skills@1.5.22 add kolabse/skills --agent claude-code --copy -y
 ```
 
+For project installation, ask your agent: "Install the selected skills and
+initialize missing project defaults without replacing our existing rules."
+After the external installer completes, bootstrap the Git rules for your agent:
+
+```shell
+python .agents/skills/synchronize-git-repositories/scripts/configure_project.py bootstrap --project-path . --agent codex --apply --yes --json
+python .claude/skills/synchronize-git-repositories/scripts/configure_project.py bootstrap --project-path . --agent claude-code --apply --yes --json
+```
+
+Missing conventions default to `feature/`, `bugfix/`, `release/`, `hotfix/` and
+commit types `feat`, `fix`, `refactor`, `docs`, `test`, `chore`. Explicit project
+prefixes, branch roles and commit formats remain authoritative. No persistent
+branches or Git hooks are created. Project-scoped managed updates apply this
+same bootstrap for the relevant skills; unconfirmed updates only plan it.
+
 For a project-scoped install, initialize the lifecycle contract immediately
 when its observable defaults are sufficient (use the path for your agent):
 

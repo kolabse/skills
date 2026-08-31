@@ -2,6 +2,26 @@
 
 ## [Unreleased]
 
+## [1.19.0] - 2026-08-31
+
+### Added
+
+- Project setup and managed updates now install conditional Git workflow rules
+  for Codex and Claude Code: `feature/`, `bugfix/`, `release/`, `hotfix/` and
+  commit types `feat`, `fix`, `refactor`, `docs`, `test`, `chore`. Explicit
+  project conventions remain authoritative independently for each setting.
+  Bootstrap supports a read-only plan and confirmed idempotent application.
+- GitFlow standard releases also accept release-preparation branches under
+  the default `release/` or an explicitly configured `release_prefix`, with
+  verified ancestry from the current development identity. Existing direct
+  development-to-production contracts and configuration digests are preserved.
+
+### Fixed
+
+- Branch setup now selects the task kind and configured base before publishing
+  the unchanged branch, instead of suggesting `codex/` as a universal prefix.
+  Existing custom rules are preserved during updates for both agent families.
+
 ## [1.18.3] - 2026-08-27
 
 ### Fixed
@@ -545,6 +565,7 @@ First versioned release of the kolabse skill collection.
 - Tests for configuration migration, fake cloud and infrastructure CLIs,
   installation confirmation, and collection metadata.
 
+[1.19.0]: https://github.com/kolabse/skills/releases/tag/v1.19.0
 [1.18.3]: https://github.com/kolabse/skills/releases/tag/v1.18.3
 [1.18.2]: https://github.com/kolabse/skills/releases/tag/v1.18.2
 [1.18.1]: https://github.com/kolabse/skills/releases/tag/v1.18.1
