@@ -504,6 +504,125 @@ class ConfiguredGitFlowTests(unittest.TestCase):
         self.assertTrue(result["passed"])
         self.assertTrue(result["production_published"])
 
+    def test_release_namespace_default_supports_plan_and_bound_verification(self) -> None:
+        # The optional default must not change the canonical identity of old configs.
+        self.assertEqual(self.config, GITFLOW.validate_config(self.config))
+        development = git(self.repository, "rev-parse", "origin/development")
+        git(self.repository, "switch", "-c", "release/1.1.0")
+        git(self.repository, "commit", "--allow-empty", "-m", "Prepare release")
+        git(self.repository, "push", "-u", "origin", "release/1.1.0")
+        plan = self.route_plan({
+            "release_id": "1.1.0", "source_branch": "release/1.1.0",
+            "explicit_hotfix": False,
+        })
+        self.assertTrue(plan["ready"], plan["blockers"])
+        self.assertEqual(development, plan["remote_identities"]["development"])
+        self.assertNotEqual(development, plan["source_commit"])
+        self.assertEqual(["tests", "documentation"], plan["gates"])
+        self.publish_to_production("release/1.1.0")
+        evidence = self.evidence(plan, reintegration={
+            "status": "not-required", "target_branch": "development",
+            "commit": None, "evidence_sha256": None,
+        })
+        result = GITFLOW.verify_completion(
+            self.repository, self.parent / "release-plan.json", evidence,
+        )
+        self.assertTrue(result["passed"], result["blockers"])
+        stale = json.loads(evidence.read_text(encoding="utf-8"))
+        stale["review"]["source_branch"] = "development"
+        stale["gate_evidence"]["tests"]["commit"] = development
+        write_json(evidence, stale)
+        result = GITFLOW.verify_completion(
+            self.repository, self.parent / "release-plan.json", evidence,
+        )
+        self.assertFalse(result["passed"])
+        self.assertIn("review evidence does not match the planned route", result["blockers"])
+        self.assertIn("gate evidence is invalid or stale: tests", result["blockers"])
+
+    def test_release_namespace_requires_current_remote_development_ancestry(self) -> None:
+        git(self.repository, "branch", "release/frozen")
+        git(self.repository, "commit", "--allow-empty", "-m", "Advance development")
+        git(self.repository, "push")
+        git(self.repository, "switch", "release/frozen")
+        git(self.repository, "commit", "--allow-empty", "-m", "Prepare older release")
+        git(self.repository, "push", "-u", "origin", "release/frozen")
+        plan = self.route_plan({
+            "release_id": "frozen", "source_branch": "release/frozen",
+            "explicit_hotfix": False,
+        })
+        self.assertFalse(plan["ready"])
+        self.assertIn(
+            "release source does not descend from the remote development identity",
+            plan["blockers"],
+        )
+
+    def test_release_namespace_custom_prefix_overrides_default(self) -> None:
+        self.config["branches"]["release_prefix"] = "stabilize/"
+        write_json(self.config_source, self.config)
+        GITFLOW.configure(self.repository, self.config_source)
+        git(self.repository, "add", "--", str(GITFLOW.CONFIG_RELATIVE))
+        git(self.repository, "commit", "-m", "Configure release namespace")
+        git(self.repository, "push")
+        for branch, accepted in (("stabilize/1.1", True), ("release/1.1", False)):
+            git(self.repository, "switch", "-c", branch)
+            git(self.repository, "push", "-u", "origin", branch)
+            plan = self.route_plan({
+                "release_id": "custom", "source_branch": branch,
+                "explicit_hotfix": False,
+            })
+            self.assertEqual(accepted, plan["ready"], plan["blockers"])
+
+    def test_release_namespace_rejects_invalid_or_colliding_explicit_prefix(self) -> None:
+        for prefix in ("", "/", "release", "bad space/", "../release/", "hotfix/", "hotfix/release/"):
+            with self.subTest(prefix=prefix):
+                config = json.loads(json.dumps(self.config))
+                config["branches"]["release_prefix"] = prefix
+                with self.assertRaisesRegex(GITFLOW.GitFlowError, "release"):
+                    GITFLOW.validate_config(config)
+        for role in ("development", "production"):
+            with self.subTest(role=role):
+                config = json.loads(json.dumps(self.config))
+                config["branches"]["release_prefix"] = "release/"
+                config["branches"][role] = "release/live"
+                with self.assertRaisesRegex(GITFLOW.GitFlowError, "outside the release namespace"):
+                    GITFLOW.validate_config(config)
+
+    def test_release_namespace_default_never_accepts_persistent_production(self) -> None:
+        self.config["branches"]["production"] = "release/live"
+        write_json(self.config_source, self.config)
+        GITFLOW.configure(self.repository, self.config_source)
+        git(self.repository, "add", "--", str(GITFLOW.CONFIG_RELATIVE))
+        git(self.repository, "commit", "-m", "Configure persistent release role")
+        git(self.repository, "push")
+        git(self.repository, "switch", "-c", "release/live")
+        git(self.repository, "push", "-u", "origin", "release/live")
+        plan = self.route_plan({
+            "release_id": "persistent", "source_branch": "release/live",
+            "explicit_hotfix": False,
+        })
+        self.assertFalse(plan["ready"])
+
+    def test_release_namespace_cannot_be_nested_under_persistent_role(self) -> None:
+        config = json.loads(json.dumps(self.config))
+        config["branches"]["release_prefix"] = "development/releases/"
+        with self.assertRaisesRegex(GITFLOW.GitFlowError, "outside the release namespace"):
+            GITFLOW.validate_config(config)
+
+    def test_release_namespace_default_never_accepts_hotfix_namespace(self) -> None:
+        self.config["branches"]["hotfix_prefix"] = "release/"
+        write_json(self.config_source, self.config)
+        GITFLOW.configure(self.repository, self.config_source)
+        git(self.repository, "add", "--", str(GITFLOW.CONFIG_RELATIVE))
+        git(self.repository, "commit", "-m", "Configure explicit hotfix namespace")
+        git(self.repository, "push")
+        git(self.repository, "switch", "-c", "release/urgent")
+        git(self.repository, "push", "-u", "origin", "release/urgent")
+        plan = self.route_plan({
+            "release_id": "urgent", "source_branch": "release/urgent",
+            "explicit_hotfix": False,
+        })
+        self.assertFalse(plan["ready"])
+
     def test_unmerged_source_is_not_reported_as_published(self) -> None:
         plan = self.route_plan({
             "release_id": "not-published",

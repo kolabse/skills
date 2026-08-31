@@ -12,7 +12,7 @@ from urllib.parse import urlparse
 
 
 COLLECTION = "kolabse-skills"
-COLLECTION_VERSION = "1.18.3"
+COLLECTION_VERSION = "1.19.0"
 SKILLS_CLI_VERSION = "1.5.22"
 LOCK_FILE = "skills-lock.json"
 METADATA_FILE = "collection-metadata.json"
@@ -692,9 +692,10 @@ def update_skills(
     after_by_name = {item["name"]: item for item in state["skills"]}
     configuration: list[dict[str, Any]] = []
     if scope == "project":
-        for name, command in lifecycle_bootstrap_commands(
+        bootstrap_commands = git_policy_bootstrap_commands(
             project, selected, agent, confirmed=yes
-        ):
+        ) + lifecycle_bootstrap_commands(project, selected, agent, confirmed=yes)
+        for name, command in bootstrap_commands:
             completed = run_checked(command, project.resolve(), timeout)
             try:
                 payload = json.loads(completed.stdout)
@@ -706,8 +707,20 @@ def update_skills(
                 {
                     "skill": name,
                     "status": (
-                        "created" if payload.get("created")
-                        else "configured" if payload.get("configured")
+                        "planned" if (
+                            name == "synchronize-git-repositories"
+                            and not yes and payload.get("valid", True)
+                            and (
+                                payload.get("changes_required")
+                                or payload.get("defaults_configured") is False
+                            )
+                        )
+                        else "created" if payload.get("created")
+                        else "configured" if (
+                            payload.get("defaults_configured", payload.get("configured"))
+                            if name == "synchronize-git-repositories"
+                            else payload.get("configured")
+                        )
                         else "blocked"
                     ),
                     "result": payload,
@@ -767,6 +780,41 @@ def sync_project_context_config_path(environment: dict[str, str] | None = None) 
 
 def python_executable() -> str:
     return shutil.which("python") or sys.executable
+
+
+def git_policy_bootstrap_commands(
+    project: Path,
+    selected: list[str],
+    agent: str = DEFAULT_AGENT,
+    confirmed: bool = False,
+) -> list[tuple[str, list[str]]]:
+    """Bootstrap project Git defaults only for Git workflow skill updates."""
+    agent = verified_agent(agent)
+    name = "synchronize-git-repositories"
+    triggers = {
+        name,
+        "execute-verified-development-lifecycle",
+        "execute-configured-gitflow-releases",
+    }
+    if not triggers.intersection(selected):
+        return []
+    root = project.resolve()
+    helper = project_install_root(root, agent) / name / "scripts/configure_project.py"
+    if not helper.is_file():
+        return []
+    bundled_helper = REPOSITORY_ROOT / "skills" / name / "scripts/configure_project.py"
+    if bundled_helper.is_file():
+        helper = bundled_helper
+    elif name not in selected:
+        # An unchanged dependency can predate bootstrap; never execute its old CLI.
+        return []
+    command = [
+        python_executable(), str(helper), "bootstrap",
+        "--project-path", str(root), "--agent", agent, "--json",
+    ]
+    if confirmed:
+        command.extend(["--apply", "--yes"])
+    return [(name, command)]
 
 
 def lifecycle_bootstrap_commands(

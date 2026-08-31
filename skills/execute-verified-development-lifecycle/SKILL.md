@@ -16,6 +16,15 @@ its `AGENTS.md` rules as the default.
 
 ## Resolve the contract
 
+On installation/update and first project use, use the installed
+`synchronize-git-repositories` bootstrap to add missing conditional Git workflow
+rules for the selected agent. Its defaults are `feature/` for ordinary work,
+`bugfix/` for development fixes, `release/` for stabilization, and `hotfix/` only
+for explicit production repair; explicit project policy takes precedence.
+Commit types default independently to `feat`, `fix`, `refactor`, `docs`, `test`,
+and `chore`. Do not overwrite an existing lifecycle config to apply these
+agent-rule defaults. Do not downgrade an explicit base role to a remote default.
+
 Start by inspecting status. After a project-scoped managed update, or on first
 use following a marketplace/plugin install, bootstrap a missing configuration:
 
@@ -66,6 +75,13 @@ python <skill-root>/scripts/development_lifecycle.py dependencies --json
 It reports required workflow skills, optional lifecycle integrations, setup reminders, and the exact `npx` argv. It is read-only unless both `--apply` and `--yes` are present. Add `--include-integrations` only when the project will use those integrations. Read [`references/dependencies.json`](references/dependencies.json) when dependency availability or installation is in scope.
 
 ## Freeze the plan before editing
+
+Select task kind and the effective prefix before bootstrap publication. The
+plan field `feature_ref` means the task branch, including a `bugfix/` branch;
+it does not force a literal prefix. Validate its name and proposed commit/MR
+title against the applicable project/default rules. The evidence helper checks
+ref syntax and repository state, not semantic task classification or commit
+message style. Production hotfixes belong to the approved release route.
 
 Read [`references/lifecycle-and-rewinds.md`](references/lifecycle-and-rewinds.md) and prepare a plan input matching [`schemas/plan-input.schema.json`](schemas/plan-input.schema.json). It must account for every configured repository rule and reference, identify the feature source/base and unchanged starting commits, and describe changed scope. Run:
 

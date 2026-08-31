@@ -14,6 +14,14 @@ documentation lives in a separate repository.
 
 ## Resolve the release contract
 
+Apply the `synchronize-git-repositories` project bootstrap on installation,
+update, or first project use to install missing conditional naming/message
+defaults. Explicit project policy always wins. Use `release/` for preparation
+from the declared development role and `hotfix/` only for explicit production
+repair when the project has not selected another namespace. Commit types
+default to `feat`, `fix`, `refactor`, `docs`, `test`, and `chore`, independently
+of the branch kind. Do not guess persistent roles or overwrite release config.
+
 1. Inspect project instructions for the release model, protected-branch policy,
    review path, deployment system, and required evidence.
 2. If no contract is installed, prepare a version-1 document matching
@@ -56,9 +64,17 @@ gate set.
 
 Standard route:
 
-- requires the configured development branch as source;
+- accepts the configured development branch as source for existing direct routes;
+- also accepts a preparation branch under `branches.release_prefix` (default
+  `release/`) containing the currently observed remote development commit;
+- blocks a preparation branch that no longer contains that development
+  identity; synchronize and deliberately reconcile it rather than auto-merging;
 - targets the protected production branch;
 - may be selected by an explicit request or a declared default.
+
+Return stabilization changes to development through the project's reviewed
+path. The existing standard-route verifier proves production publication, not
+that additional reintegration; report the latter separately when needed.
 
 Hotfix route:
 

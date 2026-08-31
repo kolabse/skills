@@ -127,11 +127,61 @@ def run_smoke(
             detail = (result.stdout + "\n" + result.stderr).strip()
             raise SmokeError(f"skills CLI exited with {result.returncode}: {detail[-1000:]}")
         verify_installation(source, project, names, agent)
+        if "synchronize-git-repositories" in names:
+            verify_git_policy_bootstrap(project, agent, environment, timeout)
     print(
         f"Installed and verified {len(names)} copied skill(s) for {agent} "
         f"with skills@{cli_version}."
     )
     return 0
+
+
+def verify_git_policy_bootstrap(
+    project: Path, agent: str, environment: dict[str, str], timeout: int
+) -> None:
+    helper = project / AGENT_LAYOUTS[agent] / "synchronize-git-repositories/scripts/configure_project.py"
+    selected = project / ("AGENTS.md" if agent == "codex" else "CLAUDE.md")
+    other = project / ("CLAUDE.md" if agent == "codex" else "AGENTS.md")
+    original_other = other.read_bytes() if other.exists() else None
+    command = [
+        sys.executable, str(helper), "bootstrap", "--project-path", str(project),
+        "--agent", agent, "--json",
+    ]
+
+    def snapshot() -> tuple[dict[str, str], set[str]]:
+        return file_manifest(project), {path.relative_to(project).as_posix() for path in project.rglob("*")}
+
+    def invoke(apply: bool) -> dict[str, object]:
+        result = subprocess.run(
+            [*command, *(["--apply", "--yes"] if apply else [])],
+            cwd=project, capture_output=True, text=True, encoding="utf-8",
+            errors="replace", env=environment, timeout=timeout, check=False,
+        )
+        if result.returncode:
+            raise SmokeError(f"Git policy bootstrap failed: {(result.stdout + result.stderr)[-1000:]}")
+        try:
+            payload = json.loads(result.stdout)
+        except json.JSONDecodeError as error:
+            raise SmokeError("Git policy bootstrap returned invalid JSON") from error
+        if not isinstance(payload, dict) or payload.get("valid") is not True:
+            raise SmokeError("Git policy bootstrap did not report valid configuration")
+        return payload
+
+    before = snapshot()
+    planned = invoke(False)
+    if planned.get("mutates_repository") is not False or before != snapshot():
+        raise SmokeError("Read-only Git policy bootstrap changed the consumer project")
+    applied = invoke(True)
+    if applied.get("defaults_configured") is not True or applied.get("configured") is not True:
+        raise SmokeError("Git policy bootstrap did not configure defaults")
+    if not selected.is_file() or "<!-- git-workflow-defaults:start -->" not in selected.read_text(encoding="utf-8"):
+        raise SmokeError("Git policy bootstrap did not create the selected agent defaults")
+    if (other.read_bytes() if other.exists() else None) != original_other:
+        raise SmokeError("Git policy bootstrap changed the other agent rules")
+    configured = snapshot()
+    repeated = invoke(True)
+    if repeated.get("changed") is not False or repeated.get("defaults_configured") is not True or configured != snapshot():
+        raise SmokeError("Repeated Git policy bootstrap is not idempotent")
 
 
 def main(argv: list[str] | None = None) -> int:

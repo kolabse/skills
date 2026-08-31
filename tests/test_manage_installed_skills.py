@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 import shutil
+import subprocess
 import sys
 import tempfile
 import unittest
@@ -150,6 +151,145 @@ class ManageInstalledSkillsTests(unittest.TestCase):
             self.assertEqual("update", run.call_args_list[0].args[0][3])
             self.assertEqual("bootstrap", run.call_args_list[1].args[0][2])
             self.assertEqual("created", report["configuration"][0]["status"])
+
+    def test_git_policy_bootstrap_commands_use_selected_agent_and_confirmation(self) -> None:
+        name = "synchronize-git-repositories"
+        for agent in ("codex", "claude-code"):
+            for selected in (name, "execute-verified-development-lifecycle", "execute-configured-gitflow-releases"):
+                for confirmed in (False, True):
+                    with self.subTest(agent=agent, selected=selected, confirmed=confirmed), tempfile.TemporaryDirectory() as directory:
+                        project = self.make_project(Path(directory), {name: "1.18.3"}, agent)
+                        helper = manager.project_install_root(project, agent) / name / "scripts/configure_project.py"
+                        helper.parent.mkdir()
+                        helper.write_text("# fixture\n", encoding="utf-8")
+                        commands = manager.git_policy_bootstrap_commands(project, [selected], agent, confirmed)
+                        self.assertEqual(1, len(commands))
+                        skill, command = commands[0]
+                        self.assertEqual(name, skill)
+                        self.assertEqual([
+                            str(manager.REPOSITORY_ROOT / "skills" / name / "scripts/configure_project.py"),
+                            "bootstrap", "--project-path", str(project.resolve()),
+                            "--agent", agent, "--json",
+                        ] + (["--apply", "--yes"] if confirmed else []), command[1:])
+
+    def test_git_policy_bootstrap_requires_relevant_selection_and_installed_helper(self) -> None:
+        name = "synchronize-git-repositories"
+        with tempfile.TemporaryDirectory() as directory:
+            project = Path(directory)
+            self.assertEqual([], manager.git_policy_bootstrap_commands(project, [name]))
+            helper = manager.project_install_root(project) / name / "scripts/configure_project.py"
+            helper.parent.mkdir(parents=True)
+            helper.write_text("# fixture\n", encoding="utf-8")
+            self.assertEqual([], manager.git_policy_bootstrap_commands(project, []))
+            self.assertEqual([], manager.git_policy_bootstrap_commands(project, ["verify-before-push"]))
+            self.assertEqual([], manager.git_policy_bootstrap_commands(project, [name], "claude-code"))
+
+    def test_project_update_bootstraps_git_policy_before_lifecycle_for_both_agents(self) -> None:
+        sync = "synchronize-git-repositories"
+        lifecycle = "execute-verified-development-lifecycle"
+        for agent in ("codex", "claude-code"):
+            for confirmed in (False, True):
+                with self.subTest(agent=agent, confirmed=confirmed), tempfile.TemporaryDirectory() as directory, patch.object(
+                    shutil, "which", return_value="npx"
+                ), patch.object(manager, "run_checked") as run:
+                    project = self.make_project(Path(directory), {sync: "1.18.3", lifecycle: "1.18.3"}, agent)
+                    helpers = []
+                    for name, script in ((sync, "configure_project.py"), (lifecycle, "development_lifecycle.py")):
+                        helper = manager.project_install_root(project, agent) / name / "scripts" / script
+                        helper.parent.mkdir()
+                        helper.write_text("# fixture\n", encoding="utf-8")
+                        helpers.append(
+                            manager.REPOSITORY_ROOT / "skills" / name / "scripts" / script
+                            if name == sync else helper
+                        )
+                    run.return_value.stdout = json.dumps({
+                        "configured": True, "created": confirmed,
+                        "valid": True, "defaults_configured": confirmed,
+                    })
+                    run.return_value.stderr = ""
+
+                    report = manager.update_skills(
+                        project, [lifecycle], "project", "1.5.22", confirmed, 30, as_json=True, agent=agent,
+                    )
+
+                    self.assertEqual(3, run.call_count)
+                    for call, helper in zip(run.call_args_list[1:], helpers):
+                        command = call.args[0]
+                        self.assertEqual(str(helper), command[1])
+                        self.assertEqual("bootstrap", command[2])
+                        self.assertEqual(confirmed, "--apply" in command)
+                        self.assertEqual(confirmed, "--yes" in command)
+                    self.assertEqual([sync, lifecycle], [item["skill"] for item in report["configuration"]])
+                    self.assertEqual("created" if confirmed else "planned", report["configuration"][0]["status"])
+                    schema = json.loads((SCRIPTS.parent / "schemas/manager-result.schema.json").read_text(encoding="utf-8"))
+                    allowed = schema["properties"]["configuration"]["items"]["properties"]["status"]["enum"]
+                    for configuration in report["configuration"]:
+                        self.assertIn(configuration["status"], allowed)
+
+    def test_update_skips_git_policy_for_global_and_unrelated_selections(self) -> None:
+        sync = "synchronize-git-repositories"
+        for agent in ("codex", "claude-code"):
+            for scope in ("project", "global"):
+                with self.subTest(agent=agent, scope=scope), tempfile.TemporaryDirectory() as directory, patch.object(
+                    shutil, "which", return_value="npx"
+                ), patch.object(manager, "run_checked") as run:
+                    root = Path(directory)
+                    versions = {sync: "1.18.3", "verify-before-push": "1.18.3"}
+                    project = self.make_project(root, versions, agent)
+                    global_root = self.make_global(root, versions, agent)
+                    helper = manager.project_install_root(project, agent) / sync / "scripts/configure_project.py"
+                    helper.parent.mkdir()
+                    helper.write_text("# fixture\n", encoding="utf-8")
+                    run.return_value.stdout = "updated"
+                    run.return_value.stderr = ""
+                    with patch.object(manager, "default_global_root", return_value=global_root):
+                        report = manager.update_skills(
+                            project, [sync if scope == "global" else "verify-before-push"], scope,
+                            "1.5.22", True, 30, global_root=global_root if scope == "global" else None,
+                            as_json=True, agent=agent,
+                        )
+                    self.assertEqual(1, run.call_count)
+                    self.assertEqual([], report["configuration"])
+
+    def test_git_policy_bootstrap_uses_bundle_with_legacy_installed_dependency(self) -> None:
+        name = "synchronize-git-repositories"
+        for agent in ("codex", "claude-code"):
+            for selected in ("execute-verified-development-lifecycle", "execute-configured-gitflow-releases"):
+                with self.subTest(agent=agent, selected=selected), tempfile.TemporaryDirectory() as directory:
+                    project = self.make_project(Path(directory), {name: "1.18.3"}, agent)
+                    helper = manager.project_install_root(project, agent) / name / "scripts/configure_project.py"
+                    helper.parent.mkdir()
+                    # Reproduce the installed 1.18.3 CLI: configure/status, no bootstrap.
+                    legacy = (
+                        "import argparse\n"
+                        "parser = argparse.ArgumentParser()\n"
+                        "commands = parser.add_subparsers(dest='command', required=True)\n"
+                        "commands.add_parser('configure')\ncommands.add_parser('status')\n"
+                        "parser.parse_args()\n"
+                    )
+                    helper.write_text(legacy, encoding="utf-8")
+                    for confirmed in (False, True):
+                        command = manager.git_policy_bootstrap_commands(project, [selected], agent, confirmed)[0][1]
+                        completed = subprocess.run(command, capture_output=True, text=True)
+                        self.assertEqual(0, completed.returncode, completed.stderr)
+                        payload = json.loads(completed.stdout)
+                        self.assertEqual(confirmed, payload["defaults_configured"])
+                        self.assertEqual(legacy, helper.read_text(encoding="utf-8"))
+
+    def test_git_policy_bootstrap_without_bundle_only_uses_selected_sync_helper(self) -> None:
+        name = "synchronize-git-repositories"
+        for agent in ("codex", "claude-code"):
+            with self.subTest(agent=agent), tempfile.TemporaryDirectory() as directory:
+                root = Path(directory)
+                project = self.make_project(root, {name: "1.19.0"}, agent)
+                helper = manager.project_install_root(project, agent) / name / "scripts/configure_project.py"
+                helper.parent.mkdir()
+                helper.write_text("# fixture\n", encoding="utf-8")
+                with patch.object(manager, "REPOSITORY_ROOT", root / "manager-without-bundle"):
+                    for selected in ("execute-verified-development-lifecycle", "execute-configured-gitflow-releases"):
+                        self.assertEqual([], manager.git_policy_bootstrap_commands(project, [selected], agent))
+                    command = manager.git_policy_bootstrap_commands(project, [name], agent)[0][1]
+                    self.assertEqual(str(helper), command[1])
 
     def make_project(
         self, root: Path, versions: dict[str, str], agent: str = "codex"
@@ -674,7 +814,7 @@ class ManageInstalledSkillsTests(unittest.TestCase):
             before = (project / "skills-lock.json").read_bytes()
             plan = manager.build_update_plan(project, [], "project")
             self.assertFalse(plan["mutates"])
-            self.assertEqual("1.18.3", plan["target_version"])
+            self.assertEqual("1.19.0", plan["target_version"])
             self.assertEqual("update", plan["outcomes"][0]["action"])
             self.assertEqual(["verify-before-push"], plan["migration_candidates"])
             self.assertEqual("codex", plan["agent"])

@@ -111,8 +111,13 @@ def validate_config(value: dict[str, Any]) -> dict[str, Any]:
     if not isinstance(remote, str) or not REMOTE_RE.fullmatch(remote):
         raise GitFlowError("remote name is invalid")
     branches = value.get("branches")
-    if not isinstance(branches, dict) or set(branches) != {"development", "production", "hotfix_prefix"}:
-        raise GitFlowError("branches must declare development, production, and hotfix_prefix")
+    required_branches = {"development", "production", "hotfix_prefix"}
+    if (
+        not isinstance(branches, dict)
+        or not required_branches.issubset(branches)
+        or not set(branches).issubset(required_branches | {"release_prefix"})
+    ):
+        raise GitFlowError("branches must declare development, production, hotfix_prefix, and optionally release_prefix")
     development = valid_branch(branches["development"], "development branch")
     production = valid_branch(branches["production"], "production branch")
     prefix = branches.get("hotfix_prefix")
@@ -123,6 +128,25 @@ def validate_config(value: dict[str, Any]) -> dict[str, Any]:
         raise GitFlowError("development and production roles must be different")
     if development.startswith(prefix) or production.startswith(prefix):
         raise GitFlowError("persistent branch roles must remain outside the hotfix namespace")
+    normalized_branches = {"development": development, "production": production, "hotfix_prefix": prefix}
+    if "release_prefix" in branches:
+        release_prefix = branches["release_prefix"]
+        if (
+            not isinstance(release_prefix, str)
+            or release_prefix != release_prefix.strip()
+            or not release_prefix.endswith("/")
+            or len(release_prefix) < 2
+        ):
+            raise GitFlowError("release_prefix must be a non-empty branch namespace ending in /")
+        valid_branch(f"{release_prefix}candidate", "release prefix")
+        if release_prefix.startswith(prefix) or prefix.startswith(release_prefix):
+            raise GitFlowError("release and hotfix namespaces must not overlap")
+        if any(
+            branch.startswith(release_prefix) or release_prefix.startswith(f"{branch}/")
+            for branch in (development, production)
+        ):
+            raise GitFlowError("persistent branch roles must remain outside the release namespace")
+        normalized_branches["release_prefix"] = release_prefix
     if value.get("protected_production") is not True:
         raise GitFlowError("production must be declared protected")
     default_route = value.get("default_route")
@@ -144,7 +168,7 @@ def validate_config(value: dict[str, Any]) -> dict[str, Any]:
     return {
         "version": CONFIG_VERSION,
         "remote": remote,
-        "branches": {"development": development, "production": production, "hotfix_prefix": prefix},
+        "branches": normalized_branches,
         "protected_production": True,
         "default_route": default_route,
         "gates": normalized_gates,
@@ -282,11 +306,17 @@ def build_plan(project_root: Path, input_path: Path, output: Path | None) -> dic
     warnings = list(state["warnings"])
     branches = config["branches"]
     route = route_input["route"]
+    source_branch = route_input["source_branch"]
+    release_source = (
+        source_branch.startswith(branches.get("release_prefix", "release/"))
+        and source_branch not in {branches["development"], branches["production"]}
+        and not source_branch.startswith(branches["hotfix_prefix"])
+    )
     if state.get("branch") != route_input["source_branch"]:
         blockers.append("source_branch does not match the checked-out branch")
     if route == "standard":
-        if route_input["source_branch"] != branches["development"]:
-            blockers.append("standard route must start from the configured development branch")
+        if source_branch != branches["development"] and not release_source:
+            blockers.append("standard route must start from the configured development branch or release namespace")
         target_branch = branches["production"]
     else:
         if not route_input["source_branch"].startswith(branches["hotfix_prefix"]):
@@ -316,6 +346,13 @@ def build_plan(project_root: Path, input_path: Path, output: Path | None) -> dic
         ancestry = git(project_root, "merge-base", "--is-ancestor", identities["production"], "HEAD", check=False)
         if ancestry.returncode != 0:
             blockers.append("hotfix source does not descend from the remote production identity")
+    if route == "standard" and release_source and identities["development"] is not None:
+        ancestry = git(
+            project_root, "merge-base", "--is-ancestor",
+            identities["development"], state["head"], check=False,
+        )
+        if ancestry.returncode != 0:
+            blockers.append("release source does not descend from the remote development identity")
     gates = config["gates"]["common"] + config["gates"][route]
     plan = {
         "schema_version": 1,

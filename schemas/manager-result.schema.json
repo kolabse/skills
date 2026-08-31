@@ -36,7 +36,7 @@
         "required": ["skill", "status", "result"],
         "properties": {
           "skill": {"type": "string"},
-          "status": {"enum": ["created", "configured", "blocked"]},
+          "status": {"enum": ["planned", "created", "configured", "blocked"]},
           "result": {"type": "object"}
         },
         "additionalProperties": false

@@ -70,6 +70,22 @@ npx skills@1.5.22 add kolabse/skills --agent codex --copy -y
 npx skills@1.5.22 add kolabse/skills --agent claude-code --copy -y
 ```
 
+Para instalar en un proyecto, pida a su agente: «Instala las habilidades
+seleccionadas e inicializa los valores que faltan sin sustituir nuestras reglas».
+Después del instalador externo, ejecute el bootstrap para su agente:
+
+```shell
+python .agents/skills/synchronize-git-repositories/scripts/configure_project.py bootstrap --project-path . --agent codex --apply --yes --json
+python .claude/skills/synchronize-git-repositories/scripts/configure_project.py bootstrap --project-path . --agent claude-code --apply --yes --json
+```
+
+Las convenciones no declaradas usan `feature/`, `bugfix/`, `release/`, `hotfix/`
+y los tipos de commit `feat`, `fix`, `refactor`, `docs`, `test`, `chore`.
+Los prefijos, roles de ramas y formatos explícitos del proyecto tienen prioridad.
+No se crean ramas persistentes ni hooks de Git. Las actualizaciones gestionadas
+de estas habilidades ejecutan el mismo bootstrap en el proyecto; sin
+confirmación, solo lo planifican.
+
 Para una instalación con alcance de proyecto, cree inmediatamente el contrato
 del ciclo de vida cuando los valores observables sean suficientes (use la ruta
 de su agente):

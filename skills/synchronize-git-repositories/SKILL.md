@@ -15,13 +15,18 @@ local work merely to make a repository appear current.
    configuring rules. Codex uses `AGENTS.md` with `$skill-name`; Claude Code
    uses `CLAUDE.md` with `/skill-name`. Omit `--agent` only for the unchanged
    Codex default.
-2. When no equivalent policy already exists, run the idempotent helper:
+2. On project installation/update or first project use after a global/plugin
+   install, inspect the idempotent bootstrap, then apply it as part of
+   authorized setup:
 
    ```shell
-   python <skill-root>/scripts/configure_project.py configure --project-path <project-root> [--agent codex|claude-code]
+   python <skill-root>/scripts/configure_project.py bootstrap --project-path <project-root> --agent codex --json
+   python <skill-root>/scripts/configure_project.py bootstrap --project-path <project-root> --agent codex --apply --yes --json
    ```
 
-   It preserves unrelated content and adds exactly one managed block:
+   Use `--agent claude-code` for Claude Code. This preserves custom rules and
+   adds missing synchronization and conditional Git-workflow defaults blocks.
+   The synchronization block is:
 
    ```markdown
    <!-- synchronize-git-repositories:start -->
@@ -32,16 +37,19 @@ local work merely to make a repository appear current.
    repository involved in the task with its tracked upstream using safe
    fast-forward updates, preserve dirty worktrees, and never resolve divergence
    with an automatic stash, reset, rebase, merge, clean, or force-push.
-   For authorized changes intended for publication, publish a feature branch
-   from the verified current primary-branch SHA before the first code edit and
-   track that branch's own remote ref rather than the primary branch.
+   For authorized changes intended for publication, publish a task branch
+   from the verified current configured base SHA before the first code edit and
+   track that branch's own remote ref rather than the base branch.
    <!-- synchronize-git-repositories:end -->
    ```
 
 3. Do not encode workstation-specific absolute paths. Name stable repository
    roles or relative locations only when the project must always coordinate a
    known set of repositories.
-4. Run the synchronization workflow once after configuration.
+4. Read [references/git-workflow-defaults.md](references/git-workflow-defaults.md)
+   before choosing branch names, base roles, or commit messages. Apply each
+   default only where explicit project/user policy does not specify otherwise.
+   Run the synchronization workflow once after configuration.
 
 Inspect configuration without changing files with:
 
@@ -58,21 +66,25 @@ Apply this bootstrap only when the user has authorized repository changes that
 are intended for publication. Do not create remote branches for read-only or
 local-only work.
 
-1. Fetch and prove that the primary branch is clean and current with its
-   tracked upstream. Resolve divergence before proceeding.
-2. Satisfy any protected push gate for that unchanged primary-branch SHA.
-3. Choose a task-specific feature-branch name and confirm that its remote ref
+1. Classify the task and resolve its configured base role: development for
+   `feature/` and `bugfix/`, production for an explicitly requested `hotfix/`.
+   Release preparation uses `release/` from development. In a trunk-based
+   project use its declared primary base; do not create a development branch.
+   Fetch and prove the chosen base is current with its tracked upstream and
+   the worktree is clean. Resolve divergence before proceeding.
+2. Satisfy any protected push gate for that unchanged base SHA.
+3. Choose a task-specific name under the applicable prefix and confirm that its remote ref
    does not already exist. Never overwrite or reuse an ambiguous remote branch.
 4. Publish the verified SHA as the new remote feature ref before changing any
    tracked file, then create the local branch tracking that exact ref. For
    example:
 
    ```shell
-   git push origin HEAD:refs/heads/codex/example-change
-   git switch --create codex/example-change --track origin/codex/example-change
+   git push origin HEAD:refs/heads/feature/example-change
+   git switch --create feature/example-change --track origin/feature/example-change
    ```
 
-5. Prove that local HEAD, the new remote feature ref, and the verified primary
+5. Prove that local HEAD, the new remote feature ref, and the verified base
    SHA are identical, that the worktree is clean, and that the feature branch
    tracks its own remote ref. Only then begin editing.
 

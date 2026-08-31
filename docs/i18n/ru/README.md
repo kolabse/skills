@@ -73,6 +73,21 @@ npx skills@1.5.22 add kolabse/skills --agent codex --copy -y
 npx skills@1.5.22 add kolabse/skills --agent claude-code --copy -y
 ```
 
+При установке в проект попросите агента: «Установи выбранные навыки и добавь
+недостающие правила по умолчанию, не заменяя существующие правила проекта».
+После работы внешнего установщика выполните bootstrap для своего агента:
+
+```shell
+python .agents/skills/synchronize-git-repositories/scripts/configure_project.py bootstrap --project-path . --agent codex --apply --yes --json
+python .claude/skills/synchronize-git-repositories/scripts/configure_project.py bootstrap --project-path . --agent claude-code --apply --yes --json
+```
+
+Если соглашений ещё нет, используются префиксы `feature/`, `bugfix/`, `release/`,
+`hotfix/` и типы коммитов `feat`, `fix`, `refactor`, `docs`, `test`, `chore`.
+Явно заданные префиксы, роли веток и форматы коммитов сохраняют приоритет.
+Постоянные ветки и Git hooks не создаются. Управляемое обновление соответствующих
+навыков в проекте выполняет тот же bootstrap; без подтверждения — только план.
+
 Для project-scoped установки сразу создайте lifecycle contract, если
 наблюдаемых defaults достаточно (используйте путь своего агента):
 
