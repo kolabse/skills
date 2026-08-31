@@ -136,6 +136,7 @@ def validate_relative_links(root: Path, path: Path, text: str) -> None:
 
 
 def validate(root: Path) -> int:
+    root = root.resolve()
     manifest = load_manifest(root)
     total = 0
     locale_names: list[str] = []

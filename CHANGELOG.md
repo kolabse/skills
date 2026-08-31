@@ -23,6 +23,14 @@
   fast version, localization, security, and bootstrap checks precede unit tests.
   Copied installation and upgrade checks cover Codex and Claude Code.
 
+### Fixed
+
+- Verification executable pinning preserves virtual-environment launch paths
+  while separately fingerprinting their resolved targets.
+- Direct localization validation normalizes relative and symlinked project
+  roots, preventing false path-escape failures in macOS temporary directories
+  found by the v1.20.0 CI matrix.
+
 ## [1.19.1] - 2026-08-31
 
 ### Added

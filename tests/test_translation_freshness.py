@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import os
 import sys
 import tempfile
 import unittest
@@ -18,6 +19,32 @@ def digest(text):
 
 
 class TranslationFreshnessTests(unittest.TestCase):
+    def test_validator_accepts_relative_project_root(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory).resolve()
+            self.fixture(root)
+            previous = Path.cwd()
+            try:
+                os.chdir(root)
+                self.assertEqual(1, validator.validate(Path(".")))
+            finally:
+                os.chdir(previous)
+
+    def test_validator_accepts_symlinked_project_root(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory).resolve()
+            project = root / "project"
+            project.mkdir()
+            self.fixture(project)
+            alias = root / "alias"
+            try:
+                alias.symlink_to(project, target_is_directory=True)
+            except OSError:
+                if os.name != "nt":
+                    raise
+                self.skipTest("Windows directory symlink privilege unavailable")
+            self.assertEqual(1, validator.validate(alias))
+
     def test_duplicate_headings_do_not_collide_with_explicit_suffix(self):
         parts = freshness.sections("# Foo\nA\n# Foo\nB\n# Foo-1\nC\n")
         self.assertEqual(3, len({part["id"] for part in parts}))
