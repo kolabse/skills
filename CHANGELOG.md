@@ -19,6 +19,8 @@
   support, privacy, and terms documents together with all localized public
   documents and their locale manifest. Documentation changes participate in
   release source-dirtiness detection and deterministic archive tests.
+- Bootstrap smoke tests derive their default release tag from the selected
+  source catalog, preventing a stale hardcoded version from blocking releases.
 
 ## [1.19.0] - 2026-08-31
 

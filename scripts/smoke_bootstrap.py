@@ -79,12 +79,20 @@ def run_smoke(source: Path, tag: str, timeout: int, agent: str = "codex") -> Non
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description="Smoke-test the standalone release bootstrap.")
     parser.add_argument("--source", type=Path, default=ROOT)
-    parser.add_argument("--tag", default="v1.19.0")
+    parser.add_argument("--tag", help="Release tag (defaults to the source catalog version).")
     parser.add_argument("--timeout", type=int, default=120)
     parser.add_argument("--agent", choices=SUPPORTED_AGENTS, default="codex")
     args = parser.parse_args(argv)
     try:
-        run_smoke(args.source.resolve(), args.tag, args.timeout, args.agent)
+        source = args.source.resolve()
+        tag = args.tag
+        if tag is None:
+            catalog = json.loads((source / "skill-catalog.json").read_text(encoding="utf-8"))
+            version = catalog.get("collection_version") if isinstance(catalog, dict) else None
+            if not isinstance(version, str) or not version.strip():
+                raise SmokeError("source catalog has no collection_version")
+            tag = f"v{version}"
+        run_smoke(source, tag, args.timeout, args.agent)
         print("Standalone bootstrap plan passed without mutating the consumer fixture.")
         return 0
     except (OSError, SmokeError, ValueError) as error:
