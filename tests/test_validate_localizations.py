@@ -30,7 +30,7 @@ class LocalizationValidationTests(unittest.TestCase):
         result = self.run_validator(ROOT)
         self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
         self.assertIn(
-            "Validated 10 translation(s) across 2 locale(s): es, ru.",
+            "Validated 50 translation(s) across 10 locale(s): de, es, fr, it, ja, ko, pt-BR, ru, tr, zh-CN.",
             result.stdout,
         )
 
@@ -48,7 +48,7 @@ class LocalizationValidationTests(unittest.TestCase):
         )
 
         self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
-        self.assertIn("locale(s): es, ru.", result.stdout)
+        self.assertIn("locale(s): de, es, fr, it, ja, ko, pt-BR, ru, tr, zh-CN.", result.stdout)
 
     def test_rejects_changed_shell_commands(self) -> None:
         with tempfile.TemporaryDirectory() as directory:

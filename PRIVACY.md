@@ -1,6 +1,6 @@
 # Privacy Policy
 
-English | [Русский](docs/i18n/ru/PRIVACY.md) | [Español](docs/i18n/es/PRIVACY.md)
+English | [Русский](docs/i18n/ru/PRIVACY.md) | [Español](docs/i18n/es/PRIVACY.md) | [Français](docs/i18n/fr/PRIVACY.md) | [Deutsch](docs/i18n/de/PRIVACY.md) | [Português (Brasil)](docs/i18n/pt-BR/PRIVACY.md) | [日本語](docs/i18n/ja/PRIVACY.md) | [Italiano](docs/i18n/it/PRIVACY.md) | [한국어](docs/i18n/ko/PRIVACY.md) | [简体中文](docs/i18n/zh-CN/PRIVACY.md) | [Türkçe](docs/i18n/tr/PRIVACY.md)
 
 Effective date: 2026-08-24
 

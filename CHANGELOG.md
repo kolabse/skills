@@ -2,6 +2,26 @@
 
 ## [Unreleased]
 
+## [1.19.1] - 2026-08-31
+
+### Added
+
+- French, German, Brazilian Portuguese, Japanese, Italian, Korean, Simplified
+  Chinese, and Turkish translations of the public README, contribution guide,
+  support, privacy policy, and terms of use. Language navigation now connects
+  all eleven languages; English remains the canonical source.
+- A [localization roadmap](docs/i18n/README.md) keeps Polish and Ukrainian marked
+  as planned rather than available translations.
+
+### Fixed
+
+- Downloadable ZIP and TAR.GZ releases now include the public contribution,
+  support, privacy, and terms documents together with all localized public
+  documents and their locale manifest. Documentation changes participate in
+  release source-dirtiness detection and deterministic archive tests.
+- Bootstrap smoke tests derive their default release tag from the selected
+  source catalog, preventing a stale hardcoded version from blocking releases.
+
 ## [1.19.0] - 2026-08-31
 
 ### Added
@@ -565,6 +585,7 @@ First versioned release of the kolabse skill collection.
 - Tests for configuration migration, fake cloud and infrastructure CLIs,
   installation confirmation, and collection metadata.
 
+[1.19.1]: https://github.com/kolabse/skills/releases/tag/v1.19.1
 [1.19.0]: https://github.com/kolabse/skills/releases/tag/v1.19.0
 [1.18.3]: https://github.com/kolabse/skills/releases/tag/v1.18.3
 [1.18.2]: https://github.com/kolabse/skills/releases/tag/v1.18.2

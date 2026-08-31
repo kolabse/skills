@@ -1,6 +1,6 @@
 # kolabse/skills
 
-English | [Русский](docs/i18n/ru/README.md) | [Español](docs/i18n/es/README.md)
+English | [Русский](docs/i18n/ru/README.md) | [Español](docs/i18n/es/README.md) | [Français](docs/i18n/fr/README.md) | [Deutsch](docs/i18n/de/README.md) | [Português (Brasil)](docs/i18n/pt-BR/README.md) | [日本語](docs/i18n/ja/README.md) | [Italiano](docs/i18n/it/README.md) | [한국어](docs/i18n/ko/README.md) | [简体中文](docs/i18n/zh-CN/README.md) | [Türkçe](docs/i18n/tr/README.md)
 
 Reusable agent skills maintained by kolabse.
 
