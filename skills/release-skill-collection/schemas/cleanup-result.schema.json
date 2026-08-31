@@ -4,16 +4,19 @@
   "title": "Applied post-release branch cleanup result",
   "type": "object",
   "additionalProperties": false,
-  "required": ["schema_version", "mode", "passed", "tag", "primary", "commit", "deleted_local", "deleted_remote", "mutates_repository", "report_sha256"],
+  "required": ["schema_version", "mode", "passed", "tag", "primary", "commit", "release_commit", "deleted_local", "deleted_remote", "retained_local", "failure", "mutates_repository", "report_sha256"],
   "properties": {
     "schema_version": {"const": 2},
     "mode": {"const": "cleanup-apply"},
-    "passed": {"const": true},
+    "passed": {"type": "boolean"},
     "tag": {"type": "string"},
     "primary": {"type": "string"},
     "commit": {"type": "string", "pattern": "^[0-9a-f]{40,64}$"},
+    "release_commit": {"type": "string", "pattern": "^[0-9a-f]{40,64}$"},
     "deleted_local": {"type": "array", "items": {"type": "string"}, "uniqueItems": true},
     "deleted_remote": {"type": "array", "items": {"type": "string"}, "uniqueItems": true},
+    "retained_local": {"type": "array", "items": {"type": "string"}, "uniqueItems": true},
+    "failure": {"type": ["string", "null"]},
     "mutates_repository": {"const": true},
     "report_sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"}
   }

@@ -1,6 +1,6 @@
 {
   "schema_version": 2,
-  "collection_version": "1.19.1",
+  "collection_version": "1.20.0",
   "supported_agents": [
     "claude-code",
     "codex"
@@ -13,8 +13,8 @@
     "name": "release-holdout-v4",
     "path": "evals/release-holdout-v4.json",
     "sha256": "d5be9dfab3ff21623ea8f21bd7ca7178fbd1b2c42c3c620b014781b976095751",
-    "baseline_release": "v1.17.0",
-    "baseline_report": "evals/baselines/release-holdout-v4-v1.17.0.json"
+    "baseline_release": "v1.19.1",
+    "baseline_report": "evals/baselines/release-holdout-v4-v1.19.1.json"
   },
   "compositions": [
     {

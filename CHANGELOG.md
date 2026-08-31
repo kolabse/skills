@@ -2,6 +2,27 @@
 
 ## [Unreleased]
 
+## [1.20.0] - 2026-08-31
+
+### Added
+
+- [Collection reliability workflows](docs/collection-reliability.md): explicit
+  read-only release-route planning across merge/squash/rebase policies, safer
+  cleanup after equivalent integration, and opt-in exact-commit verification
+  reuse after delivery to the tracked upstream.
+- Bounded skill-source diagnostics distinguish installed copies, version/content
+  conflicts, and user-reported availability/invocation without guessing agent
+  precedence. Existing doctor behavior remains compatible.
+- Translation revision tracking for all 50 public translations, including
+  changed English sections and explicit individual review proposals. Initial
+  records are baselines, not claims of semantic translation quality.
+
+### Changed
+
+- Local verification, CI, and release checks share an ordered check program:
+  fast version, localization, security, and bootstrap checks precede unit tests.
+  Copied installation and upgrade checks cover Codex and Claude Code.
+
 ## [1.19.1] - 2026-08-31
 
 ### Added
@@ -585,6 +606,7 @@ First versioned release of the kolabse skill collection.
 - Tests for configuration migration, fake cloud and infrastructure CLIs,
   installation confirmation, and collection metadata.
 
+[1.20.0]: https://github.com/kolabse/skills/releases/tag/v1.20.0
 [1.19.1]: https://github.com/kolabse/skills/releases/tag/v1.19.1
 [1.19.0]: https://github.com/kolabse/skills/releases/tag/v1.19.0
 [1.18.3]: https://github.com/kolabse/skills/releases/tag/v1.18.3

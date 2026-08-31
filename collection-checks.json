@@ -1,0 +1,25 @@
+{
+  "schema_version": 1,
+  "checks": {
+    "versions": {"command": ["{python}", "scripts/check_collection.py", "versions"], "timeout_seconds": 30},
+    "structural": {"command": ["{python}", "scripts/validate_skills.py"], "timeout_seconds": 120},
+    "localizations": {"command": ["{python}", "scripts/validate_localizations.py"], "timeout_seconds": 120},
+    "translation-freshness": {"command": ["{python}", "scripts/translation_freshness.py", "status", "--strict"], "timeout_seconds": 30},
+    "marketplaces": {"command": ["{python}", "scripts/smoke_marketplaces.py"], "timeout_seconds": 120},
+    "security": {"command": ["{python}", "scripts/security_checks.py"], "timeout_seconds": 120},
+    "bootstrap-codex": {"command": ["{python}", "scripts/smoke_bootstrap.py", "--agent", "codex"], "timeout_seconds": 180},
+    "bootstrap-claude": {"command": ["{python}", "scripts/smoke_bootstrap.py", "--agent", "claude-code"], "timeout_seconds": 180},
+    "unit-tests": {"command": ["{python}", "-m", "unittest", "discover", "-s", "tests", "-v"], "timeout_seconds": 1200},
+    "discovery": {"command": ["{npx}", "--yes", "skills@1.5.22", "add", ".", "--list"], "timeout_seconds": 180},
+    "install-codex": {"command": ["{python}", "scripts/smoke_install.py", "--agent", "codex"], "timeout_seconds": 300},
+    "install-claude": {"command": ["{python}", "scripts/smoke_install.py", "--agent", "claude-code"], "timeout_seconds": 300},
+    "upgrade-codex": {"command": ["{python}", "scripts/smoke_upgrade.py", "--agent", "codex"], "timeout_seconds": 300},
+    "upgrade-claude": {"command": ["{python}", "scripts/smoke_upgrade.py", "--agent", "claude-code"], "timeout_seconds": 300}
+  },
+  "profiles": {
+    "preflight": ["versions", "structural", "localizations", "translation-freshness", "marketplaces", "security", "bootstrap-codex", "bootstrap-claude"],
+    "full": ["versions", "structural", "localizations", "translation-freshness", "marketplaces", "security", "bootstrap-codex", "bootstrap-claude", "unit-tests"],
+    "consumers": ["discovery", "install-codex", "install-claude", "upgrade-codex", "upgrade-claude"],
+    "security": ["security"]
+  }
+}

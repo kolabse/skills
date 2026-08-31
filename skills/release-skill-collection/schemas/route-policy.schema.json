@@ -1,0 +1,15 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/kolabse/skills/release-skill-collection/route-policy.schema.json",
+  "title": "Explicit GitHub collection release integration policy",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "repository", "remote", "primary", "merge_method"],
+  "properties": {
+    "schema_version": {"const": 1},
+    "repository": {"type": "string", "pattern": "^[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+$"},
+    "remote": {"type": "string", "minLength": 1},
+    "primary": {"type": "string", "minLength": 1},
+    "merge_method": {"enum": ["merge", "squash", "rebase"]}
+  }
+}
