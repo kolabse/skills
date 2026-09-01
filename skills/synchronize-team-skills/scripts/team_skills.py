@@ -151,6 +151,10 @@ def document_block(manifest: dict[str, Any]) -> str:
 
 
 def parse_document(text: str) -> dict[str, Any]:
+    return validate_manifest(parse_document_payload(text))
+
+
+def parse_document_payload(text: str) -> dict[str, Any]:
     start_count = text.count(START)
     end_count = text.count(END)
     if start_count != 1 or end_count != 1:
@@ -174,7 +178,20 @@ def parse_document(text: str) -> dict[str, Any]:
         value = json.loads(match.group("payload"))
     except json.JSONDecodeError as error:
         raise TeamSkillsError(f"team document manifest is invalid JSON: {error}") from error
-    return validate_manifest(value)
+    if not isinstance(value, dict):
+        raise TeamSkillsError("team document manifest must be a JSON object")
+    return value
+
+
+def migration_manifest(value: object) -> tuple[dict[str, Any], str]:
+    if not isinstance(value, dict):
+        raise TeamSkillsError("team document manifest must be a JSON object")
+    scope = value.get("scope")
+    if scope not in {"project", "global"}:
+        raise TeamSkillsError("team manifest scope cannot be migrated")
+    proposed = dict(value)
+    proposed["scope"] = "global"
+    return validate_manifest(proposed), str(scope)
 
 
 def resolve_documentation_root(project_root: Path, explicit: str | None) -> Path:
@@ -213,6 +230,21 @@ def read_manifest(project_root: Path, documentation_root: str | None) -> tuple[P
     except UnicodeDecodeError as error:
         raise TeamSkillsError(f"team skill document is not UTF-8: {path}") from error
     return path, parse_document(text)
+
+
+def read_migration_manifest(
+    project_root: Path, documentation_root: str | None
+) -> tuple[Path, dict[str, Any], str, bytes]:
+    path = document_path(project_root, documentation_root)
+    try:
+        content = path.read_bytes()
+        text = content.decode("utf-8")
+    except FileNotFoundError as error:
+        raise TeamSkillsError(f"team skill document is missing: {path}") from error
+    except UnicodeDecodeError as error:
+        raise TeamSkillsError(f"team skill document is not UTF-8: {path}") from error
+    manifest, scope = migration_manifest(parse_document_payload(text))
+    return path, manifest, scope, content
 
 
 def version_state(observed: str, required: str) -> str:
@@ -368,6 +400,318 @@ def skill_folder_hash(path: Path) -> str | None:
         result.update(relative.encode("utf-8"))
         result.update(content)
     return result.hexdigest()
+
+
+def project_lock_entries(project_root: Path) -> tuple[dict[str, dict[str, Any]], str]:
+    path = project_root / "skills-lock.json"
+    if not path.is_file():
+        return {}, ""
+    try:
+        content = path.read_bytes()
+        value = json.loads(content.decode("utf-8"))
+    except (OSError, UnicodeDecodeError, json.JSONDecodeError) as error:
+        raise TeamSkillsError(f"project skills lock is unreadable or invalid: {error}") from error
+    entries = value.get("skills") if isinstance(value, dict) else None
+    if not isinstance(entries, dict):
+        raise TeamSkillsError("project skills lock field 'skills' must be an object")
+    return (
+        {name: entry for name, entry in entries.items() if isinstance(entry, dict)},
+        hashlib.sha256(content).hexdigest(),
+    )
+
+
+def observe_project_copy(
+    project_root: Path,
+    agent: str,
+    name: str,
+    entry: dict[str, Any] | None,
+) -> dict[str, Any]:
+    lexical = project_root / AGENT_LAYOUTS[agent] / name
+    parent = (project_root / AGENT_LAYOUTS[agent]).resolve()
+    base = {
+        "agent": agent,
+        "name": name,
+        "path": str(lexical.resolve()),
+        "action": "preserve-and-review",
+    }
+    if lexical.is_symlink() or not lexical.resolve().is_relative_to(parent):
+        return {**base, "status": "unsafe", "version": "unknown", "content_sha256": ""}
+    actual = skill_folder_hash(lexical)
+    try:
+        metadata = json.loads((lexical / "collection-metadata.json").read_text(encoding="utf-8"))
+    except (FileNotFoundError, OSError, UnicodeDecodeError, json.JSONDecodeError):
+        metadata = {}
+    expected = None
+    if isinstance(entry, dict):
+        expected = entry.get("computedHash", entry.get("skillFolderHash"))
+    verified = (
+        actual is not None
+        and isinstance(entry, dict)
+        and canonical_github_source(str(entry.get("source", "")))
+        and isinstance(expected, str)
+        and HASH_PATTERN.fullmatch(expected) is not None
+        and expected == actual
+        and isinstance(metadata, dict)
+        and metadata.get("collection") == "kolabse-skills"
+        and metadata.get("skill") == name
+        and canonical_github_source(str(metadata.get("source", "")))
+        and canonical_github_source(str(metadata.get("canonical_repository", "")))
+        and isinstance(metadata.get("version"), str)
+    )
+    return {
+        **base,
+        "status": "verified" if verified else "divergent-or-unverified",
+        "version": str(metadata.get("version", "unknown")) if isinstance(metadata, dict) else "unknown",
+        "content_sha256": actual or "",
+        "action": "remove-after-global-verification" if verified else "preserve-and-review",
+    }
+
+
+def migration_backup_root(plan_sha256: str) -> Path:
+    if os.name == "nt":
+        base = Path(os.environ.get("LOCALAPPDATA", user_home() / "AppData/Local"))
+    elif sys.platform == "darwin":
+        base = user_home() / "Library/Application Support"
+    else:
+        base = Path(os.environ.get("XDG_STATE_HOME", user_home() / ".local/state"))
+    return base / "kolabse" / "team-skill-migration-backups" / plan_sha256
+
+
+def make_migration_plan(
+    project_root: Path,
+    documentation_root: str | None,
+    target_collection_version: str | None = None,
+) -> dict[str, Any]:
+    project_root = project_root.resolve()
+    document, manifest, scope_before, document_content = read_migration_manifest(
+        project_root, documentation_root
+    )
+    version_before = manifest["collection_version"]
+    if target_collection_version is not None:
+        if VERSION_PATTERN.fullmatch(target_collection_version) is None:
+            raise TeamSkillsError("migration target collection version is invalid")
+        manifest["collection_version"] = target_collection_version
+    entries, lock_sha256 = project_lock_entries(project_root)
+    shared: list[dict[str, Any]] = []
+    divergent: list[dict[str, Any]] = []
+    helpers: list[dict[str, str]] = []
+    for agent, relative in AGENT_LAYOUTS.items():
+        layout = project_root / relative
+        if not layout.is_dir() or layout.is_symlink():
+            continue
+        for child in sorted(layout.iterdir(), key=lambda item: item.name):
+            if not child.is_dir():
+                continue
+            if child.name not in KNOWN_SKILLS:
+                helpers.append(
+                    {
+                        "agent": agent,
+                        "name": child.name,
+                        "path": str(child.resolve()),
+                        "action": "preserve",
+                    }
+                )
+                continue
+            observed = observe_project_copy(
+                project_root, agent, child.name, entries.get(child.name)
+            )
+            (shared if observed["status"] == "verified" else divergent).append(observed)
+    settings = []
+    for root_name in (".agents", ".claude"):
+        root = project_root / root_name
+        if not root.is_dir():
+            continue
+        for name in sorted(KNOWN_SKILLS):
+            candidate = root / name
+            if candidate.is_file() and not candidate.is_symlink():
+                settings.append(str(candidate.resolve()))
+            elif candidate.is_dir() and not candidate.is_symlink():
+                found = False
+                for current, directories, files in os.walk(candidate, followlinks=False):
+                    current_path = Path(current)
+                    directories[:] = [
+                        item
+                        for item in directories
+                        if not (current_path / item).is_symlink()
+                    ]
+                    for item in files:
+                        path = current_path / item
+                        if not path.is_symlink():
+                            settings.append(str(path.resolve()))
+                            found = True
+                if not found:
+                    settings.append(str(candidate.resolve()))
+    blockers = [
+        f"{item['agent']}:{item['name']}:{item['status']}" for item in divergent
+    ]
+    installers = []
+    for agent in AGENT_LAYOUTS:
+        names = sorted({item["name"] for item in shared if item["agent"] == agent})
+        if names:
+            argv = [
+                "npx", "--yes", f"skills@{CLI_VERSION}", "add",
+                f"{SOURCE}@v{manifest['collection_version']}",
+            ]
+            for name in names:
+                argv.extend(["--skill", name])
+            argv.extend(["--agent", agent, "--copy", "--global", "-y"])
+            installers.append({"agent": agent, "skills": names, "argv": argv})
+    result = {
+        "schema_version": 1,
+        "mode": "migration-plan",
+        "document": str(document),
+        "document_sha256": hashlib.sha256(document_content).hexdigest(),
+        "manifest_sha256": digest(manifest),
+        "manifest_scope_before": scope_before,
+        "manifest_scope_after": "global",
+        "collection_version_before": version_before,
+        "collection_version_after": manifest["collection_version"],
+        "manifest_update_required": (
+            scope_before != "global" or version_before != manifest["collection_version"]
+        ),
+        "collection_version": manifest["collection_version"],
+        "project_lock_sha256": lock_sha256,
+        "shared_copies": shared,
+        "divergent_copies": divergent,
+        "project_only_helpers": helpers,
+        "preserved_project_settings": settings,
+        "installers": installers,
+        "blockers": blockers,
+        "ready": not blockers,
+        "changes_required": bool(shared) or scope_before != "global" or version_before != manifest["collection_version"],
+        "mutates_environment": False,
+    }
+    result["plan_sha256"] = digest(plan_binding(result))
+    return result
+
+
+def write_bytes_atomic(path: Path, content: bytes) -> None:
+    temporary = path.with_name(path.name + ".tmp")
+    temporary.write_bytes(content)
+    temporary.replace(path)
+
+
+def write_json_atomic(path: Path, value: dict[str, Any]) -> None:
+    write_bytes_atomic(
+        path,
+        (json.dumps(value, indent=2, ensure_ascii=False) + "\n").encode("utf-8"),
+    )
+
+
+def apply_migration(args: argparse.Namespace) -> dict[str, Any]:
+    if not args.yes:
+        raise TeamSkillsError("migration apply requires --yes after explicit approval")
+    project_root = Path(args.project_root).resolve()
+    plan = make_migration_plan(
+        project_root,
+        args.documentation_root,
+        getattr(args, "target_collection_version", None),
+    )
+    if args.expected_plan_sha256 != plan["plan_sha256"]:
+        raise TeamSkillsError("team skill migration plan changed after review")
+    if plan["blockers"]:
+        raise TeamSkillsError(f"team skill migration is blocked: {plan['blockers']}")
+    if not plan["changes_required"]:
+        return {
+            "schema_version": 1,
+            "mode": "migration-apply",
+            "changed": False,
+            "ready": True,
+            "new_task_required": False,
+            "mutates_environment": False,
+        }
+    backup = migration_backup_root(plan["plan_sha256"])
+    if backup.exists():
+        raise TeamSkillsError(f"migration backup already exists: {backup}")
+    if plan["installers"] and shutil.which("npx") is None:
+        raise TeamSkillsError("npx is required to centralize team skills")
+    mutated = False
+    for installer in plan["installers"]:
+        completed = subprocess.run(
+            installer["argv"],
+            cwd=project_root,
+            shell=False,
+            check=False,
+            capture_output=True,
+            text=True,
+            encoding="utf-8",
+            errors="replace",
+        )
+        mutated = True
+        if completed.returncode:
+            raise TeamSkillsError(
+                f"global installer failed for {installer['agent']} with exit code {completed.returncode}",
+                mutates_environment=True,
+            )
+    lock_entries = read_lock_entries(project_root)
+    for installer in plan["installers"]:
+        for name in installer["skills"]:
+            observed = observe_skill(
+                project_root,
+                global_layout(installer["agent"]) / name,
+                name,
+                plan["collection_version"],
+                lock_entries.get(name),
+            )
+            if observed["state"] != "current" or observed["provenance"] != "verified":
+                raise TeamSkillsError(
+                    f"global verification failed for {installer['agent']}:{name}",
+                    mutates_environment=mutated,
+                )
+    backup.mkdir(parents=True)
+    document = Path(plan["document"])
+    shutil.copy2(document, backup / DOCUMENT_NAME)
+    lock_path = project_root / "skills-lock.json"
+    if lock_path.is_file():
+        shutil.copy2(lock_path, backup / "skills-lock.json")
+    for item in plan["shared_copies"]:
+        source = Path(item["path"])
+        if skill_folder_hash(source) != item["content_sha256"]:
+            raise TeamSkillsError(
+                f"project copy changed after planning: {item['agent']}:{item['name']}",
+                mutates_environment=mutated,
+            )
+        target = backup / item["agent"] / item["name"]
+        target.parent.mkdir(parents=True, exist_ok=True)
+        shutil.copytree(source, target)
+    for item in plan["shared_copies"]:
+        shutil.rmtree(Path(item["path"]))
+    if lock_path.is_file():
+        lock = load_object(lock_path, "project skills lock")
+        entries = lock.get("skills")
+        if not isinstance(entries, dict):
+            raise TeamSkillsError(
+                "project skills lock changed after planning",
+                mutates_environment=True,
+            )
+        for name in {item["name"] for item in plan["shared_copies"]}:
+            entries.pop(name, None)
+        write_json_atomic(lock_path, lock)
+    if plan["manifest_update_required"]:
+        original = document.read_text(encoding="utf-8")
+        payload = parse_document_payload(original)
+        payload["scope"] = "global"
+        payload["collection_version"] = plan["collection_version_after"]
+        normalized = validate_manifest(payload)
+        start = original.index(START)
+        end = original.index(END, start) + len(END)
+        updated = original[:start] + document_block(normalized) + original[end:]
+        write_bytes_atomic(document, updated.encode("utf-8"))
+    return {
+        "schema_version": 1,
+        "mode": "migration-apply",
+        "changed": True,
+        "migrated": [
+            {"agent": item["agent"], "skill": item["name"]}
+            for item in plan["shared_copies"]
+        ],
+        "preserved_project_only_helpers": plan["project_only_helpers"],
+        "preserved_project_settings": plan["preserved_project_settings"],
+        "backup": str(backup.resolve()),
+        "ready": True,
+        "new_task_required": True,
+        "mutates_environment": True,
+    }
 
 
 def observe_skill(
@@ -657,6 +1001,8 @@ def make_plan(project_root: Path, documentation_root: str | None) -> dict[str, A
         "status": status,
         "mutates_environment": False,
     }
+    if any(item["project_override"] for agent in status["agents"] for item in agent["skills"]):
+        result["migration"] = make_migration_plan(project_root, documentation_root)
     result["plan_sha256"] = digest(plan_binding(result))
     return result
 
@@ -729,10 +1075,16 @@ def parser() -> argparse.ArgumentParser:
     configure_parser.add_argument("--skill", action="append")
     common("status")
     common("plan")
+    migration_plan_parser = common("migration-plan")
+    migration_plan_parser.add_argument("--target-collection-version")
     apply_parser = common("apply")
     apply_parser.add_argument("--expected-manifest-sha256", required=True)
     apply_parser.add_argument("--expected-plan-sha256", required=True)
     apply_parser.add_argument("--yes", action="store_true")
+    migration_apply_parser = common("migration-apply")
+    migration_apply_parser.add_argument("--expected-plan-sha256", required=True)
+    migration_apply_parser.add_argument("--target-collection-version")
+    migration_apply_parser.add_argument("--yes", action="store_true")
     return result
 
 
@@ -745,12 +1097,20 @@ def main() -> int:
             result = inspect(Path(args.project_root).resolve(), args.documentation_root)
         elif args.command == "plan":
             result = make_plan(Path(args.project_root).resolve(), args.documentation_root)
+        elif args.command == "migration-plan":
+            result = make_migration_plan(
+                Path(args.project_root).resolve(),
+                args.documentation_root,
+                args.target_collection_version,
+            )
+        elif args.command == "migration-apply":
+            result = apply_migration(args)
         else:
             result = apply(args)
         print(json.dumps(result, indent=2 if args.json else None, ensure_ascii=False))
         if args.command == "status":
             return 0 if result["ready"] else 1
-        if args.command == "plan":
+        if args.command in {"plan", "migration-plan"}:
             return 0 if result["ready"] else 1
         return 0
     except TeamSkillsError as error:

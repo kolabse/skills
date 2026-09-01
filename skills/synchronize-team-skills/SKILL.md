@@ -40,7 +40,9 @@ Code layouts. Report:
 - the observed collection version and provenance metadata;
 - additional verified kolabse skills, which remain preserved;
 - whether a legacy project copy shadows the global installation and must be
-  centralized before alignment can succeed.
+  centralized before alignment can succeed. When overrides exist, `plan`
+  includes the read-only migration plan described below instead of leaving the
+  user with only an opaque blocker.
 
 Do not equate installation with availability in an already open agent task.
 Recommend a new task after an installation changes. Do not inspect or copy
@@ -120,3 +122,44 @@ and is not copied into the document.
 Completion criterion: every declared global installation is verified at the
 documented collection version, extras remain intact, and no success is claimed
 from installer exit status alone.
+
+## Migrate legacy project copies
+
+Use the installed helper when the manifest still declares project scope or
+status reports project overrides. Do not edit the manifest or delete copies by
+hand:
+
+```shell
+python <skill-root>/scripts/team_skills.py migration-plan \
+  --project-root <project-root> \
+  --target-collection-version <reviewed-version> --json
+```
+
+The plan classifies every bounded project skill directory as a verified shared
+copy, a divergent or unverified collection copy, or a project-only helper. It
+lists project settings that remain in place, proposes the exact legacy
+`project` to `global` manifest change, and binds the document, project lock,
+copy hashes, target release, installers, preserved items, and blockers to one
+digest. Omit `--target-collection-version` to retain the documented version.
+
+Divergent or unverified collection copies block migration and remain untouched
+for review. Project-only helpers and project settings are always preserved.
+After reviewing the complete plan, obtain separate approval and apply that
+exact digest:
+
+```shell
+python <skill-root>/scripts/team_skills.py migration-apply \
+  --project-root <project-root> \
+  --target-collection-version <reviewed-version> \
+  --expected-plan-sha256 <plan-value> --yes --json
+```
+
+Application installs the planned global copies, verifies their canonical lock
+and content hashes, backs up the document, project lock, and removable copies
+outside the project, and removes only unchanged verified shared copies. It then
+updates the project lock and managed manifest atomically. Re-run `status` and
+start a new agent task after a successful migration.
+
+Completion criterion: the global installations and manifest match the reviewed
+version, every removed copy exists in the reported backup, and every divergent
+copy, project-only helper, and project setting remains unchanged.
