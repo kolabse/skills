@@ -117,6 +117,54 @@ class TeamSkillsTests(unittest.TestCase):
             shutil.copytree(installed, source)
         return checkout
 
+    def project_copy(
+        self,
+        name: str,
+        version: str = "1.18.0",
+        agent: str = "codex",
+        *,
+        verified: bool = True,
+    ) -> Path:
+        path = self.root / team_skills.AGENT_LAYOUTS[agent] / name
+        path.mkdir(parents=True, exist_ok=True)
+        (path / "SKILL.md").write_text("fixture", encoding="utf-8")
+        (path / "collection-metadata.json").write_text(
+            json.dumps(
+                {
+                    "schema_version": 2,
+                    "collection": "kolabse-skills",
+                    "version": version,
+                    "skill": name,
+                    "source": team_skills.CANONICAL_SOURCE,
+                    "canonical_repository": team_skills.CANONICAL_SOURCE,
+                }
+            ),
+            encoding="utf-8",
+        )
+        lock_path = self.root / "skills-lock.json"
+        lock = (
+            json.loads(lock_path.read_text(encoding="utf-8"))
+            if lock_path.is_file()
+            else {"version": 1, "skills": {}}
+        )
+        lock["skills"][name] = {
+            "source": "kolabse/skills",
+            "sourceType": "github",
+            "computedHash": (
+                team_skills.skill_folder_hash(path) if verified else "0" * 64
+            ),
+        }
+        lock_path.write_text(json.dumps(lock), encoding="utf-8")
+        return path
+
+    def set_legacy_project_scope(self) -> Path:
+        configured = team_skills.configure(self.configure_args())
+        path = Path(configured["document"])
+        text = path.read_text(encoding="utf-8")
+        text = text.replace('"scope": "global"', '"scope": "project"')
+        path.write_text(text, encoding="utf-8")
+        return path
+
     def test_configure_is_idempotent_and_requires_bootstrap_skill(self) -> None:
         first = team_skills.configure(self.configure_args())
         content = (self.docs / team_skills.DOCUMENT_NAME).read_bytes()
@@ -264,6 +312,132 @@ class TeamSkillsTests(unittest.TestCase):
         self.assertEqual(["notify-via-telegram"], [item["name"] for item in status["agents"][0]["extras"]])
         self.assertFalse(status["ready"])
         self.assertEqual(before, after)
+
+    def test_migration_plan_classifies_project_content_without_writes(self) -> None:
+        team_skills.configure(self.configure_args())
+        shared = self.project_copy("verify-before-push")
+        divergent = self.project_copy("synchronize-team-skills", verified=False)
+        helper = self.root / ".agents/skills/project-helper"
+        helper.mkdir(parents=True)
+        (helper / "SKILL.md").write_text("project only", encoding="utf-8")
+        settings = self.root / ".agents/verify-before-push/config.json"
+        settings.parent.mkdir(parents=True)
+        settings.write_text('{"version": 1}', encoding="utf-8")
+        before = sorted(path.relative_to(self.root) for path in self.root.rglob("*"))
+
+        plan = team_skills.make_migration_plan(
+            self.root, str(self.docs), "1.21.1"
+        )
+
+        self.assertEqual(before, sorted(path.relative_to(self.root) for path in self.root.rglob("*")))
+        self.assertEqual(["verify-before-push"], [item["name"] for item in plan["shared_copies"]])
+        self.assertEqual(["synchronize-team-skills"], [item["name"] for item in plan["divergent_copies"]])
+        self.assertEqual(["project-helper"], [item["name"] for item in plan["project_only_helpers"]])
+        self.assertIn(str(settings.resolve()), plan["preserved_project_settings"])
+        self.assertEqual("remove-after-global-verification", plan["shared_copies"][0]["action"])
+        self.assertEqual("preserve-and-review", plan["divergent_copies"][0]["action"])
+        self.assertTrue(plan["blockers"])
+        self.assertFalse(plan["mutates_environment"])
+        self.assertTrue(shared.is_dir())
+        self.assertTrue(divergent.is_dir())
+
+    def test_migration_plan_accepts_legacy_project_scope(self) -> None:
+        document = self.set_legacy_project_scope()
+        self.project_copy("verify-before-push")
+
+        plan = team_skills.make_migration_plan(
+            self.root, str(self.docs), "1.21.1"
+        )
+
+        self.assertEqual("project", plan["manifest_scope_before"])
+        self.assertEqual("global", plan["manifest_scope_after"])
+        self.assertEqual("1.18.0", plan["collection_version_before"])
+        self.assertEqual("1.21.1", plan["collection_version_after"])
+        self.assertTrue(plan["manifest_update_required"])
+        self.assertEqual("project", json.loads(
+            document.read_text(encoding="utf-8").split("```json\n", 1)[1].split("\n```", 1)[0]
+        )["scope"])
+
+    def test_migration_apply_installs_backs_up_and_preserves_project_only_state(self) -> None:
+        document = self.set_legacy_project_scope()
+        shared = self.project_copy("verify-before-push")
+        helper = self.root / ".agents/skills/project-helper"
+        helper.mkdir(parents=True)
+        (helper / "SKILL.md").write_text("project only", encoding="utf-8")
+        settings = self.root / ".agents/verify-before-push/config.json"
+        settings.parent.mkdir(parents=True)
+        settings.write_text('{"version": 1}', encoding="utf-8")
+        plan = team_skills.make_migration_plan(
+            self.root, str(self.docs), "1.21.1"
+        )
+        backup = self.root / "backup"
+
+        def fake_run(argv: list[str], **_: object) -> subprocess.CompletedProcess[str]:
+            global_skill = self.home / ".agents/skills/verify-before-push"
+            global_skill.parent.mkdir(parents=True, exist_ok=True)
+            shutil.copytree(ROOT / "skills/verify-before-push", global_skill)
+            metadata_path = global_skill / "collection-metadata.json"
+            metadata = json.loads(metadata_path.read_text(encoding="utf-8"))
+            metadata["version"] = plan["collection_version"]
+            metadata_path.write_text(json.dumps(metadata), encoding="utf-8")
+            lock_path = self.home / ".agents/.skill-lock.json"
+            lock_path.parent.mkdir(parents=True, exist_ok=True)
+            lock_path.write_text(
+                json.dumps(
+                    {
+                        "version": 3,
+                        "skills": {
+                            "verify-before-push": {
+                                "source": "kolabse/skills",
+                                "sourceType": "github",
+                                "skillFolderHash": team_skills.skill_folder_hash(global_skill),
+                            }
+                        },
+                    }
+                ),
+                encoding="utf-8",
+            )
+            return subprocess.CompletedProcess(argv, 0, "", "")
+
+        args = argparse.Namespace(
+            project_root=str(self.root),
+            documentation_root=str(self.docs),
+            expected_plan_sha256=plan["plan_sha256"],
+            target_collection_version="1.21.1",
+            yes=True,
+            json=True,
+        )
+        with mock.patch.object(team_skills, "migration_backup_root", return_value=backup), mock.patch.object(
+            team_skills.shutil, "which", return_value="npx"
+        ), mock.patch.object(team_skills.subprocess, "run", side_effect=fake_run):
+            result = team_skills.apply_migration(args)
+
+        self.assertTrue(result["changed"])
+        self.assertFalse(shared.exists())
+        self.assertTrue((backup / "codex/verify-before-push").is_dir())
+        self.assertTrue(helper.is_dir())
+        self.assertTrue(settings.is_file())
+        migrated_manifest = team_skills.parse_document(
+            document.read_text(encoding="utf-8")
+        )
+        self.assertEqual("global", migrated_manifest["scope"])
+        self.assertEqual("1.21.1", migrated_manifest["collection_version"])
+
+    def test_migration_apply_rejects_changed_project_copy(self) -> None:
+        team_skills.configure(self.configure_args())
+        shared = self.project_copy("verify-before-push")
+        plan = team_skills.make_migration_plan(self.root, str(self.docs))
+        (shared / "changed.txt").write_text("changed", encoding="utf-8")
+        args = argparse.Namespace(
+            project_root=str(self.root),
+            documentation_root=str(self.docs),
+            expected_plan_sha256=plan["plan_sha256"],
+            yes=True,
+            json=True,
+        )
+
+        with self.assertRaisesRegex(team_skills.TeamSkillsError, "plan changed"):
+            team_skills.apply_migration(args)
 
     def test_status_accepts_verified_canonical_local_checkout(self) -> None:
         team_skills.configure(self.configure_args())

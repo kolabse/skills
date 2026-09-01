@@ -1,0 +1,183 @@
+{
+  "version": 1,
+  "repositories": [
+    {
+      "name": "skill-collection",
+      "path": ".",
+      "base_ref": "origin/main",
+      "require_clean": true,
+      "require_upstream_current": true
+    }
+  ],
+  "rules": [
+    {
+      "id": "project-rules",
+      "path": "AGENTS.md"
+    }
+  ],
+  "references": [
+    {
+      "id": "project-reference",
+      "path": "README.md"
+    }
+  ],
+  "checks": [
+    {
+      "id": "collection-full",
+      "phase": "green",
+      "required": true
+    },
+    {
+      "id": "consumer-smoke",
+      "phase": "smoke",
+      "required": true
+    }
+  ],
+  "gates": [
+    {
+      "id": "task-claimed",
+      "required": true,
+      "failure_rewind": "task-claimed"
+    },
+    {
+      "id": "feature-prepared",
+      "required": true,
+      "failure_rewind": "feature-prepared"
+    },
+    {
+      "id": "tdd-red",
+      "required": true,
+      "failure_rewind": "tdd-red"
+    },
+    {
+      "id": "tdd-green",
+      "required": true,
+      "failure_rewind": "tdd-red"
+    },
+    {
+      "id": "changed-scope-preflight",
+      "required": true,
+      "failure_rewind": "changed-scope-preflight"
+    },
+    {
+      "id": "review-complete",
+      "required": true,
+      "failure_rewind": "review-complete"
+    },
+    {
+      "id": "push-verified",
+      "required": true,
+      "failure_rewind": "push-verified"
+    },
+    {
+      "id": "feature-published",
+      "required": true,
+      "failure_rewind": "feature-published"
+    },
+    {
+      "id": "feature-pipeline",
+      "required": true,
+      "failure_rewind": "feature-pipeline"
+    },
+    {
+      "id": "documentation-ready",
+      "required": true,
+      "failure_rewind": "documentation-ready"
+    },
+    {
+      "id": "development-integrated",
+      "required": true,
+      "failure_rewind": "development-integrated"
+    },
+    {
+      "id": "documentation-published",
+      "required": true,
+      "failure_rewind": "documentation-published"
+    },
+    {
+      "id": "production-delegated",
+      "required": true,
+      "failure_rewind": "production-delegated"
+    },
+    {
+      "id": "deployment-observed",
+      "required": true,
+      "failure_rewind": "deployment-observed"
+    },
+    {
+      "id": "marker-observed",
+      "required": true,
+      "failure_rewind": "marker-observed"
+    },
+    {
+      "id": "smoke-passed",
+      "required": true,
+      "failure_rewind": "smoke-passed"
+    },
+    {
+      "id": "documentation-complete",
+      "required": true,
+      "failure_rewind": "documentation-complete"
+    },
+    {
+      "id": "cleanup-proved",
+      "required": true,
+      "failure_rewind": "cleanup-proved"
+    }
+  ],
+  "adapters": [
+    {
+      "id": "agent-observation",
+      "kind": "agent-observation",
+      "capabilities": [
+        "delivery.observe-deployment",
+        "delivery.observe-marker",
+        "delivery.observe-smoke",
+        "development.publish",
+        "scm.integrate-development",
+        "scm.pipeline",
+        "scm.review",
+        "scm.suppress-bootstrap-pipeline",
+        "scope.preflight",
+        "task.claim"
+      ]
+    }
+  ],
+  "required_capabilities": [
+    "delivery.observe-deployment",
+    "delivery.observe-marker",
+    "delivery.observe-smoke",
+    "development.publish",
+    "scm.integrate-development",
+    "scm.pipeline",
+    "scm.review",
+    "scope.preflight",
+    "task.claim"
+  ],
+  "notifications": [],
+  "documentation": [
+    {
+      "id": "project-documentation",
+      "path": "CHANGELOG.md"
+    }
+  ],
+  "integration": {
+    "development_repository": "skill-collection",
+    "development_ref": "origin/main",
+    "review_required": true
+  },
+  "production": {
+    "delegated": true,
+    "route_label": "project-approved-release-process"
+  },
+  "delivery": {
+    "deployment_required": true,
+    "marker_required": true,
+    "smoke_required": true
+  },
+  "cleanup": {
+    "proof_methods": [
+      "merged"
+    ]
+  }
+}

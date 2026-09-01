@@ -1,6 +1,6 @@
 {
   "schema_version": 2,
-  "collection_version": "1.21.0",
+  "collection_version": "1.21.1",
   "supported_agents": [
     "claude-code",
     "codex"
@@ -835,6 +835,25 @@
           "status",
           "--project-root",
           "<project-root>",
+          "--json"
+        ],
+        "migration_plan": [
+          "python",
+          "scripts/team_skills.py",
+          "migration-plan",
+          "--project-root",
+          "<project-root>",
+          "--json"
+        ],
+        "migration_apply": [
+          "python",
+          "scripts/team_skills.py",
+          "migration-apply",
+          "--project-root",
+          "<project-root>",
+          "--expected-plan-sha256",
+          "<plan-sha256>",
+          "--yes",
           "--json"
         ]
       },

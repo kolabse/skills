@@ -1,0 +1,93 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/kolabse/skills/blob/main/skills/synchronize-team-skills/schemas/migration-plan.schema.json",
+  "title": "Team skill centralization migration plan",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "mode",
+    "document",
+    "document_sha256",
+    "manifest_sha256",
+    "manifest_scope_before",
+    "manifest_scope_after",
+    "collection_version_before",
+    "collection_version_after",
+    "manifest_update_required",
+    "collection_version",
+    "project_lock_sha256",
+    "shared_copies",
+    "divergent_copies",
+    "project_only_helpers",
+    "preserved_project_settings",
+    "installers",
+    "blockers",
+    "ready",
+    "changes_required",
+    "mutates_environment",
+    "plan_sha256"
+  ],
+  "properties": {
+    "schema_version": { "const": 1 },
+    "mode": { "const": "migration-plan" },
+    "document": { "type": "string", "minLength": 1 },
+    "document_sha256": { "$ref": "#/$defs/sha256" },
+    "manifest_sha256": { "$ref": "#/$defs/sha256" },
+    "manifest_scope_before": { "enum": ["project", "global"] },
+    "manifest_scope_after": { "const": "global" },
+    "collection_version_before": { "$ref": "#/$defs/version" },
+    "collection_version_after": { "$ref": "#/$defs/version" },
+    "manifest_update_required": { "type": "boolean" },
+    "collection_version": { "$ref": "#/$defs/version" },
+    "project_lock_sha256": { "anyOf": [{ "$ref": "#/$defs/sha256" }, { "const": "" }] },
+    "shared_copies": { "type": "array", "items": { "$ref": "#/$defs/copy" } },
+    "divergent_copies": { "type": "array", "items": { "$ref": "#/$defs/copy" } },
+    "project_only_helpers": { "type": "array", "items": { "$ref": "#/$defs/helper" } },
+    "preserved_project_settings": { "type": "array", "items": { "type": "string" }, "uniqueItems": true },
+    "installers": { "type": "array", "items": { "$ref": "#/$defs/installer" } },
+    "blockers": { "type": "array", "items": { "type": "string" }, "uniqueItems": true },
+    "ready": { "type": "boolean" },
+    "changes_required": { "type": "boolean" },
+    "mutates_environment": { "const": false },
+    "plan_sha256": { "$ref": "#/$defs/sha256" }
+  },
+  "$defs": {
+    "sha256": { "type": "string", "pattern": "^[0-9a-f]{64}$" },
+    "version": { "type": "string", "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+(?:-[0-9A-Za-z]+(?:[.-][0-9A-Za-z]+)*)?$" },
+    "copy": {
+      "type": "object",
+      "required": ["agent", "name", "path", "action", "status", "version", "content_sha256"],
+      "properties": {
+        "agent": { "enum": ["codex", "claude-code"] },
+        "name": { "type": "string" },
+        "path": { "type": "string" },
+        "action": { "enum": ["remove-after-global-verification", "preserve-and-review"] },
+        "status": { "enum": ["verified", "divergent-or-unverified", "unsafe"] },
+        "version": { "type": "string" },
+        "content_sha256": { "type": "string" }
+      }
+    },
+    "helper": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["agent", "name", "path", "action"],
+      "properties": {
+        "agent": { "enum": ["codex", "claude-code"] },
+        "name": { "type": "string" },
+        "path": { "type": "string" },
+        "action": { "const": "preserve" }
+      }
+    },
+    "installer": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["agent", "skills", "argv"],
+      "properties": {
+        "agent": { "enum": ["codex", "claude-code"] },
+        "skills": { "type": "array", "items": { "type": "string" }, "uniqueItems": true },
+        "argv": { "type": "array", "items": { "type": "string" } }
+      }
+    }
+  }
+}

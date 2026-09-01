@@ -2,6 +2,15 @@
 
 ## [Unreleased]
 
+## [1.21.1] - 2026-09-01
+
+### Fixed
+
+- `synchronize-team-skills` now provides an installed, read-only centralization
+  plan and separately approved migration for legacy project scope. It preserves
+  divergent copies, project-only helpers, and project settings while backing up
+  and removing only unchanged copies after their global replacements verify.
+
 ## [1.21.0] - 2026-09-01
 
 ### Added
@@ -637,6 +646,7 @@ First versioned release of the kolabse skill collection.
 - Tests for configuration migration, fake cloud and infrastructure CLIs,
   installation confirmation, and collection metadata.
 
+[1.21.1]: https://github.com/kolabse/skills/releases/tag/v1.21.1
 [1.21.0]: https://github.com/kolabse/skills/releases/tag/v1.21.0
 [1.20.0]: https://github.com/kolabse/skills/releases/tag/v1.20.0
 [1.19.1]: https://github.com/kolabse/skills/releases/tag/v1.19.1
