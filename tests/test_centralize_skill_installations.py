@@ -83,6 +83,13 @@ class CentralizeSkillInstallationsTests(unittest.TestCase):
         plan = self.make_plan()
         self.assertIn("codex:verify-before-push:unverified", plan["blockers"])
 
+    def test_plan_blocks_copy_without_provenance_lock(self) -> None:
+        (self.project / "skills-lock.json").unlink()
+
+        plan = self.make_plan()
+
+        self.assertIn("codex:verify-before-push:unverified", plan["blockers"])
+
     def test_existing_backup_stops_before_global_installation(self) -> None:
         plan = self.make_plan()
         backup = self.local / "existing"

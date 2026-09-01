@@ -58,6 +58,9 @@ class ReportSkillFeedbackTests(unittest.TestCase):
             "See https://internal.example.test/report",
             "Contact person@example.test",
             "Read C:\\secret\\project\\file.txt",
+            "Failure occurred (C:\\secret\\project\\file.txt)",
+            "Failure occurred at (/home/person/private.txt)",
+            "Failure occurred at path=/Users/person/private.txt",
             "```python print('secret') ```",
         ):
             with self.subTest(unsafe=unsafe):

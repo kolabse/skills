@@ -19,6 +19,12 @@
   only skill configuration, managed rules, and intentional project settings;
   legacy project copies produce an explicit user-visible migration notice.
 
+### Fixed
+
+- Feedback redaction rejects home-directory paths even when punctuation precedes
+  them, and centralization refuses to remove project copies without a matching
+  canonical provenance-lock hash.
+
 ## [1.20.0] - 2026-08-31
 
 ### Added
