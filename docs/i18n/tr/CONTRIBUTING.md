@@ -126,9 +126,14 @@ yapılandırmaları kapsamalıdır.
   `skills/*/collection-metadata.json` sürümlerini aynı tutun.
 - Hem `codex` hem `claude-code` için sabitlenmiş `skills` CLI üzerinden kopyalı
   kurulumu ve desteklenen en eski önceki sürümden güncellemeyi test edin.
-- Proje/kullanıcı yapılandırmasını kurulu beceri klasörleri dışında tutun.
+- Koleksiyonu her ajan için küresel olarak kurun. Proje/kullanıcı yapılandırmasını,
+  yönetilen kuralları ve bilinçli proje ayarlarını kurulu beceri klasörleri dışında tutun.
   Güncelleyicinin kullanılmayan bir beceri için sessizce yapılandırma
   oluşturmasına asla izin vermeyin.
+- Güncellemeden sonra eski proje kapsamlı kopyaları algılayın ve merkezileştirme
+  bildirimi gösterin. Geçiş yazmadan planlamalı, silmeden önce küresel kopyaları
+  doğrulamalı, ilgisiz becerilerle proje ayarlarını korumalı, geri alınabilir yedek
+  bırakmalı ve incelenen plana bağlı açık onay istemelidir.
 - Gerekli geçişleri ve geri alma sınırlamalarını README'de ve değişiklik
   günlüğünde belgeleyin. Test edilmedikçe yapılandırmanın eski sürüme
   düşürülmesini desteklenmiyor olarak değerlendirin.
@@ -156,7 +161,7 @@ yerine sessizce geçemez. Bir ajan Codex Desktop görev listeleme gibi bir
 yetenekten yoksunsa taşınabilir alt kümeyi koruyarak bu sınırlı işlemi
 desteklenmiyor olarak bildirin.
 
-Tamamlanma ölçütü: her iki tüketicinin kurulumu da aynı beceri içeriklerini
+Tamamlanma ölçütü: her iki tüketicinin küresel kurulumu da aynı beceri içeriklerini
 içermeli, kendi proje kuralı ve beceri düzenlerine uyulmalı, Codex varsayılanları
 değişmemeli ve tüketici smoke testi kanıtları her iki ajanı da açıkça adlandırmalıdır.
 

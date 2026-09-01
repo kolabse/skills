@@ -118,8 +118,13 @@ entradas y pruebas cubren la configuración desaparecida, malformada, actual y h
   `skills/*/collection-metadata.json` versión idéntica en una versión.
 - Prueba de instalación copiada y una actualización de la más antigua
   la liberación a través del pinned `skills` CLI para ambos `codex` y `claude-code`.
-- Mantenga la configuración del proyecto/usuario fuera de carpetas de habilidad instaladas. Nunca hagas
+- Instale globalmente la colección para cada agente. Mantenga la configuración,
+  las reglas gestionadas y los ajustes intencionales del proyecto fuera de las carpetas instaladas. Nunca haga que
   un actualizador silenciosamente crear configuración para una habilidad no usada.
+- Detecte copias antiguas del proyecto después de actualizar y muestre un aviso de
+  centralización. La migración debe planificarse sin escrituras, verificar las copias
+  globales antes de borrar, conservar habilidades ajenas y configuración, guardar
+  una copia recuperable y exigir aprobación vinculada al plan revisado.
 - El documento requiere migraciones y limitaciones de reversión en el README y
   cambio. Trate a la configuración baja como no compatible a menos que se pruebe.
 - Preserve entradas no relacionadas al cambiar el mercado personal. Aplicar uno
@@ -143,7 +148,7 @@ silenciosamente para la validación de la otra. Cuando un agente carece de capac
 tales como la enumeración de tareas de Codex Desktop, informe que el funcionamiento consolidado como
 sin soporte mientras preserva el subconjunto portátil.
 
-Criterio de terminación: ambas instalaciones del consumidor contienen cargas de habilidad idénticas,
+Criterio de terminación: ambas instalaciones globales contienen cargas de habilidad idénticas,
 sus reglas de proyecto nativo y diseños de habilidades son respetados, Codex defaults son
 Las pruebas sin cambios, y el consumo de humo nombres de ambos agentes explícitamente.
 

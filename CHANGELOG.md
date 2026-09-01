@@ -2,6 +2,21 @@
 
 ## [Unreleased]
 
+### Added
+
+- `report-skill-feedback` prepares schema-bounded, de-identified skill usage
+  reports with separate consent for collection and attributable GitHub
+  submission.
+- A digest-bound centralization migration installs and verifies global Codex or
+  Claude Code copies before backing up and removing unchanged legacy project
+  payloads.
+
+### Changed
+
+- New installations and team manifests use global skill payloads. Projects keep
+  only skill configuration, managed rules, and intentional project settings;
+  legacy project copies produce an explicit user-visible migration notice.
+
 ## [1.20.0] - 2026-08-31
 
 ### Added

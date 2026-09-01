@@ -856,6 +856,53 @@
       ]
     },
     {
+      "name": "report-skill-feedback",
+      "path": "skills/report-skill-feedback",
+      "status": "experimental",
+      "maintainers": [
+        "@kolabse"
+      ],
+      "platforms": [
+        "linux",
+        "macos",
+        "windows"
+      ],
+      "trigger_evals": "evals/report-skill-feedback.json",
+      "license": "Apache-2.0",
+      "provides": [
+        "deidentified-skill-feedback-report",
+        "consent-gated-feedback-submission"
+      ],
+      "requires": [],
+      "optional_integrations": [
+        "github"
+      ],
+      "configuration": {
+        "scope": "user",
+        "format": "none",
+        "status": [
+          "python",
+          "scripts/report_feedback.py",
+          "status",
+          "--json"
+        ]
+      },
+      "provenance": {
+        "kind": "original",
+        "source": "Created to collect privacy-bounded user acceptance evidence for experimental skills without implicit telemetry or unreviewed submission",
+        "canonical_repository": "https://github.com/kolabse/skills"
+      },
+      "category": "collaboration",
+      "tags": [
+        "document",
+        "workstation",
+        "external-service",
+        "mutation",
+        "evidence-producing",
+        "github"
+      ]
+    },
+    {
       "name": "notify-via-telegram",
       "path": "skills/notify-via-telegram",
       "status": "stable",

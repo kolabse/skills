@@ -741,10 +741,26 @@ class ManageInstalledSkillsTests(unittest.TestCase):
             self.assertIn("verify-before-push", command)
             self.assertNotIn("third-party-skill", command)
 
-    def test_global_update_requires_explicit_collection_skills(self) -> None:
+    def test_global_update_without_names_selects_only_locked_collection_skills(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
-            with self.assertRaisesRegex(manager.ManagerError, "explicit skill names"):
-                manager.resolve_update_selection(Path(directory), [], "global")
+            global_root = self.make_global(
+                Path(directory), {"verify-before-push": "1.4.0"}
+            )
+            selected = manager.resolve_update_selection(
+                Path(directory), [], "global", global_root=global_root
+            )
+            self.assertEqual(["verify-before-push"], selected)
+
+    def test_project_installation_notice_is_scoped_to_known_collection_skills(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            project = Path(directory)
+            (project / ".agents/skills/verify-before-push").mkdir(parents=True)
+            (project / ".agents/skills/unrelated-skill").mkdir()
+
+            notice = manager.project_installation_notice(project)
+
+            self.assertTrue(notice["required"])
+            self.assertEqual(["verify-before-push"], notice["legacy_project_copies"])
 
     def test_global_status_and_doctor_support_skill_lock_v3(self) -> None:
         with tempfile.TemporaryDirectory() as directory:

@@ -115,6 +115,25 @@ class BootstrapUpdateTests(unittest.TestCase):
                 ["--agent", "codex"], "claude-code"
             )
 
+    def test_centralize_uses_dedicated_cli_without_agent_argument(self) -> None:
+        with tempfile.TemporaryDirectory() as directory, patch.object(
+            bootstrap.shutil, "which", return_value=sys.executable
+        ), patch.object(bootstrap.subprocess, "run") as run:
+            root = Path(directory)
+            manager = root / "manage_installed_skills.py"
+            run.return_value.returncode = 0
+
+            bootstrap.run_manager(
+                manager, "centralize", ["plan", "--json"], root, 30, "claude-code"
+            )
+
+            command = run.call_args.args[0]
+            self.assertEqual(
+                str(manager.with_name("centralize_skill_installations.py")), command[1]
+            )
+            self.assertNotIn("--agent", command)
+            self.assertIn("--project-path", command)
+
 
 if __name__ == "__main__":
     unittest.main()

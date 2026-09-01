@@ -36,6 +36,7 @@
   - [Координация и коммуникации](#координация-и-коммуникации)
     - [`orchestrate-agent-work`](#orchestrate-agent-work-experimental)
     - [`synchronize-team-skills`](#synchronize-team-skills-experimental)
+    - [`report-skill-feedback`](#report-skill-feedback-experimental)
     - [`notify-via-telegram`](#notify-via-telegram)
   - [Инфраструктура и эксплуатация](#инфраструктура-и-эксплуатация)
     - [`operate-yandex-cloud`](#operate-yandex-cloud)
@@ -48,11 +49,11 @@
 
 ## Установка навыков
 
-Установите один или несколько навыков в текущий проект через общий для агентов
-CLI [`skills`](https://skills.sh):
+Установите один или несколько навыков глобально для текущего пользователя через
+общий для агентов CLI [`skills`](https://skills.sh):
 
 ```shell
-npx skills@latest add kolabse/skills
+npx skills@latest add kolabse/skills --global
 ```
 
 CLI находит папки в `skills/`, предлагает выбрать навыки и копирует их выбранным
@@ -69,40 +70,40 @@ https://github.com/kolabse/skills/tree/main/skills/operate-yandex-cloud
 Для неинтерактивной установки укажите потребителя:
 
 ```shell
-npx skills@1.5.22 add kolabse/skills --agent codex --copy -y
-npx skills@1.5.22 add kolabse/skills --agent claude-code --copy -y
+npx skills@1.5.22 add kolabse/skills --agent codex --copy --global -y
+npx skills@1.5.22 add kolabse/skills --agent claude-code --copy --global -y
 ```
 
-При установке в проект попросите агента: «Установи выбранные навыки и добавь
-недостающие правила по умолчанию, не заменяя существующие правила проекта».
-После работы внешнего установщика выполните bootstrap для своего агента:
+Попросите агента: «Установи выбранные навыки глобально и добавь только
+недостающие настройки этого проекта, не заменяя существующие правила».
+После работы внешнего установщика используйте глобальный путь навыка:
 
 ```shell
-python .agents/skills/synchronize-git-repositories/scripts/configure_project.py bootstrap --project-path . --agent codex --apply --yes --json
-python .claude/skills/synchronize-git-repositories/scripts/configure_project.py bootstrap --project-path . --agent claude-code --apply --yes --json
+python ~/.agents/skills/synchronize-git-repositories/scripts/configure_project.py bootstrap --project-path . --agent codex --apply --yes --json
+python ~/.claude/skills/synchronize-git-repositories/scripts/configure_project.py bootstrap --project-path . --agent claude-code --apply --yes --json
 ```
 
 Если соглашений ещё нет, используются префиксы `feature/`, `bugfix/`, `release/`,
 `hotfix/` и типы коммитов `feat`, `fix`, `refactor`, `docs`, `test`, `chore`.
 Явно заданные префиксы, роли веток и форматы коммитов сохраняют приоритет.
-Постоянные ветки и Git hooks не создаются. Управляемое обновление соответствующих
-навыков в проекте выполняет тот же bootstrap; без подтверждения — только план.
+Постоянные ветки и Git hooks не создаются. Управляемое глобальное обновление
+выполняет тот же bootstrap для явно выбранного активного проекта; без
+подтверждения — только план.
 
-Для project-scoped установки сразу создайте lifecycle contract, если
-наблюдаемых defaults достаточно (используйте путь своего агента):
+Сразу создайте lifecycle contract проекта, если наблюдаемых defaults достаточно
+(используйте путь своего агента):
 
 ```shell
-python .agents/skills/execute-verified-development-lifecycle/scripts/development_lifecycle.py bootstrap --project-root . --agent codex --apply --yes --json
-python .claude/skills/execute-verified-development-lifecycle/scripts/development_lifecycle.py bootstrap --project-root . --agent claude-code --apply --yes --json
+python ~/.agents/skills/execute-verified-development-lifecycle/scripts/development_lifecycle.py bootstrap --project-root . --agent codex --apply --yes --json
+python ~/.claude/skills/execute-verified-development-lifecycle/scripts/development_lifecycle.py bootstrap --project-root . --agent claude-code --apply --yes --json
 ```
 
 Глобальная marketplace/plugin-установка не знает active project root, поэтому
 тот же bootstrap выполняется при первом использовании навыка в проекте.
 
-Codex ищет проектные навыки в `.agents/skills/` и вызывает их как
-`$skill-name`. Claude Code использует `.claude/skills/` и `/skill-name`.
-Инструкции и скрипты общие; правила проекта и синтаксис вызова выбираются при
-установке.
+Поддерживаемые глобальные пути: `~/.agents/skills/` для Codex и
+`~/.claude/skills/` для Claude Code. В проектах вне этих payload-папок хранятся
+только конфигурация, управляемые правила и намеренные проектные настройки.
 
 Репозиторий также упакован как содержащий только навыки плагин
 `kolabse-skills` для ChatGPT/Codex и Claude Code. В него входят все папки из
@@ -157,36 +158,45 @@ Claude Code читает `CLAUDE.md`, а не `AGENTS.md`; если правил
 
 ## Обновление установленных навыков
 
-CLI `skills` записывает GitHub-источник и content hash в `skills-lock.json`.
-Обновить все проектные установки из записанных источников:
+CLI `skills` записывает глобальные источники и content hashes в
+`~/.agents/.skill-lock.json`. Обновите глобальные установки из записанных источников:
 
 ```shell
-npx skills@1.5.22 update -p -y
+npx skills@1.5.22 update -g -y
 ```
 
 Обновить один навык или глобальные установки:
 
 ```shell
-npx skills@1.5.22 update verify-before-push -p -y
+npx skills@1.5.22 update verify-before-push -g -y
 npx skills@1.5.22 update -g -y
 ```
 
+Старые проектные копии нужно централизовать после проверки плана. Миграция
+сначала устанавливает и проверяет глобальную копию, затем сохраняет резервную
+копию старого payload и не затрагивает конфигурацию проекта и чужие навыки:
+
+```shell
+python scripts/centralize_skill_installations.py plan --project-path . --json
+python scripts/centralize_skill_installations.py apply --project-path . --expected-plan-sha256 <plan-value> --yes --json
+```
+
 Lock для `kolabse/skills` без квалификатора следует за default branch и не
-закрепляет релиз. Не редактируйте копии в `.agents/skills/`: update может их
+закрепляет релиз. Не редактируйте глобальные payload-копии: update может их
 заменить. Конфигурация проекта и пользователя хранится вне папок навыков.
 
 Из клона или архива релиза обновите навыки и мигрируйте поддерживаемую
 конфигурацию одной явной операцией:
 
 ```shell
-python scripts/manage_installed_skills.py update --project-path . --yes --migrate
-python scripts/manage_installed_skills.py doctor --project-path . --json
+python scripts/manage_installed_skills.py update --scope global --project-path . --yes --migrate
+python scripts/manage_installed_skills.py doctor --scope global --project-path . --json
 ```
 
 Предварительно просмотрите точный выбор без внешнего установщика и изменений:
 
 ```shell
-python scripts/manage_installed_skills.py plan --project-path . --json
+python scripts/manage_installed_skills.py plan --scope global --project-path . --json
 ```
 
 Plan сообщает источник, текущие и целевые версии, provenance, кандидатов на
@@ -194,10 +204,10 @@ Plan сообщает источник, текущие и целевые вер�
 Схемы: `schemas/manager-plan.schema.json` и
 `schemas/manager-result.schema.json`.
 
-Без имён manager выбирает только установленные навыки kolabse из project lock;
-посторонние навыки не обновляются. Для global scope имена указываются явно.
-Проектное обновление заканчивается той же fail-closed диагностикой, что doctor.
-Если обновляется `execute-verified-development-lifecycle`, manager также
+Без имён manager выбирает только навыки kolabse из глобального lock;
+посторонние глобальные навыки не обновляются. Старое проектное обновление
+сохраняется только как переходный путь к уведомлению и миграции. Если глобально
+обновляется `execute-verified-development-lifecycle`, manager также
 создаёт отсутствующий config там, где проектных фактов достаточно, и возвращает
 configuration outcome `created`, `configured` или `blocked`.
 
@@ -212,8 +222,8 @@ Legacy-установку до v1.2 без метаданных принимай
 источника:
 
 ```shell
-python scripts/manage_installed_skills.py status --project-path . --json
-python scripts/manage_installed_skills.py update --project-path . --yes --adopt-legacy
+python scripts/manage_installed_skills.py status --scope global --project-path . --json
+python scripts/manage_installed_skills.py update --scope global --project-path . --yes --adopt-legacy
 ```
 
 Флаг не доверяет произвольным файлам: источник должен нормализоваться к
@@ -262,7 +272,7 @@ python scripts/manage_installed_skills.py status --scope global --agent claude-c
 же навыками и агентами, например:
 
 ```shell
-npx skills@1.5.22 add kolabse/skills@v1.1.0 --skill verify-before-push --agent codex --copy -y
+npx skills@1.5.22 add kolabse/skills@v1.1.0 --skill verify-before-push --agent codex --copy --global -y
 ```
 
 Понижение конфигурации не поддерживается без явной документации релиза.
@@ -582,13 +592,13 @@ $orchestrate-agent-work Делегируй независимые подзада
 
 #### `synchronize-team-skills` (experimental)
 
-Синхронизирует проектные навыки участников команды с одним проверенным
-manifest в документации проекта.
+Синхронизирует глобально установленные навыки участников команды с проверенным
+manifest в документации проекта; настройки проекта остаются локальными.
 
 **Что делает:**
 
 - создаёт или читает `team-agent-skills.md` в выбранной директории документации;
-- сравнивает требования для Codex и Claude Code с проверенными проектными копиями;
+- сравнивает требования для Codex и Claude Code с проверенными глобальными копиями;
 - без изменений показывает отсутствующие, старые, более новые, непроверенные,
   проектные копии, перекрывающие более широкие области, и дополнительные навыки;
 - строит связанный с digest manifest план установки одной версии коллекции;
@@ -598,7 +608,8 @@ manifest в документации проекта.
 
 - не превращает случайное состояние одного компьютера в стандарт команды;
 - не сохраняет secrets, user config, пути компьютера или plugin authentication;
-- не удаляет дополнительные навыки, не понижает версии и не меняет global scope;
+- не удаляет дополнительные навыки, не понижает версии и не удаляет старые
+  проектные копии без подтверждённой централизации;
 - не утверждает, что открытый диалог уже загрузил новые навыки.
 
 **Вызов:**
@@ -607,6 +618,16 @@ manifest в документации проекта.
 $synchronize-team-skills Проверь навыки проекта по командному manifest.
 $synchronize-team-skills Покажи план и синхронизируй мои навыки с документацией команды.
 $synchronize-team-skills Добавь maintain-project-digest в командный набор навыков.
+```
+
+#### `report-skill-feedback` (experimental)
+
+После явного согласия готовит ограниченный обезличенный отчёт о наблюдаемом применении навыка. Черновик не содержит код, переписку, секреты, имена, пути и URL. Он полностью показывается пользователю и отправляется в `kolabse/skills` только после отдельного подтверждения; Issue остаётся связанным с учётной записью GitHub.
+
+**Aufruf / Invocation:**
+
+```text
+$report-skill-feedback Prepare a de-identified preview about this observed skill use; do not submit it yet.
 ```
 
 #### `notify-via-telegram`

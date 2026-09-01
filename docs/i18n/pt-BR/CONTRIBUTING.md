@@ -127,9 +127,14 @@ entradas compatíveis e os testes cobrem configuração ausente, malformada, atu
 - Teste a instalação por cópia e uma atualização desde a release anterior mais
   antiga compatível usando a versão fixada da CLI `skills`, tanto para `codex`
   quanto para `claude-code`.
-- Mantenha a configuração de projeto/usuário fora das pastas de skills instaladas.
+- Instale globalmente a coleção para cada agente. Mantenha a configuração, as regras
+  gerenciadas e os ajustes intencionais do projeto fora das pastas de skills instaladas.
   Nunca permita que um atualizador crie silenciosamente configuração para uma
   skill não utilizada.
+- Detecte cópias antigas no projeto após uma atualização e mostre um aviso de
+  centralização. A migração deve planejar sem gravar, verificar as cópias globais
+  antes da remoção, preservar skills não relacionadas e a configuração, manter um
+  backup recuperável e exigir aprovação vinculada ao plano revisado.
 - Documente as migrações necessárias e as limitações de reversão no README e no
   changelog. Considere o rebaixamento de configuração não suportado, salvo se testado.
 - Preserve entradas não relacionadas ao alterar o marketplace pessoal. Aplique
@@ -155,7 +160,7 @@ nenhum manifesto pode substituir silenciosamente a validação do outro. Quando
 um agente não tiver uma capacidade, como a enumeração de tarefas do Codex Desktop,
 informe que essa operação delimitada não é suportada, preservando o subconjunto portável.
 
-Critério de conclusão: ambas as instalações de agentes contêm conteúdos idênticos
+Critério de conclusão: ambas as instalações globais de agentes contêm conteúdos idênticos
 de skills, suas estruturas nativas de regras de projeto e skills são respeitadas,
 os padrões do Codex permanecem inalterados e as evidências de smoke tests das
 instalações identificam explicitamente ambos os agentes.

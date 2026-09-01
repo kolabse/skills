@@ -33,6 +33,7 @@ Licensed under the [Apache License 2.0](LICENSE). Copyright 2026 kolabse.
   - [Coordination and communication](#coordination-and-communication)
     - [`orchestrate-agent-work`](#orchestrate-agent-work-experimental)
     - [`synchronize-team-skills`](#synchronize-team-skills-experimental)
+    - [`report-skill-feedback`](#report-skill-feedback-experimental)
     - [`notify-via-telegram`](#notify-via-telegram)
   - [Infrastructure and operations](#infrastructure-and-operations)
     - [`operate-yandex-cloud`](#operate-yandex-cloud)
@@ -45,11 +46,11 @@ Licensed under the [Apache License 2.0](LICENSE). Copyright 2026 kolabse.
 
 ## Install skills
 
-Install one or more skills into the current project with the cross-agent
+Install one or more skills globally for the current user with the cross-agent
 [`skills`](https://skills.sh) CLI:
 
 ```shell
-npx skills@latest add kolabse/skills
+npx skills@latest add kolabse/skills --global
 ```
 
 The CLI discovers the folders under `skills/`, lets you select which skills to
@@ -66,40 +67,43 @@ https://github.com/kolabse/skills/tree/main/skills/operate-yandex-cloud
 Choose an explicit consumer for non-interactive installation:
 
 ```shell
-npx skills@1.5.22 add kolabse/skills --agent codex --copy -y
-npx skills@1.5.22 add kolabse/skills --agent claude-code --copy -y
+npx skills@1.5.22 add kolabse/skills --agent codex --copy --global -y
+npx skills@1.5.22 add kolabse/skills --agent claude-code --copy --global -y
 ```
 
-For project installation, ask your agent: "Install the selected skills and
-initialize missing project defaults without replacing our existing rules."
-After the external installer completes, bootstrap the Git rules for your agent:
+Ask your agent: "Install the selected skills globally and initialize only the
+missing configuration for this project without replacing existing rules."
+After the external installer completes, bootstrap the Git rules from the global
+skill path for the active project:
 
 ```shell
-python .agents/skills/synchronize-git-repositories/scripts/configure_project.py bootstrap --project-path . --agent codex --apply --yes --json
-python .claude/skills/synchronize-git-repositories/scripts/configure_project.py bootstrap --project-path . --agent claude-code --apply --yes --json
+python ~/.agents/skills/synchronize-git-repositories/scripts/configure_project.py bootstrap --project-path . --agent codex --apply --yes --json
+python ~/.claude/skills/synchronize-git-repositories/scripts/configure_project.py bootstrap --project-path . --agent claude-code --apply --yes --json
 ```
 
 Missing conventions default to `feature/`, `bugfix/`, `release/`, `hotfix/` and
 commit types `feat`, `fix`, `refactor`, `docs`, `test`, `chore`. Explicit project
 prefixes, branch roles and commit formats remain authoritative. No persistent
-branches or Git hooks are created. Project-scoped managed updates apply this
-same bootstrap for the relevant skills; unconfirmed updates only plan it.
+branches or Git hooks are created. Global managed updates apply this same
+bootstrap to the explicitly selected active project; unconfirmed updates only
+plan it.
 
-For a project-scoped install, initialize the lifecycle contract immediately
+Initialize the project lifecycle contract immediately
 when its observable defaults are sufficient (use the path for your agent):
 
 ```shell
-python .agents/skills/execute-verified-development-lifecycle/scripts/development_lifecycle.py bootstrap --project-root . --agent codex --apply --yes --json
-python .claude/skills/execute-verified-development-lifecycle/scripts/development_lifecycle.py bootstrap --project-root . --agent claude-code --apply --yes --json
+python ~/.agents/skills/execute-verified-development-lifecycle/scripts/development_lifecycle.py bootstrap --project-root . --agent codex --apply --yes --json
+python ~/.claude/skills/execute-verified-development-lifecycle/scripts/development_lifecycle.py bootstrap --project-root . --agent claude-code --apply --yes --json
 ```
 
 Marketplace/plugin installs are global and have no active project root, so the
 skill performs this same bootstrap on first project use.
 
-Codex discovers project skills under `.agents/skills/` and invokes them as
-`$skill-name`. Claude Code discovers them under `.claude/skills/` and invokes
-them as `/skill-name`. The skill instructions and bundled scripts are shared;
-consumer-specific rule files and invocation syntax are selected at setup time.
+The supported cross-agent global layouts are `~/.agents/skills/` for Codex and
+`~/.claude/skills/` for Claude Code. Projects keep only skill configuration,
+managed rules, and intentional project-specific settings outside those payload
+folders. The skill instructions and bundled scripts are shared; consumer-specific
+rule files and invocation syntax are selected at setup time.
 
 The repository is also packaged as the skills-only `kolabse-skills` plugin for
 ChatGPT/Codex and Claude Code. Every folder under `skills/` is included.
@@ -159,38 +163,53 @@ preserves one canonical rules document.
 
 ## Update installed skills
 
-The `skills` CLI records the GitHub source and a content hash in
-`skills-lock.json`. Update every project installation from its recorded source:
+The `skills` CLI records global sources and content hashes in
+`~/.agents/.skill-lock.json`. Update global installations from their recorded
+sources:
 
 ```shell
-npx skills@1.5.22 update -p -y
+npx skills@1.5.22 update -g -y
 ```
 
-Update one skill or global installations with:
+Update one skill or all recorded global installations with:
 
 ```shell
-npx skills@1.5.22 update verify-before-push -p -y
+npx skills@1.5.22 update verify-before-push -g -y
 npx skills@1.5.22 update -g -y
 ```
 
 An unqualified `kolabse/skills` lock follows the repository's default branch;
-it does not pin a collection release. Do not edit copied files under
-`.agents/skills/` because update may replace them. Project and user
-configuration remains outside installed skill folders.
+it does not pin a collection release. Do not edit copied global payloads because
+update may replace them. Project and user configuration remains outside
+installed skill folders.
+
+Releases that introduce this policy detect old project-scoped kolabse copies
+and require a user-visible migration notice. Review the read-only plan, then
+apply the exact digest after approval:
+
+```shell
+python scripts/centralize_skill_installations.py plan --project-path . --json
+python scripts/centralize_skill_installations.py apply --project-path . --expected-plan-sha256 <plan-value> --yes --json
+```
+
+The migration first installs and verifies global copies, backs up the previous
+project payloads in the user's local data directory, removes only unchanged
+verified kolabse copies, and preserves `.agents/<skill>/...`, project rules,
+unrelated skills, and user secrets. Start a new agent task afterward.
 
 From a cloned checkout or release archive, update and migrate supported project
 configuration in one explicit operation:
 
 ```shell
-python scripts/manage_installed_skills.py update --project-path . --yes --migrate
-python scripts/manage_installed_skills.py doctor --project-path . --json
+python scripts/manage_installed_skills.py update --scope global --project-path . --yes --migrate
+python scripts/manage_installed_skills.py doctor --scope global --project-path . --json
 ```
 
 Preview the exact selection without invoking the external installer or changing
 configuration:
 
 ```shell
-python scripts/manage_installed_skills.py plan --project-path . --json
+python scripts/manage_installed_skills.py plan --scope global --project-path . --json
 ```
 
 The plan reports source identity, current and target versions, provenance,
@@ -199,12 +218,12 @@ migration candidates, and `update`, `unchanged`, `adopt-and-update`, or
 `--json` to `update`; update and migrate outcomes follow
 `schemas/manager-result.schema.json`.
 
-With no names, the manager resolves the installed kolabse skills from the
-project lock and passes those names explicitly to the external CLI; unrelated
-project skills are never part of the update. Global updates require explicit
-collection skill names. Project updates finish with the same fail-closed
-diagnosis as `doctor`. When `execute-verified-development-lifecycle` is part of
-a project update, the manager also bootstraps its missing configuration where
+With no names, the manager resolves installed kolabse skills from the global
+lock; unrelated global skills are never selected. A legacy project-scoped
+manager update remains available only to deliver the centralization notice and
+migration tooling to an existing installation. New installations and ordinary
+updates use global scope. When `execute-verified-development-lifecycle` is part
+of a global update, the manager also bootstraps its missing configuration where
 the project facts are sufficient and returns a `created`, `configured`, or
 `blocked` configuration outcome.
 
@@ -223,8 +242,8 @@ Adopt a pre-v1.2 metadata-free installation only after reviewing its reported
 source:
 
 ```shell
-python scripts/manage_installed_skills.py status --project-path . --json
-python scripts/manage_installed_skills.py update --project-path . --yes --adopt-legacy
+python scripts/manage_installed_skills.py status --scope global --project-path . --json
+python scripts/manage_installed_skills.py update --scope global --project-path . --yes --adopt-legacy
 ```
 
 The adoption flag does not bless arbitrary files: the source must already
@@ -282,7 +301,7 @@ reinstall the required release tag with the same skills and agent targets used
 for the original installation, for example:
 
 ```shell
-npx skills@1.5.22 add kolabse/skills@v1.1.0 --skill verify-before-push --agent codex --copy -y
+npx skills@1.5.22 add kolabse/skills@v1.1.0 --skill verify-before-push --agent codex --copy --global -y
 ```
 
 Configuration migrations are forward-only unless a release explicitly
@@ -737,15 +756,15 @@ $orchestrate-agent-work Delegate these independent subtasks to agents and verify
 
 #### `synchronize-team-skills` (experimental)
 
-Keep each team member's project-scoped agent skills aligned with one reviewed
-manifest in the project documentation.
+Keep each team member's global agent skills aligned with one reviewed manifest
+in the project documentation while project settings remain local.
 
 **What it does:**
 
 - creates or reads `team-agent-skills.md` in an approved documentation root;
-- compares declared Codex and Claude Code skills with verified project copies;
-- reports missing, outdated, newer, unverified, project-override, and preserved-extra
-  states without changing the environment;
+- compares declared Codex and Claude Code skills with verified global copies;
+- reports missing, outdated, newer, unverified, legacy-project-override, and
+  preserved-extra states without changing the environment;
 - builds a manifest-digest-bound installation plan for one pinned collection
   version;
 - installs only the reviewed set after approval, then verifies observable state.
@@ -754,7 +773,8 @@ manifest in the project documentation.
 
 - turn one workstation's accidental state into team policy automatically;
 - store secrets, user configuration, machine paths, or plugin authentication;
-- remove extra skills, downgrade newer copies, or change global installations;
+- remove extra skills, downgrade newer copies, or silently remove legacy
+  project copies;
 - claim a running agent task has reloaded newly installed skills.
 
 **How to invoke it:**
@@ -763,6 +783,38 @@ manifest in the project documentation.
 $synchronize-team-skills Check this project's installed skills against the reviewed team manifest.
 $synchronize-team-skills Align my project skills with the team documentation after showing the plan.
 $synchronize-team-skills Add maintain-project-digest to the reviewed team skill set.
+```
+
+#### `report-skill-feedback` (experimental)
+
+Prepare a small de-identified report about one observed skill use and submit it
+to the collection maintainers only after a separate approval.
+
+**What it does:**
+
+- explains the proposed data categories and requests report-specific collection
+  consent;
+- records bounded trigger, workflow, outcome, retry, safety, and manual-action
+  evidence without scanning the project;
+- rejects common secrets, URLs, email addresses, paths, code fences, and
+  oversized input;
+- writes a sealed local preview outside the project by default;
+- requests fresh submission consent and, when approved, creates an attributable
+  issue only in `kolabse/skills`.
+
+**What it does not do:**
+
+- collect telemetry automatically or reuse consent from another task;
+- include source code, full prompts, chats, logs, names, repository paths, or
+  customer data;
+- claim that a GitHub issue is anonymous;
+- submit a draft that changed after the user reviewed it.
+
+**How to invoke it:**
+
+```text
+$report-skill-feedback Prepare an anonymized preview about why this skill did not trigger; do not submit it yet.
+$report-skill-feedback Submit the exact report I just reviewed to the collection maintainers.
 ```
 
 #### `notify-via-telegram`

@@ -35,6 +35,7 @@ Lizenziert unter der [Apache License 2.0](../../../LICENSE). Copyright 2026 kola
   - [Koordination und Kommunikation](#koordination-und-kommunikation)
     - [`orchestrate-agent-work`](#orchestrate-agent-work-experimentell)
     - [`synchronize-team-skills`](#synchronize-team-skills-experimentell)
+    - [`report-skill-feedback`](#report-skill-feedback-experimentell)
     - [`notify-via-telegram`](#notify-via-telegram)
   - [Infrastruktur und Betrieb](#infrastruktur-und-betrieb)
     - [`operate-yandex-cloud`](#operate-yandex-cloud)
@@ -48,10 +49,10 @@ Lizenziert unter der [Apache License 2.0](../../../LICENSE). Copyright 2026 kola
 ## Skills installieren
 
 Installieren Sie einen oder mehrere Skills mit der agentenübergreifenden
-[`skills`](https://skills.sh)-CLI im aktuellen Projekt:
+[`skills`](https://skills.sh)-CLI global für den aktuellen Benutzer:
 
 ```shell
-npx skills@latest add kolabse/skills
+npx skills@latest add kolabse/skills --global
 ```
 
 Die CLI erkennt die Ordner unter `skills/`, lässt Sie die zu installierenden
@@ -69,44 +70,43 @@ https://github.com/kolabse/skills/tree/main/skills/operate-yandex-cloud
 Wählen Sie für eine nicht interaktive Installation einen Agenten ausdrücklich aus:
 
 ```shell
-npx skills@1.5.22 add kolabse/skills --agent codex --copy -y
-npx skills@1.5.22 add kolabse/skills --agent claude-code --copy -y
+npx skills@1.5.22 add kolabse/skills --agent codex --copy --global -y
+npx skills@1.5.22 add kolabse/skills --agent claude-code --copy --global -y
 ```
 
-Bitten Sie Ihren Agenten für eine Projektinstallation: „Installiere die
-ausgewählten Skills und initialisiere fehlende Projektstandards, ohne unsere
-bestehenden Regeln zu ersetzen.“ Initialisieren Sie nach Abschluss des
-externen Installers die Git-Regeln für Ihren Agenten:
+Bitten Sie Ihren Agenten: „Installiere die ausgewählten Skills global und
+initialisiere nur fehlende Einstellungen dieses Projekts, ohne bestehende
+Regeln zu ersetzen.“ Verwenden Sie danach den globalen Skill-Pfad:
 
 ```shell
-python .agents/skills/synchronize-git-repositories/scripts/configure_project.py bootstrap --project-path . --agent codex --apply --yes --json
-python .claude/skills/synchronize-git-repositories/scripts/configure_project.py bootstrap --project-path . --agent claude-code --apply --yes --json
+python ~/.agents/skills/synchronize-git-repositories/scripts/configure_project.py bootstrap --project-path . --agent codex --apply --yes --json
+python ~/.claude/skills/synchronize-git-repositories/scripts/configure_project.py bootstrap --project-path . --agent claude-code --apply --yes --json
 ```
 
 Fehlende Konventionen verwenden standardmäßig `feature/`, `bugfix/`, `release/`,
 `hotfix/` sowie die Commit-Typen `feat`, `fix`, `refactor`, `docs`, `test`,
 `chore`. Explizite Projektpräfixe, Branch-Rollen und Commit-Formate bleiben
 maßgeblich. Es werden keine dauerhaften Branches oder Git-Hooks erstellt.
-Verwaltete Updates auf Projektebene führen denselben Bootstrap für die
-betreffenden Skills aus; unbestätigte Updates planen ihn lediglich.
+Globale verwaltete Updates führen denselben Bootstrap für das ausdrücklich
+ausgewählte aktive Projekt aus; unbestätigte Updates planen ihn lediglich.
 
-Initialisieren Sie bei einer projektbezogenen Installation den
-Lebenszyklusvertrag sofort, wenn seine beobachtbaren Standardwerte ausreichen
+Initialisieren Sie den Projekt-Lebenszyklusvertrag sofort, wenn seine
+beobachtbaren Standardwerte ausreichen
 (verwenden Sie den Pfad für Ihren Agenten):
 
 ```shell
-python .agents/skills/execute-verified-development-lifecycle/scripts/development_lifecycle.py bootstrap --project-root . --agent codex --apply --yes --json
-python .claude/skills/execute-verified-development-lifecycle/scripts/development_lifecycle.py bootstrap --project-root . --agent claude-code --apply --yes --json
+python ~/.agents/skills/execute-verified-development-lifecycle/scripts/development_lifecycle.py bootstrap --project-root . --agent codex --apply --yes --json
+python ~/.claude/skills/execute-verified-development-lifecycle/scripts/development_lifecycle.py bootstrap --project-root . --agent claude-code --apply --yes --json
 ```
 
 Marketplace-/Plugin-Installationen sind global und haben kein aktives
 Projektstammverzeichnis; daher führt der Skill diesen Bootstrap bei der ersten
 Verwendung im Projekt aus.
 
-Codex erkennt Projekt-Skills unter `.agents/skills/` und ruft sie als
-`$skill-name` auf. Claude Code erkennt sie unter `.claude/skills/` und ruft sie
-als `/skill-name` auf. Skill-Anweisungen und mitgelieferte Skripte werden geteilt;
-agentenspezifische Regeldateien und Aufrufsyntax werden bei der Einrichtung ausgewählt.
+Die unterstützten globalen Pfade sind `~/.agents/skills/` für Codex und
+`~/.claude/skills/` für Claude Code. Projekte enthalten nur Konfiguration,
+verwaltete Regeln und ausdrücklich abweichende Projekteinstellungen außerhalb
+dieser Payload-Ordner.
 
 Das Repository wird auch als reines Skill-Plugin `kolabse-skills` für
 ChatGPT/Codex und Claude Code paketiert. Jeder Ordner unter `skills/` ist
@@ -171,40 +171,49 @@ Regeldokument.
 
 ## Installierte Skills aktualisieren
 
-Die `skills`-CLI erfasst die GitHub-Quelle und einen Inhalts-Hash in
-`skills-lock.json`. Aktualisieren Sie jede Projektinstallation aus ihrer
-verzeichneten Quelle:
+Die `skills`-CLI erfasst globale Quellen und Inhalts-Hashes in
+`~/.agents/.skill-lock.json`. Aktualisieren Sie globale Installationen aus den
+verzeichneten Quellen:
 
 ```shell
-npx skills@1.5.22 update -p -y
+npx skills@1.5.22 update -g -y
 ```
 
 Aktualisieren Sie einen einzelnen Skill oder globale Installationen mit:
 
 ```shell
-npx skills@1.5.22 update verify-before-push -p -y
+npx skills@1.5.22 update verify-before-push -g -y
 npx skills@1.5.22 update -g -y
+```
+
+Frühere projektbezogene Kopien müssen nach einer sichtbaren Planung zentralisiert werden.
+Die Migration installiert und prüft zuerst die globale Kopie, sichert danach
+die alte Payload und bewahrt Projektkonfiguration sowie fremde Skills:
+
+```shell
+python scripts/centralize_skill_installations.py plan --project-path . --json
+python scripts/centralize_skill_installations.py apply --project-path . --expected-plan-sha256 <plan-value> --yes --json
 ```
 
 Ein nicht weiter qualifizierter `kolabse/skills`-Lock folgt dem Standardbranch
 des Repositories; er bindet die Installation nicht an ein Sammlungsrelease.
-Bearbeiten Sie keine kopierten Dateien unter `.agents/skills/`, da ein Update
-sie ersetzen kann. Projekt- und Benutzerkonfiguration bleiben außerhalb
-installierter Skill-Ordner.
+Bearbeiten Sie keine global kopierten Payloads, da ein Update sie ersetzen
+kann. Projekt- und Benutzerkonfiguration bleiben außerhalb installierter
+Skill-Ordner.
 
 Aktualisieren und migrieren Sie unterstützte Projektkonfiguration aus einem
 geklonten Checkout oder Release-Archiv in einem expliziten Vorgang:
 
 ```shell
-python scripts/manage_installed_skills.py update --project-path . --yes --migrate
-python scripts/manage_installed_skills.py doctor --project-path . --json
+python scripts/manage_installed_skills.py update --scope global --project-path . --yes --migrate
+python scripts/manage_installed_skills.py doctor --scope global --project-path . --json
 ```
 
 Zeigen Sie eine Vorschau der genauen Auswahl an, ohne den externen Installer
 aufzurufen oder die Konfiguration zu ändern:
 
 ```shell
-python scripts/manage_installed_skills.py plan --project-path . --json
+python scripts/manage_installed_skills.py plan --scope global --project-path . --json
 ```
 
 Der Plan meldet Quellidentität, aktuelle und Zielversionen, Herkunft,
@@ -213,12 +222,10 @@ oder `blocked`. Sein Schema ist `schemas/manager-plan.schema.json`. Ergänzen
 Sie `update` um `--json`; Update- und Migrationsergebnisse folgen
 `schemas/manager-result.schema.json`.
 
-Ohne Namensangaben ermittelt der Manager die installierten kolabse-Skills aus
-dem Projekt-Lock und übergibt diese Namen ausdrücklich an die externe CLI;
-unabhängige Projekt-Skills werden niemals in das Update aufgenommen. Globale
-Updates erfordern explizite Namen von Sammlungs-Skills. Projektupdates enden
-mit derselben sicher blockierenden Diagnose wie `doctor`. Wenn
-`execute-verified-development-lifecycle` Teil eines Projektupdates ist,
+Ohne Namensangaben ermittelt der Manager nur kolabse-Skills aus dem globalen
+Lock; unabhängige globale Skills werden niemals aufgenommen. Das alte
+Projektupdate bleibt nur als Übergang für Hinweis und Migration erhalten. Wenn
+`execute-verified-development-lifecycle` global aktualisiert wird,
 initialisiert der Manager außerdem dessen fehlende Konfiguration, sofern die
 Projektfakten ausreichen, und liefert ein Konfigurationsergebnis `created`,
 `configured` oder `blocked` zurück.
@@ -239,8 +246,8 @@ Plugin-Manifest, Katalog und Skill-Inhalten statt aus dem Verzeichnisnamen abgel
 gemeldeten Quelle:
 
 ```shell
-python scripts/manage_installed_skills.py status --project-path . --json
-python scripts/manage_installed_skills.py update --project-path . --yes --adopt-legacy
+python scripts/manage_installed_skills.py status --scope global --project-path . --json
+python scripts/manage_installed_skills.py update --scope global --project-path . --yes --adopt-legacy
 ```
 
 Die Übernahmeoption legitimiert keine beliebigen Dateien: Die Quelle muss
@@ -304,7 +311,7 @@ und installieren Sie dann den benötigten Release-Tag mit denselben Skills und
 Agentenzielen wie bei der ursprünglichen Installation erneut, zum Beispiel:
 
 ```shell
-npx skills@1.5.22 add kolabse/skills@v1.1.0 --skill verify-before-push --agent codex --copy -y
+npx skills@1.5.22 add kolabse/skills@v1.1.0 --skill verify-before-push --agent codex --copy --global -y
 ```
 
 Konfigurationsmigrationen sind ausschließlich vorwärtsgerichtet, sofern ein
@@ -788,13 +795,13 @@ $orchestrate-agent-work Delegate these independent subtasks to agents and verify
 
 #### `synchronize-team-skills` (experimentell)
 
-Die projektbezogenen Agenten-Skills aller Teammitglieder an einem geprüften
-Manifest in der Projektdokumentation ausrichten.
+Die global installierten Agenten-Skills aller Teammitglieder an einem geprüften
+Manifest in der Projektdokumentation ausrichten; Projekteinstellungen bleiben lokal.
 
 **Was der Skill tut:**
 
 - erstellt oder liest `team-agent-skills.md` in einer genehmigten Dokumentationswurzel;
-- vergleicht deklarierte Codex- und Claude-Code-Skills mit verifizierten Projektkopien;
+- vergleicht deklarierte Codex- und Claude-Code-Skills mit verifizierten globalen Kopien;
 - meldet fehlende, veraltete, neuere, unverifizierte, projektspezifisch
   überschriebene und zusätzlich bewahrte Zustände, ohne die Umgebung zu ändern;
 - erstellt einen an den Manifest-Digest gebundenen Installationsplan für eine
@@ -806,8 +813,8 @@ Manifest in der Projektdokumentation ausrichten.
 
 - den zufälligen Zustand eines Arbeitsplatzes automatisch zur Teamrichtlinie machen;
 - Geheimnisse, Benutzerkonfiguration, Rechnerpfade oder Plugin-Authentifizierung speichern;
-- zusätzliche Skills entfernen, neuere Kopien herabstufen oder globale
-  Installationen ändern;
+- zusätzliche Skills entfernen, neuere Kopien herabstufen oder alte
+  Projektkopien ohne bestätigte Zentralisierung löschen;
 - behaupten, dass eine laufende Agentenaufgabe neu installierte Skills neu geladen hat.
 
 **Aufruf:**
@@ -816,6 +823,16 @@ Manifest in der Projektdokumentation ausrichten.
 $synchronize-team-skills Check this project's installed skills against the reviewed team manifest.
 $synchronize-team-skills Align my project skills with the team documentation after showing the plan.
 $synchronize-team-skills Add maintain-project-digest to the reviewed team skill set.
+```
+
+#### `report-skill-feedback` (experimentell)
+
+Erstellt nach ausdrücklicher Zustimmung einen begrenzten, anonymisierten Bericht über eine beobachtete Skill-Nutzung. Der Entwurf enthält weder Code, Chatverläufe, Geheimnisse, Namen, Pfade noch URLs. Er wird vollständig angezeigt und nur nach einer zweiten Zustimmung als dem GitHub-Konto zuordenbares Issue an `kolabse/skills` gesendet.
+
+**Aufruf / Invocation:**
+
+```text
+$report-skill-feedback Prepare a de-identified preview about this observed skill use; do not submit it yet.
 ```
 
 #### `notify-via-telegram`

@@ -146,14 +146,27 @@ def run_manager(
     agent: str = "codex",
 ) -> int:
     python = shutil.which("python") or sys.executable
-    forwarded = forwarded_agent_arguments(arguments, agent)
-    if command in {"status", "doctor", "plan", "migrate", "update"} and not any(
+    forwarded = (
+        list(arguments)
+        if command == "centralize"
+        else forwarded_agent_arguments(arguments, agent)
+    )
+    if command in {"status", "doctor", "plan", "migrate", "update", "centralize"} and not any(
         value == "--project-path" or value.startswith("--project-path=") for value in forwarded
     ):
         forwarded.extend(["--project-path", str(project.resolve())])
     try:
+        executable = (
+            manager.with_name("centralize_skill_installations.py")
+            if command == "centralize" else manager
+        )
+        command_argv = (
+            [python, str(executable), *forwarded]
+            if command == "centralize"
+            else [python, str(executable), command, *forwarded]
+        )
         result = subprocess.run(
-            [python, str(manager), command, *forwarded],
+            command_argv,
             cwd=project.resolve(),
             timeout=timeout,
             check=False,
@@ -221,7 +234,7 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--offline-checksums", type=Path)
     parser.add_argument("--allow-unattested-offline", action="store_true")
     parser.add_argument("--agent", choices=SUPPORTED_AGENTS, default="codex")
-    parser.add_argument("command", choices=("status", "doctor", "plan", "migrate", "update"))
+    parser.add_argument("command", choices=("status", "doctor", "plan", "migrate", "update", "centralize"))
     parser.add_argument("arguments", nargs=argparse.REMAINDER)
     args = parser.parse_args(argv)
     try:

@@ -1,11 +1,11 @@
 ---
 name: synchronize-team-skills
-description: "Declare a shared kolabse skill set in project documentation and compare or align project installations for Codex and Claude Code. Use when a team wants reproducible project skills, onboarding parity, version-drift diagnosis, or installation from a reviewed team manifest. Do not use to synchronize user secrets, global preferences, or arbitrary third-party tools."
+description: "Declare a shared kolabse skill set in project documentation and compare or align global installations for Codex and Claude Code while keeping project configuration local. Use when a team wants reproducible skills, onboarding parity, version-drift diagnosis, or installation from a reviewed team manifest. Do not synchronize secrets, global preferences, or arbitrary third-party tools."
 ---
 
 # Synchronize Team Skills
 
-Treat the reviewed project document as the team requirement and local skill
+Treat the reviewed project document as the team requirement and global skill
 folders as observed state. Never infer team policy from one workstation without
 an explicit request to change the document.
 
@@ -33,20 +33,22 @@ known without scanning unrelated repositories.
 
 ## Inspect before changing anything
 
-Use `status` to compare every declared skill with the project-scoped Codex and
-Claude Code layouts. Report:
+Use `status` to compare every declared skill with the global Codex and Claude
+Code layouts. Report:
 
 - missing, current, outdated, newer-than-required, and unverified installations;
 - the observed collection version and provenance metadata;
 - additional verified kolabse skills, which remain preserved;
-- whether each declared skill has a project copy that overrides broader scopes.
+- whether a legacy project copy shadows the global installation and must be
+  centralized before alignment can succeed.
 
 Do not equate installation with availability in an already open agent task.
 Recommend a new task after an installation changes. Do not inspect or copy
 tokens, user configuration, plugin authentication, or global preferences.
 
 Completion criterion: the report separates documented requirements, observed
-project installations, preserved extras, and state that cannot be verified.
+global installations, preserved extras, legacy project copies, and state that
+cannot be verified.
 
 ## Create or revise the team requirement
 
@@ -67,7 +69,7 @@ python <skill-root>/scripts/team_skills.py configure \
 The helper always requires `synchronize-team-skills` and
 `synchronize-git-repositories` in the manifest so a new team member receives
 the bootstrap and its freshness dependency together. It fixes `source` to
-`kolabse/skills`, project scope, and `extras_policy: preserve`. It preserves
+`kolabse/skills`, global scope, and `extras_policy: preserve`. It preserves
 unmanaged document content and refuses malformed or nested managed markers.
 
 Changing the documented set is a project documentation change. Review and
@@ -104,16 +106,17 @@ contain no machine paths or secrets, and are ready for ordinary code review.
 
 5. Stop if the document or observed installation plan changed after review, a
    declared path has unverified provenance, `npx` is unavailable, or an
-   installer fails. Never delete an extra skill, downgrade a newer project copy,
-   change global installations, or force an overwrite.
+   installer fails. A legacy project copy is a blocker until the collection's
+   centralization migration is explicitly approved. Never delete an extra
+   global skill, downgrade a newer copy, or force an overwrite.
 6. Re-run `status`. Report observable remaining drift and ask the user to start
    a new agent task when files changed.
 
 The helper invokes the pinned `skills` CLI without a shell and installs only
 the declared names from the pinned collection release into each declared
-project agent layout. Skill configuration remains outside installed folders
+global agent layout. Project configuration remains outside installed folders
 and is not copied into the document.
 
-Completion criterion: every declared project installation is verified at the
+Completion criterion: every declared global installation is verified at the
 documented collection version, extras remain intact, and no success is claimed
 from installer exit status alone.

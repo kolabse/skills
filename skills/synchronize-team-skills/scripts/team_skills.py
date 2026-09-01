@@ -34,6 +34,7 @@ KNOWN_SKILLS = {
     "notify-via-telegram",
     "operate-yandex-cloud",
     "orchestrate-agent-work",
+    "report-skill-feedback",
     "release-skill-collection",
     "resolve-git-conflicts",
     "review-code-changes",
@@ -112,8 +113,8 @@ def validate_manifest(value: object) -> dict[str, Any]:
     version = value.get("collection_version")
     if not isinstance(version, str) or not VERSION_PATTERN.fullmatch(version):
         raise TeamSkillsError("team manifest collection_version is invalid")
-    if value.get("scope") != "project" or value.get("extras_policy") != "preserve":
-        raise TeamSkillsError("team manifest must use project scope and preserve extras")
+    if value.get("scope") != "global" or value.get("extras_policy") != "preserve":
+        raise TeamSkillsError("team manifest must use global scope and preserve extras")
     agents = value.get("agents")
     if (
         not isinstance(agents, list)
@@ -252,16 +253,30 @@ def version_state(observed: str, required: str) -> str:
     return "outdated" if len(observed_pre) < len(required_pre) else "newer-than-required"
 
 
-def read_lock_entries(project_root: Path) -> dict[str, dict[str, Any]]:
+def user_home() -> Path:
+    return Path.home().resolve()
+
+
+def global_layout(agent: str) -> Path:
+    return user_home() / AGENT_LAYOUTS[agent]
+
+
+def global_lock_path() -> Path:
+    return user_home() / ".agents/.skill-lock.json"
+
+
+def read_lock_entries(_project_root: Path) -> dict[str, dict[str, Any]]:
     try:
-        value = json.loads((project_root / "skills-lock.json").read_text(encoding="utf-8"))
+        value = json.loads(global_lock_path().read_text(encoding="utf-8"))
     except FileNotFoundError:
         return {}
     except (json.JSONDecodeError, UnicodeDecodeError, OSError) as error:
-        raise TeamSkillsError(f"skills-lock.json is unreadable or invalid: {error}") from error
+        raise TeamSkillsError(f"global .skill-lock.json is unreadable or invalid: {error}") from error
+    if not isinstance(value, dict) or value.get("version") != 3:
+        raise TeamSkillsError("global .skill-lock.json must use version 3")
     entries = value.get("skills") if isinstance(value, dict) else None
     if not isinstance(entries, dict):
-        raise TeamSkillsError("skills-lock.json field 'skills' must be an object")
+        raise TeamSkillsError("global .skill-lock.json field 'skills' must be an object")
     return {name: entry for name, entry in entries.items() if isinstance(entry, dict)}
 
 
@@ -376,7 +391,7 @@ def observe_skill(
         "provenance": "missing",
         "source_kind": source_kind,
         "state": "missing",
-        "project_override": path.is_dir(),
+        "project_override": False,
     }
     if not path.is_dir():
         return result
@@ -399,7 +414,10 @@ def observe_skill(
         and canonical_github_source(metadata["canonical_repository"])
     )
     version = metadata.get("version") if isinstance(metadata, dict) else None
-    expected_hash = lock_entry.get("computedHash") if isinstance(lock_entry, dict) else None
+    expected_hash = (
+        lock_entry.get("skillFolderHash", lock_entry.get("computedHash"))
+        if isinstance(lock_entry, dict) else None
+    )
     actual_hash = skill_folder_hash(path)
     source_content_verified = True
     if source_kind == "local":
@@ -458,8 +476,8 @@ def inspect(project_root: Path, documentation_root: str | None) -> dict[str, Any
     agents: list[dict[str, Any]] = []
     ready = True
     for agent in manifest["agents"]:
-        layout = project_root / AGENT_LAYOUTS[agent]
-        layout_safe = not layout.is_symlink() and layout.resolve().is_relative_to(project_root)
+        layout = global_layout(agent)
+        layout_safe = not layout.is_symlink() and layout.resolve().is_relative_to(user_home())
         if layout_safe:
             skills = [
                 observe_skill(
@@ -471,6 +489,10 @@ def inspect(project_root: Path, documentation_root: str | None) -> dict[str, Any
                 )
                 for name in manifest["skills"]
             ]
+            for item in skills:
+                item["project_override"] = (
+                    project_root / AGENT_LAYOUTS[agent] / item["name"]
+                ).is_dir()
         else:
             skills = [
                 {
@@ -481,7 +503,9 @@ def inspect(project_root: Path, documentation_root: str | None) -> dict[str, Any
                     "provenance": "unsafe-layout",
                     "source_kind": "unknown",
                     "state": "unverified",
-                    "project_override": (layout / name).is_dir(),
+                    "project_override": (
+                        project_root / AGENT_LAYOUTS[agent] / name
+                    ).is_dir(),
                 }
                 for name in manifest["skills"]
             ]
@@ -507,7 +531,10 @@ def inspect(project_root: Path, documentation_root: str | None) -> dict[str, Any
                 and (item := verified_extra(project_root, child, desired, lock_entries.get(child.name)))
             ]
         agent_ready = (
-            all(item["state"] == "current" for item in skills)
+            all(
+                item["state"] == "current" and not item["project_override"]
+                for item in skills
+            )
             and not unsafe_extras
         )
         ready = ready and agent_ready
@@ -546,7 +573,7 @@ def configure(args: argparse.Namespace) -> dict[str, Any]:
             "schema_version": 1,
             "source": SOURCE,
             "collection_version": args.collection_version or default_collection_version(),
-            "scope": "project",
+            "scope": "global",
             "agents": args.agent or sorted(AGENT_LAYOUTS),
             "skills": args.skill or sorted(REQUIRED_SKILLS),
             "extras_policy": "preserve",
@@ -566,8 +593,8 @@ def configure(args: argparse.Namespace) -> dict[str, Any]:
         original = ""
         updated = (
             "# Team agent skills\n\n"
-            "This reviewed document declares the project-scoped agent skills shared by the team.\n"
-            "Local locks and user configuration remain machine-specific.\n\n"
+            "This reviewed document declares the globally installed agent skills shared by the team.\n"
+            "Project configuration and user secrets remain outside installed skill folders.\n\n"
             f"{block}\n"
         )
     changed = updated != original
@@ -590,6 +617,11 @@ def make_plan(project_root: Path, documentation_root: str | None) -> dict[str, A
     for agent in status["agents"]:
         observed = {item["name"]: item for item in agent["skills"]}
         states = {name: item["state"] for name, item in observed.items()}
+        for name, item in observed.items():
+            if item["project_override"]:
+                blockers.append(
+                    f"{agent['agent']}:{name}:project-copy-must-be-centralized"
+                )
         for name, state in states.items():
             if state in {"unverified", "newer-than-required", "version-mismatch"}:
                 blockers.append(f"{agent['agent']}:{name}:{state}")
@@ -609,7 +641,7 @@ def make_plan(project_root: Path, documentation_root: str | None) -> dict[str, A
             argv = ["npx", "--yes", f"skills@{CLI_VERSION}", "add", f"{SOURCE}@v{status['collection_version']}"]
             for name in sorted(selected):
                 argv.extend(["--skill", name])
-            argv.extend(["--agent", agent["agent"], "--copy", "-y"])
+            argv.extend(["--agent", agent["agent"], "--copy", "--global", "-y"])
             installers.append({"agent": agent["agent"], "selected": selected, "argv": argv})
     result = {
         "schema_version": 1,

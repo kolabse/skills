@@ -117,8 +117,15 @@ input, and tests cover missing, malformed, current, and legacy configuration.
   `skills/*/collection-metadata.json` version identical in a release.
 - Test copied installation and an update from the oldest supported previous
   release through the pinned `skills` CLI for both `codex` and `claude-code`.
-- Keep project/user configuration outside installed skill folders. Never make
-  an updater silently create configuration for an unused skill.
+- Install collection payloads globally for each agent. Keep project/user
+  configuration, managed rules, and intentional project settings outside
+  installed skill folders. Never make an updater silently create configuration
+  for an unused skill.
+- Detect legacy project-scoped collection copies after an update and show a
+  user-visible centralization notice. Migration must plan without writes,
+  install and verify global copies before removal, preserve unrelated skills
+  and project configuration, retain a recoverable backup, and require explicit
+  approval bound to the reviewed plan.
 - Document required migrations and rollback limitations in the README and
   changelog. Treat configuration downgrade as unsupported unless tested.
 - Preserve unrelated entries when changing the personal marketplace. Apply one
@@ -142,9 +149,10 @@ silently stand in for the other's validation. When an agent lacks a capability
 such as Codex Desktop task enumeration, report that bounded operation as
 unsupported while preserving the portable subset.
 
-Completion criterion: both consumer installs contain identical skill payloads,
-their native project rule and skill layouts are respected, Codex defaults are
-unchanged, and consumer-smoke evidence names both agents explicitly.
+Completion criterion: both global consumer installs contain identical skill
+payloads, their native project rule and configuration layouts are respected,
+Codex defaults are unchanged, and consumer-smoke evidence names both agents
+explicitly.
 
 ## Compose skills by capability
 

@@ -33,6 +33,7 @@ Distribuido bajo la [Licencia Apache 2.0](../../../LICENSE). Copyright 2026 kola
   - [Coordinación y comunicación](#coordinación-y-comunicación)
     - [`orchestrate-agent-work`](#orchestrate-agent-work-experimental)
     - [`synchronize-team-skills`](#synchronize-team-skills-experimental)
+    - [`report-skill-feedback`](#report-skill-feedback-experimental)
     - [`notify-via-telegram`](#notify-via-telegram)
   - [Infraestructura y operaciones](#infraestructura-y-operaciones)
     - [`operate-yandex-cloud`](#operate-yandex-cloud)
@@ -45,11 +46,11 @@ Distribuido bajo la [Licencia Apache 2.0](../../../LICENSE). Copyright 2026 kola
 
 ## Instalar habilidades
 
-Instalar una o más habilidades en el proyecto actual con el agente cruzado
-[`skills`](https://skills.sh) CLI:
+Instale una o más habilidades globalmente para el usuario actual con la CLI
+multiagente [`skills`](https://skills.sh):
 
 ```shell
-npx skills@latest add kolabse/skills
+npx skills@latest add kolabse/skills --global
 ```
 
 El CLI descubre las carpetas bajo `skills/`, le permite seleccionar qué habilidades a
@@ -66,42 +67,42 @@ https://github.com/kolabse/skills/tree/main/skills/operate-yandex-cloud
 Elija un consumidor explícito para la instalación no interactiva:
 
 ```shell
-npx skills@1.5.22 add kolabse/skills --agent codex --copy -y
-npx skills@1.5.22 add kolabse/skills --agent claude-code --copy -y
+npx skills@1.5.22 add kolabse/skills --agent codex --copy --global -y
+npx skills@1.5.22 add kolabse/skills --agent claude-code --copy --global -y
 ```
 
-Para instalar en un proyecto, pida a su agente: «Instala las habilidades
-seleccionadas e inicializa los valores que faltan sin sustituir nuestras reglas».
-Después del instalador externo, ejecute el bootstrap para su agente:
+Pida al agente: «Instala globalmente las habilidades seleccionadas e inicializa
+solo la configuración ausente de este proyecto sin sustituir nuestras reglas».
+Después use la ruta global de la habilidad:
 
 ```shell
-python .agents/skills/synchronize-git-repositories/scripts/configure_project.py bootstrap --project-path . --agent codex --apply --yes --json
-python .claude/skills/synchronize-git-repositories/scripts/configure_project.py bootstrap --project-path . --agent claude-code --apply --yes --json
+python ~/.agents/skills/synchronize-git-repositories/scripts/configure_project.py bootstrap --project-path . --agent codex --apply --yes --json
+python ~/.claude/skills/synchronize-git-repositories/scripts/configure_project.py bootstrap --project-path . --agent claude-code --apply --yes --json
 ```
 
 Las convenciones no declaradas usan `feature/`, `bugfix/`, `release/`, `hotfix/`
 y los tipos de commit `feat`, `fix`, `refactor`, `docs`, `test`, `chore`.
 Los prefijos, roles de ramas y formatos explícitos del proyecto tienen prioridad.
-No se crean ramas persistentes ni hooks de Git. Las actualizaciones gestionadas
-de estas habilidades ejecutan el mismo bootstrap en el proyecto; sin
-confirmación, solo lo planifican.
+No se crean ramas persistentes ni hooks de Git. Las actualizaciones globales
+gestionadas ejecutan el mismo bootstrap para el proyecto activo seleccionado;
+sin confirmación, solo lo planifican.
 
-Para una instalación con alcance de proyecto, cree inmediatamente el contrato
-del ciclo de vida cuando los valores observables sean suficientes (use la ruta
+Inicialice inmediatamente el contrato del ciclo de vida del proyecto cuando
+los valores observables sean suficientes (use la ruta
 de su agente):
 
 ```shell
-python .agents/skills/execute-verified-development-lifecycle/scripts/development_lifecycle.py bootstrap --project-root . --agent codex --apply --yes --json
-python .claude/skills/execute-verified-development-lifecycle/scripts/development_lifecycle.py bootstrap --project-root . --agent claude-code --apply --yes --json
+python ~/.agents/skills/execute-verified-development-lifecycle/scripts/development_lifecycle.py bootstrap --project-root . --agent codex --apply --yes --json
+python ~/.claude/skills/execute-verified-development-lifecycle/scripts/development_lifecycle.py bootstrap --project-root . --agent claude-code --apply --yes --json
 ```
 
 Una instalación global de marketplace/plugin no conoce el proyecto activo, por
 lo que la habilidad ejecuta el mismo bootstrap en el primer uso del proyecto.
 
-Codex descubre habilidades de proyecto bajo `.agents/skills/` y los invoca como
-`$skill-name`. Código de Claude los descubre bajo `.claude/skills/` e invocaciones
-como ellos `/skill-name`. Las instrucciones de habilidad y los scripts agrupados son compartidos;
-Los archivos de reglas e invocación específicos del consumidor se seleccionan en tiempo de configuración.
+Las rutas globales compatibles son `~/.agents/skills/` para Codex y
+`~/.claude/skills/` para Claude Code. Los proyectos conservan únicamente la
+configuración, las reglas gestionadas y los ajustes intencionales fuera de esas
+carpetas de payload.
 
 El repositorio también está empaquetado como sólo las habilidades `kolabse-skills` plugin para
 ChatGPT/Codex y Claude Code. Cada carpeta debajo `skills/` está incluido.
@@ -161,38 +162,48 @@ conserva un documento de reglas canónicas.
 
 ## Actualizar las habilidades instaladas
 
-El `skills` CLI registra la fuente GitHub y un hash de contenido en
-`skills-lock.json`. Actualizar cada instalación de proyecto desde su fuente registrada:
+La CLI `skills` registra fuentes globales y hashes de contenido en
+`~/.agents/.skill-lock.json`. Actualice las instalaciones globales desde sus
+fuentes registradas:
 
 ```shell
-npx skills@1.5.22 update -p -y
+npx skills@1.5.22 update -g -y
 ```
 
 Actualizar una habilidad o instalaciones globales con:
 
 ```shell
-npx skills@1.5.22 update verify-before-push -p -y
+npx skills@1.5.22 update verify-before-push -g -y
 npx skills@1.5.22 update -g -y
 ```
 
+Las copias antiguas instaladas en el proyecto deben centralizarse después de
+revisar el plan. La migración instala y verifica primero la copia global, crea
+una copia de seguridad y conserva la configuración del proyecto y habilidades ajenas:
+
+```shell
+python scripts/centralize_skill_installations.py plan --project-path . --json
+python scripts/centralize_skill_installations.py apply --project-path . --expected-plan-sha256 <plan-value> --yes --json
+```
+
 Un no calificado `kolabse/skills` cerradura sigue la rama predeterminada del repositorio;
-no marca un lanzamiento de colección. No editar archivos copiados bajo
-`.agents/skills/` porque la actualización puede reemplazarlos. Proyecto y usuario
-configuración permanece fuera de carpetas de habilidad instaladas.
+no fija una versión de la colección. No edite los payloads globales copiados,
+porque una actualización puede sustituirlos. La configuración del proyecto y
+del usuario permanece fuera de las carpetas instaladas.
 
 Desde un archivo de registro o liberación clonado, actualización y migrar proyecto compatible
 configuración en una operación explícita:
 
 ```shell
-python scripts/manage_installed_skills.py update --project-path . --yes --migrate
-python scripts/manage_installed_skills.py doctor --project-path . --json
+python scripts/manage_installed_skills.py update --scope global --project-path . --yes --migrate
+python scripts/manage_installed_skills.py doctor --scope global --project-path . --json
 ```
 
 Previsualizar la selección exacta sin invocar el instalador externo o cambiar
 configuración:
 
 ```shell
-python scripts/manage_installed_skills.py plan --project-path . --json
+python scripts/manage_installed_skills.py plan --scope global --project-path . --json
 ```
 
 El plan reporta identidad fuente, versiones actuales y específicas, procedencia,
@@ -201,12 +212,10 @@ candidatos a la migración y `update`, `unchanged`, `adopt-and-update`o
 `--json` a `update`; actualización y seguimiento de los resultados migratorios
 `schemas/manager-result.schema.json`.
 
-Sin nombres, el gerente resuelve las habilidades de kolabse instaladas del
-cierre del proyecto y pasa esos nombres explícitamente al CLI externo; no relacionados
-las habilidades del proyecto nunca son parte de la actualización. Las actualizaciones mundiales requieren actualizaciones explícitas
-nombres de habilidades de colección. Las actualizaciones del proyecto terminan con el mismo cierre
-diagnóstico `doctor`.
-Cuando se actualiza `execute-verified-development-lifecycle`, el manager también
+Sin nombres, el manager resuelve únicamente las habilidades kolabse del lock
+global; las habilidades globales ajenas nunca se incluyen. La actualización de
+proyecto antigua se conserva solo como transición para el aviso y la migración.
+Cuando se actualiza globalmente `execute-verified-development-lifecycle`, el manager también
 crea la configuración ausente cuando los hechos del proyecto son suficientes y
 devuelve `created`, `configured` o `blocked` como resultado de configuración.
 
@@ -225,8 +234,8 @@ Adoptar una instalación sin metadatos pre-v1.2 sólo después de revisar su inf
 fuente:
 
 ```shell
-python scripts/manage_installed_skills.py status --project-path . --json
-python scripts/manage_installed_skills.py update --project-path . --yes --adopt-legacy
+python scripts/manage_installed_skills.py status --scope global --project-path . --json
+python scripts/manage_installed_skills.py update --scope global --project-path . --yes --adopt-legacy
 ```
 
 La bandera de adopción no bendice archivos arbitrarios: la fuente ya debe
@@ -284,7 +293,7 @@ reinstalar la etiqueta de liberación requerida con las mismas habilidades y obj
 para la instalación original, por ejemplo:
 
 ```shell
-npx skills@1.5.22 add kolabse/skills@v1.1.0 --skill verify-before-push --agent codex --copy -y
+npx skills@1.5.22 add kolabse/skills@v1.1.0 --skill verify-before-push --agent codex --copy --global -y
 ```
 
 Las migraciones de configuración son sólo de antemano a menos que una liberación explícitamente
@@ -737,14 +746,14 @@ $orchestrate-agent-work Delegate these independent subtasks to agents and verify
 
 #### `synchronize-team-skills` (experimental)
 
-Mantiene las habilidades de proyecto de cada integrante alineadas con un único
-manifest revisado en la documentación del proyecto.
+Mantiene las habilidades globales de cada integrante alineadas con un único
+manifest revisado; la configuración del proyecto permanece local.
 
 **Qué hace:**
 
 - crea o lee `team-agent-skills.md` en una ubicación de documentación aprobada;
-- compara las habilidades declaradas para Codex y Claude Code con copias de
-  proyecto verificadas;
+- compara las habilidades declaradas para Codex y Claude Code con copias
+  globales verificadas;
 - informa sin cambios sobre habilidades ausentes, antiguas, más nuevas, no
   verificadas, copias de proyecto que prevalecen sobre ámbitos más amplios y
   adicionales conservadas;
@@ -755,7 +764,8 @@ manifest revisado en la documentación del proyecto.
 
 - no convierte automáticamente el estado accidental de un equipo en política;
 - no guarda secretos, configuración personal, rutas locales ni autenticación;
-- no elimina habilidades adicionales, baja versiones ni cambia instalaciones globales;
+- no elimina habilidades adicionales, baja versiones ni quita silenciosamente
+  copias antiguas del proyecto;
 - no afirma que una tarea abierta ya haya cargado las habilidades nuevas.
 
 **Cómo invocarlo:**
@@ -764,6 +774,16 @@ manifest revisado en la documentación del proyecto.
 $synchronize-team-skills Comprueba las habilidades del proyecto con el manifest del equipo.
 $synchronize-team-skills Muestra el plan y alinea mis habilidades con la documentación del equipo.
 $synchronize-team-skills Añade maintain-project-digest al conjunto de habilidades del equipo.
+```
+
+#### `report-skill-feedback` (experimental)
+
+Prepara, tras un consentimiento explícito, un informe limitado y desidentificado sobre un uso observado de una habilidad. El borrador no incluye código, conversaciones, secretos, nombres, rutas ni URL. Se muestra completo y solo se envía a `kolabse/skills` después de una segunda aprobación; el issue seguirá vinculado a la cuenta de GitHub.
+
+**Aufruf / Invocation:**
+
+```text
+$report-skill-feedback Prepare a de-identified preview about this observed skill use; do not submit it yet.
 ```
 
 #### `notify-via-telegram`
