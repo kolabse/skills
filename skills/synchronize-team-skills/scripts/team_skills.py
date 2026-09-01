@@ -473,11 +473,12 @@ def inspect(project_root: Path, documentation_root: str | None) -> dict[str, Any
     path, manifest = read_manifest(project_root, documentation_root)
     desired = set(manifest["skills"])
     lock_entries = read_lock_entries(project_root)
+    home = user_home().resolve()
     agents: list[dict[str, Any]] = []
     ready = True
     for agent in manifest["agents"]:
         layout = global_layout(agent)
-        layout_safe = not layout.is_symlink() and layout.resolve().is_relative_to(user_home())
+        layout_safe = not layout.is_symlink() and layout.resolve().is_relative_to(home)
         if layout_safe:
             skills = [
                 observe_skill(
