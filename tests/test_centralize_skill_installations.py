@@ -104,7 +104,7 @@ class CentralizeSkillInstallationsTests(unittest.TestCase):
             global_skill.parent.mkdir(parents=True, exist_ok=True)
             shutil.copytree(ROOT / "skills" / self.name, global_skill)
             metadata = json.loads((global_skill / "collection-metadata.json").read_text(encoding="utf-8"))
-            metadata["version"] = "1.20.0"
+            metadata["version"] = plan["target_version"]
             (global_skill / "collection-metadata.json").write_text(json.dumps(metadata), encoding="utf-8")
             lock = {
                 "version": 3,
