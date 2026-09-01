@@ -133,9 +133,14 @@ configurations absentes, mal formées, actuelles et anciennes.
 - Testez l’installation par copie et la mise à jour depuis la plus ancienne
   version antérieure prise en charge via la CLI `skills` à version épinglée,
   pour `codex` et `claude-code`.
-- Conservez la configuration du projet et de l’utilisateur hors des dossiers
+- Installez globalement la collection pour chaque agent. Conservez la configuration,
+  les règles gérées et les réglages intentionnels du projet hors des dossiers
   des skills installés. Une mise à jour ne doit jamais créer silencieusement
   une configuration pour un skill inutilisé.
+- Après une mise à jour, détectez les anciennes copies propres au projet et affichez
+  un avis de centralisation. La migration doit planifier sans écrire, vérifier les
+  copies globales avant suppression, préserver les skills sans rapport et la
+  configuration, garder une sauvegarde récupérable et exiger une approbation liée au plan.
 - Documentez les migrations requises et les limites du retour arrière dans
   le README et le journal des modifications. Considérez la rétrogradation
   d’une configuration comme non prise en charge tant qu’elle n’a pas été testée.
@@ -162,7 +167,7 @@ validation de l’autre. Lorsqu’un agent ne dispose pas d’une capacité tell
 l’énumération des tâches Codex Desktop, signalez cette opération délimitée
 comme non prise en charge tout en préservant le sous-ensemble portable.
 
-Critère d’achèvement : les deux installations contiennent des contenus de
+Critère d’achèvement : les deux installations globales contiennent des contenus de
 skills identiques, leurs structures natives de règles de projet et de skills
 sont respectées, les valeurs par défaut Codex sont inchangées et les preuves
 de tests de fumée des installations nomment explicitement les deux agents.

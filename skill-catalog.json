@@ -1,6 +1,6 @@
 {
   "schema_version": 2,
-  "collection_version": "1.20.0",
+  "collection_version": "1.21.0",
   "supported_agents": [
     "claude-code",
     "codex"
@@ -13,8 +13,8 @@
     "name": "release-holdout-v4",
     "path": "evals/release-holdout-v4.json",
     "sha256": "d5be9dfab3ff21623ea8f21bd7ca7178fbd1b2c42c3c620b014781b976095751",
-    "baseline_release": "v1.19.1",
-    "baseline_report": "evals/baselines/release-holdout-v4-v1.19.1.json"
+    "baseline_release": "v1.21.0",
+    "baseline_report": "evals/baselines/release-holdout-v4-v1.21.0.json"
   },
   "compositions": [
     {
@@ -853,6 +853,53 @@
         "mutation",
         "evidence-producing",
         "git"
+      ]
+    },
+    {
+      "name": "report-skill-feedback",
+      "path": "skills/report-skill-feedback",
+      "status": "experimental",
+      "maintainers": [
+        "@kolabse"
+      ],
+      "platforms": [
+        "linux",
+        "macos",
+        "windows"
+      ],
+      "trigger_evals": "evals/report-skill-feedback.json",
+      "license": "Apache-2.0",
+      "provides": [
+        "deidentified-skill-feedback-report",
+        "consent-gated-feedback-submission"
+      ],
+      "requires": [],
+      "optional_integrations": [
+        "github"
+      ],
+      "configuration": {
+        "scope": "user",
+        "format": "none",
+        "status": [
+          "python",
+          "scripts/report_feedback.py",
+          "status",
+          "--json"
+        ]
+      },
+      "provenance": {
+        "kind": "original",
+        "source": "Created to collect privacy-bounded user acceptance evidence for experimental skills without implicit telemetry or unreviewed submission",
+        "canonical_repository": "https://github.com/kolabse/skills"
+      },
+      "category": "collaboration",
+      "tags": [
+        "document",
+        "workstation",
+        "external-service",
+        "mutation",
+        "evidence-producing",
+        "github"
       ]
     },
     {

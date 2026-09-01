@@ -134,9 +134,15 @@ und ältere Konfiguration ab.
 - Testen Sie eine kopierte Installation und ein Update von der ältesten
   unterstützten Vorgängerversion über die festgelegte `skills`-CLI sowohl für
   `codex` als auch für `claude-code`.
-- Halten Sie Projekt-/Benutzerkonfiguration außerhalb installierter Skill-Ordner.
+- Installieren Sie die Sammlung global für jeden Agenten. Halten Sie Projekt-/Benutzerkonfiguration,
+  verwaltete Regeln und absichtliche Projekteinstellungen außerhalb installierter Skill-Ordner.
   Ein Updater darf niemals stillschweigend Konfiguration für einen ungenutzten
   Skill erstellen.
+- Erkennen Sie nach einem Update ältere projektbezogene Kopien und zeigen Sie einen
+  sichtbaren Zentralisierungshinweis. Planen Sie die Migration ohne Schreibzugriff,
+  prüfen Sie globale Kopien vor dem Entfernen, erhalten Sie unabhängige Skills und
+  Projektkonfiguration, bewahren Sie ein wiederherstellbares Backup und verlangen
+  Sie eine an den geprüften Plan gebundene Zustimmung.
 - Dokumentieren Sie erforderliche Migrationen und Rollback-Einschränkungen in
   README und Changelog. Konfigurations-Downgrades gelten ohne Tests als nicht unterstützt.
 - Bewahren Sie unabhängige Einträge bei Änderungen am persönlichen Marketplace.
@@ -162,7 +168,7 @@ Wenn einem Agenten eine Fähigkeit wie das Auflisten von Aufgaben in Codex
 Desktop fehlt, melden Sie diese begrenzte Operation als nicht unterstützt,
 während die portable Teilmenge erhalten bleibt.
 
-Abschlusskriterium: Beide Installationen enthalten identische Skill-Nutzdaten,
+Abschlusskriterium: Beide globalen Installationen enthalten identische Skill-Nutzdaten,
 die jeweiligen Projektregel- und Skill-Verzeichnisstrukturen werden respektiert,
 Codex-Standards bleiben unverändert und Consumer-Smoke-Nachweise benennen
 beide Agenten ausdrücklich.

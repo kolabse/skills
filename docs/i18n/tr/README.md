@@ -35,6 +35,7 @@ kolabse tarafından bakımı yapılan, yeniden kullanılabilir ajan becerileri.
   - [Koordinasyon ve iletişim](#koordinasyon-ve-iletişim)
     - [`orchestrate-agent-work`](#orchestrate-agent-work-deneysel)
     - [`synchronize-team-skills`](#synchronize-team-skills-deneysel)
+    - [`report-skill-feedback`](#report-skill-feedback-deneysel)
     - [`notify-via-telegram`](#notify-via-telegram)
   - [Altyapı ve operasyonlar](#altyapı-ve-operasyonlar)
     - [`operate-yandex-cloud`](#operate-yandex-cloud)
@@ -47,11 +48,11 @@ kolabse tarafından bakımı yapılan, yeniden kullanılabilir ajan becerileri.
 
 ## Becerileri kurma
 
-Ajanlar arası [`skills`](https://skills.sh) CLI ile mevcut projeye bir veya
-daha fazla beceri kurun:
+Ajanlar arası [`skills`](https://skills.sh) CLI ile mevcut kullanıcı için bir
+veya daha fazla beceriyi genel olarak kurun:
 
 ```shell
-npx skills@latest add kolabse/skills
+npx skills@latest add kolabse/skills --global
 ```
 
 CLI, `skills/` altındaki klasörleri keşfeder, kurulacak becerileri seçmenize
@@ -68,42 +69,40 @@ https://github.com/kolabse/skills/tree/main/skills/operate-yandex-cloud
 Etkileşimsiz kurulum için açıkça bir tüketici seçin:
 
 ```shell
-npx skills@1.5.22 add kolabse/skills --agent codex --copy -y
-npx skills@1.5.22 add kolabse/skills --agent claude-code --copy -y
+npx skills@1.5.22 add kolabse/skills --agent codex --copy --global -y
+npx skills@1.5.22 add kolabse/skills --agent claude-code --copy --global -y
 ```
 
-Proje kurulumu için ajanınıza şunu söyleyin: "Seçilen becerileri kur ve mevcut
-kurallarımızı değiştirmeden eksik proje varsayılanlarını başlat." Harici kurucu
-tamamlandıktan sonra ajanınızın Git kurallarını başlatın:
+Ajanınıza şunu söyleyin: "Seçilen becerileri genel olarak kur ve mevcut
+kuralları değiştirmeden bu projenin yalnızca eksik yapılandırmasını başlat."
+Ardından genel beceri yolunu kullanın:
 
 ```shell
-python .agents/skills/synchronize-git-repositories/scripts/configure_project.py bootstrap --project-path . --agent codex --apply --yes --json
-python .claude/skills/synchronize-git-repositories/scripts/configure_project.py bootstrap --project-path . --agent claude-code --apply --yes --json
+python ~/.agents/skills/synchronize-git-repositories/scripts/configure_project.py bootstrap --project-path . --agent codex --apply --yes --json
+python ~/.claude/skills/synchronize-git-repositories/scripts/configure_project.py bootstrap --project-path . --agent claude-code --apply --yes --json
 ```
 
 Eksik kurallar varsayılan olarak `feature/`, `bugfix/`, `release/`, `hotfix/`
 ve `feat`, `fix`, `refactor`, `docs`, `test`, `chore` commit türlerini kullanır.
 Projenin açıkça belirttiği önekler, dal rolleri ve commit biçimleri esas olmaya
-devam eder. Kalıcı dallar veya Git kancaları oluşturulmaz. Proje kapsamındaki
-yönetilen güncellemeler ilgili becerilere aynı başlangıç işlemini uygular;
+devam eder. Kalıcı dallar veya Git kancaları oluşturulmaz. Yönetilen genel
+güncellemeler aynı başlangıç işlemini açıkça seçilen etkin projeye uygular;
 onaylanmamış güncellemeler yalnızca bunu planlar.
 
-Proje kapsamındaki kurulumlarda, gözlemlenebilir varsayılanları yeterliyse yaşam
-döngüsü sözleşmesini hemen başlatın (ajanınıza uygun yolu kullanın):
+Gözlemlenebilir varsayılanları yeterliyse proje yaşam döngüsü sözleşmesini hemen
+başlatın (ajanınıza uygun yolu kullanın):
 
 ```shell
-python .agents/skills/execute-verified-development-lifecycle/scripts/development_lifecycle.py bootstrap --project-root . --agent codex --apply --yes --json
-python .claude/skills/execute-verified-development-lifecycle/scripts/development_lifecycle.py bootstrap --project-root . --agent claude-code --apply --yes --json
+python ~/.agents/skills/execute-verified-development-lifecycle/scripts/development_lifecycle.py bootstrap --project-root . --agent codex --apply --yes --json
+python ~/.claude/skills/execute-verified-development-lifecycle/scripts/development_lifecycle.py bootstrap --project-root . --agent claude-code --apply --yes --json
 ```
 
 Market/eklenti kurulumları geneldir ve etkin proje kökleri yoktur; bu nedenle
 beceri aynı başlangıç işlemini projedeki ilk kullanımda yapar.
 
-Codex, proje becerilerini `.agents/skills/` altında keşfeder ve `$skill-name`
-biçiminde çağırır. Claude Code bunları `.claude/skills/` altında keşfeder ve
-`/skill-name` biçiminde çağırır. Beceri talimatları ve paketlenmiş betikler
-ortaktır; tüketiciye özgü kural dosyaları ve çağırma sözdizimi kurulum sırasında
-seçilir.
+Desteklenen genel yollar Codex için `~/.agents/skills/`, Claude Code için
+`~/.claude/skills/` dizinleridir. Projelerde bu payload klasörlerinin dışında
+yalnızca yapılandırma, yönetilen kurallar ve kasıtlı proje ayarları tutulur.
 
 Depo ayrıca ChatGPT/Codex ve Claude Code için yalnızca beceriler içeren
 `kolabse-skills` eklentisi olarak paketlenir. `skills/` altındaki her klasör
@@ -159,37 +158,46 @@ varsa `@AGENTS.md` içeren en küçük `CLAUDE.md`, tek bir esas kural belgesini
 
 ## Kurulu becerileri güncelleme
 
-`skills` CLI, GitHub kaynağını ve içerik özetini `skills-lock.json` içine kaydeder.
-Projedeki tüm kurulumları kayıtlı kaynaklarından güncelleyin:
+`skills` CLI, genel kaynakları ve içerik özetlerini `~/.agents/.skill-lock.json`
+içine kaydeder. Genel kurulumları kayıtlı kaynaklarından güncelleyin:
 
 ```shell
-npx skills@1.5.22 update -p -y
+npx skills@1.5.22 update -g -y
 ```
 
 Tek bir beceriyi veya genel kurulumları güncelleyin:
 
 ```shell
-npx skills@1.5.22 update verify-before-push -p -y
+npx skills@1.5.22 update verify-before-push -g -y
 npx skills@1.5.22 update -g -y
 ```
 
+Eski proje kapsamlı kopyalar plan incelendikten sonra merkezileştirilmelidir.
+Geçiş önce genel kopyayı kurup doğrular, eski payload’ı yedekler ve proje
+yapılandırmasıyla ilgisiz becerileri korur:
+
+```shell
+python scripts/centralize_skill_installations.py plan --project-path . --json
+python scripts/centralize_skill_installations.py apply --project-path . --expected-plan-sha256 <plan-value> --yes --json
+```
+
 Sürüm belirtilmemiş bir `kolabse/skills` kilidi deponun varsayılan dalını izler;
-bir koleksiyon sürümünü sabitlemez. Güncelleme bunların yerine yazabileceği için
-`.agents/skills/` altındaki kopyalanmış dosyaları düzenlemeyin. Proje ve kullanıcı
-yapılandırması kurulu beceri klasörleri dışında kalır.
+bir koleksiyon sürümünü sabitlemez. Güncelleme yerine yazabileceği için genel
+payload kopyalarını düzenlemeyin. Proje ve kullanıcı yapılandırması kurulu
+beceri klasörleri dışında kalır.
 
 Klonlanmış bir çalışma kopyasından veya sürüm arşivinden, desteklenen proje
 yapılandırmasını tek bir açık işlemde güncelleyin ve taşıyın:
 
 ```shell
-python scripts/manage_installed_skills.py update --project-path . --yes --migrate
-python scripts/manage_installed_skills.py doctor --project-path . --json
+python scripts/manage_installed_skills.py update --scope global --project-path . --yes --migrate
+python scripts/manage_installed_skills.py doctor --scope global --project-path . --json
 ```
 
 Harici kurucuyu çağırmadan veya yapılandırmayı değiştirmeden tam seçimi önizleyin:
 
 ```shell
-python scripts/manage_installed_skills.py plan --project-path . --json
+python scripts/manage_installed_skills.py plan --scope global --project-path . --json
 ```
 
 Plan; kaynak kimliğini, mevcut ve hedef sürümleri, kökeni, geçiş adaylarını ve
@@ -198,12 +206,10 @@ Plan; kaynak kimliğini, mevcut ve hedef sürümleri, kökeni, geçiş adayları
 ekleyin; güncelleme ve geçiş sonuçları `schemas/manager-result.schema.json`
 şemasına uyar.
 
-Ad verilmediğinde yönetici, kurulu kolabse becerilerini proje kilidinden
-çözümler ve bu adları harici CLI'ye açıkça aktarır; ilgisiz proje becerileri
-güncellemeye asla dahil edilmez. Genel güncellemeler açık koleksiyon becerisi
-adları gerektirir. Proje güncellemeleri `doctor` ile aynı, hata halinde işlemi
-durduran tanıyla biter. `execute-verified-development-lifecycle` bir proje
-güncellemesinin parçası olduğunda yönetici, proje olguları yeterliyse eksik
+Ad verilmediğinde yönetici yalnızca genel kilitteki kolabse becerilerini çözümler;
+diğer genel beceriler dahil edilmez. Eski proje güncellemesi yalnızca bildirim
+ve geçiş için geçici yol olarak kalır. `execute-verified-development-lifecycle`
+genel olarak güncellendiğinde yönetici, proje olguları yeterliyse eksik
 yapılandırmasını da başlatır ve `created`, `configured` veya `blocked`
 yapılandırma sonucu döndürür.
 
@@ -223,8 +229,8 @@ Meta verisiz, v1.2 öncesi bir kurulumu ancak bildirilen kaynağını inceledikt
 sonra benimseyin:
 
 ```shell
-python scripts/manage_installed_skills.py status --project-path . --json
-python scripts/manage_installed_skills.py update --project-path . --yes --adopt-legacy
+python scripts/manage_installed_skills.py status --scope global --project-path . --json
+python scripts/manage_installed_skills.py update --scope global --project-path . --yes --adopt-legacy
 ```
 
 Benimseme bayrağı rastgele dosyaları güvenilir kılmaz: kaynak zaten
@@ -282,7 +288,7 @@ yedekleyin, ardından özgün kurulumdaki aynı beceriler ve ajan hedefleriyle
 gerekli sürüm etiketini yeniden kurun; örneğin:
 
 ```shell
-npx skills@1.5.22 add kolabse/skills@v1.1.0 --skill verify-before-push --agent codex --copy -y
+npx skills@1.5.22 add kolabse/skills@v1.1.0 --skill verify-before-push --agent codex --copy --global -y
 ```
 
 Bir sürüm açıkça eski sürüme geçişi belgelemedikçe yapılandırma geçişleri yalnızca
@@ -732,13 +738,13 @@ $orchestrate-agent-work Delegate these independent subtasks to agents and verify
 
 #### `synchronize-team-skills` (deneysel)
 
-Her ekip üyesinin proje kapsamındaki ajan becerilerini, proje belgelerindeki
-incelenmiş tek bir manifestle uyumlu tutun.
+Her ekip üyesinin genel becerilerini incelenmiş tek bir manifestle uyumlu tutun;
+proje yapılandırması yerel kalır.
 
 **Ne yapar:**
 
 - onaylı bir belge kökünde `team-agent-skills.md` oluşturur veya okur;
-- bildirilen Codex ve Claude Code becerilerini doğrulanmış proje kopyalarıyla
+- bildirilen Codex ve Claude Code becerilerini doğrulanmış genel kopyalarla
   karşılaştırır;
 - ortamı değiştirmeden eksik, eski, daha yeni, doğrulanmamış, proje geçersiz
   kılması ve korunan fazlalık durumlarını bildirir;
@@ -753,7 +759,7 @@ incelenmiş tek bir manifestle uyumlu tutun.
 - sırları, kullanıcı yapılandırmasını, makine yollarını veya eklenti kimlik
   doğrulamasını saklamak;
 - fazla becerileri kaldırmak, daha yeni kopyaları eski sürüme düşürmek veya
-  genel kurulumları değiştirmek;
+  eski proje kopyalarını onaysız silmek;
 - çalışan bir ajan görevinin yeni kurulan becerileri yeniden yüklediğini iddia etmek.
 
 **Nasıl çağrılır:**
@@ -762,6 +768,16 @@ incelenmiş tek bir manifestle uyumlu tutun.
 $synchronize-team-skills Check this project's installed skills against the reviewed team manifest.
 $synchronize-team-skills Align my project skills with the team documentation after showing the plan.
 $synchronize-team-skills Add maintain-project-digest to the reviewed team skill set.
+```
+
+#### `report-skill-feedback` (deneysel)
+
+Açık onaydan sonra gözlemlenen bir beceri kullanımı hakkında sınırlı ve kimliksizleştirilmiş bir rapor hazırlar. Taslak kod, tam konuşmalar, sırlar, adlar, yollar veya URL’ler içermez. Tamamı gösterilir ve yalnızca ikinci bir onaydan sonra `kolabse/skills` deposuna gönderilir; GitHub issue gönderen hesaba bağlıdır ve anonim değildir.
+
+**Aufruf / Invocation:**
+
+```text
+$report-skill-feedback Prepare a de-identified preview about this observed skill use; do not submit it yet.
 ```
 
 #### `notify-via-telegram`

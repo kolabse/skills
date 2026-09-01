@@ -35,6 +35,7 @@ kolabse が管理する、再利用可能なエージェントスキルです。
   - [調整とコミュニケーション](#調整とコミュニケーション)
     - [`orchestrate-agent-work`](#orchestrate-agent-work-実験的)
     - [`synchronize-team-skills`](#synchronize-team-skills-実験的)
+    - [`report-skill-feedback`](#report-skill-feedback-実験的)
     - [`notify-via-telegram`](#notify-via-telegram)
   - [インフラストラクチャと運用](#インフラストラクチャと運用)
     - [`operate-yandex-cloud`](#operate-yandex-cloud)
@@ -48,10 +49,10 @@ kolabse が管理する、再利用可能なエージェントスキルです。
 ## スキルのインストール
 
 複数のエージェントに対応する [`skills`](https://skills.sh) CLI を使用して、
-現在のプロジェクトに 1 つ以上のスキルをインストールします。
+現在のユーザー向けに 1 つ以上のスキルをグローバルインストールします。
 
 ```shell
-npx skills@latest add kolabse/skills
+npx skills@latest add kolabse/skills --global
 ```
 
 CLI は `skills/` 内のフォルダーを検出し、インストールするスキルを選択させ、
@@ -68,39 +69,39 @@ https://github.com/kolabse/skills/tree/main/skills/operate-yandex-cloud
 非対話型インストールでは、対象エージェントを明示的に選択します。
 
 ```shell
-npx skills@1.5.22 add kolabse/skills --agent codex --copy -y
-npx skills@1.5.22 add kolabse/skills --agent claude-code --copy -y
+npx skills@1.5.22 add kolabse/skills --agent codex --copy --global -y
+npx skills@1.5.22 add kolabse/skills --agent claude-code --copy --global -y
 ```
 
-プロジェクトへのインストールでは、エージェントに「選択したスキルをインストールし、
-既存のルールを置き換えずに、不足しているプロジェクトの既定値を初期化してください」と依頼します。
-外部インストーラーの完了後、使用するエージェントの Git ルールを初期設定します。
+エージェントに「選択したスキルをグローバルにインストールし、既存のルールを置き換えず、
+このプロジェクトで不足している設定だけを初期化してください」と依頼します。
+外部インストーラーの完了後、グローバルスキルのパスを使用します。
 
 ```shell
-python .agents/skills/synchronize-git-repositories/scripts/configure_project.py bootstrap --project-path . --agent codex --apply --yes --json
-python .claude/skills/synchronize-git-repositories/scripts/configure_project.py bootstrap --project-path . --agent claude-code --apply --yes --json
+python ~/.agents/skills/synchronize-git-repositories/scripts/configure_project.py bootstrap --project-path . --agent codex --apply --yes --json
+python ~/.claude/skills/synchronize-git-repositories/scripts/configure_project.py bootstrap --project-path . --agent claude-code --apply --yes --json
 ```
 
 規約が未設定の場合、接頭辞は `feature/`、`bugfix/`、`release/`、`hotfix/`、
 コミットタイプは `feat`、`fix`、`refactor`、`docs`、`test`、`chore` が既定値です。
 プロジェクトで明示された接頭辞、ブランチの役割、コミット形式が優先されます。
-永続的なブランチや Git フックは作成しません。プロジェクトスコープの管理付き更新でも、
-該当スキルに同じ初期設定を適用します。未確認の更新では、その計画だけを行います。
+永続的なブランチや Git フックは作成しません。管理されたグローバル更新でも、明示的に選択した
+アクティブなプロジェクトに同じ初期設定を適用します。未確認の更新では計画だけを行います。
 
-プロジェクトスコープのインストールでは、観測可能な既定値で十分な場合、
-ライフサイクル契約を直ちに初期化します。使用するエージェントのパスを選んでください。
+観測可能な既定値で十分な場合、プロジェクトのライフサイクル契約を直ちに初期化します。
+使用するエージェントのパスを選んでください。
 
 ```shell
-python .agents/skills/execute-verified-development-lifecycle/scripts/development_lifecycle.py bootstrap --project-root . --agent codex --apply --yes --json
-python .claude/skills/execute-verified-development-lifecycle/scripts/development_lifecycle.py bootstrap --project-root . --agent claude-code --apply --yes --json
+python ~/.agents/skills/execute-verified-development-lifecycle/scripts/development_lifecycle.py bootstrap --project-root . --agent codex --apply --yes --json
+python ~/.claude/skills/execute-verified-development-lifecycle/scripts/development_lifecycle.py bootstrap --project-root . --agent claude-code --apply --yes --json
 ```
 
 マーケットプレイスやプラグインによるインストールはグローバルであり、有効なプロジェクトルートがないため、
 スキルがプロジェクトで初めて使われたときに、同じ初期設定を行います。
 
-Codex は `.agents/skills/` 内のプロジェクトスキルを検出し、`$skill-name` として呼び出します。
-Claude Code は `.claude/skills/` 内で検出し、`/skill-name` として呼び出します。
-スキルの指示と同梱スクリプトは共有され、エージェント固有のルールファイルと呼び出し構文は設定時に選択されます。
+サポートされるグローバルパスは、Codex の `~/.agents/skills/` と Claude Code の
+`~/.claude/skills/` です。プロジェクトには、設定、管理されたルール、意図的な個別設定だけを
+これらの payload フォルダーの外に保持します。
 
 このリポジトリは、ChatGPT/Codex と Claude Code 向けに、スキルのみを含む `kolabse-skills`
 プラグインとしてもパッケージ化されています。`skills/` 内のすべてのフォルダーが含まれます。
@@ -156,37 +157,46 @@ Claude Code は `AGENTS.md` ではなく `CLAUDE.md` を読みます。プロジ
 
 ## インストール済みスキルの更新
 
-`skills` CLI は GitHub ソースとコンテンツハッシュを `skills-lock.json` に記録します。
-記録されたソースから、プロジェクトの全インストールを更新します。
+`skills` CLI はグローバルソースとコンテンツハッシュを `~/.agents/.skill-lock.json` に記録します。
+記録されたソースからグローバルインストールを更新します。
 
 ```shell
-npx skills@1.5.22 update -p -y
+npx skills@1.5.22 update -g -y
 ```
 
 1 つのスキルまたはグローバルインストールを更新するには、次を実行します。
 
 ```shell
-npx skills@1.5.22 update verify-before-push -p -y
+npx skills@1.5.22 update verify-before-push -g -y
 npx skills@1.5.22 update -g -y
+```
+
+従来のプロジェクト内コピーは、計画を確認してからグローバルインストールへ移行します。
+移行は先にグローバルコピーをインストールして検証し、旧 payload をバックアップしてから、
+プロジェクト設定と無関係なスキルを保持したまま削除します。
+
+```shell
+python scripts/centralize_skill_installations.py plan --project-path . --json
+python scripts/centralize_skill_installations.py apply --project-path . --expected-plan-sha256 <plan-value> --yes --json
 ```
 
 参照を指定しない `kolabse/skills` ロックは、リポジトリの既定ブランチを追跡し、
 コレクションのリリースを固定しません。更新により置き換えられる可能性があるため、
-`.agents/skills/` 配下にコピーされたファイルを編集しないでください。
+コピーされたグローバル payload は編集しないでください。
 プロジェクト設定とユーザー設定は、インストール済みスキルフォルダーの外に保持されます。
 
 クローンしたチェックアウトまたはリリースアーカイブから、1 回の明示的な操作で更新と
 対応するプロジェクト設定の移行を行えます。
 
 ```shell
-python scripts/manage_installed_skills.py update --project-path . --yes --migrate
-python scripts/manage_installed_skills.py doctor --project-path . --json
+python scripts/manage_installed_skills.py update --scope global --project-path . --yes --migrate
+python scripts/manage_installed_skills.py doctor --scope global --project-path . --json
 ```
 
 外部インストーラーの起動や設定の変更を行わずに、正確な選択内容を事前確認します。
 
 ```shell
-python scripts/manage_installed_skills.py plan --project-path . --json
+python scripts/manage_installed_skills.py plan --scope global --project-path . --json
 ```
 
 計画には、ソースの識別情報、現行および対象バージョン、来歴、移行候補、
@@ -194,11 +204,9 @@ python scripts/manage_installed_skills.py plan --project-path . --json
 そのスキーマは `schemas/manager-plan.schema.json` です。`update` に `--json` を追加すると、
 更新と移行の結果は `schemas/manager-result.schema.json` に従います。
 
-名前を指定しない場合、マネージャーはプロジェクトのロックからインストール済みの kolabse スキルを解決し、
-その名前を外部 CLI に明示的に渡します。無関係なプロジェクトスキルが更新対象に含まれることはありません。
-グローバル更新では、コレクションのスキル名を明示する必要があります。
-プロジェクト更新は、`doctor` と同じ、安全側に停止する診断で完了します。
-プロジェクト更新に `execute-verified-development-lifecycle` が含まれる場合、マネージャーは、
+名前を指定しない場合、マネージャーはグローバルロック内の kolabse スキルだけを解決し、
+無関係なグローバルスキルを更新対象に含めません。従来のプロジェクト更新は、通知と移行のための
+移行期間の経路としてのみ残ります。`execute-verified-development-lifecycle` をグローバル更新する場合、マネージャーは、
 プロジェクトの事実が十分であれば不足している設定も初期化し、設定結果として
 `created`、`configured`、または `blocked` を返します。
 
@@ -214,8 +222,8 @@ Telegram のユーザー設定も移行する場合に限り、`--include-user-c
 v1.2 より前のメタデータを持たないインストールは、報告されたソースを確認した後にのみ引き継ぎます。
 
 ```shell
-python scripts/manage_installed_skills.py status --project-path . --json
-python scripts/manage_installed_skills.py update --project-path . --yes --adopt-legacy
+python scripts/manage_installed_skills.py status --scope global --project-path . --json
+python scripts/manage_installed_skills.py update --scope global --project-path . --yes --adopt-legacy
 ```
 
 引き継ぎフラグは、任意のファイルを無条件に承認するものではありません。ソースがすでに `kolabse/skills` に
@@ -265,7 +273,7 @@ python scripts/manage_installed_skills.py status --scope global --agent claude-c
 元のインストールと同じスキルおよび対象エージェントを指定して、必要なリリースタグを再インストールします。例：
 
 ```shell
-npx skills@1.5.22 add kolabse/skills@v1.1.0 --skill verify-before-push --agent codex --copy -y
+npx skills@1.5.22 add kolabse/skills@v1.1.0 --skill verify-before-push --agent codex --copy --global -y
 ```
 
 リリースでダウングレードが明記されていない限り、設定の移行は前方のみです。
@@ -661,13 +669,13 @@ $orchestrate-agent-work Delegate these independent subtasks to agents and verify
 
 #### `synchronize-team-skills` 実験的
 
-各チームメンバーのプロジェクトスコープのエージェントスキルを、プロジェクトドキュメント内の
-レビュー済みの単一マニフェストに合わせて維持します。
+各チームメンバーのグローバルスキルを、レビュー済みの単一マニフェストに合わせて維持します。
+プロジェクト設定はローカルに残します。
 
 **行うこと：**
 
 - 承認済みのドキュメントルートで `team-agent-skills.md` を作成または読み取ります。
-- 宣言された Codex および Claude Code のスキルを、検証済みのプロジェクト内コピーと比較します。
+- 宣言された Codex および Claude Code のスキルを、検証済みのグローバルコピーと比較します。
 - 環境を変更せずに、欠落、古い、新しい、未検証、プロジェクト上書き、保持された追加分の状態を報告します。
 - 固定された 1 つのコレクションバージョンについて、マニフェストのダイジェストに結び付けたインストール計画を構築します。
 - 承認後、レビュー済みのセットだけをインストールし、観測可能な状態を検証します。
@@ -676,7 +684,7 @@ $orchestrate-agent-work Delegate these independent subtasks to agents and verify
 
 - あるワークステーションの偶発的な状態を、自動でチームポリシーにすること。
 - 秘密情報、ユーザー設定、マシンのパス、プラグイン認証を保存すること。
-- 追加のスキルを削除したり、新しいコピーをダウングレードしたり、グローバルインストールを変更したりすること。
+- 追加のスキルを削除したり、新しいコピーをダウングレードしたり、確認なしに旧プロジェクトコピーを削除したりすること。
 - 実行中のエージェントタスクが、新しくインストールしたスキルを再読み込みしたと主張すること。
 
 **呼び出し方法：**
@@ -685,6 +693,16 @@ $orchestrate-agent-work Delegate these independent subtasks to agents and verify
 $synchronize-team-skills Check this project's installed skills against the reviewed team manifest.
 $synchronize-team-skills Align my project skills with the team documentation after showing the plan.
 $synchronize-team-skills Add maintain-project-digest to the reviewed team skill set.
+```
+
+#### `report-skill-feedback` 実験的
+
+明示的な同意を得てから、確認されたスキル利用について範囲を限定した非識別レポートを作成します。コード、会話全文、秘密情報、氏名、パス、URL は含めません。全文をプレビューし、別の送信承認を得た場合にのみ `kolabse/skills` へ送信します。GitHub Issue は投稿アカウントに紐づき、匿名ではありません。
+
+**Aufruf / Invocation:**
+
+```text
+$report-skill-feedback Prepare a de-identified preview about this observed skill use; do not submit it yet.
 ```
 
 #### `notify-via-telegram`

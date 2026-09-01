@@ -1,0 +1,39 @@
+{
+  "skill": "report-skill-feedback",
+  "positive": [
+    {
+      "prompt": "Сформируй обезличенный отчёт о том, почему review-code-changes не запустился автоматически, и сначала покажи его мне.",
+      "reason": "The user requests a privacy-bounded report about observed skill invocation behavior."
+    },
+    {
+      "prompt": "Отправь разработчикам коллекции уже проверенный мной отчёт о сбое навыка.",
+      "reason": "Submitting an already reviewed feedback report is the skill's explicit external mode."
+    },
+    {
+      "prompt": "Хочу сообщить, что навык сработал только после ручной настройки и повторного запуска.",
+      "reason": "Manual intervention and retry evidence belong in structured skill feedback."
+    },
+    {
+      "prompt": "Собери отзыв об успешном использовании экспериментального навыка, не включая код и переписку.",
+      "reason": "Successful uses are acceptance evidence and the request includes the privacy boundary."
+    }
+  ],
+  "negative": [
+    {
+      "prompt": "Создай issue с предложением нового навыка из правил этого проекта.",
+      "reason": "Reusable candidate contribution belongs to discover-skill-candidates, not usage feedback."
+    },
+    {
+      "prompt": "Покажи какие версии навыков установлены на компьютере.",
+      "reason": "Installation inventory does not request a feedback report."
+    },
+    {
+      "prompt": "Отправь разработчикам полный лог и всю переписку для диагностики.",
+      "reason": "Whole logs and chats violate the bounded de-identification contract."
+    },
+    {
+      "prompt": "Исправь ошибку в навыке notify-via-telegram.",
+      "reason": "Implementing a fix is not the same as preparing a user feedback report."
+    }
+  ]
+}

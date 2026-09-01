@@ -23,10 +23,15 @@ class TeamSkillsTests(unittest.TestCase):
     def setUp(self) -> None:
         self.temp = tempfile.TemporaryDirectory()
         self.root = Path(self.temp.name)
+        self.home = self.root / "home"
+        self.home.mkdir()
         self.docs = self.root / "docs"
         self.docs.mkdir()
+        self.home_patch = mock.patch.object(team_skills, "user_home", return_value=self.home)
+        self.home_patch.start()
 
     def tearDown(self) -> None:
+        self.home_patch.stop()
         self.temp.cleanup()
 
     def configure_args(self, **overrides: object) -> argparse.Namespace:
@@ -59,7 +64,7 @@ class TeamSkillsTests(unittest.TestCase):
         return argparse.Namespace(**values)
 
     def install(self, name: str, version: str = "1.18.0", agent: str = "codex") -> Path:
-        layout = self.root / team_skills.AGENT_LAYOUTS[agent]
+        layout = self.home / team_skills.AGENT_LAYOUTS[agent]
         skill = layout / name
         skill.mkdir(parents=True, exist_ok=True)
         metadata = {
@@ -74,17 +79,18 @@ class TeamSkillsTests(unittest.TestCase):
             json.dumps(metadata), encoding="utf-8"
         )
         (skill / "SKILL.md").write_text("fixture", encoding="utf-8")
-        lock_path = self.root / "skills-lock.json"
+        lock_path = self.home / ".agents/.skill-lock.json"
         lock = (
             json.loads(lock_path.read_text(encoding="utf-8"))
             if lock_path.is_file()
-            else {"version": 1, "skills": {}}
+            else {"version": 3, "skills": {}}
         )
         lock["skills"][name] = {
             "source": "kolabse/skills",
             "sourceType": "github",
-            "computedHash": team_skills.skill_folder_hash(skill),
+            "skillFolderHash": team_skills.skill_folder_hash(skill),
         }
+        lock_path.parent.mkdir(parents=True, exist_ok=True)
         lock_path.write_text(json.dumps(lock), encoding="utf-8")
         return skill
 
@@ -181,9 +187,9 @@ class TeamSkillsTests(unittest.TestCase):
             "https://www.github.com/kolabse/skills.git"
         )
         metadata_path.write_text(json.dumps(metadata), encoding="utf-8")
-        lock_path = self.root / "skills-lock.json"
+        lock_path = self.home / ".agents/.skill-lock.json"
         lock = json.loads(lock_path.read_text(encoding="utf-8"))
-        lock["skills"]["verify-before-push"]["computedHash"] = (
+        lock["skills"]["verify-before-push"]["skillFolderHash"] = (
             team_skills.skill_folder_hash(skill)
         )
         lock_path.write_text(json.dumps(lock), encoding="utf-8")
@@ -235,8 +241,8 @@ class TeamSkillsTests(unittest.TestCase):
         status = team_skills.inspect(self.root, str(self.docs))
 
         self.assertEqual(
-            str(self.root.resolve() / team_skills.AGENT_LAYOUTS["codex"]),
-            status["agents"][0]["layout"],
+            Path(self.home.resolve() / team_skills.AGENT_LAYOUTS["codex"]),
+            Path(status["agents"][0]["layout"]),
         )
 
     def test_status_reports_versions_extras_and_project_overrides_without_writes(self) -> None:
@@ -254,7 +260,7 @@ class TeamSkillsTests(unittest.TestCase):
         self.assertEqual("current", states["synchronize-team-skills"]["state"])
         self.assertEqual("current", states["synchronize-git-repositories"]["state"])
         self.assertEqual("outdated", states["verify-before-push"]["state"])
-        self.assertTrue(states["verify-before-push"]["project_override"])
+        self.assertFalse(states["verify-before-push"]["project_override"])
         self.assertEqual(["notify-via-telegram"], [item["name"] for item in status["agents"][0]["extras"]])
         self.assertFalse(status["ready"])
         self.assertEqual(before, after)
@@ -263,7 +269,7 @@ class TeamSkillsTests(unittest.TestCase):
         team_skills.configure(self.configure_args())
         skill = self.install("verify-before-push")
         checkout = self.local_checkout("verify-before-push", skill)
-        lock_path = self.root / "skills-lock.json"
+        lock_path = self.home / ".agents/.skill-lock.json"
         lock = json.loads(lock_path.read_text(encoding="utf-8"))
         lock["skills"]["verify-before-push"].update(
             {"source": str(checkout), "sourceType": "local"}
@@ -284,13 +290,13 @@ class TeamSkillsTests(unittest.TestCase):
         skill = self.install("verify-before-push")
         checkout = self.local_checkout("verify-before-push", skill)
         (skill / "tampered.txt").write_text("tampered", encoding="utf-8")
-        lock_path = self.root / "skills-lock.json"
+        lock_path = self.home / ".agents/.skill-lock.json"
         lock = json.loads(lock_path.read_text(encoding="utf-8"))
         lock["skills"]["verify-before-push"].update(
             {
                 "source": str(checkout),
                 "sourceType": "local",
-                "computedHash": team_skills.skill_folder_hash(skill),
+                "skillFolderHash": team_skills.skill_folder_hash(skill),
             }
         )
         lock_path.write_text(json.dumps(lock), encoding="utf-8")
@@ -316,6 +322,7 @@ class TeamSkillsTests(unittest.TestCase):
         self.assertEqual(["verify-before-push"], plan["installers"][0]["selected"])
         argv = plan["installers"][0]["argv"]
         self.assertIn("kolabse/skills@v1.18.0", argv)
+        self.assertIn("--global", argv)
         self.assertNotIn("synchronize-team-skills", argv)
         self.assertNotIn("synchronize-git-repositories", argv)
         self.assertEqual(1, argv.count("--skill"))
@@ -327,13 +334,13 @@ class TeamSkillsTests(unittest.TestCase):
         self.install("synchronize-team-skills")
         skill = self.install("verify-before-push", "1.17.0")
         checkout = self.local_checkout("verify-before-push", skill)
-        lock_path = self.root / "skills-lock.json"
+        lock_path = self.home / ".agents/.skill-lock.json"
         lock = json.loads(lock_path.read_text(encoding="utf-8"))
         lock["skills"]["verify-before-push"].update(
             {
                 "source": str(checkout),
                 "sourceType": "local",
-                "computedHash": team_skills.skill_folder_hash(skill),
+                "skillFolderHash": team_skills.skill_folder_hash(skill),
             }
         )
         lock_path.write_text(json.dumps(lock), encoding="utf-8")
@@ -348,12 +355,12 @@ class TeamSkillsTests(unittest.TestCase):
         self.install("synchronize-git-repositories")
         self.install("synchronize-team-skills")
         checkout = self.local_checkout("verify-before-push")
-        lock_path = self.root / "skills-lock.json"
+        lock_path = self.home / ".agents/.skill-lock.json"
         lock = json.loads(lock_path.read_text(encoding="utf-8"))
         lock["skills"]["verify-before-push"] = {
             "source": str(checkout),
             "sourceType": "local",
-            "computedHash": "0" * 64,
+            "skillFolderHash": "0" * 64,
         }
         lock_path.write_text(json.dumps(lock), encoding="utf-8")
 
@@ -365,7 +372,7 @@ class TeamSkillsTests(unittest.TestCase):
     def test_plan_blocks_unverified_collision_and_newer_version(self) -> None:
         team_skills.configure(self.configure_args())
         self.install("synchronize-git-repositories")
-        (self.root / ".agents/skills/synchronize-team-skills").mkdir(parents=True)
+        (self.home / ".agents/skills/synchronize-team-skills").mkdir(parents=True)
         self.install("verify-before-push", "2.0.0")
 
         plan = team_skills.make_plan(self.root, str(self.docs))
@@ -391,7 +398,9 @@ class TeamSkillsTests(unittest.TestCase):
 
     def test_malformed_lock_file_fails_closed(self) -> None:
         team_skills.configure(self.configure_args())
-        (self.root / "skills-lock.json").write_text("{broken", encoding="utf-8")
+        lock_path = self.home / ".agents/.skill-lock.json"
+        lock_path.parent.mkdir(parents=True, exist_ok=True)
+        lock_path.write_text("{broken", encoding="utf-8")
 
         with self.assertRaisesRegex(team_skills.TeamSkillsError, "invalid"):
             team_skills.inspect(self.root, str(self.docs))
@@ -404,7 +413,7 @@ class TeamSkillsTests(unittest.TestCase):
             "verify-before-push",
         ):
             self.install(name)
-        drifted = self.root / ".agents/skills/verify-before-push/SKILL.md"
+        drifted = self.home / ".agents/skills/verify-before-push/SKILL.md"
         drifted.write_text("changed after installation", encoding="utf-8")
 
         plan = team_skills.make_plan(self.root, str(self.docs))
@@ -420,7 +429,7 @@ class TeamSkillsTests(unittest.TestCase):
             "verify-before-push",
         ):
             self.install(name)
-        cache = self.root / ".agents/skills/synchronize-team-skills/scripts/__pycache__"
+        cache = self.home / ".agents/skills/synchronize-team-skills/scripts/__pycache__"
         cache.mkdir(parents=True)
         (cache / "team_skills.cpython-313.pyc").write_bytes(b"runtime cache")
 
@@ -431,7 +440,7 @@ class TeamSkillsTests(unittest.TestCase):
 
     def test_unsafe_layout_does_not_scan_extras(self) -> None:
         team_skills.configure(self.configure_args())
-        layout = self.root / ".agents/skills"
+        layout = self.home / ".agents/skills"
         (layout / "notify-via-telegram").mkdir(parents=True)
 
         with mock.patch.object(Path, "is_symlink", return_value=True), mock.patch.object(
@@ -445,7 +454,7 @@ class TeamSkillsTests(unittest.TestCase):
 
     def test_symlinked_extra_is_reported_and_blocks_plan(self) -> None:
         team_skills.configure(self.configure_args())
-        layout = self.root / ".agents/skills"
+        layout = self.home / ".agents/skills"
         extra_path = layout / "notify-via-telegram"
         extra_path.mkdir(parents=True)
         resolved_extra_path = extra_path.resolve()
@@ -508,7 +517,7 @@ class TeamSkillsTests(unittest.TestCase):
         self.assertTrue(result["ready"])
         self.assertTrue(result["new_task_required"])
         self.assertEqual(1, run.call_count)
-        self.assertTrue((self.root / ".agents/skills/notify-via-telegram").is_dir())
+        self.assertTrue((self.home / ".agents/skills/notify-via-telegram").is_dir())
 
     def test_ambiguous_documentation_fails_closed(self) -> None:
         (self.root / "documentation").mkdir()

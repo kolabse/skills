@@ -133,9 +133,14 @@ malformate, attuali e precedenti.
 - Verifica l'installazione mediante copia e l'aggiornamento dalla più vecchia
   versione precedente supportata attraverso la CLI `skills` fissata, sia per
   `codex` sia per `claude-code`.
-- Mantieni la configurazione del progetto e dell'utente fuori dalle cartelle
+- Installa globalmente la raccolta per ogni agente. Mantieni la configurazione,
+  le regole gestite e le impostazioni intenzionali del progetto fuori dalle cartelle
   delle skill installate. Non fare mai creare silenziosamente a un programma
   di aggiornamento la configurazione per una skill non utilizzata.
+- Dopo un aggiornamento rileva le copie legacy del progetto e mostra un avviso di
+  centralizzazione. La migrazione deve pianificare senza scrivere, verificare le
+  copie globali prima della rimozione, preservare skill estranee e configurazione,
+  conservare un backup recuperabile e richiedere l'approvazione del piano esaminato.
 - Documenta nel README e nel changelog le migrazioni necessarie e i limiti del
   ripristino. Considera non supportata la retrocessione della configurazione
   se non è stata verificata con test.
@@ -163,7 +168,7 @@ dell'altro. Quando un agente non dispone di una capacità, come l'enumerazione
 delle attività di Codex Desktop, segnala come non supportata quella specifica
 operazione mantenendo il sottoinsieme portabile.
 
-Criterio di completamento: entrambe le installazioni per gli agenti destinatari
+Criterio di completamento: entrambe le installazioni globali per gli agenti destinatari
 contengono payload delle skill identici, rispettano i layout nativi delle regole
 di progetto e delle skill, mantengono invariati i valori predefiniti Codex e le
 evidenze degli smoke test nominano esplicitamente entrambi gli agenti.

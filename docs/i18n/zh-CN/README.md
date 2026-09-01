@@ -35,6 +35,7 @@
   - [协调与沟通](#协调与沟通)
     - [`orchestrate-agent-work`](#orchestrate-agent-work-实验性)
     - [`synchronize-team-skills`](#synchronize-team-skills-实验性)
+    - [`report-skill-feedback`](#report-skill-feedback实验性)
     - [`notify-via-telegram`](#notify-via-telegram)
   - [基础设施与运维](#基础设施与运维)
     - [`operate-yandex-cloud`](#operate-yandex-cloud)
@@ -47,10 +48,10 @@
 
 ## 安装技能
 
-使用跨代理的 [`skills`](https://skills.sh) CLI，将一个或多个技能安装到当前项目：
+使用跨代理的 [`skills`](https://skills.sh) CLI，为当前用户全局安装一个或多个技能：
 
 ```shell
-npx skills@latest add kolabse/skills
+npx skills@latest add kolabse/skills --global
 ```
 
 该 CLI 会发现 `skills/` 下的文件夹，让你选择要安装的技能，并将其复制到所选编码代理中。
@@ -65,34 +66,33 @@ https://github.com/kolabse/skills/tree/main/skills/operate-yandex-cloud
 非交互式安装时，请明确选择使用方：
 
 ```shell
-npx skills@1.5.22 add kolabse/skills --agent codex --copy -y
-npx skills@1.5.22 add kolabse/skills --agent claude-code --copy -y
+npx skills@1.5.22 add kolabse/skills --agent codex --copy --global -y
+npx skills@1.5.22 add kolabse/skills --agent claude-code --copy --global -y
 ```
 
-在项目中安装时，可向代理提出：“安装所选技能并初始化缺失的项目默认值，不要替换我们已有的规则。”
-外部安装程序完成后，为你的代理引导初始化 Git 规则：
+向代理提出：“全局安装所选技能，只初始化此项目缺失的配置，不要替换已有规则。”
+外部安装程序完成后，使用技能的全局路径：
 
 ```shell
-python .agents/skills/synchronize-git-repositories/scripts/configure_project.py bootstrap --project-path . --agent codex --apply --yes --json
-python .claude/skills/synchronize-git-repositories/scripts/configure_project.py bootstrap --project-path . --agent claude-code --apply --yes --json
+python ~/.agents/skills/synchronize-git-repositories/scripts/configure_project.py bootstrap --project-path . --agent codex --apply --yes --json
+python ~/.claude/skills/synchronize-git-repositories/scripts/configure_project.py bootstrap --project-path . --agent claude-code --apply --yes --json
 ```
 
 缺失的约定默认使用 `feature/`、`bugfix/`、`release/`、`hotfix/` 和提交类型 `feat`、`fix`、`refactor`、`docs`、`test`、`chore`。
 项目明确指定的前缀、分支角色和提交格式仍具有权威性。不会创建持久分支或 Git 钩子。
-项目范围的受管理更新会为相关技能应用同样的引导初始化；尚未确认的更新只会生成计划。
+受管理的全局更新会为明确选择的活动项目应用同样的引导初始化；尚未确认的更新只会生成计划。
 
-项目范围的安装中，当可观察的默认值足够时，应立即初始化生命周期约定（使用对应代理的路径）：
+当可观察的默认值足够时，应立即初始化项目生命周期约定（使用对应代理的路径）：
 
 ```shell
-python .agents/skills/execute-verified-development-lifecycle/scripts/development_lifecycle.py bootstrap --project-root . --agent codex --apply --yes --json
-python .claude/skills/execute-verified-development-lifecycle/scripts/development_lifecycle.py bootstrap --project-root . --agent claude-code --apply --yes --json
+python ~/.agents/skills/execute-verified-development-lifecycle/scripts/development_lifecycle.py bootstrap --project-root . --agent codex --apply --yes --json
+python ~/.claude/skills/execute-verified-development-lifecycle/scripts/development_lifecycle.py bootstrap --project-root . --agent claude-code --apply --yes --json
 ```
 
 市场/插件安装是全局的，没有活动的项目根目录，因此技能会在首次用于项目时执行同样的引导初始化。
 
-Codex 在 `.agents/skills/` 下发现项目技能，并以 `$skill-name` 调用。
-Claude Code 在 `.claude/skills/` 下发现技能，并以 `/skill-name` 调用。
-技能指令和随附脚本是共享的；使用方专用的规则文件和调用语法在设置时选择。
+支持的全局路径为 Codex 的 `~/.agents/skills/` 和 Claude Code 的
+`~/.claude/skills/`。项目只在这些 payload 文件夹之外保存配置、受管理规则和有意设置的项目选项。
 
 本仓库还打包为面向 ChatGPT/Codex 和 Claude Code、仅包含技能的 `kolabse-skills` 插件。
 `skills/` 下的每个文件夹都包含在内。跨代理的 `npx skills` 安装独立于两种插件格式，仍可使用。
@@ -138,41 +138,50 @@ Claude Code 读取 `CLAUDE.md`，而非 `AGENTS.md`；如果项目已有共享�
 
 ## 更新已安装的技能
 
-`skills` CLI 在 `skills-lock.json` 中记录 GitHub 来源和内容哈希。根据记录的来源更新所有项目安装：
+`skills` CLI 在 `~/.agents/.skill-lock.json` 中记录全局来源和内容哈希。
+根据记录的来源更新全局安装：
 
 ```shell
-npx skills@1.5.22 update -p -y
+npx skills@1.5.22 update -g -y
 ```
 
 更新单个技能或全局安装：
 
 ```shell
-npx skills@1.5.22 update verify-before-push -p -y
+npx skills@1.5.22 update verify-before-push -g -y
 npx skills@1.5.22 update -g -y
 ```
 
+旧的项目级副本必须在审阅计划后迁移到全局安装。迁移会先安装并验证
+全局副本，再备份旧 payload，同时保留项目配置和无关技能：
+
+```shell
+python scripts/centralize_skill_installations.py plan --project-path . --json
+python scripts/centralize_skill_installations.py apply --project-path . --expected-plan-sha256 <plan-value> --yes --json
+```
+
 未限定版本的 `kolabse/skills` 锁记录跟随仓库默认分支；它不会固定集合的发布版本。
-不要编辑 `.agents/skills/` 下复制的文件，因为更新可能会替换它们。项目和用户配置保留在已安装技能文件夹之外。
+不要编辑复制的全局 payload，因为更新可能会替换它们。项目和用户配置保留在已安装技能文件夹之外。
 
 从克隆的检出目录或发布归档中，通过一次显式操作更新并迁移受支持的项目配置：
 
 ```shell
-python scripts/manage_installed_skills.py update --project-path . --yes --migrate
-python scripts/manage_installed_skills.py doctor --project-path . --json
+python scripts/manage_installed_skills.py update --scope global --project-path . --yes --migrate
+python scripts/manage_installed_skills.py doctor --scope global --project-path . --json
 ```
 
 预览确切的选择，不调用外部安装程序，也不更改配置：
 
 ```shell
-python scripts/manage_installed_skills.py plan --project-path . --json
+python scripts/manage_installed_skills.py plan --scope global --project-path . --json
 ```
 
 计划报告来源身份、当前和目标版本、来源信息、迁移候选项，以及 `update`、`unchanged`、`adopt-and-update` 或 `blocked` 操作。
 其模式为 `schemas/manager-plan.schema.json`。为 `update` 添加 `--json`；更新和迁移结果遵循 `schemas/manager-result.schema.json`。
 
-未指定名称时，管理器从项目锁文件解析已安装的 kolabse 技能，并将这些名称显式传给外部 CLI；无关的项目技能绝不纳入更新。
-全局更新要求显式指定集合技能名称。项目更新最后会执行与 `doctor` 相同的严格诊断，无法验证时拒绝继续。
-当项目更新包含 `execute-verified-development-lifecycle` 时，如果项目事实足够，管理器还会引导初始化其缺失配置，并返回 `created`、`configured` 或 `blocked` 配置结果。
+未指定名称时，管理器只从全局锁文件解析 kolabse 技能；无关的全局技能绝不纳入更新。
+旧的项目更新仅作为显示迁移通知的过渡路径。全局更新包含
+`execute-verified-development-lifecycle` 时，如果项目事实足够，管理器还会初始化缺失配置，并返回 `created`、`configured` 或 `blocked`。
 
 只有在也应迁移 Telegram 用户配置时，才添加 `--include-user-config`。
 `status` 和 `doctor` 为只读。`migrate` 仅更改已存在的配置文件；不会配置未使用的技能。
@@ -184,8 +193,8 @@ python scripts/manage_installed_skills.py plan --project-path . --json
 只有在审查所报告的来源后，才接纳 v1.2 之前没有元数据的安装：
 
 ```shell
-python scripts/manage_installed_skills.py status --project-path . --json
-python scripts/manage_installed_skills.py update --project-path . --yes --adopt-legacy
+python scripts/manage_installed_skills.py status --scope global --project-path . --json
+python scripts/manage_installed_skills.py update --scope global --project-path . --yes --adopt-legacy
 ```
 
 接纳标志不会使任意文件都获得认可：来源必须已可规范化为 `kolabse/skills` 或通过本地检出验证，且常规更新后诊断必须验证已安装的元数据。
@@ -228,7 +237,7 @@ python scripts/manage_installed_skills.py status --scope global --agent claude-c
 若要回滚技能文件，先备份项目/用户配置，再以原始安装相同的技能和代理目标重新安装所需发布标签，例如：
 
 ```shell
-npx skills@1.5.22 add kolabse/skills@v1.1.0 --skill verify-before-push --agent codex --copy -y
+npx skills@1.5.22 add kolabse/skills@v1.1.0 --skill verify-before-push --agent codex --copy --global -y
 ```
 
 除非某个发布版本明确记录支持降级，否则配置迁移只能向前进行。
@@ -598,12 +607,12 @@ $orchestrate-agent-work Delegate these independent subtasks to agents and verify
 
 #### `synchronize-team-skills` （实验性）
 
-使每名团队成员在项目范围内的代理技能，与项目文档中一份经过审查的清单保持一致。
+使每名团队成员的全局技能与项目文档中经过审查的清单保持一致；项目配置仍保留在本地。
 
 **功能：**
 
 - 在已批准的文档根目录中创建或读取 `team-agent-skills.md`；
-- 将声明的 Codex 和 Claude Code 技能与已验证的项目副本进行比较；
+- 将声明的 Codex 和 Claude Code 技能与已验证的全局副本进行比较；
 - 在不改变环境的情况下，报告缺失、过时、较新、未验证、项目覆盖和额外项保留状态；
 - 为一个固定集合版本构建绑定清单摘要的安装计划；
 - 获得批准后仅安装已审查的集合，再验证可观察状态。
@@ -612,7 +621,7 @@ $orchestrate-agent-work Delegate these independent subtasks to agents and verify
 
 - 自动将某台工作站的偶然状态转化为团队政策；
 - 保存秘密信息、用户配置、机器路径或插件认证信息；
-- 移除额外技能、降级较新的副本或更改全局安装；
+- 移除额外技能、降级较新的副本，或未经确认就删除旧项目副本；
 - 声称运行中的代理任务已重新加载新安装的技能。
 
 **调用方式：**
@@ -621,6 +630,16 @@ $orchestrate-agent-work Delegate these independent subtasks to agents and verify
 $synchronize-team-skills Check this project's installed skills against the reviewed team manifest.
 $synchronize-team-skills Align my project skills with the team documentation after showing the plan.
 $synchronize-team-skills Add maintain-project-digest to the reviewed team skill set.
+```
+
+#### `report-skill-feedback`（实验性）
+
+在获得明确同意后，为一次已观察到的技能使用生成范围受限、去标识化的报告。草稿不包含代码、完整对话、秘密、姓名、路径或 URL。系统会先展示完整草稿，只有再次获得提交许可后才会发送到 `kolabse/skills`；GitHub Issue 仍可归因到提交账户，并非匿名。
+
+**Aufruf / Invocation:**
+
+```text
+$report-skill-feedback Prepare a de-identified preview about this observed skill use; do not submit it yet.
 ```
 
 #### `notify-via-telegram`

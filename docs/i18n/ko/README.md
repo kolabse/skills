@@ -35,6 +35,7 @@ kolabse가 관리하는 재사용 가능한 에이전트 스킬 모음입니다.
   - [조율 및 소통](#조율-및-소통)
     - [`orchestrate-agent-work`](#orchestrate-agent-work-실험적)
     - [`synchronize-team-skills`](#synchronize-team-skills-실험적)
+    - [`report-skill-feedback`](#report-skill-feedback-실험적)
     - [`notify-via-telegram`](#notify-via-telegram)
   - [인프라 및 운영](#인프라-및-운영)
     - [`operate-yandex-cloud`](#operate-yandex-cloud)
@@ -48,10 +49,10 @@ kolabse가 관리하는 재사용 가능한 에이전트 스킬 모음입니다.
 ## 스킬 설치
 
 여러 에이전트를 지원하는 [`skills`](https://skills.sh) CLI로 하나 이상의 스킬을
-현재 프로젝트에 설치하세요.
+현재 사용자에게 전역으로 설치하세요.
 
 ```shell
-npx skills@latest add kolabse/skills
+npx skills@latest add kolabse/skills --global
 ```
 
 CLI는 `skills/` 아래의 폴더를 찾고 설치할 스킬을 선택하게 한 뒤 선택한 코딩
@@ -68,39 +69,38 @@ https://github.com/kolabse/skills/tree/main/skills/operate-yandex-cloud
 비대화형 설치에서는 대상 에이전트를 명시적으로 선택하세요.
 
 ```shell
-npx skills@1.5.22 add kolabse/skills --agent codex --copy -y
-npx skills@1.5.22 add kolabse/skills --agent claude-code --copy -y
+npx skills@1.5.22 add kolabse/skills --agent codex --copy --global -y
+npx skills@1.5.22 add kolabse/skills --agent claude-code --copy --global -y
 ```
 
-프로젝트에 설치하려면 에이전트에 “선택한 스킬을 설치하고, 기존 규칙을 교체하지 않으면서
-누락된 프로젝트 기본값을 초기화해 주세요.”라고 요청하세요. 외부 설치 프로그램이
-완료되면 에이전트의 Git 규칙을 초기화하세요.
+에이전트에 “선택한 스킬을 전역으로 설치하고 기존 규칙을 교체하지 않으면서 이 프로젝트의
+누락된 설정만 초기화해 주세요.”라고 요청하세요. 이후 전역 스킬 경로를 사용하세요.
 
 ```shell
-python .agents/skills/synchronize-git-repositories/scripts/configure_project.py bootstrap --project-path . --agent codex --apply --yes --json
-python .claude/skills/synchronize-git-repositories/scripts/configure_project.py bootstrap --project-path . --agent claude-code --apply --yes --json
+python ~/.agents/skills/synchronize-git-repositories/scripts/configure_project.py bootstrap --project-path . --agent codex --apply --yes --json
+python ~/.claude/skills/synchronize-git-repositories/scripts/configure_project.py bootstrap --project-path . --agent claude-code --apply --yes --json
 ```
 
 규칙이 없으면 기본 접두사는 `feature/`, `bugfix/`, `release/`, `hotfix/`이고,
 커밋 유형은 `feat`, `fix`, `refactor`, `docs`, `test`, `chore`입니다.
 명시된 프로젝트 접두사, 브랜치 역할, 커밋 형식이 계속 우선합니다.
-상시 브랜치나 Git 훅은 생성하지 않습니다. 프로젝트 범위의 관리형 업데이트는 관련 스킬에
-동일한 초기화를 적용하며, 확인되지 않은 업데이트는 계획만 세웁니다.
+상시 브랜치나 Git 훅은 생성하지 않습니다. 관리형 전역 업데이트는 명시적으로 선택한
+활성 프로젝트에 같은 초기화를 적용하며, 확인되지 않은 업데이트는 계획만 세웁니다.
 
-프로젝트 범위로 설치할 때는 관찰 가능한 기본값이 충분하다면 즉시 수명 주기 계약을
-초기화하세요. 에이전트에 맞는 경로를 사용하세요.
+관찰 가능한 기본값이 충분하다면 프로젝트 수명 주기 계약을 즉시 초기화하세요.
+에이전트에 맞는 경로를 사용하세요.
 
 ```shell
-python .agents/skills/execute-verified-development-lifecycle/scripts/development_lifecycle.py bootstrap --project-root . --agent codex --apply --yes --json
-python .claude/skills/execute-verified-development-lifecycle/scripts/development_lifecycle.py bootstrap --project-root . --agent claude-code --apply --yes --json
+python ~/.agents/skills/execute-verified-development-lifecycle/scripts/development_lifecycle.py bootstrap --project-root . --agent codex --apply --yes --json
+python ~/.claude/skills/execute-verified-development-lifecycle/scripts/development_lifecycle.py bootstrap --project-root . --agent claude-code --apply --yes --json
 ```
 
 마켓플레이스 및 플러그인 설치는 전역 설치이고 활성 프로젝트 루트가 없으므로,
 스킬은 프로젝트에서 처음 사용될 때 동일한 초기화를 수행합니다.
 
-Codex는 `.agents/skills/`에서 프로젝트 스킬을 찾고 `$skill-name`으로 호출합니다.
-Claude Code는 `.claude/skills/`에서 스킬을 찾고 `/skill-name`으로 호출합니다.
-스킬 지침과 번들 스크립트는 공유하며, 에이전트별 규칙 파일과 호출 구문은 설정 시 선택됩니다.
+지원되는 전역 경로는 Codex의 `~/.agents/skills/`와 Claude Code의
+`~/.claude/skills/`입니다. 프로젝트에는 설정, 관리형 규칙, 의도적인 프로젝트별 설정만
+이 payload 폴더 밖에 보관합니다.
 
 이 저장소는 ChatGPT/Codex 및 Claude Code용 스킬 전용 `kolabse-skills` 플러그인으로도
 패키징됩니다. `skills/` 아래의 모든 폴더가 포함됩니다. 여러 에이전트용 `npx skills`
@@ -156,36 +156,45 @@ Git 마켓플레이스에서 설치하는 데는 디렉터리 승인이 필요�
 
 ## 설치된 스킬 업데이트
 
-`skills` CLI는 GitHub 원본과 콘텐츠 해시를 `skills-lock.json`에 기록합니다.
-기록된 원본에서 모든 프로젝트 설치를 업데이트하세요.
+`skills` CLI는 전역 원본과 콘텐츠 해시를 `~/.agents/.skill-lock.json`에 기록합니다.
+기록된 원본에서 전역 설치를 업데이트하세요.
 
 ```shell
-npx skills@1.5.22 update -p -y
+npx skills@1.5.22 update -g -y
 ```
 
 스킬 하나 또는 전역 설치를 업데이트하려면 다음을 실행하세요.
 
 ```shell
-npx skills@1.5.22 update verify-before-push -p -y
+npx skills@1.5.22 update verify-before-push -g -y
 npx skills@1.5.22 update -g -y
 ```
 
+기존 프로젝트 범위 복사본은 계획을 검토한 뒤 전역 설치로 중앙화해야 합니다.
+마이그레이션은 전역 복사본을 먼저 설치하고 검증한 뒤 기존 payload를 백업하며,
+프로젝트 설정과 관련 없는 스킬을 보존합니다.
+
+```shell
+python scripts/centralize_skill_installations.py plan --project-path . --json
+python scripts/centralize_skill_installations.py apply --project-path . --expected-plan-sha256 <plan-value> --yes --json
+```
+
 버전 등을 한정하지 않은 `kolabse/skills` 잠금 항목은 저장소의 기본 브랜치를 따르며,
-모음 릴리스를 고정하지 않습니다. 업데이트가 교체할 수 있으므로 `.agents/skills/` 아래에
-복사된 파일을 편집하지 마세요. 프로젝트 및 사용자 설정은 설치된 스킬 폴더 밖에 둡니다.
+모음 릴리스를 고정하지 않습니다. 업데이트가 교체할 수 있으므로 복사된 전역 payload를
+편집하지 마세요. 프로젝트 및 사용자 설정은 설치된 스킬 폴더 밖에 둡니다.
 
 복제한 체크아웃이나 릴리스 아카이브에서 하나의 명시적인 작업으로 업데이트하고
 지원되는 프로젝트 설정을 마이그레이션하세요.
 
 ```shell
-python scripts/manage_installed_skills.py update --project-path . --yes --migrate
-python scripts/manage_installed_skills.py doctor --project-path . --json
+python scripts/manage_installed_skills.py update --scope global --project-path . --yes --migrate
+python scripts/manage_installed_skills.py doctor --scope global --project-path . --json
 ```
 
 외부 설치 프로그램을 호출하거나 설정을 변경하지 않고 정확한 선택 대상을 미리 확인하세요.
 
 ```shell
-python scripts/manage_installed_skills.py plan --project-path . --json
+python scripts/manage_installed_skills.py plan --scope global --project-path . --json
 ```
 
 계획에는 원본 식별 정보, 현재 및 대상 버전, 출처, 마이그레이션 후보,
@@ -193,11 +202,9 @@ python scripts/manage_installed_skills.py plan --project-path . --json
 스키마는 `schemas/manager-plan.schema.json`입니다. `update`에 `--json`을 추가하세요.
 업데이트 및 마이그레이션 결과는 `schemas/manager-result.schema.json`을 따릅니다.
 
-이름을 지정하지 않으면 관리자는 프로젝트 잠금 파일에서 설치된 kolabse 스킬을 확인하고
-그 이름들을 외부 CLI에 명시적으로 전달합니다. 관련 없는 프로젝트 스킬은 업데이트에
-포함되지 않습니다. 전역 업데이트에는 모음 스킬 이름을 명시해야 합니다.
-프로젝트 업데이트는 `doctor`와 동일하게 문제 발견 시 진행을 차단하는 진단으로 끝납니다.
-프로젝트 업데이트에 `execute-verified-development-lifecycle`이 포함된 경우,
+이름을 지정하지 않으면 관리자는 전역 잠금의 kolabse 스킬만 확인하며 관련 없는 전역
+스킬은 포함하지 않습니다. 기존 프로젝트 업데이트는 알림과 마이그레이션을 위한 전환
+경로로만 남습니다. `execute-verified-development-lifecycle`을 전역 업데이트하는 경우,
 관리자는 프로젝트 정보가 충분하면 누락된 설정도 초기화하고 `created`, `configured`,
 `blocked` 중 하나의 설정 결과를 반환합니다.
 
@@ -214,8 +221,8 @@ Telegram 사용자 설정도 마이그레이션해야 하는 경우에만 `--inc
 v1.2 이전의 메타데이터 없는 설치는 보고된 원본을 검토한 후에만 채택하세요.
 
 ```shell
-python scripts/manage_installed_skills.py status --project-path . --json
-python scripts/manage_installed_skills.py update --project-path . --yes --adopt-legacy
+python scripts/manage_installed_skills.py status --scope global --project-path . --json
+python scripts/manage_installed_skills.py update --scope global --project-path . --yes --adopt-legacy
 ```
 
 채택 플래그가 임의의 파일에 신뢰를 부여하는 것은 아닙니다. 원본이 이미 `kolabse/skills`로
@@ -267,7 +274,7 @@ python scripts/manage_installed_skills.py status --scope global --agent claude-c
 동일한 스킬 및 에이전트 대상을 지정하여 필요한 릴리스 태그를 재설치하세요. 예:
 
 ```shell
-npx skills@1.5.22 add kolabse/skills@v1.1.0 --skill verify-before-push --agent codex --copy -y
+npx skills@1.5.22 add kolabse/skills@v1.1.0 --skill verify-before-push --agent codex --copy --global -y
 ```
 
 릴리스에 다운그레이드가 명시적으로 문서화되어 있지 않으면 설정 마이그레이션은
@@ -675,12 +682,12 @@ $orchestrate-agent-work Delegate these independent subtasks to agents and verify
 
 #### `synchronize-team-skills` (실험적)
 
-각 팀원의 프로젝트 범위 에이전트 스킬을 프로젝트 문서의 검토된 매니페스트 하나에 맞춰 유지합니다.
+각 팀원의 전역 스킬을 프로젝트 문서의 검토된 매니페스트에 맞추고 프로젝트 설정은 로컬에 유지합니다.
 
 **수행하는 작업:**
 
 - 승인된 문서 루트에 `team-agent-skills.md`를 만들거나 읽습니다.
-- 선언된 Codex 및 Claude Code 스킬을 검증된 프로젝트 복사본과 비교합니다.
+- 선언된 Codex 및 Claude Code 스킬을 검증된 전역 복사본과 비교합니다.
 - 환경을 변경하지 않고 누락, 오래됨, 더 최신, 미검증, 프로젝트 재정의, 보존된 추가 항목 상태를
   보고합니다.
 - 하나의 고정된 모음 버전에 대해 매니페스트 다이제스트에 연결된 설치 계획을 만듭니다.
@@ -690,7 +697,7 @@ $orchestrate-agent-work Delegate these independent subtasks to agents and verify
 
 - 한 워크스테이션의 우연한 상태를 자동으로 팀 정책으로 만들지 않습니다.
 - 비밀 정보, 사용자 설정, 기기 경로 또는 플러그인 인증 정보를 저장하지 않습니다.
-- 추가 스킬을 제거하거나, 더 최신인 복사본을 다운그레이드하거나, 전역 설치를 변경하지 않습니다.
+- 추가 스킬을 제거하거나, 더 최신인 복사본을 다운그레이드하거나, 승인 없이 기존 프로젝트 복사본을 삭제하지 않습니다.
 - 실행 중인 에이전트 작업이 새로 설치한 스킬을 다시 불러왔다고 주장하지 않습니다.
 
 **호출 방법:**
@@ -699,6 +706,16 @@ $orchestrate-agent-work Delegate these independent subtasks to agents and verify
 $synchronize-team-skills Check this project's installed skills against the reviewed team manifest.
 $synchronize-team-skills Align my project skills with the team documentation after showing the plan.
 $synchronize-team-skills Add maintain-project-digest to the reviewed team skill set.
+```
+
+#### `report-skill-feedback` (실험적)
+
+명시적 동의를 받은 뒤 관찰된 스킬 사용에 관한 제한적이고 비식별화된 보고서를 작성합니다. 초안에는 코드, 전체 대화, 비밀, 이름, 경로, URL을 포함하지 않습니다. 전체 내용을 미리 보여 주며 별도의 제출 승인을 받은 경우에만 `kolabse/skills`로 전송합니다. GitHub Issue는 제출 계정과 연결되므로 익명이 아닙니다.
+
+**Aufruf / Invocation:**
+
+```text
+$report-skill-feedback Prepare a de-identified preview about this observed skill use; do not submit it yet.
 ```
 
 #### `notify-via-telegram`

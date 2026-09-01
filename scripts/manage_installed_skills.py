@@ -12,7 +12,7 @@ from urllib.parse import urlparse
 
 
 COLLECTION = "kolabse-skills"
-COLLECTION_VERSION = "1.20.0"
+COLLECTION_VERSION = "1.21.0"
 SKILLS_CLI_VERSION = "1.5.22"
 LOCK_FILE = "skills-lock.json"
 METADATA_FILE = "collection-metadata.json"
@@ -36,6 +36,7 @@ KNOWN_SKILLS = {
     "notify-via-telegram",
     "operate-yandex-cloud",
     "orchestrate-agent-work",
+    "report-skill-feedback",
     "release-skill-collection",
     "resolve-git-conflicts",
     "review-code-changes",
@@ -93,6 +94,24 @@ def global_install_root(global_root: Path, agent: str = DEFAULT_AGENT) -> Path:
     if agent == "codex":
         return global_root / "skills"
     return global_root.parent / ".claude" / "skills"
+
+
+def project_installation_notice(project: Path, agent: str = DEFAULT_AGENT) -> dict[str, Any]:
+    """Report legacy collection payloads without scanning outside the active project."""
+    root = project_install_root(project, agent)
+    copies = sorted(
+        name for name in KNOWN_SKILLS
+        if (root / name).is_dir()
+    )
+    return {
+        "required": bool(copies),
+        "legacy_project_copies": copies,
+        "message": (
+            "This collection now uses global skill installations. Review and apply the "
+            "centralization plan; project configuration remains in the project."
+            if copies else "No legacy project-scoped kolabse skill copies were found."
+        ),
+    }
 
 
 def normalize_github_source(source: str) -> dict[str, str] | None:
@@ -570,10 +589,6 @@ def resolve_update_selection(
     if unknown:
         raise ManagerError(f"Unknown collection skills: {', '.join(sorted(unknown))}")
     if scope == "global":
-        if not skills:
-            raise ManagerError(
-                "global updates require explicit skill names so unrelated global skills are not updated"
-            )
         state = read_global_state(global_root, trusted_development_sources, agent)
     else:
         state = read_project_state(project, trusted_development_sources, agent)
@@ -724,10 +739,12 @@ def update_skills(
         raise ManagerError(f"post-update diagnosis failed: {detail}")
     after_by_name = {item["name"]: item for item in state["skills"]}
     configuration: list[dict[str, Any]] = []
-    if scope == "project":
+    if scope in {"project", "global"}:
         bootstrap_commands = git_policy_bootstrap_commands(
-            project, selected, agent, confirmed=yes
-        ) + lifecycle_bootstrap_commands(project, selected, agent, confirmed=yes)
+            project, selected, agent, confirmed=yes, global_install=scope == "global"
+        ) + lifecycle_bootstrap_commands(
+            project, selected, agent, confirmed=yes, global_install=scope == "global"
+        )
         for name, command in bootstrap_commands:
             completed = run_checked(command, project.resolve(), timeout)
             try:
@@ -776,6 +793,9 @@ def update_skills(
                 "provenance_status": new["provenance_status"],
             }
         )
+    installation_notice = project_installation_notice(project, agent)
+    if installation_notice["required"] and not as_json:
+        print(f"NOTICE: {installation_notice['message']}")
     return {
         "schema_version": 1,
         "operation": "update",
@@ -785,6 +805,7 @@ def update_skills(
         "scope": scope,
         "outcomes": outcomes,
         "configuration": configuration,
+        "installation_notice": installation_notice,
         "healthy": True,
     }
 
@@ -820,6 +841,7 @@ def git_policy_bootstrap_commands(
     selected: list[str],
     agent: str = DEFAULT_AGENT,
     confirmed: bool = False,
+    global_install: bool = False,
 ) -> list[tuple[str, list[str]]]:
     """Bootstrap project Git defaults only for Git workflow skill updates."""
     agent = verified_agent(agent)
@@ -832,7 +854,11 @@ def git_policy_bootstrap_commands(
     if not triggers.intersection(selected):
         return []
     root = project.resolve()
-    helper = project_install_root(root, agent) / name / "scripts/configure_project.py"
+    install_root = (
+        global_install_root(default_global_root(agent), agent)
+        if global_install else project_install_root(root, agent)
+    )
+    helper = install_root / name / "scripts/configure_project.py"
     if not helper.is_file():
         return []
     bundled_helper = REPOSITORY_ROOT / "skills" / name / "scripts/configure_project.py"
@@ -855,13 +881,18 @@ def lifecycle_bootstrap_commands(
     selected: list[str],
     agent: str = DEFAULT_AGENT,
     confirmed: bool = False,
+    global_install: bool = False,
 ) -> list[tuple[str, list[str]]]:
     agent = verified_agent(agent)
     name = "execute-verified-development-lifecycle"
     if name not in selected:
         return []
     root = project.resolve()
-    helper = project_install_root(root, agent) / name / "scripts/development_lifecycle.py"
+    install_root = (
+        global_install_root(default_global_root(agent), agent)
+        if global_install else project_install_root(root, agent)
+    )
+    helper = install_root / name / "scripts/development_lifecycle.py"
     if not helper.is_file():
         return []
     command = [
@@ -882,10 +913,14 @@ def migration_commands(
     project: Path,
     include_user_config: bool,
     agent: str = DEFAULT_AGENT,
+    global_install: bool = False,
 ) -> list[tuple[str, list[str]]]:
     agent = verified_agent(agent)
     root = project.resolve()
-    installed = project_install_root(root, agent)
+    installed = (
+        global_install_root(default_global_root(agent), agent)
+        if global_install else project_install_root(root, agent)
+    )
     config_root = project_config_root(root, agent)
     python = python_executable()
     commands: list[tuple[str, list[str]]] = []
@@ -1045,8 +1080,10 @@ def build_update_plan(
             }
         )
     migrations = (
-        [name for name, _ in migration_commands(project, False, agent)]
-        if scope == "project"
+        [name for name, _ in migration_commands(
+            project, False, agent, global_install=scope == "global"
+        )]
+        if scope in {"project", "global"}
         else []
     )
     return {
@@ -1133,6 +1170,11 @@ def doctor(
     if len(versions) > 1:
         problems.append(f"installed skills use mixed collection versions: {sorted(versions)}")
     warnings: list[str] = []
+    if scope == "global":
+        notice = project_installation_notice(project, agent)
+        state["installation_notice"] = notice
+        if notice["required"]:
+            warnings.append(notice["message"])
     if deep:
         if scope != "project":
             raise ManagerError("--deep is supported only for project scope")
@@ -1151,8 +1193,10 @@ def doctor(
     state["problems"] = problems
     state["warnings"] = warnings
     state["migration_candidates"] = (
-        [name for name, _ in migration_commands(project, False, agent)]
-        if scope == "project"
+        [name for name, _ in migration_commands(
+            project, False, agent, global_install=scope == "global"
+        )]
+        if scope in {"project", "global"}
         else []
     )
     if source_diagnostics is not None:
@@ -1276,8 +1320,6 @@ def main(argv: list[str] | None = None) -> int:
             )
             print(json.dumps(result, ensure_ascii=False, indent=2, sort_keys=True))
             return 0
-        if args.migrate and args.scope != "project":
-            raise ManagerError("--migrate is supported only for project-scoped updates")
         result = update_skills(
             args.project_path,
             args.skills,

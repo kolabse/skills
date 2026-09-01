@@ -1,0 +1,4 @@
+interface:
+  display_name: "Отчёт о работе навыка"
+  short_description: "Готовит обезличенный отчёт с отдельным согласием на отправку"
+  default_prompt: "Use $report-skill-feedback to prepare a privacy-bounded report about an observed skill use, preview it, and submit it only after separate approval."

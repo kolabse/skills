@@ -1,0 +1,78 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/kolabse/skills/blob/main/skills/report-skill-feedback/schemas/feedback-input.schema.json",
+  "title": "De-identified skill feedback input",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "skill", "agent", "environment", "invocation", "outcome", "signals"],
+  "properties": {
+    "schema_version": { "const": 1 },
+    "skill": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["name", "version"],
+      "properties": {
+        "name": { "type": "string", "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$" },
+        "version": { "type": "string", "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+(?:[-+][0-9A-Za-z.-]+)?$" }
+      }
+    },
+    "agent": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["name"],
+      "properties": {
+        "name": { "enum": ["codex", "claude-code"] },
+        "version": { "type": "string", "minLength": 1, "maxLength": 80 }
+      }
+    },
+    "environment": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["os", "project_kind", "repository_count"],
+      "properties": {
+        "os": { "enum": ["linux", "macos", "windows", "other"] },
+        "project_kind": { "enum": ["application", "library", "documentation", "infrastructure", "skill-collection", "mixed", "other"] },
+        "repository_count": { "type": "integer", "minimum": 0, "maximum": 50 }
+      }
+    },
+    "invocation": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["expected", "observed"],
+      "properties": {
+        "expected": { "enum": ["automatic", "explicit", "none", "unsure"] },
+        "observed": { "enum": ["automatic", "explicit", "not-invoked", "wrong-skill"] }
+      }
+    },
+    "outcome": { "enum": ["success", "partial", "blocked", "error"] },
+    "signals": {
+      "type": "array",
+      "uniqueItems": true,
+      "items": {
+        "enum": [
+          "false-negative-trigger", "false-positive-trigger", "wrong-workflow",
+          "manual-install", "manual-update", "manual-configuration", "manual-correction",
+          "retry-required", "required-stage-skipped", "stopped-safely",
+          "unwanted-change", "unclear-instruction", "no-problem-observed"
+        ]
+      }
+    },
+    "task_summary": { "type": "string", "minLength": 1, "maxLength": 500 },
+    "evidence": {
+      "type": "array",
+      "maxItems": 12,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["kind", "status", "summary"],
+        "properties": {
+          "kind": { "enum": ["trigger", "workflow", "verification", "safety", "user-observation"] },
+          "status": { "enum": ["passed", "failed", "partial", "not-observed"] },
+          "summary": { "type": "string", "minLength": 1, "maxLength": 300 }
+        }
+      }
+    },
+    "unclear": { "type": "string", "minLength": 1, "maxLength": 500 },
+    "improvement": { "type": "string", "minLength": 1, "maxLength": 500 }
+  }
+}
