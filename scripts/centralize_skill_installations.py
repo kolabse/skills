@@ -137,14 +137,10 @@ def observe_copy(project: Path, agent: str, name: str, entry: dict[str, Any] | N
         and canonical_source(metadata.get("source"))
         and canonical_source(metadata.get("canonical_repository"))
         and isinstance(metadata.get("version"), str)
-        and (
-            entry is None
-            or (
-                canonical_source(entry.get("source"))
-                and isinstance(expected_hash, str)
-                and expected_hash == actual_hash
-            )
-        )
+        and isinstance(entry, dict)
+        and canonical_source(entry.get("source"))
+        and isinstance(expected_hash, str)
+        and expected_hash == actual_hash
     )
     return {
         "agent": agent, "name": name, "path": str(path),

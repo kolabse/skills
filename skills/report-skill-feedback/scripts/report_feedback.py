@@ -20,8 +20,8 @@ VERSION = re.compile(r"^[0-9]+\.[0-9]+\.[0-9]+(?:[-+][0-9A-Za-z.-]+)?$")
 FORBIDDEN = (
     ("URL", re.compile(r"(?i)\b(?:https?|ssh|git)://|\bwww\.")),
     ("email address", re.compile(r"(?i)\b[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}\b")),
-    ("Windows path", re.compile(r"(?i)(?:^|\s)[A-Z]:[\\/]")),
-    ("home path", re.compile(r"(?i)(?:^|\s)(?:/home/|/Users/|~[/\\])")),
+    ("Windows path", re.compile(r"(?i)(?<![A-Z0-9_])[A-Z]:[\\/]")),
+    ("home path", re.compile(r"(?i)(?<![A-Z0-9_])(?:/home/|/Users/|~[/\\])")),
     ("secret-like value", re.compile(r"(?i)\b(?:gh[pousr]_|sk-|xox[baprs]-|AKIA)[A-Za-z0-9_-]{8,}")),
     ("code fence", re.compile(r"```")),
 )
