@@ -2,6 +2,8 @@
 
 ## [Unreleased]
 
+## [1.21.0] - 2026-09-01
+
 ### Added
 
 - `report-skill-feedback` prepares schema-bounded, de-identified skill usage
@@ -629,6 +631,7 @@ First versioned release of the kolabse skill collection.
 - Tests for configuration migration, fake cloud and infrastructure CLIs,
   installation confirmation, and collection metadata.
 
+[1.21.0]: https://github.com/kolabse/skills/releases/tag/v1.21.0
 [1.20.0]: https://github.com/kolabse/skills/releases/tag/v1.20.0
 [1.19.1]: https://github.com/kolabse/skills/releases/tag/v1.19.1
 [1.19.0]: https://github.com/kolabse/skills/releases/tag/v1.19.0

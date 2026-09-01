@@ -1,0 +1,121 @@
+{
+  "assertion_digest": "ce47fb272d7d06c47c9b71986430c18670b4399f084015780d286ecb310ba485",
+  "composition_failures": [],
+  "corpus": "release-holdout",
+  "failures": [],
+  "per_skill": [
+    {
+      "fn": 0,
+      "fp": 0,
+      "precision": 1.0,
+      "recall": 1.0,
+      "skill": "maintain-work-log",
+      "specificity": 1.0,
+      "tn": 4,
+      "tp": 4
+    },
+    {
+      "fn": 0,
+      "fp": 0,
+      "precision": 1.0,
+      "recall": 1.0,
+      "skill": "notify-via-telegram",
+      "specificity": 1.0,
+      "tn": 4,
+      "tp": 4
+    },
+    {
+      "fn": 0,
+      "fp": 0,
+      "precision": 1.0,
+      "recall": 1.0,
+      "skill": "operate-yandex-cloud",
+      "specificity": 1.0,
+      "tn": 4,
+      "tp": 4
+    },
+    {
+      "fn": 0,
+      "fp": 0,
+      "precision": 1.0,
+      "recall": 1.0,
+      "skill": "release-skill-collection",
+      "specificity": 1.0,
+      "tn": 4,
+      "tp": 4
+    },
+    {
+      "fn": 0,
+      "fp": 0,
+      "precision": 1.0,
+      "recall": 1.0,
+      "skill": "sync-project-context",
+      "specificity": 1.0,
+      "tn": 6,
+      "tp": 6
+    },
+    {
+      "fn": 0,
+      "fp": 0,
+      "precision": 1.0,
+      "recall": 1.0,
+      "skill": "synchronize-git-repositories",
+      "specificity": 1.0,
+      "tn": 4,
+      "tp": 4
+    },
+    {
+      "fn": 0,
+      "fp": 0,
+      "precision": 1.0,
+      "recall": 1.0,
+      "skill": "verify-before-push",
+      "specificity": 1.0,
+      "tn": 4,
+      "tp": 4
+    }
+  ],
+  "schema_version": 1,
+  "selector": {
+    "method": "majority-vote",
+    "run_count": 3,
+    "runs": [
+      {
+        "configuration": "codex-cli-0.147.0-read-only",
+        "model": "gpt-5.6-sol",
+        "provider": "OpenAI",
+        "run": "v1.21.0-independent-1"
+      },
+      {
+        "configuration": "codex-cli-0.147.0-read-only",
+        "model": "gpt-5.6-sol",
+        "provider": "OpenAI",
+        "run": "v1.21.0-independent-2"
+      },
+      {
+        "configuration": "codex-cli-0.147.0-read-only",
+        "model": "gpt-5.6-sol",
+        "provider": "OpenAI",
+        "run": "v1.21.0-independent-3"
+      }
+    ],
+    "threshold": 2
+  },
+  "suite_digest": "373a708eaf4b02e5fb79b043166183c7d3d5ed61ba95be7ea417bb5844e938b3",
+  "summary": {
+    "accuracy": 1.0,
+    "assertions": 60,
+    "composition_accuracy": 0.0,
+    "composition_cases": 0,
+    "composition_failed": 0,
+    "composition_passed": 0,
+    "failed": 0,
+    "fn": 0,
+    "fp": 0,
+    "passed": 60,
+    "precision": 1.0,
+    "recall": 1.0,
+    "tn": 30,
+    "tp": 30
+  }
+}
