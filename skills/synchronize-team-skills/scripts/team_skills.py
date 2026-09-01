@@ -258,11 +258,11 @@ def user_home() -> Path:
 
 
 def global_layout(agent: str) -> Path:
-    return user_home() / AGENT_LAYOUTS[agent]
+    return user_home().resolve() / AGENT_LAYOUTS[agent]
 
 
 def global_lock_path() -> Path:
-    return user_home() / ".agents/.skill-lock.json"
+    return user_home().resolve() / ".agents/.skill-lock.json"
 
 
 def read_lock_entries(_project_root: Path) -> dict[str, dict[str, Any]]:
