@@ -1,6 +1,6 @@
 # Condizioni d'uso
 
-[English](../../../TERMS.md) | [Русский](../ru/TERMS.md) | [Español](../es/TERMS.md) | [Français](../fr/TERMS.md) | [Deutsch](../de/TERMS.md) | [Português (Brasil)](../pt-BR/TERMS.md) | [日本語](../ja/TERMS.md) | Italiano | [한국어](../ko/TERMS.md) | [简体中文](../zh-CN/TERMS.md) | [Türkçe](../tr/TERMS.md)
+[English](../../../TERMS.md) | [Русский](../ru/TERMS.md) | [Español](../es/TERMS.md) | [Français](../fr/TERMS.md) | [Deutsch](../de/TERMS.md) | [Português (Brasil)](../pt-BR/TERMS.md) | [日本語](../ja/TERMS.md) | Italiano | [한국어](../ko/TERMS.md) | [简体中文](../zh-CN/TERMS.md) | [Türkçe](../tr/TERMS.md) | [Polski](../pl/TERMS.md) | [Українська](../uk/TERMS.md)
 
 Questa è una traduzione italiana. In caso di discrepanze, fa fede la [versione inglese canonica](../../../TERMS.md).
 

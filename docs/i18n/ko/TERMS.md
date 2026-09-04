@@ -1,6 +1,6 @@
 # 이용약관
 
-[English](../../../TERMS.md) | [Русский](../ru/TERMS.md) | [Español](../es/TERMS.md) | [Français](../fr/TERMS.md) | [Deutsch](../de/TERMS.md) | [Português (Brasil)](../pt-BR/TERMS.md) | [日本語](../ja/TERMS.md) | [Italiano](../it/TERMS.md) | 한국어 | [简体中文](../zh-CN/TERMS.md) | [Türkçe](../tr/TERMS.md)
+[English](../../../TERMS.md) | [Русский](../ru/TERMS.md) | [Español](../es/TERMS.md) | [Français](../fr/TERMS.md) | [Deutsch](../de/TERMS.md) | [Português (Brasil)](../pt-BR/TERMS.md) | [日本語](../ja/TERMS.md) | [Italiano](../it/TERMS.md) | 한국어 | [简体中文](../zh-CN/TERMS.md) | [Türkçe](../tr/TERMS.md) | [Polski](../pl/TERMS.md) | [Українська](../uk/TERMS.md)
 
 이 문서는 한국어 번역입니다. 내용이 다를 경우 [영어 원문](../../../TERMS.md)이 기준입니다.
 

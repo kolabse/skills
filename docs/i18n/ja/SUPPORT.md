@@ -1,6 +1,6 @@
 # サポート
 
-[English](../../../SUPPORT.md) | [Русский](../ru/SUPPORT.md) | [Español](../es/SUPPORT.md) | [Français](../fr/SUPPORT.md) | [Deutsch](../de/SUPPORT.md) | [Português (Brasil)](../pt-BR/SUPPORT.md) | 日本語 | [Italiano](../it/SUPPORT.md) | [한국어](../ko/SUPPORT.md) | [简体中文](../zh-CN/SUPPORT.md) | [Türkçe](../tr/SUPPORT.md)
+[English](../../../SUPPORT.md) | [Русский](../ru/SUPPORT.md) | [Español](../es/SUPPORT.md) | [Français](../fr/SUPPORT.md) | [Deutsch](../de/SUPPORT.md) | [Português (Brasil)](../pt-BR/SUPPORT.md) | 日本語 | [Italiano](../it/SUPPORT.md) | [한국어](../ko/SUPPORT.md) | [简体中文](../zh-CN/SUPPORT.md) | [Türkçe](../tr/SUPPORT.md) | [Polski](../pl/SUPPORT.md) | [Українська](../uk/SUPPORT.md)
 
 この文書は日本語訳です。内容に相違がある場合は[英語版](../../../SUPPORT.md)を正とします。
 

@@ -1,6 +1,6 @@
 # kolabse/skills
 
-[English](../../../README.md) | [Русский](../ru/README.md) | [Español](../es/README.md) | [Français](../fr/README.md) | [Deutsch](../de/README.md) | [Português (Brasil)](../pt-BR/README.md) | [日本語](../ja/README.md) | [Italiano](../it/README.md) | [한국어](../ko/README.md) | 简体中文 | [Türkçe](../tr/README.md)
+[English](../../../README.md) | [Русский](../ru/README.md) | [Español](../es/README.md) | [Français](../fr/README.md) | [Deutsch](../de/README.md) | [Português (Brasil)](../pt-BR/README.md) | [日本語](../ja/README.md) | [Italiano](../it/README.md) | [한국어](../ko/README.md) | 简体中文 | [Türkçe](../tr/README.md) | [Polski](../pl/README.md) | [Українська](../uk/README.md)
 
 本文为简体中文译文。如有差异，以[英文原文](../../../README.md)为准。
 

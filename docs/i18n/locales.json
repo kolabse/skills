@@ -152,6 +152,31 @@
         }
       ]
     },
+    "pl": {
+      "name": "Polski",
+      "documents": [
+        {
+          "canonical": "README.md",
+          "translation": "docs/i18n/pl/README.md"
+        },
+        {
+          "canonical": "CONTRIBUTING.md",
+          "translation": "docs/i18n/pl/CONTRIBUTING.md"
+        },
+        {
+          "canonical": "SUPPORT.md",
+          "translation": "docs/i18n/pl/SUPPORT.md"
+        },
+        {
+          "canonical": "PRIVACY.md",
+          "translation": "docs/i18n/pl/PRIVACY.md"
+        },
+        {
+          "canonical": "TERMS.md",
+          "translation": "docs/i18n/pl/TERMS.md"
+        }
+      ]
+    },
     "pt-BR": {
       "name": "Português (Brasil)",
       "documents": [
@@ -199,6 +224,31 @@
         {
           "canonical": "TERMS.md",
           "translation": "docs/i18n/tr/TERMS.md"
+        }
+      ]
+    },
+    "uk": {
+      "name": "Українська",
+      "documents": [
+        {
+          "canonical": "README.md",
+          "translation": "docs/i18n/uk/README.md"
+        },
+        {
+          "canonical": "CONTRIBUTING.md",
+          "translation": "docs/i18n/uk/CONTRIBUTING.md"
+        },
+        {
+          "canonical": "SUPPORT.md",
+          "translation": "docs/i18n/uk/SUPPORT.md"
+        },
+        {
+          "canonical": "PRIVACY.md",
+          "translation": "docs/i18n/uk/PRIVACY.md"
+        },
+        {
+          "canonical": "TERMS.md",
+          "translation": "docs/i18n/uk/TERMS.md"
         }
       ]
     },

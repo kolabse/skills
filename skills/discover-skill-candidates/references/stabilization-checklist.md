@@ -3,6 +3,11 @@
 Use this checklist before changing `discover-skill-candidates` from
 experimental to stable.
 
+Complete the collection-wide
+[experimental skill stabilization checklist](../../../docs/skill-stabilization-checklist.md)
+as well as the skill-specific gates below. These gates add candidate-intake and
+portability coverage; they do not replace any shared gate.
+
 ## Deterministic acceptance
 
 Require the full unit suite to prove bounded rule and opt-in evidence discovery,

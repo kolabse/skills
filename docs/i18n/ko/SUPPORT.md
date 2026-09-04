@@ -1,6 +1,6 @@
 # 지원
 
-[English](../../../SUPPORT.md) | [Русский](../ru/SUPPORT.md) | [Español](../es/SUPPORT.md) | [Français](../fr/SUPPORT.md) | [Deutsch](../de/SUPPORT.md) | [Português (Brasil)](../pt-BR/SUPPORT.md) | [日本語](../ja/SUPPORT.md) | [Italiano](../it/SUPPORT.md) | 한국어 | [简体中文](../zh-CN/SUPPORT.md) | [Türkçe](../tr/SUPPORT.md)
+[English](../../../SUPPORT.md) | [Русский](../ru/SUPPORT.md) | [Español](../es/SUPPORT.md) | [Français](../fr/SUPPORT.md) | [Deutsch](../de/SUPPORT.md) | [Português (Brasil)](../pt-BR/SUPPORT.md) | [日本語](../ja/SUPPORT.md) | [Italiano](../it/SUPPORT.md) | 한국어 | [简体中文](../zh-CN/SUPPORT.md) | [Türkçe](../tr/SUPPORT.md) | [Polski](../pl/SUPPORT.md) | [Українська](../uk/SUPPORT.md)
 
 이 문서는 한국어 번역입니다. 내용이 다를 경우 [영어 원문](../../../SUPPORT.md)이 기준입니다.
 

@@ -1,6 +1,6 @@
 # 使用条款
 
-[English](../../../TERMS.md) | [Русский](../ru/TERMS.md) | [Español](../es/TERMS.md) | [Français](../fr/TERMS.md) | [Deutsch](../de/TERMS.md) | [Português (Brasil)](../pt-BR/TERMS.md) | [日本語](../ja/TERMS.md) | [Italiano](../it/TERMS.md) | [한국어](../ko/TERMS.md) | 简体中文 | [Türkçe](../tr/TERMS.md)
+[English](../../../TERMS.md) | [Русский](../ru/TERMS.md) | [Español](../es/TERMS.md) | [Français](../fr/TERMS.md) | [Deutsch](../de/TERMS.md) | [Português (Brasil)](../pt-BR/TERMS.md) | [日本語](../ja/TERMS.md) | [Italiano](../it/TERMS.md) | [한국어](../ko/TERMS.md) | 简体中文 | [Türkçe](../tr/TERMS.md) | [Polski](../pl/TERMS.md) | [Українська](../uk/TERMS.md)
 
 本文为简体中文译文。如有差异，以[英文原文](../../../TERMS.md)为准。
 

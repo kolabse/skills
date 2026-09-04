@@ -1,6 +1,6 @@
 # プライバシーポリシー
 
-[English](../../../PRIVACY.md) | [Русский](../ru/PRIVACY.md) | [Español](../es/PRIVACY.md) | [Français](../fr/PRIVACY.md) | [Deutsch](../de/PRIVACY.md) | [Português (Brasil)](../pt-BR/PRIVACY.md) | 日本語 | [Italiano](../it/PRIVACY.md) | [한국어](../ko/PRIVACY.md) | [简体中文](../zh-CN/PRIVACY.md) | [Türkçe](../tr/PRIVACY.md)
+[English](../../../PRIVACY.md) | [Русский](../ru/PRIVACY.md) | [Español](../es/PRIVACY.md) | [Français](../fr/PRIVACY.md) | [Deutsch](../de/PRIVACY.md) | [Português (Brasil)](../pt-BR/PRIVACY.md) | 日本語 | [Italiano](../it/PRIVACY.md) | [한국어](../ko/PRIVACY.md) | [简体中文](../zh-CN/PRIVACY.md) | [Türkçe](../tr/PRIVACY.md) | [Polski](../pl/PRIVACY.md) | [Українська](../uk/PRIVACY.md)
 
 この文書は日本語訳です。内容に相違がある場合は[英語版](../../../PRIVACY.md)を正とします。
 

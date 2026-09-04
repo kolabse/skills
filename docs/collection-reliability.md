@@ -4,6 +4,11 @@ This update connects release planning, local/CI validation, translation revision
 tracking, and installation diagnostics. It does not authorize publication,
 branch deletion, installation changes, or automatic updates.
 
+Use the shared
+[experimental skill stabilization checklist](skill-stabilization-checklist.md)
+to bind a proposed stable status to deterministic, cross-platform, consumer,
+holdout, and independent forward-test evidence.
+
 ## Release route and cleanup
 
 Ask your agent: "Plan this collection release using the repository's actual
@@ -94,7 +99,7 @@ python scripts/translation_freshness.py status --strict --json
 
 The report identifies source changes, translation changes, missing records, and
 changed source sections. Newline normalization avoids CRLF-only differences.
-`docs/i18n/translation-status.json` initially records the existing 50 translations
+`docs/i18n/translation-status.json` records the existing 60 translations
 as **baseline**, not as a fresh semantic review. English remains authoritative.
 Alignment confirms revision identities, not translation accuracy or legal review.
 
