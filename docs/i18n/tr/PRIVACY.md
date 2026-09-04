@@ -1,6 +1,6 @@
 # Gizlilik Politikası
 
-[English](../../../PRIVACY.md) | [Русский](../ru/PRIVACY.md) | [Español](../es/PRIVACY.md) | [Français](../fr/PRIVACY.md) | [Deutsch](../de/PRIVACY.md) | [Português (Brasil)](../pt-BR/PRIVACY.md) | [日本語](../ja/PRIVACY.md) | [Italiano](../it/PRIVACY.md) | [한국어](../ko/PRIVACY.md) | [简体中文](../zh-CN/PRIVACY.md) | Türkçe
+[English](../../../PRIVACY.md) | [Русский](../ru/PRIVACY.md) | [Español](../es/PRIVACY.md) | [Français](../fr/PRIVACY.md) | [Deutsch](../de/PRIVACY.md) | [Português (Brasil)](../pt-BR/PRIVACY.md) | [日本語](../ja/PRIVACY.md) | [Italiano](../it/PRIVACY.md) | [한국어](../ko/PRIVACY.md) | [简体中文](../zh-CN/PRIVACY.md) | Türkçe | [Polski](../pl/PRIVACY.md) | [Українська](../uk/PRIVACY.md)
 
 Bu belge bir çeviridir; esas alınan kaynak [İngilizce sürümdür](../../../PRIVACY.md).
 

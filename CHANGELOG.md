@@ -2,6 +2,16 @@
 
 ## [Unreleased]
 
+### Added
+
+- Polish and Ukrainian translations of the public README, contribution guide,
+  support, privacy policy, and terms of use complete the currently planned
+  localization roadmap. English remains the canonical source.
+- A collection-wide stabilization checklist defines exact candidate identity,
+  applicability decisions, cross-platform and copied-install checks, trigger
+  holdouts, independent forward tests, sanitized evidence, and release-bound
+  promotion gates for experimental skills.
+
 ## [1.21.1] - 2026-09-01
 
 ### Fixed

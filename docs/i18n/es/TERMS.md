@@ -1,6 +1,6 @@
 # Términos de uso
 
-[English](../../../TERMS.md) | [Русский](../ru/TERMS.md) | Español | [Français](../fr/TERMS.md) | [Deutsch](../de/TERMS.md) | [Português (Brasil)](../pt-BR/TERMS.md) | [日本語](../ja/TERMS.md) | [Italiano](../it/TERMS.md) | [한국어](../ko/TERMS.md) | [简体中文](../zh-CN/TERMS.md) | [Türkçe](../tr/TERMS.md)
+[English](../../../TERMS.md) | [Русский](../ru/TERMS.md) | Español | [Français](../fr/TERMS.md) | [Deutsch](../de/TERMS.md) | [Português (Brasil)](../pt-BR/TERMS.md) | [日本語](../ja/TERMS.md) | [Italiano](../it/TERMS.md) | [한국어](../ko/TERMS.md) | [简体中文](../zh-CN/TERMS.md) | [Türkçe](../tr/TERMS.md) | [Polski](../pl/TERMS.md) | [Українська](../uk/TERMS.md)
 
 Fecha de entrada en vigor: 2026-08-24
 

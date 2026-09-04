@@ -71,6 +71,75 @@
           }
         ]
       },
+      "5c36d5dc294147bc323aee5891c5cfe19b1b75eaba144654fcf478061b2ec252": {
+        "sections": [
+          {
+            "heading": "Contributing skills",
+            "id": "contributing-skills",
+            "sha256": "7b67f39569f85eab900567dd5f1d77a40513c6acc53bcf6f2d86c9f87cb7af8d"
+          },
+          {
+            "heading": "Before adding a skill",
+            "id": "before-adding-a-skill",
+            "sha256": "10050bf37228f8dd1d6224e342975044450c38f6dfb3143401ac5c7ee5c5062e"
+          },
+          {
+            "heading": "Track a candidate through implementation",
+            "id": "track-a-candidate-through-implementation",
+            "sha256": "e5c9646720ead6d1078d76a46396cb2dadde21264a61d400aebdf0cc2e096ac9"
+          },
+          {
+            "heading": "Add or migrate the skill",
+            "id": "add-or-migrate-the-skill",
+            "sha256": "8eaa3756f4ade547420150434c56c35c7aef7bcdbd6cebda737aa03c7dfcfa90"
+          },
+          {
+            "heading": "Configuration contract",
+            "id": "configuration-contract",
+            "sha256": "bdcc2321bad6f3195653c62f32035f7855b070f7ec1cded2e38092e29df30bd4"
+          },
+          {
+            "heading": "Preserve the consumer update path",
+            "id": "preserve-the-consumer-update-path",
+            "sha256": "669f6e4f7d1562c128f8cf4efb5e36795b9c417bbddfad4dd432ba4740a3caa3"
+          },
+          {
+            "heading": "Preserve cross-agent behavior",
+            "id": "preserve-cross-agent-behavior",
+            "sha256": "f1c9a36c3c997a58cde6e64af55d6acb75282f867ea9791a8bbca8e9e217905b"
+          },
+          {
+            "heading": "Compose skills by capability",
+            "id": "compose-skills-by-capability",
+            "sha256": "8ae36ed2bb908c05e8ee329edf23330c247291adc8bc3d702fbc0d051c3f6ffa"
+          },
+          {
+            "heading": "Manage lifecycle status",
+            "id": "manage-lifecycle-status",
+            "sha256": "dcf9ca0c8971da82810ebfe86c893b20b94c6e349836644bba251f85d4c17c59"
+          },
+          {
+            "heading": "Preserve installed provenance",
+            "id": "preserve-installed-provenance",
+            "sha256": "c723477b4fc42a5a57908e8df13365fe7f2a414bc3183a95a181697ae6f1fd79"
+          },
+          {
+            "heading": "Keep consumer automation inspectable",
+            "id": "keep-consumer-automation-inspectable",
+            "sha256": "26832cce49d2220385b810d1e4c435a9bd73b93be72031df3f918ebbe1c7ec38"
+          },
+          {
+            "heading": "Validate the change",
+            "id": "validate-the-change",
+            "sha256": "2526ea97f4c90b0ff12c56b124089dbf99d057fd5886012140edcd50efedee89"
+          },
+          {
+            "heading": "Protect the release chain",
+            "id": "protect-the-release-chain",
+            "sha256": "85e0ff5549ae557286050738fe00a129dbb6d5e0b13ded6e7c1cc53c39bf5466"
+          }
+        ]
+      },
       "8f1a1622c5fb28d724b7e67cd7dcc13dd423e7d642b14eb8351916fc87dcfc75": {
         "sections": [
           {
@@ -148,6 +217,35 @@
             "heading": "Privacy Policy",
             "id": "privacy-policy",
             "sha256": "8a721d50302a714adbcb4233e2520812734fb1cd0951c9a7e5216b9361e0d2e9"
+          },
+          {
+            "heading": "Information processed",
+            "id": "information-processed",
+            "sha256": "964a497573570115b584716b5e42fcd1b925bfd99362d65e7024d5bb6c77b20a"
+          },
+          {
+            "heading": "Credentials and private data",
+            "id": "credentials-and-private-data",
+            "sha256": "5047da5bd434f7b4a6c18c6a001a2fc7fe06efd5dfd4d6986ae78c1fff7bea44"
+          },
+          {
+            "heading": "Retention and deletion",
+            "id": "retention-and-deletion",
+            "sha256": "c9424fd8fbcfd18a06543d8e3f60a0e512784d12ec0d7e7d69698967ebf9b76d"
+          },
+          {
+            "heading": "Changes and contact",
+            "id": "changes-and-contact",
+            "sha256": "a8bae953fa6feebd530712833af5e48857b2b1970d8389e8a4e3a34288ea8f22"
+          }
+        ]
+      },
+      "e2bcb9f4073c25020e4109f09a878c260da80d1b2c32e01804274626a149d7e7": {
+        "sections": [
+          {
+            "heading": "Privacy Policy",
+            "id": "privacy-policy",
+            "sha256": "588911c050e5efacd4113b88958e7716b0c2ce3d53f904c7a42b644659b4923c"
           },
           {
             "heading": "Information processed",
@@ -734,6 +832,195 @@
             "sha256": "e632fb6be24a12a17251844e1bbbafbf4c4f3aa4d4a167ca5f7eec867d0c6019"
           }
         ]
+      },
+      "ea3f1d528339d6e877b45cc582e2a28cba7dccc95ec3c8d8bd4e0feb276bafed": {
+        "sections": [
+          {
+            "heading": "kolabse/skills",
+            "id": "kolabseskills",
+            "sha256": "3f04b87f9f886ec86639276c35151e15de15ea482a1b6434a4dd24eeb4064707"
+          },
+          {
+            "heading": "Table of contents",
+            "id": "table-of-contents",
+            "sha256": "ad7fab074dc18a299f8a05ebb433b70d2fe29f78ea333cd707b3b227a8fe554c"
+          },
+          {
+            "heading": "Install skills",
+            "id": "install-skills",
+            "sha256": "492b30bc7b39ca170e35f53d7f44da3e2fa40cc62b4d09dbe33ecd8cf13e18ea"
+          },
+          {
+            "heading": "Install from the Git marketplaces",
+            "id": "install-from-the-git-marketplaces",
+            "sha256": "eb89a3a0b0f4badd210107d72706e9ce61f6351e389a4b576046f625d109cd5b"
+          },
+          {
+            "heading": "Update installed skills",
+            "id": "update-installed-skills",
+            "sha256": "16cb51a197d8903910d2f1ae7d7109b2cb9a5db7d59add332020318ce4df0c48"
+          },
+          {
+            "heading": "Run without cloning the repository",
+            "id": "run-without-cloning-the-repository",
+            "sha256": "f4fbc63a2561dc1a8e252aae3bbb4481598a999f0802a96c791913929f3d6ca9"
+          },
+          {
+            "heading": "Inspect global installations",
+            "id": "inspect-global-installations",
+            "sha256": "3858d6a56e8d8980160e6e718af40c062073a59c97d431400dd194a8e293b00b"
+          },
+          {
+            "heading": "Install or update a local-development Codex plugin",
+            "id": "install-or-update-a-local-development-codex-plugin",
+            "sha256": "232098fc8d38bb891bf060c95f98c38defc86abbc694f894ae25f5d28a55c03d"
+          },
+          {
+            "heading": "Available skills",
+            "id": "available-skills",
+            "sha256": "7e5a2167537ff389f24570e709d234d8bbf9e166eb35c8d03754d0fa13ea4fc4"
+          },
+          {
+            "heading": "Development and code quality",
+            "id": "development-and-code-quality",
+            "sha256": "ef87f399a0911e6cb9b9632ddf97ef6f5ec21512d0d1f4c11c2be0b0a4cfa8d1"
+          },
+          {
+            "heading": "`develop-with-test-first-evidence` (experimental)",
+            "id": "develop-with-test-first-evidence-experimental",
+            "sha256": "3948bca2dfa49033fb3730b6dbaf48057832d7a3e5c65b8151fe8406fa32d5e6"
+          },
+          {
+            "heading": "`review-code-changes` (experimental)",
+            "id": "review-code-changes-experimental",
+            "sha256": "0b9d81a27c8d837555cec1e0db7eec1de814d10a4ee4e820bdab6c7730c21669"
+          },
+          {
+            "heading": "`diagnose-software-defects` (experimental)",
+            "id": "diagnose-software-defects-experimental",
+            "sha256": "1f177b61c836e6d07b1478aa0a85e70be7b678a3e571c3edf3824b9191e27a80"
+          },
+          {
+            "heading": "`resolve-git-conflicts` (experimental)",
+            "id": "resolve-git-conflicts-experimental",
+            "sha256": "886e1cbc37065ec3800c858fb3c39a068ac55f6272cd136486b8898c5682ecfe"
+          },
+          {
+            "heading": "Repositories and change delivery",
+            "id": "repositories-and-change-delivery",
+            "sha256": "1be41af17db1d05df939691be224fec6caa843224564c193905e81d7dac4e13a"
+          },
+          {
+            "heading": "`synchronize-git-repositories`",
+            "id": "synchronize-git-repositories",
+            "sha256": "b67a350cdc283eef9afc9147d20bd7bb61c3972d6c8c10febf9cb48a65090509"
+          },
+          {
+            "heading": "`verify-before-push`",
+            "id": "verify-before-push",
+            "sha256": "b7badeef7bb85a6529a6afa72b566c6d229ff61dd721e6478dc29fab0c0b5ac4"
+          },
+          {
+            "heading": "`coordinate-code-documentation-repositories` (experimental)",
+            "id": "coordinate-code-documentation-repositories-experimental",
+            "sha256": "73ac1e07a43196ec33a6d7f83f0c7d46f47c5b315fbf75c9b3e7ce9ef0e4d752"
+          },
+          {
+            "heading": "`execute-configured-gitflow-releases` (experimental)",
+            "id": "execute-configured-gitflow-releases-experimental",
+            "sha256": "9919d447b2f52b3ddeb49e7cbc404a1cb70909d26c37172f71d47ae6797b1570"
+          },
+          {
+            "heading": "`execute-verified-development-lifecycle` (experimental)",
+            "id": "execute-verified-development-lifecycle-experimental",
+            "sha256": "0ee66c38e181a1e37fa2d75a03f322922d4c006aa9c76aa6686fb6b18fba86ca"
+          },
+          {
+            "heading": "Project knowledge and continuity",
+            "id": "project-knowledge-and-continuity",
+            "sha256": "6fe391890d4fb707858fa55b184a75d7fc0e29055ecb81e29e1f17ba6a9e5ed3"
+          },
+          {
+            "heading": "`maintain-work-log`",
+            "id": "maintain-work-log",
+            "sha256": "e2723582183169cd5399c1eea05042e2febd8147f7b7a689aae3f7bf8a6905a4"
+          },
+          {
+            "heading": "`maintain-project-digest` (experimental)",
+            "id": "maintain-project-digest-experimental",
+            "sha256": "250675da97f8369f937a48a539fe77ba9ac3bc134ac0951e23a653936458acef"
+          },
+          {
+            "heading": "`sync-project-context`",
+            "id": "sync-project-context",
+            "sha256": "098a78078bbd4f32f2ae6481e583f316940691f9532b92d9acc31eb90da73308"
+          },
+          {
+            "heading": "Coordination and communication",
+            "id": "coordination-and-communication",
+            "sha256": "dcacc2d682301acfce3347c767937e1496f0de77e713bf0938fd36fce72f60c3"
+          },
+          {
+            "heading": "`orchestrate-agent-work` (experimental)",
+            "id": "orchestrate-agent-work-experimental",
+            "sha256": "1ce46bc492be66023763bd3a559d3264e456d3bda287bcaf4fecadcf000fe48d"
+          },
+          {
+            "heading": "`synchronize-team-skills` (experimental)",
+            "id": "synchronize-team-skills-experimental",
+            "sha256": "144d000598c5da98463315cbb9350d844dceac585187647d5f68307e6bc200ec"
+          },
+          {
+            "heading": "`report-skill-feedback` (experimental)",
+            "id": "report-skill-feedback-experimental",
+            "sha256": "5019e635f983edc4a75766989bba3178a999dc0b93fa4572052ff1b4c10410ef"
+          },
+          {
+            "heading": "`notify-via-telegram`",
+            "id": "notify-via-telegram",
+            "sha256": "6d3c3c06bf6bca844f17437095a827e8952b69ceb5e02efcd3ac401522460265"
+          },
+          {
+            "heading": "Infrastructure and operations",
+            "id": "infrastructure-and-operations",
+            "sha256": "1593f0c467e52ff9a433ef739aa1c1636f574d1238e2b62e8edc8ee380d10880"
+          },
+          {
+            "heading": "`operate-yandex-cloud`",
+            "id": "operate-yandex-cloud",
+            "sha256": "2f0ae43b23c20ab0395bf0982de5e8bcaf5171ec1cc3c2e5626cc307eca48221"
+          },
+          {
+            "heading": "Skill collection evolution",
+            "id": "skill-collection-evolution",
+            "sha256": "6718340d67898da8268f4598ea1c404f4e8a95bc73c3d15ce701f30a21c4d3f8"
+          },
+          {
+            "heading": "`discover-skill-candidates` (experimental)",
+            "id": "discover-skill-candidates-experimental",
+            "sha256": "3a06bb15401be2d1ad7b1dd550ed8df54f67b274e4e110743c2eab1b294306a5"
+          },
+          {
+            "heading": "`release-skill-collection`",
+            "id": "release-skill-collection",
+            "sha256": "a248f7ef919a1e17ffca073614deae011b5166761789077a4901ce88dd662753"
+          },
+          {
+            "heading": "Supported compositions",
+            "id": "supported-compositions",
+            "sha256": "7488c5283f6081c4c078c2bd624d1742d7a0bb0461c8041d3726e0e9ad7c755d"
+          },
+          {
+            "heading": "Add a skill",
+            "id": "add-a-skill",
+            "sha256": "9c7a28744fb1fd4a29afb8ee48d10625bffe51420b913b4542923377b4c242d5"
+          },
+          {
+            "heading": "Verify a release",
+            "id": "verify-a-release",
+            "sha256": "e632fb6be24a12a17251844e1bbbafbf4c4f3aa4d4a167ca5f7eec867d0c6019"
+          }
+        ]
       }
     },
     "SUPPORT.md": {
@@ -743,6 +1030,15 @@
             "heading": "Support",
             "id": "support",
             "sha256": "0842656f65bbb854c20bcd481b6a6d9957d177e46ae337bd2aa081f1486a6c0b"
+          }
+        ]
+      },
+      "c13c2385bb0667208d175adaf8170f2e643978eb75643bc9aab7d5dfb6e64e1a": {
+        "sections": [
+          {
+            "heading": "Support",
+            "id": "support",
+            "sha256": "c13c2385bb0667208d175adaf8170f2e643978eb75643bc9aab7d5dfb6e64e1a"
           }
         ]
       }
@@ -781,6 +1077,40 @@
             "sha256": "2d0435658a270044a1d1f20ba6ba4e92b090e1bd3ef922104d7f5d81dcdda021"
           }
         ]
+      },
+      "f0a171eb5adc6877a18d9524084287493aee34b6f232fc94df2b11b891b61a75": {
+        "sections": [
+          {
+            "heading": "Terms of Use",
+            "id": "terms-of-use",
+            "sha256": "d2c8f7615cbf96c469e2872571654081d2e20a3a8d5402ebf71fde87c920fcf8"
+          },
+          {
+            "heading": "License",
+            "id": "license",
+            "sha256": "01b02319e143bcb2be46673c47e018f66674925f4726a4ca964820449bd7f525"
+          },
+          {
+            "heading": "User responsibility",
+            "id": "user-responsibility",
+            "sha256": "90a9187b3fd9c072c210d0e626ce5c87122327540c1de3ae9ea3d9b0faa8065a"
+          },
+          {
+            "heading": "Third-party services",
+            "id": "third-party-services",
+            "sha256": "c9f620589ce172881fecdeda788c8323a21ae25273ff94056504e51da28a7a64"
+          },
+          {
+            "heading": "No warranty",
+            "id": "no-warranty",
+            "sha256": "2f81a89e2969af7899b561469eed08eed04a9adee9126b24e3473f11535904ac"
+          },
+          {
+            "heading": "Changes and contact",
+            "id": "changes-and-contact",
+            "sha256": "2d0435658a270044a1d1f20ba6ba4e92b090e1bd3ef922104d7f5d81dcdda021"
+          }
+        ]
       }
     }
   },
@@ -789,401 +1119,481 @@
       "canonical": "CONTRIBUTING.md",
       "locale": "de",
       "review": "reviewed",
-      "source_sha256": "158a61176a2b33e42df23e932ab2772d2dc9878f1d6c72f47c6e413576bdc7cb",
+      "source_sha256": "5c36d5dc294147bc323aee5891c5cfe19b1b75eaba144654fcf478061b2ec252",
       "translation": "docs/i18n/de/CONTRIBUTING.md",
-      "translation_sha256": "3b58dabec3df75a388c5946af4a1f6be6846dc327089954a6f3ebc7eb4ef0413"
+      "translation_sha256": "274342ead3d35f2a872111afbad26570f551e84ed83b15066fe7b170baa2ae8e"
     },
     {
       "canonical": "PRIVACY.md",
       "locale": "de",
       "review": "baseline",
-      "source_sha256": "46ff93f55936b61c5e5d2c10b36ade991fa9837f4ea32e38cf6954d064b76be8",
+      "source_sha256": "e2bcb9f4073c25020e4109f09a878c260da80d1b2c32e01804274626a149d7e7",
       "translation": "docs/i18n/de/PRIVACY.md",
-      "translation_sha256": "a8cd5c12c12ad7430d160bf59827ebd94ddd95c2cd3c053735f12cc9a5678a25"
+      "translation_sha256": "397c953fd494ba2010df05edefcd68a91510b1f705f400d288f8367ef28ac72b"
     },
     {
       "canonical": "README.md",
       "locale": "de",
       "review": "reviewed",
-      "source_sha256": "b7a5d75db956b9ceb18bbc8041249c43e41e55bdefb3182bce999c07d3c276ba",
+      "source_sha256": "ea3f1d528339d6e877b45cc582e2a28cba7dccc95ec3c8d8bd4e0feb276bafed",
       "translation": "docs/i18n/de/README.md",
-      "translation_sha256": "e72a417f10911b8d4db0f94bda9baee4077c49c058ef1ab27de5d1244f59d844"
+      "translation_sha256": "797cdbcf8c6f5050bff3ef538889b667524ca7f950c6f3eb8085fdb418376396"
     },
     {
       "canonical": "SUPPORT.md",
       "locale": "de",
       "review": "baseline",
-      "source_sha256": "0842656f65bbb854c20bcd481b6a6d9957d177e46ae337bd2aa081f1486a6c0b",
+      "source_sha256": "c13c2385bb0667208d175adaf8170f2e643978eb75643bc9aab7d5dfb6e64e1a",
       "translation": "docs/i18n/de/SUPPORT.md",
-      "translation_sha256": "be0d638f5c127950e8299ebbdb1a73561add50d4b3e157275bf1823fedb13bc8"
+      "translation_sha256": "e0fd2ac9f5868b09038f8aacce2be97cd550e8865c5f0b7c45ac953bcf15a2a5"
     },
     {
       "canonical": "TERMS.md",
       "locale": "de",
       "review": "baseline",
-      "source_sha256": "a35dedd04b141a6fb95295006896cda4f1977c5d797565f09a78d6cfd483ea6d",
+      "source_sha256": "f0a171eb5adc6877a18d9524084287493aee34b6f232fc94df2b11b891b61a75",
       "translation": "docs/i18n/de/TERMS.md",
-      "translation_sha256": "8d5f4e35b6b5f928d973eb40cc950d9903a7ca4bf6b06d3b80bf3965c145d5e9"
+      "translation_sha256": "53e0e7caccd19f5d7e4fd8c92e6b84dfeb8a5685860b0d98a6d81917c2f25fd3"
     },
     {
       "canonical": "CONTRIBUTING.md",
       "locale": "es",
       "review": "reviewed",
-      "source_sha256": "158a61176a2b33e42df23e932ab2772d2dc9878f1d6c72f47c6e413576bdc7cb",
+      "source_sha256": "5c36d5dc294147bc323aee5891c5cfe19b1b75eaba144654fcf478061b2ec252",
       "translation": "docs/i18n/es/CONTRIBUTING.md",
-      "translation_sha256": "66da10dd4495eeba387fbcd28557430f7cb2f9b597bd38b6c32cbbe97e261c37"
+      "translation_sha256": "98218cc9566d3815174082a0af2aefe2c83d7daab94da53708282185c650a10a"
     },
     {
       "canonical": "PRIVACY.md",
       "locale": "es",
       "review": "baseline",
-      "source_sha256": "46ff93f55936b61c5e5d2c10b36ade991fa9837f4ea32e38cf6954d064b76be8",
+      "source_sha256": "e2bcb9f4073c25020e4109f09a878c260da80d1b2c32e01804274626a149d7e7",
       "translation": "docs/i18n/es/PRIVACY.md",
-      "translation_sha256": "763af3bf40dbad29786514be843b8ac03647ad7200be807e1e507e48357991bc"
+      "translation_sha256": "c945c5ef67157748f5ad4857596077d76c16959c3d22264f44a446af09b484f3"
     },
     {
       "canonical": "README.md",
       "locale": "es",
       "review": "reviewed",
-      "source_sha256": "b7a5d75db956b9ceb18bbc8041249c43e41e55bdefb3182bce999c07d3c276ba",
+      "source_sha256": "ea3f1d528339d6e877b45cc582e2a28cba7dccc95ec3c8d8bd4e0feb276bafed",
       "translation": "docs/i18n/es/README.md",
-      "translation_sha256": "2a879e3b6a4999fe6610d117ef0240d9208bbd95ace492800bc810b24adcb851"
+      "translation_sha256": "57b97b2d3ea85a2597712928fcb6fbf5e1d0a0658f11d8f5b683d8cd4e21a871"
     },
     {
       "canonical": "SUPPORT.md",
       "locale": "es",
       "review": "baseline",
-      "source_sha256": "0842656f65bbb854c20bcd481b6a6d9957d177e46ae337bd2aa081f1486a6c0b",
+      "source_sha256": "c13c2385bb0667208d175adaf8170f2e643978eb75643bc9aab7d5dfb6e64e1a",
       "translation": "docs/i18n/es/SUPPORT.md",
-      "translation_sha256": "52bc3c739170fa865eeb818f951875463827959a7ae11b92e8469c5f83efc689"
+      "translation_sha256": "0c84bbdcf6cd4acda3b61a5f87b84c85559420b547dc37e228abcaf63872e4cd"
     },
     {
       "canonical": "TERMS.md",
       "locale": "es",
       "review": "baseline",
-      "source_sha256": "a35dedd04b141a6fb95295006896cda4f1977c5d797565f09a78d6cfd483ea6d",
+      "source_sha256": "f0a171eb5adc6877a18d9524084287493aee34b6f232fc94df2b11b891b61a75",
       "translation": "docs/i18n/es/TERMS.md",
-      "translation_sha256": "e88122aab2230eda0862b33418fa90cad13a0bc2209218c71c893d8483abe7a4"
+      "translation_sha256": "c0e8cc23b38ffb7baf1a7973f2c5f3a3d597d79d570086e12bc03f9fedd943ac"
     },
     {
       "canonical": "CONTRIBUTING.md",
       "locale": "fr",
       "review": "reviewed",
-      "source_sha256": "158a61176a2b33e42df23e932ab2772d2dc9878f1d6c72f47c6e413576bdc7cb",
+      "source_sha256": "5c36d5dc294147bc323aee5891c5cfe19b1b75eaba144654fcf478061b2ec252",
       "translation": "docs/i18n/fr/CONTRIBUTING.md",
-      "translation_sha256": "3946d6d99d55859f090aeb9b80c4b5461319ebb2ca97b85d6615e7a84770055a"
+      "translation_sha256": "b9a16e06e5ef5dac55c69018081db78c9ecbb68ce81906b8865a57d6bbfdde1f"
     },
     {
       "canonical": "PRIVACY.md",
       "locale": "fr",
       "review": "baseline",
-      "source_sha256": "46ff93f55936b61c5e5d2c10b36ade991fa9837f4ea32e38cf6954d064b76be8",
+      "source_sha256": "e2bcb9f4073c25020e4109f09a878c260da80d1b2c32e01804274626a149d7e7",
       "translation": "docs/i18n/fr/PRIVACY.md",
-      "translation_sha256": "b6e104c0c682403999d6c2cebf6fecc9f9f81299ad622b4781e1a37858bd71d3"
+      "translation_sha256": "741e80fbe4b26792d76691dc0c3e4d936d1440e6bc09c9c8e5adcdc6525233f3"
     },
     {
       "canonical": "README.md",
       "locale": "fr",
       "review": "reviewed",
-      "source_sha256": "b7a5d75db956b9ceb18bbc8041249c43e41e55bdefb3182bce999c07d3c276ba",
+      "source_sha256": "ea3f1d528339d6e877b45cc582e2a28cba7dccc95ec3c8d8bd4e0feb276bafed",
       "translation": "docs/i18n/fr/README.md",
-      "translation_sha256": "9d56d3f5cb4615877dae091decee4b014ef9f55772acb51e2dc99665fba14c55"
+      "translation_sha256": "5824e2d57db95d819a1843cf9dc06b53859cecdde1f41916b52490561587bed4"
     },
     {
       "canonical": "SUPPORT.md",
       "locale": "fr",
       "review": "baseline",
-      "source_sha256": "0842656f65bbb854c20bcd481b6a6d9957d177e46ae337bd2aa081f1486a6c0b",
+      "source_sha256": "c13c2385bb0667208d175adaf8170f2e643978eb75643bc9aab7d5dfb6e64e1a",
       "translation": "docs/i18n/fr/SUPPORT.md",
-      "translation_sha256": "9fe4f82189bf78740aa70973ea29e6db75efb97f1a0d46f8440883f0a0461d05"
+      "translation_sha256": "8fdb4796090717aa7593d1a5ab02d2b4764665a0b05172fce3d58c1d0196c53e"
     },
     {
       "canonical": "TERMS.md",
       "locale": "fr",
       "review": "baseline",
-      "source_sha256": "a35dedd04b141a6fb95295006896cda4f1977c5d797565f09a78d6cfd483ea6d",
+      "source_sha256": "f0a171eb5adc6877a18d9524084287493aee34b6f232fc94df2b11b891b61a75",
       "translation": "docs/i18n/fr/TERMS.md",
-      "translation_sha256": "cc9aa54c856e7ac4599584f54eae9371bff780aacd350dbd58886181160a350b"
+      "translation_sha256": "717577f5b6751650da9bfb7818af457d66e8bca35b95316ec1df63ce2f2bb1fe"
     },
     {
       "canonical": "CONTRIBUTING.md",
       "locale": "it",
       "review": "reviewed",
-      "source_sha256": "158a61176a2b33e42df23e932ab2772d2dc9878f1d6c72f47c6e413576bdc7cb",
+      "source_sha256": "5c36d5dc294147bc323aee5891c5cfe19b1b75eaba144654fcf478061b2ec252",
       "translation": "docs/i18n/it/CONTRIBUTING.md",
-      "translation_sha256": "514fb6b2b7b509a9076ffd2ed179103326a0754bf51f825e2e53b83f3dea702e"
+      "translation_sha256": "fdc5c7dead018cba5135822f98dbce40737e4dc1701d881456a455076e56ba54"
     },
     {
       "canonical": "PRIVACY.md",
       "locale": "it",
       "review": "baseline",
-      "source_sha256": "46ff93f55936b61c5e5d2c10b36ade991fa9837f4ea32e38cf6954d064b76be8",
+      "source_sha256": "e2bcb9f4073c25020e4109f09a878c260da80d1b2c32e01804274626a149d7e7",
       "translation": "docs/i18n/it/PRIVACY.md",
-      "translation_sha256": "3934e615458fe0293c9595b82ec7ff6710c4e3e0f3a10abbdc488f0f837cfab3"
+      "translation_sha256": "ee3d3ddc32fac905c3f198e07116b85cbfc7bb9536af59bb3b18ecc2d9f5ab5a"
     },
     {
       "canonical": "README.md",
       "locale": "it",
       "review": "reviewed",
-      "source_sha256": "b7a5d75db956b9ceb18bbc8041249c43e41e55bdefb3182bce999c07d3c276ba",
+      "source_sha256": "ea3f1d528339d6e877b45cc582e2a28cba7dccc95ec3c8d8bd4e0feb276bafed",
       "translation": "docs/i18n/it/README.md",
-      "translation_sha256": "229496e02d52711936f9397002f082ea4721295f5cf400c2af9d9a95befd93c7"
+      "translation_sha256": "93d19bc332417f77f4af20a9d7be9ac6d327918a25dca469e04c1afa5d434f3a"
     },
     {
       "canonical": "SUPPORT.md",
       "locale": "it",
       "review": "baseline",
-      "source_sha256": "0842656f65bbb854c20bcd481b6a6d9957d177e46ae337bd2aa081f1486a6c0b",
+      "source_sha256": "c13c2385bb0667208d175adaf8170f2e643978eb75643bc9aab7d5dfb6e64e1a",
       "translation": "docs/i18n/it/SUPPORT.md",
-      "translation_sha256": "ad5783367055bc46eab79c8cd7e3bb93399eb5aed2f10524ccfbc9b01faa09bf"
+      "translation_sha256": "00f6bdb0006d3d6f25e553000d76407d59970aaedeae1f1317a763ea96386307"
     },
     {
       "canonical": "TERMS.md",
       "locale": "it",
       "review": "baseline",
-      "source_sha256": "a35dedd04b141a6fb95295006896cda4f1977c5d797565f09a78d6cfd483ea6d",
+      "source_sha256": "f0a171eb5adc6877a18d9524084287493aee34b6f232fc94df2b11b891b61a75",
       "translation": "docs/i18n/it/TERMS.md",
-      "translation_sha256": "e5970da7206b8bee2d8e3fc91b3f9e33b648b874fd9b909d476e640d2c5db88d"
+      "translation_sha256": "5c82c3c81090acd004b0035e0117cd2b3de05ef93873c1a9b53892641f0e48f7"
     },
     {
       "canonical": "CONTRIBUTING.md",
       "locale": "ja",
       "review": "reviewed",
-      "source_sha256": "158a61176a2b33e42df23e932ab2772d2dc9878f1d6c72f47c6e413576bdc7cb",
+      "source_sha256": "5c36d5dc294147bc323aee5891c5cfe19b1b75eaba144654fcf478061b2ec252",
       "translation": "docs/i18n/ja/CONTRIBUTING.md",
-      "translation_sha256": "e7255e097e0664c0dbc745a272bab0ff64e8a90aa2228b436c17e458387a1441"
+      "translation_sha256": "73cb89ca6a44d41f8a2f5e01aaa3c69bf9850855726e34309b66fe6c4b40c793"
     },
     {
       "canonical": "PRIVACY.md",
       "locale": "ja",
       "review": "baseline",
-      "source_sha256": "46ff93f55936b61c5e5d2c10b36ade991fa9837f4ea32e38cf6954d064b76be8",
+      "source_sha256": "e2bcb9f4073c25020e4109f09a878c260da80d1b2c32e01804274626a149d7e7",
       "translation": "docs/i18n/ja/PRIVACY.md",
-      "translation_sha256": "c267247f9c6fb36b1e1da92707bd5714adb565db395f02df712f6f780ea3ed44"
+      "translation_sha256": "1cfdd1e2f6d2da189d5416c979bbdd34dac30ca428a75bbde89c29b2e3db2415"
     },
     {
       "canonical": "README.md",
       "locale": "ja",
       "review": "reviewed",
-      "source_sha256": "b7a5d75db956b9ceb18bbc8041249c43e41e55bdefb3182bce999c07d3c276ba",
+      "source_sha256": "ea3f1d528339d6e877b45cc582e2a28cba7dccc95ec3c8d8bd4e0feb276bafed",
       "translation": "docs/i18n/ja/README.md",
-      "translation_sha256": "1ab57034b176df5b3e15c1449bd8f8292959fc928c5275c1c6a0695b21435ab7"
+      "translation_sha256": "b3b2747868e18f4a96fb29cae4d91bd99febdde7b3e6fdbdf7192caae13ceef0"
     },
     {
       "canonical": "SUPPORT.md",
       "locale": "ja",
       "review": "baseline",
-      "source_sha256": "0842656f65bbb854c20bcd481b6a6d9957d177e46ae337bd2aa081f1486a6c0b",
+      "source_sha256": "c13c2385bb0667208d175adaf8170f2e643978eb75643bc9aab7d5dfb6e64e1a",
       "translation": "docs/i18n/ja/SUPPORT.md",
-      "translation_sha256": "8c991c274058de28b17233a36a3fc70919b54da9befffb92eb9fc36ac2d5f42f"
+      "translation_sha256": "cdd9065db47309270a3a5486c154d6cd891221ccad3fd12896ea52b456e517ec"
     },
     {
       "canonical": "TERMS.md",
       "locale": "ja",
       "review": "baseline",
-      "source_sha256": "a35dedd04b141a6fb95295006896cda4f1977c5d797565f09a78d6cfd483ea6d",
+      "source_sha256": "f0a171eb5adc6877a18d9524084287493aee34b6f232fc94df2b11b891b61a75",
       "translation": "docs/i18n/ja/TERMS.md",
-      "translation_sha256": "3411b163e7caa1a80f7319f5ac89e72981f6a078ecf441e02337cabda8aba6b8"
+      "translation_sha256": "5e39791a124aaebf8c02b74f408eaca112f1e75006a0387ee4408e8a1d028174"
     },
     {
       "canonical": "CONTRIBUTING.md",
       "locale": "ko",
       "review": "reviewed",
-      "source_sha256": "158a61176a2b33e42df23e932ab2772d2dc9878f1d6c72f47c6e413576bdc7cb",
+      "source_sha256": "5c36d5dc294147bc323aee5891c5cfe19b1b75eaba144654fcf478061b2ec252",
       "translation": "docs/i18n/ko/CONTRIBUTING.md",
-      "translation_sha256": "ccdd7ab7d38ea7d6227a3390270c0c935160fddd39f9f3ce9d7a5eb9da1ac024"
+      "translation_sha256": "0ab2174f2b7d586d32d6b12bafc4f5f0762257cea1a878a63b991906634ca774"
     },
     {
       "canonical": "PRIVACY.md",
       "locale": "ko",
       "review": "baseline",
-      "source_sha256": "46ff93f55936b61c5e5d2c10b36ade991fa9837f4ea32e38cf6954d064b76be8",
+      "source_sha256": "e2bcb9f4073c25020e4109f09a878c260da80d1b2c32e01804274626a149d7e7",
       "translation": "docs/i18n/ko/PRIVACY.md",
-      "translation_sha256": "2f5a9c885b75e261b0c55b61fbd0450cc5d4b508039d20ef762295a4508ce65c"
+      "translation_sha256": "ec7e4ab8031ba049ba60eccf906b66a9185b87f9216dc779aa3c381a298942f3"
     },
     {
       "canonical": "README.md",
       "locale": "ko",
       "review": "reviewed",
-      "source_sha256": "b7a5d75db956b9ceb18bbc8041249c43e41e55bdefb3182bce999c07d3c276ba",
+      "source_sha256": "ea3f1d528339d6e877b45cc582e2a28cba7dccc95ec3c8d8bd4e0feb276bafed",
       "translation": "docs/i18n/ko/README.md",
-      "translation_sha256": "214f17e25fd0f0960771cd60fd6a668cb30b77fd3d73ba9361cec47e9170f5b1"
+      "translation_sha256": "108896830cbd9d21e831d79e906f795b26a24f34c7d3f4980e2b1281c7d27420"
     },
     {
       "canonical": "SUPPORT.md",
       "locale": "ko",
       "review": "baseline",
-      "source_sha256": "0842656f65bbb854c20bcd481b6a6d9957d177e46ae337bd2aa081f1486a6c0b",
+      "source_sha256": "c13c2385bb0667208d175adaf8170f2e643978eb75643bc9aab7d5dfb6e64e1a",
       "translation": "docs/i18n/ko/SUPPORT.md",
-      "translation_sha256": "7f622fb5f30622b6443ea43fd137e743ed9e19a805b6a07d706911df529aa8a9"
+      "translation_sha256": "1c446a030e3430dbb8fd56a449b119cdc9d1cda53712cbfac4bc24fab9d1b11c"
     },
     {
       "canonical": "TERMS.md",
       "locale": "ko",
       "review": "baseline",
-      "source_sha256": "a35dedd04b141a6fb95295006896cda4f1977c5d797565f09a78d6cfd483ea6d",
+      "source_sha256": "f0a171eb5adc6877a18d9524084287493aee34b6f232fc94df2b11b891b61a75",
       "translation": "docs/i18n/ko/TERMS.md",
-      "translation_sha256": "f1e7e1b8e3535d0e08421ad2e6702444993f0dfdf0794674a5b8deb0a40b97f9"
+      "translation_sha256": "e80d1e72b32ba0133f4ff00774ed815b713c7855201367f10e7718f120d75712"
+    },
+    {
+      "canonical": "CONTRIBUTING.md",
+      "locale": "pl",
+      "review": "baseline",
+      "source_sha256": "5c36d5dc294147bc323aee5891c5cfe19b1b75eaba144654fcf478061b2ec252",
+      "translation": "docs/i18n/pl/CONTRIBUTING.md",
+      "translation_sha256": "28f54d338b72fc9a3e394a947fef90f0d646653a76d970a4deb974940b149b5d"
+    },
+    {
+      "canonical": "PRIVACY.md",
+      "locale": "pl",
+      "review": "baseline",
+      "source_sha256": "e2bcb9f4073c25020e4109f09a878c260da80d1b2c32e01804274626a149d7e7",
+      "translation": "docs/i18n/pl/PRIVACY.md",
+      "translation_sha256": "81e8adec86b8de969dd4a7411ef3133f17a863f42d6a932dbe09937d15af8cd3"
+    },
+    {
+      "canonical": "README.md",
+      "locale": "pl",
+      "review": "baseline",
+      "source_sha256": "ea3f1d528339d6e877b45cc582e2a28cba7dccc95ec3c8d8bd4e0feb276bafed",
+      "translation": "docs/i18n/pl/README.md",
+      "translation_sha256": "37cb06b0f251c52a2b49244bb0bc7f007d8bbe8414edc08763aa370c94a3a699"
+    },
+    {
+      "canonical": "SUPPORT.md",
+      "locale": "pl",
+      "review": "baseline",
+      "source_sha256": "c13c2385bb0667208d175adaf8170f2e643978eb75643bc9aab7d5dfb6e64e1a",
+      "translation": "docs/i18n/pl/SUPPORT.md",
+      "translation_sha256": "65e734d5c41888e2249d5e9a60b84bebf4cffa67d3bf98020bd70cd37c6a1d12"
+    },
+    {
+      "canonical": "TERMS.md",
+      "locale": "pl",
+      "review": "baseline",
+      "source_sha256": "f0a171eb5adc6877a18d9524084287493aee34b6f232fc94df2b11b891b61a75",
+      "translation": "docs/i18n/pl/TERMS.md",
+      "translation_sha256": "a993f7ef636b4ae9de1e878f970a4f91fe37e697d0c096f4dcef1a22ebe258d5"
     },
     {
       "canonical": "CONTRIBUTING.md",
       "locale": "pt-BR",
       "review": "reviewed",
-      "source_sha256": "158a61176a2b33e42df23e932ab2772d2dc9878f1d6c72f47c6e413576bdc7cb",
+      "source_sha256": "5c36d5dc294147bc323aee5891c5cfe19b1b75eaba144654fcf478061b2ec252",
       "translation": "docs/i18n/pt-BR/CONTRIBUTING.md",
-      "translation_sha256": "15d6b76f2c8fb0132117db54c2b0ea4da75ec1d40ae134492cb2e6e63557fc3d"
+      "translation_sha256": "6420a002fe6bb1c61c53bad633029809ec8644c4f612a349b8ed0011929fdeb7"
     },
     {
       "canonical": "PRIVACY.md",
       "locale": "pt-BR",
       "review": "baseline",
-      "source_sha256": "46ff93f55936b61c5e5d2c10b36ade991fa9837f4ea32e38cf6954d064b76be8",
+      "source_sha256": "e2bcb9f4073c25020e4109f09a878c260da80d1b2c32e01804274626a149d7e7",
       "translation": "docs/i18n/pt-BR/PRIVACY.md",
-      "translation_sha256": "a3d608d9391267653b15d6c4db0e970c210dbf7706e767b61d0a10b15f0a196b"
+      "translation_sha256": "570527cf0d18d1d5c13c7caecab6cea11780e045e2b154f9c41879706d8def18"
     },
     {
       "canonical": "README.md",
       "locale": "pt-BR",
       "review": "reviewed",
-      "source_sha256": "b7a5d75db956b9ceb18bbc8041249c43e41e55bdefb3182bce999c07d3c276ba",
+      "source_sha256": "ea3f1d528339d6e877b45cc582e2a28cba7dccc95ec3c8d8bd4e0feb276bafed",
       "translation": "docs/i18n/pt-BR/README.md",
-      "translation_sha256": "4405369095f1c957a83df8b02027214f00ca6797872e33b1274b83f41bb66a86"
+      "translation_sha256": "9933dcb9e1dc0ad72a9c1ac9ac1669be89d3349a3848ac272fb24dd821cfb4cb"
     },
     {
       "canonical": "SUPPORT.md",
       "locale": "pt-BR",
       "review": "baseline",
-      "source_sha256": "0842656f65bbb854c20bcd481b6a6d9957d177e46ae337bd2aa081f1486a6c0b",
+      "source_sha256": "c13c2385bb0667208d175adaf8170f2e643978eb75643bc9aab7d5dfb6e64e1a",
       "translation": "docs/i18n/pt-BR/SUPPORT.md",
-      "translation_sha256": "368474b29721b0c72b62e0f916e4a9cd80c3503023d8a9d701be68ad2dc29ac8"
+      "translation_sha256": "0d49599f408a3c71e068a7583c4a22ae3d6db9e492afb492d8d021442e4693da"
     },
     {
       "canonical": "TERMS.md",
       "locale": "pt-BR",
       "review": "baseline",
-      "source_sha256": "a35dedd04b141a6fb95295006896cda4f1977c5d797565f09a78d6cfd483ea6d",
+      "source_sha256": "f0a171eb5adc6877a18d9524084287493aee34b6f232fc94df2b11b891b61a75",
       "translation": "docs/i18n/pt-BR/TERMS.md",
-      "translation_sha256": "56169bd22bdf6001b13167d041d7c018a4f48222d5eb426afff5b4926aeabea6"
+      "translation_sha256": "eae858b142853c4e0774d74d94a31a4c612ecf4aa9c606e186c3ab72d19f939f"
     },
     {
       "canonical": "CONTRIBUTING.md",
       "locale": "ru",
       "review": "reviewed",
-      "source_sha256": "158a61176a2b33e42df23e932ab2772d2dc9878f1d6c72f47c6e413576bdc7cb",
+      "source_sha256": "5c36d5dc294147bc323aee5891c5cfe19b1b75eaba144654fcf478061b2ec252",
       "translation": "docs/i18n/ru/CONTRIBUTING.md",
-      "translation_sha256": "4bc43124c2bfca6f5e46906c4feb5cee701ecef733c7299fca0193c552015034"
+      "translation_sha256": "97157c42e242366401f9c190660542bef912bd0172795bf75673399557c61f45"
     },
     {
       "canonical": "PRIVACY.md",
       "locale": "ru",
       "review": "baseline",
-      "source_sha256": "46ff93f55936b61c5e5d2c10b36ade991fa9837f4ea32e38cf6954d064b76be8",
+      "source_sha256": "e2bcb9f4073c25020e4109f09a878c260da80d1b2c32e01804274626a149d7e7",
       "translation": "docs/i18n/ru/PRIVACY.md",
-      "translation_sha256": "4b930c9940a71da6de543cae5f15d2582178f11f5b8228839b0d3133ec566b36"
+      "translation_sha256": "4da4b2020dcfeb26d7258122cdd71fe56d87878d498b537b59d2b26814986370"
     },
     {
       "canonical": "README.md",
       "locale": "ru",
       "review": "reviewed",
-      "source_sha256": "b7a5d75db956b9ceb18bbc8041249c43e41e55bdefb3182bce999c07d3c276ba",
+      "source_sha256": "ea3f1d528339d6e877b45cc582e2a28cba7dccc95ec3c8d8bd4e0feb276bafed",
       "translation": "docs/i18n/ru/README.md",
-      "translation_sha256": "3d888dacd57b33f53307884e30e9d20ed0f8d56d300d217c79f45e76a159563b"
+      "translation_sha256": "bd55dcb0ed527135b1253c3931f306c9a859ea6f6ce1fc92353eb94915b0c18c"
     },
     {
       "canonical": "SUPPORT.md",
       "locale": "ru",
       "review": "baseline",
-      "source_sha256": "0842656f65bbb854c20bcd481b6a6d9957d177e46ae337bd2aa081f1486a6c0b",
+      "source_sha256": "c13c2385bb0667208d175adaf8170f2e643978eb75643bc9aab7d5dfb6e64e1a",
       "translation": "docs/i18n/ru/SUPPORT.md",
-      "translation_sha256": "a07dc328e303c52d197e091995b7fd58a7d9bebd3754dd913be66b77b83c3d86"
+      "translation_sha256": "30eb028c7979d83a8a6c0c7acb64e1d905fc7ec77487fccec225177b92145d3d"
     },
     {
       "canonical": "TERMS.md",
       "locale": "ru",
       "review": "baseline",
-      "source_sha256": "a35dedd04b141a6fb95295006896cda4f1977c5d797565f09a78d6cfd483ea6d",
+      "source_sha256": "f0a171eb5adc6877a18d9524084287493aee34b6f232fc94df2b11b891b61a75",
       "translation": "docs/i18n/ru/TERMS.md",
-      "translation_sha256": "593b6d1abc1f079ebe73fb018af6098fe517af5b9c2ba2a2035be4909fb7b4c0"
+      "translation_sha256": "17aa05804a3e6567fda4a159a99d79d3e1ffd8a39de778d65660bde875cab64e"
     },
     {
       "canonical": "CONTRIBUTING.md",
       "locale": "tr",
       "review": "reviewed",
-      "source_sha256": "158a61176a2b33e42df23e932ab2772d2dc9878f1d6c72f47c6e413576bdc7cb",
+      "source_sha256": "5c36d5dc294147bc323aee5891c5cfe19b1b75eaba144654fcf478061b2ec252",
       "translation": "docs/i18n/tr/CONTRIBUTING.md",
-      "translation_sha256": "753a63ef8511930dcef8276f837524c08f7adf35dcfe22f2ae6c12e2e3bf5558"
+      "translation_sha256": "82fe48b8d9a477f5beef2154f777a310788c1f95dd982aa6267daa4df9c0d37f"
     },
     {
       "canonical": "PRIVACY.md",
       "locale": "tr",
       "review": "baseline",
-      "source_sha256": "46ff93f55936b61c5e5d2c10b36ade991fa9837f4ea32e38cf6954d064b76be8",
+      "source_sha256": "e2bcb9f4073c25020e4109f09a878c260da80d1b2c32e01804274626a149d7e7",
       "translation": "docs/i18n/tr/PRIVACY.md",
-      "translation_sha256": "8793759dac9d06db9aaca7264882031b02ca294f23662561847ddf24cfdced62"
+      "translation_sha256": "f270d0e30bf40aa610090203ddecc6cde478ead115e83bd42edcc05dabd7f2d7"
     },
     {
       "canonical": "README.md",
       "locale": "tr",
       "review": "reviewed",
-      "source_sha256": "b7a5d75db956b9ceb18bbc8041249c43e41e55bdefb3182bce999c07d3c276ba",
+      "source_sha256": "ea3f1d528339d6e877b45cc582e2a28cba7dccc95ec3c8d8bd4e0feb276bafed",
       "translation": "docs/i18n/tr/README.md",
-      "translation_sha256": "e106911fdbe4cad887a04f6624a24797fd06c292835cff5f6bc96978e63cdb31"
+      "translation_sha256": "85dd24b3a282a11d32db9fb10679b3899c94888d969b619785f487b662c89f3e"
     },
     {
       "canonical": "SUPPORT.md",
       "locale": "tr",
       "review": "baseline",
-      "source_sha256": "0842656f65bbb854c20bcd481b6a6d9957d177e46ae337bd2aa081f1486a6c0b",
+      "source_sha256": "c13c2385bb0667208d175adaf8170f2e643978eb75643bc9aab7d5dfb6e64e1a",
       "translation": "docs/i18n/tr/SUPPORT.md",
-      "translation_sha256": "3c3d6719a1a23125dd782ff513d83853dd1bc4c55850dd29216f3759e9ced5f1"
+      "translation_sha256": "8821135f1f977b9ada1220895084db6fb79ce2765be2f37785ef8575ab835558"
     },
     {
       "canonical": "TERMS.md",
       "locale": "tr",
       "review": "baseline",
-      "source_sha256": "a35dedd04b141a6fb95295006896cda4f1977c5d797565f09a78d6cfd483ea6d",
+      "source_sha256": "f0a171eb5adc6877a18d9524084287493aee34b6f232fc94df2b11b891b61a75",
       "translation": "docs/i18n/tr/TERMS.md",
-      "translation_sha256": "092046f2dac9af95dfe259084ed95ac69666c1d2bccc9523cd75e02e1cccbd0e"
+      "translation_sha256": "e1dd8f80f8e756bfc104d09f245cddeb954db1116a136520a455b5ddfe0f6f3d"
+    },
+    {
+      "canonical": "CONTRIBUTING.md",
+      "locale": "uk",
+      "review": "baseline",
+      "source_sha256": "5c36d5dc294147bc323aee5891c5cfe19b1b75eaba144654fcf478061b2ec252",
+      "translation": "docs/i18n/uk/CONTRIBUTING.md",
+      "translation_sha256": "8f4e303c5300f18cfc1260ae64ded7dc8252811e9263d855c5bf40cacff5bc0d"
+    },
+    {
+      "canonical": "PRIVACY.md",
+      "locale": "uk",
+      "review": "baseline",
+      "source_sha256": "e2bcb9f4073c25020e4109f09a878c260da80d1b2c32e01804274626a149d7e7",
+      "translation": "docs/i18n/uk/PRIVACY.md",
+      "translation_sha256": "b1d0cb001f9019b5939bcb96fcd606c21a65a878a43c1cc45afb2fafb5a3db77"
+    },
+    {
+      "canonical": "README.md",
+      "locale": "uk",
+      "review": "baseline",
+      "source_sha256": "ea3f1d528339d6e877b45cc582e2a28cba7dccc95ec3c8d8bd4e0feb276bafed",
+      "translation": "docs/i18n/uk/README.md",
+      "translation_sha256": "29b310b99fbb0da00a198d6147671658805f065e9330864048b8747e3a5f5269"
+    },
+    {
+      "canonical": "SUPPORT.md",
+      "locale": "uk",
+      "review": "baseline",
+      "source_sha256": "c13c2385bb0667208d175adaf8170f2e643978eb75643bc9aab7d5dfb6e64e1a",
+      "translation": "docs/i18n/uk/SUPPORT.md",
+      "translation_sha256": "1148e25910ca42a0fdccc07b4483a8acfe60a2e82e65323780f118b09bf91aec"
+    },
+    {
+      "canonical": "TERMS.md",
+      "locale": "uk",
+      "review": "baseline",
+      "source_sha256": "f0a171eb5adc6877a18d9524084287493aee34b6f232fc94df2b11b891b61a75",
+      "translation": "docs/i18n/uk/TERMS.md",
+      "translation_sha256": "04a668b668fbf73608deb4a8b9f39ee99a7792494b6ae42ff5ed8139c9596b61"
     },
     {
       "canonical": "CONTRIBUTING.md",
       "locale": "zh-CN",
       "review": "reviewed",
-      "source_sha256": "158a61176a2b33e42df23e932ab2772d2dc9878f1d6c72f47c6e413576bdc7cb",
+      "source_sha256": "5c36d5dc294147bc323aee5891c5cfe19b1b75eaba144654fcf478061b2ec252",
       "translation": "docs/i18n/zh-CN/CONTRIBUTING.md",
-      "translation_sha256": "263e01b8f638f71f99b112ae2a8b86d9fb484c4f67286ec6d2cb8a825e6e7251"
+      "translation_sha256": "348b403a6754eab9abc40f79e87335728de0438f8b06e947bb03c52ae3430093"
     },
     {
       "canonical": "PRIVACY.md",
       "locale": "zh-CN",
       "review": "baseline",
-      "source_sha256": "46ff93f55936b61c5e5d2c10b36ade991fa9837f4ea32e38cf6954d064b76be8",
+      "source_sha256": "e2bcb9f4073c25020e4109f09a878c260da80d1b2c32e01804274626a149d7e7",
       "translation": "docs/i18n/zh-CN/PRIVACY.md",
-      "translation_sha256": "93c58b91d60ab4ee5b8b359da58ce4d1aad6fab92522523993e25ba91ed09900"
+      "translation_sha256": "58732320bf0297dfcdfbaa1c783730c151d97dd04b80b6730e108be275c6c06d"
     },
     {
       "canonical": "README.md",
       "locale": "zh-CN",
       "review": "reviewed",
-      "source_sha256": "b7a5d75db956b9ceb18bbc8041249c43e41e55bdefb3182bce999c07d3c276ba",
+      "source_sha256": "ea3f1d528339d6e877b45cc582e2a28cba7dccc95ec3c8d8bd4e0feb276bafed",
       "translation": "docs/i18n/zh-CN/README.md",
-      "translation_sha256": "75e944497251698a9633c32ef73e4d07bf430f4ea7fa9738e1282233589b237e"
+      "translation_sha256": "210b53e7ae0b6883806eef7f8dbb3f6e2a9cf36c23bc05fab850119ba0e25cf4"
     },
     {
       "canonical": "SUPPORT.md",
       "locale": "zh-CN",
       "review": "baseline",
-      "source_sha256": "0842656f65bbb854c20bcd481b6a6d9957d177e46ae337bd2aa081f1486a6c0b",
+      "source_sha256": "c13c2385bb0667208d175adaf8170f2e643978eb75643bc9aab7d5dfb6e64e1a",
       "translation": "docs/i18n/zh-CN/SUPPORT.md",
-      "translation_sha256": "25fd6ccb6d52fc8afa2321ddf593ba129a3ae3db8046a5008a2fa59876558853"
+      "translation_sha256": "5b4802f8247bd46d68c1c573e470fe76f7102292debafbc3196f29d10325e51f"
     },
     {
       "canonical": "TERMS.md",
       "locale": "zh-CN",
       "review": "baseline",
-      "source_sha256": "a35dedd04b141a6fb95295006896cda4f1977c5d797565f09a78d6cfd483ea6d",
+      "source_sha256": "f0a171eb5adc6877a18d9524084287493aee34b6f232fc94df2b11b891b61a75",
       "translation": "docs/i18n/zh-CN/TERMS.md",
-      "translation_sha256": "5626e045cfb0d04791c994060c0aaad8975d3f0f6a3812867f035c6028f0fae3"
+      "translation_sha256": "88d5a8bf3bd9281fce218e7ab724437ff446998cf85970151e0bb407daaefbc7"
     }
   ]
 }

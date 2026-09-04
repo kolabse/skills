@@ -1,6 +1,6 @@
 # Política de Privacidade
 
-[English](../../../PRIVACY.md) | [Русский](../ru/PRIVACY.md) | [Español](../es/PRIVACY.md) | [Français](../fr/PRIVACY.md) | [Deutsch](../de/PRIVACY.md) | Português (Brasil) | [日本語](../ja/PRIVACY.md) | [Italiano](../it/PRIVACY.md) | [한국어](../ko/PRIVACY.md) | [简体中文](../zh-CN/PRIVACY.md) | [Türkçe](../tr/PRIVACY.md)
+[English](../../../PRIVACY.md) | [Русский](../ru/PRIVACY.md) | [Español](../es/PRIVACY.md) | [Français](../fr/PRIVACY.md) | [Deutsch](../de/PRIVACY.md) | Português (Brasil) | [日本語](../ja/PRIVACY.md) | [Italiano](../it/PRIVACY.md) | [한국어](../ko/PRIVACY.md) | [简体中文](../zh-CN/PRIVACY.md) | [Türkçe](../tr/PRIVACY.md) | [Polski](../pl/PRIVACY.md) | [Українська](../uk/PRIVACY.md)
 
 Esta é uma tradução para português do Brasil. Em caso de divergência, a [versão em inglês](../../../PRIVACY.md) é a referência oficial.
 

@@ -1,6 +1,6 @@
 # Informativa sulla privacy
 
-[English](../../../PRIVACY.md) | [Русский](../ru/PRIVACY.md) | [Español](../es/PRIVACY.md) | [Français](../fr/PRIVACY.md) | [Deutsch](../de/PRIVACY.md) | [Português (Brasil)](../pt-BR/PRIVACY.md) | [日本語](../ja/PRIVACY.md) | Italiano | [한국어](../ko/PRIVACY.md) | [简体中文](../zh-CN/PRIVACY.md) | [Türkçe](../tr/PRIVACY.md)
+[English](../../../PRIVACY.md) | [Русский](../ru/PRIVACY.md) | [Español](../es/PRIVACY.md) | [Français](../fr/PRIVACY.md) | [Deutsch](../de/PRIVACY.md) | [Português (Brasil)](../pt-BR/PRIVACY.md) | [日本語](../ja/PRIVACY.md) | Italiano | [한국어](../ko/PRIVACY.md) | [简体中文](../zh-CN/PRIVACY.md) | [Türkçe](../tr/PRIVACY.md) | [Polski](../pl/PRIVACY.md) | [Українська](../uk/PRIVACY.md)
 
 Questa è una traduzione italiana. In caso di discrepanze, fa fede la [versione inglese canonica](../../../PRIVACY.md).
 

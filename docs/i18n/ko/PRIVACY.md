@@ -1,6 +1,6 @@
 # 개인정보 처리방침
 
-[English](../../../PRIVACY.md) | [Русский](../ru/PRIVACY.md) | [Español](../es/PRIVACY.md) | [Français](../fr/PRIVACY.md) | [Deutsch](../de/PRIVACY.md) | [Português (Brasil)](../pt-BR/PRIVACY.md) | [日本語](../ja/PRIVACY.md) | [Italiano](../it/PRIVACY.md) | 한국어 | [简体中文](../zh-CN/PRIVACY.md) | [Türkçe](../tr/PRIVACY.md)
+[English](../../../PRIVACY.md) | [Русский](../ru/PRIVACY.md) | [Español](../es/PRIVACY.md) | [Français](../fr/PRIVACY.md) | [Deutsch](../de/PRIVACY.md) | [Português (Brasil)](../pt-BR/PRIVACY.md) | [日本語](../ja/PRIVACY.md) | [Italiano](../it/PRIVACY.md) | 한국어 | [简体中文](../zh-CN/PRIVACY.md) | [Türkçe](../tr/PRIVACY.md) | [Polski](../pl/PRIVACY.md) | [Українська](../uk/PRIVACY.md)
 
 이 문서는 한국어 번역입니다. 내용이 다를 경우 [영어 원문](../../../PRIVACY.md)이 기준입니다.
 

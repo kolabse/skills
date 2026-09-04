@@ -1,6 +1,6 @@
 # Assistenza
 
-[English](../../../SUPPORT.md) | [Русский](../ru/SUPPORT.md) | [Español](../es/SUPPORT.md) | [Français](../fr/SUPPORT.md) | [Deutsch](../de/SUPPORT.md) | [Português (Brasil)](../pt-BR/SUPPORT.md) | [日本語](../ja/SUPPORT.md) | Italiano | [한국어](../ko/SUPPORT.md) | [简体中文](../zh-CN/SUPPORT.md) | [Türkçe](../tr/SUPPORT.md)
+[English](../../../SUPPORT.md) | [Русский](../ru/SUPPORT.md) | [Español](../es/SUPPORT.md) | [Français](../fr/SUPPORT.md) | [Deutsch](../de/SUPPORT.md) | [Português (Brasil)](../pt-BR/SUPPORT.md) | [日本語](../ja/SUPPORT.md) | Italiano | [한국어](../ko/SUPPORT.md) | [简体中文](../zh-CN/SUPPORT.md) | [Türkçe](../tr/SUPPORT.md) | [Polski](../pl/SUPPORT.md) | [Українська](../uk/SUPPORT.md)
 
 Questa è una traduzione italiana. In caso di discrepanze, fa fede la [versione inglese canonica](../../../SUPPORT.md).
 

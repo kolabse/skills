@@ -1,6 +1,6 @@
 # Kullanım Koşulları
 
-[English](../../../TERMS.md) | [Русский](../ru/TERMS.md) | [Español](../es/TERMS.md) | [Français](../fr/TERMS.md) | [Deutsch](../de/TERMS.md) | [Português (Brasil)](../pt-BR/TERMS.md) | [日本語](../ja/TERMS.md) | [Italiano](../it/TERMS.md) | [한국어](../ko/TERMS.md) | [简体中文](../zh-CN/TERMS.md) | Türkçe
+[English](../../../TERMS.md) | [Русский](../ru/TERMS.md) | [Español](../es/TERMS.md) | [Français](../fr/TERMS.md) | [Deutsch](../de/TERMS.md) | [Português (Brasil)](../pt-BR/TERMS.md) | [日本語](../ja/TERMS.md) | [Italiano](../it/TERMS.md) | [한국어](../ko/TERMS.md) | [简体中文](../zh-CN/TERMS.md) | Türkçe | [Polski](../pl/TERMS.md) | [Українська](../uk/TERMS.md)
 
 Bu belge bir çeviridir; esas alınan kaynak [İngilizce sürümdür](../../../TERMS.md).
 

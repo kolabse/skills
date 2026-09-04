@@ -1,6 +1,6 @@
 # 利用規約
 
-[English](../../../TERMS.md) | [Русский](../ru/TERMS.md) | [Español](../es/TERMS.md) | [Français](../fr/TERMS.md) | [Deutsch](../de/TERMS.md) | [Português (Brasil)](../pt-BR/TERMS.md) | 日本語 | [Italiano](../it/TERMS.md) | [한국어](../ko/TERMS.md) | [简体中文](../zh-CN/TERMS.md) | [Türkçe](../tr/TERMS.md)
+[English](../../../TERMS.md) | [Русский](../ru/TERMS.md) | [Español](../es/TERMS.md) | [Français](../fr/TERMS.md) | [Deutsch](../de/TERMS.md) | [Português (Brasil)](../pt-BR/TERMS.md) | 日本語 | [Italiano](../it/TERMS.md) | [한국어](../ko/TERMS.md) | [简体中文](../zh-CN/TERMS.md) | [Türkçe](../tr/TERMS.md) | [Polski](../pl/TERMS.md) | [Українська](../uk/TERMS.md)
 
 この文書は日本語訳です。内容に相違がある場合は[英語版](../../../TERMS.md)を正とします。
 
