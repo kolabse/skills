@@ -6,6 +6,7 @@ import json
 import os
 import shutil
 import subprocess
+import sys
 import tempfile
 import unittest
 from contextlib import redirect_stderr, redirect_stdout
@@ -27,6 +28,94 @@ SPEC.loader.exec_module(telegram_notify)
 
 
 class TelegramNotifyTests(unittest.TestCase):
+    def test_utf8_stdin_ignores_legacy_text_wrapper_encoding(self) -> None:
+        text = "Привет ✅\nЁж, café, 中文"
+        stream = io.TextIOWrapper(io.BytesIO(text.encode("utf-8")), encoding="cp1251")
+        with stream, patch.object(telegram_notify.sys, "stdin", stream), patch.object(
+            telegram_notify, "load_config", return_value={}
+        ), patch.object(telegram_notify, "resolve_credentials", return_value=("token", "1", "")), patch.object(
+            telegram_notify, "send_message", return_value=1
+        ) as sender, redirect_stdout(io.StringIO()):
+            self.assertEqual(0, telegram_notify.main(["send", "--stdin"]))
+        self.assertEqual(text, sender.call_args.args[2])
+
+    def test_utf8_file_accepts_optional_bom_and_preserves_newlines(self) -> None:
+        text = "Привет ✅\r\nВторая строка"
+        with tempfile.TemporaryDirectory() as directory:
+            message_file = Path(directory) / "message.txt"
+            for bom in (b"", b"\xef\xbb\xbf"):
+                with self.subTest(bom=bom):
+                    message_file.write_bytes(bom + text.encode("utf-8"))
+                    output = io.StringIO()
+                    with redirect_stdout(output), patch.object(
+                        telegram_notify, "load_config", side_effect=AssertionError("must stay offline")
+                    ), patch.object(telegram_notify, "api_call", side_effect=AssertionError("must stay offline")):
+                        self.assertEqual(0, telegram_notify.main([
+                            "send", "--message-file", str(message_file), "--dry-run"
+                        ]))
+                    result = json.loads(output.getvalue())
+                    self.assertEqual(text, result["text"])
+                    self.assertTrue(result["utf8_round_trip"])
+                    self.assertFalse(result["sent"])
+
+    def test_invalid_utf8_stops_before_credentials_or_delivery(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            message_file = Path(directory) / "message.txt"
+            message_file.write_bytes(b"private-message\xff")
+            for source in (["--stdin"], ["--message-file", str(message_file)]):
+                with self.subTest(source=source):
+                    stream = io.TextIOWrapper(io.BytesIO(b"private-message\xff"), encoding="cp1251")
+                    errors = io.StringIO()
+                    with stream, patch.object(telegram_notify.sys, "stdin", stream), redirect_stderr(errors), patch.object(
+                        telegram_notify, "load_config", side_effect=AssertionError("must not read credentials")
+                    ), patch.object(telegram_notify, "api_call", side_effect=AssertionError("must not send")):
+                        self.assertEqual(1, telegram_notify.main(["send", *source]))
+                    self.assertIn("UTF-8", errors.getvalue())
+                    self.assertNotIn("private-message", errors.getvalue())
+                    self.assertNotIn("Traceback", errors.getvalue())
+
+    def test_send_message_sources_are_mutually_exclusive(self) -> None:
+        for args in (["text", "--stdin"], ["", "--stdin"], ["text", "--message-file", "x"],
+                     ["--stdin", "--message-file", "x"]):
+            with self.subTest(args=args), redirect_stderr(io.StringIO()):
+                with self.assertRaises(SystemExit) as error:
+                    telegram_notify.build_parser().parse_args(["send", *args])
+                self.assertEqual(2, error.exception.code)
+
+    def test_dry_run_cli_round_trip_under_legacy_encoding(self) -> None:
+        text = "Привет ✅\nЁж, café, 中文"
+        result = subprocess.run(
+            [sys.executable, str(SCRIPT), "send", "--stdin", "--dry-run"],
+            input=text.encode("utf-8"), capture_output=True, timeout=15,
+            env={**os.environ, "PYTHONIOENCODING": "cp1251", "PYTHONUTF8": "0"},
+        )
+        self.assertEqual(0, result.returncode, result.stderr)
+        report = json.loads(result.stdout.decode("ascii"))
+        self.assertEqual(text, report["text"])
+        self.assertTrue(report["utf8_round_trip"])
+        self.assertFalse(report["sent"])
+
+    @unittest.skipUnless(os.name == "nt" and shutil.which("powershell"), "Windows PowerShell is required")
+    def test_windows_powershell_utf8_file_round_trip(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            script = Path(directory) / "round-trip.ps1"
+            script.write_text(
+                "param($Python, $Sender, $MessageFile)\n"
+                '$message = "Проверка: Привет ✅"\n'
+                '[IO.File]::WriteAllText($MessageFile, $message, [Text.UTF8Encoding]::new($false))\n'
+                '$preview = & $Python $Sender send --message-file $MessageFile --dry-run\n'
+                'if ($LASTEXITCODE -ne 0) { exit 1 }\n'
+                '$result = $preview | ConvertFrom-Json\n'
+                'if (-not $result.utf8_round_trip -or $result.text -cne $message -or $result.sent) { exit 2 }\n',
+                encoding="utf-8-sig",
+            )
+            result = subprocess.run(
+                ["powershell", "-NoProfile", "-ExecutionPolicy", "Bypass", "-File", str(script),
+                 sys.executable, str(SCRIPT), str(Path(directory) / "message.txt")],
+                capture_output=True, timeout=30,
+            )
+            self.assertEqual(0, result.returncode, result.stderr)
+
     def test_project_profile_is_outside_project_and_contains_no_token(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)

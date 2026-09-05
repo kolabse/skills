@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import importlib.util
+import io
 import json
 import os
 import threading
@@ -40,6 +41,24 @@ class TelegramHandler(BaseHTTPRequestHandler):
 
 
 class TelegramIntegrationTests(unittest.TestCase):
+    def test_unicode_input_reaches_http_payload_unchanged(self) -> None:
+        text = "Привет ✅\nЁж, café, 中文"
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            message_file = root / "message.txt"
+            message_file.write_bytes(b"\xef\xbb\xbf" + text.encode("utf-8"))
+            endpoint = f"http://127.0.0.1:{self.server.server_port}"
+            environment = {"TELEGRAM_BOT_TOKEN": "123456:fixture-token", "TELEGRAM_CHAT_ID": "100"}
+            for source in (["--stdin"], ["--message-file", str(message_file)]):
+                stream = io.TextIOWrapper(io.BytesIO(text.encode("utf-8")), encoding="cp1251")
+                with self.subTest(source=source), stream, patch.object(telegram.sys, "stdin", stream), patch.dict(
+                    os.environ, environment, clear=False
+                ), patch.object(telegram, "API_ROOT", endpoint):
+                    self.assertEqual(0, telegram.main([
+                        "--config", str(root / "config.json"), "send", *source
+                    ]))
+                self.assertEqual(text, TelegramHandler.calls[-1][1]["text"][0])
+
     def setUp(self) -> None:
         TelegramHandler.calls = []
         self.server = ThreadingHTTPServer(("127.0.0.1", 0), TelegramHandler)

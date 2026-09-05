@@ -122,6 +122,46 @@ python <skill-root>/scripts/telegram_notify.py send \
 Always pass `--project-path` while operating in a project so its routing profile
 is honored. Omit it only for work that is not associated with a project.
 
+### Preserve Unicode on Windows
+
+Prefer `--message-file <utf8-file>` for non-ASCII messages on Windows. Files
+must be UTF-8; an initial UTF-8 BOM is accepted and removed. `--stdin` also
+accepts UTF-8 bytes explicitly, independently of Python's locale. Invalid
+UTF-8 fails before credentials are read or any message is sent. Positional
+message text remains supported.
+
+Do not assume a PowerShell text pipeline produces UTF-8. The producer must
+write UTF-8 bytes; changing Python's encoding cannot recover characters already
+lost in the shell. For Windows PowerShell 5.1, save scripts containing literal
+non-ASCII text as UTF-8 with BOM, or supply an existing UTF-8 message file.
+
+Use this local Unicode round-trip self-test before the first non-ASCII send
+through a new Windows invocation path:
+
+```powershell
+$message = "Проверка: Привет ✅"
+$messageFile = Join-Path ([IO.Path]::GetTempPath()) ([IO.Path]::GetRandomFileName())
+try {
+    [IO.File]::WriteAllText($messageFile, $message, [Text.UTF8Encoding]::new($false))
+    $preview = python <skill-root>/scripts/telegram_notify.py send --message-file $messageFile --dry-run
+    if ($LASTEXITCODE -ne 0) { throw "Local Unicode check failed" }
+    $result = $preview | ConvertFrom-Json
+    if (-not $result.utf8_round_trip -or $result.text -cne $message) {
+        throw "Message changed before delivery"
+    }
+} finally {
+    Remove-Item -LiteralPath $messageFile -ErrorAction SilentlyContinue
+}
+```
+
+`--dry-run` reads no credentials and makes no network request. Its ASCII-safe
+JSON contains the decoded text, its UTF-8 SHA-256, chunk count, and local
+UTF-8/form-encoding round-trip result. Treat the preview as message content,
+not as a sanitized log. It checks input and serialization, not routing or
+recipient rendering; compare it with the intended text. Already-corrupted but
+valid Unicode cannot be detected automatically. API acceptance proves receipt
+by Telegram, not recipient-visible character integrity.
+
 Use these compact shapes and omit empty fields:
 
 ```text

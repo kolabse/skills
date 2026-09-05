@@ -600,14 +600,43 @@ def command_migrate(path: Path, as_json: bool) -> None:
     print(json.dumps(state, sort_keys=True) if as_json else f"Configuration is version 1: {path}")
 
 
+def read_message(args: argparse.Namespace) -> str:
+    """Decode external byte inputs explicitly, independent of the host locale."""
+    try:
+        if args.message_file is not None:
+            message = args.message_file.read_bytes().decode("utf-8-sig")
+        elif args.stdin:
+            if hasattr(sys.stdin, "buffer"):
+                message = sys.stdin.buffer.read().decode("utf-8-sig")
+            else:
+                # Embedded callers can supply an already decoded text stream.
+                message = sys.stdin.read()
+        else:
+            message = args.message or ""
+        message.encode("utf-8", errors="strict")
+    except UnicodeError as error:
+        raise TelegramError("Message input must be valid UTF-8; no message was sent") from error
+    return message
+
+
 def command_send(args: argparse.Namespace, path: Path) -> None:
+    message = read_message(args)
+    # Validate before reading credentials, including for the offline preview.
+    chunks = chunk_text(message)
+    if args.dry_run:
+        payload = urllib.parse.urlencode({"text": message}).encode("utf-8")
+        restored = urllib.parse.parse_qs(payload.decode("utf-8"))["text"][0]
+        if restored != message:
+            raise TelegramError("Local Unicode round-trip failed; no message was sent")
+        print(json.dumps({
+            "sent": False,
+            "text": message,
+            "utf8_sha256": hashlib.sha256(message.encode("utf-8")).hexdigest(),
+            "utf8_round_trip": True,
+            "chunks": len(chunks),
+        }, ensure_ascii=True, sort_keys=True))
+        return
     token, chat_id, configured_thread = resolve_credentials(load_config(path))
-    if args.stdin:
-        if args.message:
-            raise TelegramError("Provide a message argument or --stdin, not both")
-        message = sys.stdin.read()
-    else:
-        message = args.message or ""
     destinations: list[tuple[str, str]] = []
     if args.project_path:
         if args.thread_id:
@@ -690,8 +719,11 @@ def build_parser() -> argparse.ArgumentParser:
     migrate.add_argument("--json", action="store_true", help="Print machine-readable result")
 
     send = subparsers.add_parser("send", help="Send a plain-text notification")
-    send.add_argument("message", nargs="?", help="Notification text")
-    send.add_argument("--stdin", action="store_true", help="Read notification from stdin")
+    source = send.add_mutually_exclusive_group()
+    source.add_argument("message", nargs="?", help="Notification text")
+    source.add_argument("--stdin", action="store_true", help="Read UTF-8 notification bytes from stdin")
+    source.add_argument("--message-file", type=Path, help="Read a UTF-8 message file (optional BOM)")
+    send.add_argument("--dry-run", action="store_true", help="Check Unicode round-trip and print local JSON without credentials or network access")
     send.add_argument("--thread-id", help="Override the configured topic ID")
     send.add_argument("--project-path", help="Use routing configured for this project")
     send.add_argument("--silent", action="store_true", help="Send without an alert")

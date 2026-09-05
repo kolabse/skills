@@ -2,6 +2,12 @@
 
 ## [Unreleased]
 
+### Fixed
+
+- Telegram notifications accept UTF-8 message files and decode stdin explicitly
+  as UTF-8, avoiding locale-dependent Unicode corruption on Windows. Invalid
+  input stops before delivery; an offline dry run checks the input round-trip.
+
 ### Added
 
 - Polish and Ukrainian translations of the public README, contribution guide,
