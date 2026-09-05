@@ -66,6 +66,17 @@ or `CLAUDE.md` content selected by `--agent`, is idempotent, and rejects
 malformed or duplicate managed markers. Planning inspects declared project
 files directly and blocks on a missing or stale reference.
 
+For sibling or isolated task worktrees, pass `--workspace-map <map.json>` to
+`bootstrap`, `plan`, `rules-status`, and `configure-rules`. The shared version-1
+map binds every configured repository name to a forward-slash relative path
+under one absolute workspace root. Read
+[`references/workspace-mapping.md`](references/workspace-mapping.md) and follow
+[`schemas/workspace-map.schema.json`](schemas/workspace-map.schema.json).
+Existing configuration remains unchanged. A newly bootstrapped mapped config
+uses workspace-relative repository paths and declares `workspace_map_required:
+true`; all commands that inspect repository roots then require the map.
+`status` reports this requirement without inspecting a worktree.
+
 Inspect the bundled dependency plan before starting:
 
 ```shell
@@ -90,6 +101,13 @@ python <skill-root>/scripts/development_lifecycle.py plan --project-root <root> 
 ```
 
 Keep plan and state outside every configured repository. Planning independently inspects each exact Git root, operation/worktree/branch/base/upstream state, and declared regular rule/reference file; supplied booleans are not evidence. A feature workspace/branch must be prepared and remotely published from the verified base before the first edit. When `feature_bootstrap` is present in the plan, read [`references/bootstrap-ci-suppression.md`](references/bootstrap-ci-suppression.md) before publishing. Use only the repository-declared GitHub Actions or GitLab CI mechanism, never tags, empty commits, commit-message markers, or permanent branch exclusions. If suppression is unavailable or unproved, run the bootstrap pipeline and require it to pass. The plan reports reminders for declared notifications and documentation but does not satisfy those gates.
+
+Mapped plans retain the validated map inside their digest. `advance` and
+`verify` recover it from the plan; they do not reread the external map file.
+Mapped rules and references must exist in the selected worktrees. Canonical
+copies cannot satisfy missing task-worktree declarations. Keep mapped plan,
+state, and retained evidence artifacts outside both canonical and mapped Git
+worktrees.
 
 ## Advance with retained evidence
 

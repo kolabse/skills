@@ -2,6 +2,15 @@
 
 ## [Unreleased]
 
+### Changed
+
+- Verification and lifecycle can select task-specific linked worktrees through
+  an explicit workspace map without rewriting an existing project contract.
+  Verification receipts bind the source configuration and selected workspace;
+  lifecycle plans retain the mapping for evidence replay after cleanup.
+- A linked-worktree recipe covers dirty primary checkouts, verified base anchors,
+  branch publication, independent repository gates, and retained evidence.
+
 ### Fixed
 
 - Telegram notifications accept UTF-8 message files and decode stdin explicitly

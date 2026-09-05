@@ -98,6 +98,11 @@ history change was included in the bootstrap push.
 
 ## Identify the synchronization set
 
+For an unrelated dirty primary checkout or temporary multi-repository task,
+read [references/linked-worktrees.md](references/linked-worktrees.md). It covers
+clean verification anchors, task-branch publication before edits, per-run
+repository mappings, independent gates, evidence refresh, and safe cleanup.
+
 1. Start with repositories explicitly named by the user and Git roots inside
    the active workspace. Include related code, infrastructure, configuration,
    and operational documentation repositories only when the current task uses

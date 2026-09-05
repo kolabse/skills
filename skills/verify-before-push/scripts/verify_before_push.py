@@ -1,17 +1,19 @@
 from __future__ import annotations
 
 import argparse
+import copy
 import hashlib
 import json
 import os
 import platform
 import re
 import shutil
+import stat
 import subprocess
 import sys
 import tempfile
 from datetime import datetime, timezone
-from pathlib import Path
+from pathlib import Path, PureWindowsPath
 from typing import Any
 
 
@@ -110,6 +112,156 @@ def load_config(project_root: Path) -> tuple[dict[str, Any], Path]:
     path = project_root / CONFIG_RELATIVE
     config = load_json(path, "Configuration")
     return config, validate_config_document(config, project_root, validate_checks=False)
+
+
+def lexical_source_path(root: Path, value: Any, label: str) -> Path:
+    """Locate configured ownership without touching stale checkout paths."""
+    if (not isinstance(value, str) or not value or "\0" in value
+            or Path(value).is_absolute() or PureWindowsPath(value).drive or PureWindowsPath(value).root):
+        raise VerificationError(f"{label} must be a non-empty relative path")
+    named_component = False
+    for component in value.replace("\\", "/").split("/"):
+        if component == ".." and named_component:
+            raise VerificationError(f"{label} cannot contain internal parent traversal")
+        if component not in {"", ".", ".."}:
+            named_component = True
+    return Path(os.path.abspath(root / value))
+
+
+def reject_workspace_links(root: Path, path: Path) -> None:
+    try:
+        parts = path.relative_to(root).parts
+    except ValueError as error:
+        raise VerificationError("Workspace paths must stay inside workspace_root") from error
+    current = root
+    for part in parts:
+        current = current / part
+        try:
+            info = current.lstat()
+        except FileNotFoundError:
+            continue
+        # lstat's Windows reparse bit also catches junctions on Python 3.11.
+        if stat.S_ISLNK(info.st_mode) or getattr(info, "st_file_attributes", 0) & getattr(stat, "FILE_ATTRIBUTE_REPARSE_POINT", 0x400):
+            raise VerificationError(f"Workspace paths cannot contain symlinks or junctions: {current}")
+
+
+def mapped_repository_path(root: Path, value: Any) -> Path:
+    if (not isinstance(value, str) or not value or len(value) > 300 or ":" in value or "\\" in value or "\0" in value
+            or Path(value).is_absolute() or PureWindowsPath(value).drive
+            or (value != "." and any(part in {"", ".", ".."} for part in value.split("/")))):
+        raise VerificationError("Workspace repository paths must be portable relative paths without traversal")
+    path = root / value
+    reject_workspace_links(root, path)
+    resolved = path.resolve()
+    if resolved != root and root not in resolved.parents:
+        raise VerificationError("Workspace repository path escapes workspace_root")
+    return resolved
+
+
+def validate_workspace_receipt(root: Path, receipt: Path, repositories: list[Path]) -> None:
+    reject_workspace_links(root, receipt)
+    if any(receipt == repo or repo in receipt.parents for repo in repositories):
+        raise VerificationError("Workspace evidence must be outside canonical and mapped repositories")
+    # A not-yet-created evidence directory can still be inside an enclosing
+    # worktree. Check its nearest existing ancestor before creating anything.
+    ancestor = receipt.parent
+    while not ancestor.exists():
+        ancestor = ancestor.parent
+    for directory in (ancestor, *ancestor.parents):
+        try:
+            (directory / ".git").lstat()
+        except FileNotFoundError:
+            continue
+        except OSError as error:
+            raise VerificationError("Could not establish Git ownership of workspace evidence") from error
+        raise VerificationError("Workspace evidence must be outside every Git worktree")
+    result = run_process(["git", "-C", str(ancestor), "rev-parse", "--show-toplevel"], ancestor)
+    if result.returncode == 0:
+        raise VerificationError("Workspace evidence must be outside every Git worktree")
+    diagnostic = result.stderr.decode("utf-8", errors="replace").strip()
+    ordinary_non_git = diagnostic == "fatal: not a git repository (or any of the parent directories): .git"
+    boundary_non_git = diagnostic.startswith("fatal: not a git repository (or any parent up to mount point ")
+    if result.returncode != 128 or not (ordinary_non_git or boundary_non_git):
+        raise VerificationError("Could not establish Git ownership of workspace evidence")
+
+
+def load_execution_context(
+    canonical_root: Path, map_path: Path | None = None,
+) -> tuple[dict[str, Any], dict[str, Any], Path, Path, str]:
+    if map_path is None:
+        config, receipt = load_config(canonical_root)
+        return config, config, canonical_root, receipt, digest(config)
+    canonical_root = canonical_root.resolve()
+    source = load_json(canonical_root / CONFIG_RELATIVE, "Configuration")
+    mapping = load_json(map_path, "Workspace map")
+    if set(mapping) != {"version", "workspace_root", "repositories"} or type(mapping.get("version")) is not int or mapping["version"] != 1:
+        raise VerificationError("Workspace map must contain exactly version 1, workspace_root, and repositories")
+    root_value = mapping["workspace_root"]
+    if not isinstance(root_value, str) or not root_value or not Path(root_value).is_absolute():
+        raise VerificationError("workspace_root must be an absolute path")
+    root = Path(root_value).resolve()
+    if not root.is_dir():
+        raise VerificationError("workspace_root must be an existing directory")
+    entries = source.get("repositories")
+    if not isinstance(entries, list) or not entries:
+        raise VerificationError("repositories must be a non-empty list")
+    original: dict[str, Path] = {}
+    for entry in entries:
+        if not isinstance(entry, dict) or not isinstance(entry.get("name"), str) or not entry["name"]:
+            raise VerificationError("Each repository requires a non-empty name")
+        name = entry["name"]
+        if name in original:
+            raise VerificationError("Repository names must be unique")
+        original[name] = lexical_source_path(canonical_root, entry.get("path"), "repository")
+    if len(set(original.values())) != len(original):
+        raise VerificationError("Canonical repository paths must be unique")
+    roles = mapping["repositories"]
+    if not isinstance(roles, dict) or set(roles) != set(original):
+        raise VerificationError("Workspace map must contain exactly all configured repository roles")
+    mapped = {name: mapped_repository_path(root, value) for name, value in roles.items()}
+    if len(set(mapped.values())) != len(mapped):
+        raise VerificationError("Mapped repository Git roots must be unique")
+    effective = copy.deepcopy(source)
+    for entry in effective["repositories"]:
+        entry["path"] = mapped[entry["name"]].relative_to(root).as_posix()
+    checks = effective.get("checks")
+    if not isinstance(checks, list) or not checks:
+        raise VerificationError("checks must be a non-empty list")
+    for entry in checks:
+        if not isinstance(entry, dict):
+            raise VerificationError("Each check entry must be an object")
+        old_cwd = lexical_source_path(canonical_root, entry.get("cwd", "."), "check cwd")
+        owners = [name for name, path in original.items() if old_cwd == path or path in old_cwd.parents]
+        if len(owners) != 1:
+            raise VerificationError("Check cwd must have one unambiguous canonical repository owner")
+        owner = owners[0]
+        new_cwd = mapped[owner] / old_cwd.relative_to(original[owner])
+        reject_workspace_links(root, new_cwd)
+        entry["cwd"] = new_cwd.relative_to(root).as_posix()
+        for argument in entry.get("command", []) if isinstance(entry.get("command"), list) else []:
+            if not isinstance(argument, str):
+                continue  # The ordinary command validator reports the type.
+            portable = argument.replace("\\", "/").casefold()
+            for name, old_root in original.items():
+                old = old_root.as_posix().casefold().rstrip("/")
+                if old_root != mapped[name] and re.search(re.escape(old) + r"(?=$|[/\s'\";,\)])", portable):
+                    raise VerificationError("Check command references an old canonical root; use a repository-relative wrapper")
+                # Plain relative path arguments can also reach a canonical
+                # checkout from the mapped cwd. Do not interpret shell code.
+                if (old_root != mapped[name] and not argument.startswith("-")
+                        and ("/" in argument or "\\" in argument)):
+                    candidate = Path(os.path.abspath(new_cwd / argument))
+                    if candidate == old_root or old_root in candidate.parents:
+                        raise VerificationError("Check command references an old canonical root; use a repository-relative wrapper")
+    validate_config_document(effective, root)
+    normalized = {"version": 1, "workspace_root": str(root),
+                  "repositories": {name: path.relative_to(root).as_posix() for name, path in mapped.items()}}
+    binding = digest({"source_project_root": str(canonical_root), "source_configuration": source,
+                      "workspace_map": normalized, "effective_configuration": effective})
+    receipt = root / ".verify-before-push-evidence" / f"{binding}.json"
+    original_roots = list(original.values()) + [path.resolve() for path in original.values()]
+    validate_workspace_receipt(root, receipt, [*original_roots, *mapped.values()])
+    return source, effective, root, receipt, binding
 
 
 def validate_config_document(
@@ -539,9 +691,10 @@ def delivered_same_head(previous: Any, current: list[dict[str, Any]]) -> bool:
 def validate_receipt(
     config: dict[str, Any], evidence: dict[str, Any], current: list[dict[str, Any]],
     identity: dict[str, Any] | None, project_root: Path, *, for_reuse: bool = False,
+    expected_binding: str | None = None,
 ) -> None:
     version = evidence.get("version")
-    if type(version) is not int or version not in {1, 2} or evidence.get("config_sha256") != digest(config):
+    if type(version) is not int or version not in {1, 2} or evidence.get("config_sha256") != (expected_binding or digest(config)):
         raise VerificationError("Evidence does not match current configuration")
     if not isinstance(evidence.get("checked_at"), str):
         raise VerificationError("Evidence verification time is missing")
@@ -572,8 +725,10 @@ def validate_receipt(
     validate_results(config, evidence.get("checks"), project_root, reusable=version == 2)
 
 
-def run_verification(project_root: Path, trusted_environment: str | None = None) -> Path:
-    config, evidence_path = load_config(project_root)
+def run_verification(project_root: Path, trusted_environment: str | None = None, workspace_map: Path | None = None) -> Path:
+    canonical_root = project_root
+    context = load_execution_context(canonical_root, workspace_map)
+    _, config, project_root, evidence_path, binding = context
     reused = False
     try:
         validate_config_document(config, project_root)
@@ -583,13 +738,15 @@ def run_verification(project_root: Path, trusted_environment: str | None = None)
         if identity is not None and evidence_path.is_file():
             try:
                 evidence = load_json(evidence_path, "Evidence")
-                validate_receipt(config, evidence, before, identity, project_root, for_reuse=True)
+                validate_receipt(config, evidence, before, identity, project_root, for_reuse=True, expected_binding=binding)
             except VerificationError:
                 # An invalid cache is not a pass: fall back to the full checks.
                 pass
             else:
                 if before != capture_states(config, project_root) or identity != reuse_identity(config, project_root, trusted_environment):
                     raise VerificationError("State changed while validating reusable evidence")
+                if context != load_execution_context(canonical_root, workspace_map):
+                    raise VerificationError("Configuration or workspace map changed while validating reusable evidence")
                 reused = True
                 print(f"Verified results reused without rewriting evidence: {evidence_path}")
                 return evidence_path
@@ -603,15 +760,14 @@ def run_verification(project_root: Path, trusted_environment: str | None = None)
     after = capture_states(config, project_root)
     if before != after or identity != reuse_identity(config, project_root, trusted_environment):
         raise VerificationError("Git, runtime, or environment state changed while checks were running")
-    current_config, _ = load_config(project_root)
-    if digest(config) != digest(current_config):
-        raise VerificationError("Configuration changed while checks were running")
+    if context != load_execution_context(canonical_root, workspace_map):
+        raise VerificationError("Configuration or workspace map changed while checks were running")
     # Legacy semantics allow failed optional checks, but they must not become a
     # reusable success. Keep those complete-run results on the strict v1 path.
     reusable = identity is not None and all(item["status"] != "failed" for item in checks)
     evidence = {
         "version": 2 if reusable else 1,
-        "config_sha256": digest(config),
+        "config_sha256": binding,
         "checked_at": datetime.now(timezone.utc).replace(microsecond=0).isoformat().replace("+00:00", "Z"),
         "repositories": after,
         "checks": checks,
@@ -624,8 +780,11 @@ def run_verification(project_root: Path, trusted_environment: str | None = None)
     return evidence_path
 
 
-def verify_evidence(project_root: Path, repository: Path | None = None, trusted_environment: str | None = None) -> bool:
-    config, evidence_path = load_config(project_root)
+def verify_evidence(project_root: Path, repository: Path | None = None, trusted_environment: str | None = None,
+                    workspace_map: Path | None = None) -> bool:
+    canonical_root = project_root
+    context = load_execution_context(canonical_root, workspace_map)
+    _, config, project_root, evidence_path, binding = context
     configured_roots = [validate_repository_entry(entry, project_root)[1] for entry in config["repositories"]]
     if repository is not None:
         candidate = git_root(repository.resolve())
@@ -637,7 +796,9 @@ def verify_evidence(project_root: Path, repository: Path | None = None, trusted_
     evidence = load_json(evidence_path, "Evidence")
     current = capture_states(config, project_root)
     identity = reuse_identity(config, project_root, trusted_environment) if evidence.get("version") == 2 else None
-    validate_receipt(config, evidence, current, identity, project_root)
+    validate_receipt(config, evidence, current, identity, project_root, expected_binding=binding)
+    if workspace_map is not None and context != load_execution_context(canonical_root, workspace_map):
+        raise VerificationError("Configuration or workspace map changed while validating evidence")
     print(f"Evidence is current: {evidence_path}")
     return True
 
@@ -650,6 +811,7 @@ def main(argv: list[str] | None = None) -> int:
         child.add_argument("--project-root", type=Path, default=Path.cwd())
         if command in {"run", "verify", "gate"}:
             child.add_argument("--trusted-environment-fingerprint", default=os.environ.get(TRUSTED_ENVIRONMENT_VARIABLE))
+            child.add_argument("--workspace-map", type=Path)
         if command == "gate":
             child.add_argument("--repository", type=Path, required=True)
         if command == "configure":
@@ -661,11 +823,11 @@ def main(argv: list[str] | None = None) -> int:
     project_root = args.project_root.resolve()
     try:
         if args.command == "run":
-            run_verification(project_root, args.trusted_environment_fingerprint)
+            run_verification(project_root, args.trusted_environment_fingerprint, args.workspace_map)
         elif args.command == "verify":
-            verify_evidence(project_root, trusted_environment=args.trusted_environment_fingerprint)
+            verify_evidence(project_root, trusted_environment=args.trusted_environment_fingerprint, workspace_map=args.workspace_map)
         elif args.command == "gate":
-            verify_evidence(project_root, args.repository, args.trusted_environment_fingerprint)
+            verify_evidence(project_root, args.repository, args.trusted_environment_fingerprint, args.workspace_map)
         elif args.command == "configure":
             state = configure_project(project_root, args.config_source, args.agent)
             print(json.dumps(state, sort_keys=True) if args.json else f"Configured: {state['config_file']}")

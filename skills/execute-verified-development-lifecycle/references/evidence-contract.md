@@ -2,6 +2,13 @@
 
 Each checkpoint envelope contains the plan and configuration digests, checkpoint name, attempt, status, timezone-qualified observation time, immutable subjects, assertions, and a SHA-256 digest of retained provider/project evidence. `evidence_ref` must resolve to a regular, non-symlink JSON file outside every configured repository and matching [`../schemas/retained-evidence.schema.json`](../schemas/retained-evidence.schema.json). The helper canonicalizes that whole document, verifies its digest, and requires its plan, configuration, checkpoint, timestamp, subjects, and assertions to equal the checkpoint envelope. Digests detect substitution; they do not make unsupported claims true.
 
+When a plan contains `workspace_map`, its digest binds the canonical workspace
+root and complete repository mapping. Evidence and state guards use this
+retained map, including after mapped worktrees are removed. They also reject
+artifacts inside any Git worktree containing the explicitly named artifact's
+nearest existing parent. The external source map is not required for replay.
+See [workspace mapping](workspace-mapping.md) for containment and junction rules.
+
 ## Subject binding
 
 Use repository roles and provider-neutral identity kinds rather than workstation paths:

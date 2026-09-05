@@ -1,0 +1,24 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/kolabse/skills/verify-before-push/workspace-map.schema.json",
+  "title": "Runtime repository workspace map",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["version", "workspace_root", "repositories"],
+  "properties": {
+    "version": {"const": 1, "type": "integer"},
+    "workspace_root": {"type": "string", "minLength": 1, "description": "Existing absolute workspace directory; canonicalized before resolving repository paths."},
+    "repositories": {
+      "type": "object",
+      "minProperties": 1,
+      "propertyNames": {"minLength": 1},
+      "description": "Exactly all configured repository names. Each value must resolve to one unique exact Git root inside workspace_root, with no descendant symlinks or junctions.",
+      "additionalProperties": {
+        "type": "string",
+        "minLength": 1,
+        "maxLength": 300,
+        "pattern": "^(?:\\.|(?!/)(?!.*:)(?!.*\\\\)(?!.*(?:^|/)\\.{1,2}(?:/|$))(?!.*//)(?!.*\\u0000)(?!.*\/$).+)$"
+      }
+    }
+  }
+}

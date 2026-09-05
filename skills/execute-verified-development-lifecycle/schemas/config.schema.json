@@ -6,6 +6,7 @@
   "required": ["version", "repositories", "rules", "references", "checks", "gates", "adapters", "required_capabilities", "notifications", "documentation", "integration", "production", "delivery", "cleanup"],
   "properties": {
     "version": {"const": 1},
+    "workspace_map_required": {"const": true},
     "repositories": {"type": "array", "minItems": 1, "items": {"$ref": "#/$defs/repository"}},
     "rules": {"type": "array", "minItems": 1, "items": {"$ref": "#/$defs/declaration"}},
     "references": {"type": "array", "minItems": 1, "items": {"$ref": "#/$defs/declaration"}},
