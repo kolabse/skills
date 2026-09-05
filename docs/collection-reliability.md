@@ -37,6 +37,12 @@ for policy fields, commands, schemas, and prerequisites.
 
 ## Reuse of exact-commit verification
 
+For a new task using different worktrees, use the
+[temporary-workspace recipe](../skills/synchronize-git-repositories/references/linked-worktrees.md).
+An explicit workspace map selects configured repository roles for one run;
+it does not make evidence from another worktree reusable or replace an
+additional repository-owned gate. The source configuration remains unchanged.
+
 Ask: "Check whether our existing verification is reusable after pushing the
 same commit. If any required identity changed, run the checks again."
 

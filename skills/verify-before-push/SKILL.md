@@ -116,6 +116,82 @@ Completion criterion: evidence records the configuration digest, repository
 HEAD/upstream/worktree fingerprints, check results, and UTC time for an
 unchanged state.
 
+## Verify an isolated workspace
+
+When canonical configuration names ordinary checkouts but the current change
+uses linked worktrees, pass the same explicit `--workspace-map <map.json>` to
+`run`, `verify`, and `gate`. Keep `--project-root` pointing at the canonical
+configuration owner. The runtime map follows `schemas/workspace-map.schema.json`:
+
+```json
+{
+  "version": 1,
+  "workspace_root": "/absolute/task-workspace",
+  "repositories": {
+    "application": "application",
+    "documentation": "documentation"
+  }
+}
+```
+
+On Windows, use an absolute native workspace root such as
+`D:/workspaces/task`; repository values remain portable forward-slash relative
+paths. Supply exactly the configured repository names, with no missing,
+unknown, or duplicate roles. Values cannot be absolute, drive-qualified,
+backslash-separated, empty, longer than 300 characters, or contain colons,
+NUL, empty, `.` or `..` components. A value consisting only of `.` is
+syntactically valid, but the evidence placement rule below usually requires
+repositories in child directories. Every value must identify one unique exact
+Git root. The approved workspace root is canonicalized once; all descendant
+symlinks and junctions are rejected, including aliases pointing within it.
+This is the same map contract used by the development lifecycle helper.
+The role assignment is a caller assertion, especially when an original path
+is absent. Inspect each worktree's Git common directory and remote identity
+against the intended repository role; containment alone does not establish
+that a mapped repository is the correct project.
+
+The helper reads the unchanged canonical configuration and remaps repositories
+and check working directories before accessing original repository locations.
+Original sibling paths may therefore be absent. Each check directory must have
+exactly one canonical repository owner; its relative suffix is preserved in
+the mapped worktree. Leading parent components such as `../documentation`
+are supported in canonical paths; internal parent traversal such as
+`alias/../tests` is rejected before normalization so it cannot hide a link.
+Cleanliness, upstream freshness, enabled/required flags,
+timeouts, and command arrays retain their configured meaning. A dirty canonical
+checkout does not substitute for the mapped subject being checked.
+
+Command arguments are never rewritten. Obvious absolute references to old
+canonical roots fail closed; use repository-relative commands or a
+repository-owned wrapper that derives paths from its own mapped checkout.
+This check cannot prove that arbitrary shell snippets, wrapper internals, or
+external tools have no hidden dependency on canonical files. Review those
+dependencies and establish a suitable check environment before relying on
+workspace results.
+
+Mapped receipts are written to
+`<workspace_root>/.verify-before-push-evidence/<binding-sha256>.json`, outside
+all canonical and mapped repositories and any enclosing Git worktree. The
+helper rejects symlink/junction receipt paths and checks the nearest existing
+ancestor before creating the directory. This runtime location overrides the
+configured evidence destination without editing canonical configuration.
+The binding covers the canonical configuration root, original configuration,
+normalized map, and effective configuration. Existing evidence formats remain unchanged; their
+`config_sha256` field stores this binding for mapped runs. Any configured
+repository change invalidates the combined receipt. Another mapping, even to
+worktrees at the same commit, cannot use it. Configuration and mapping are
+re-read before writing or accepting a mapped receipt.
+
+A mapped `gate --repository` checks membership against the mapped roots only.
+Canonical source repositories remain outside that gate and require their own
+independent verification before a source push; passing a mapped gate does not
+authorize a canonical push. Without `--workspace-map`, legacy configuration,
+receipt locations, and verification behavior remain supported unchanged.
+
+Completion criterion: checks execute in the intended mapped repositories,
+canonical configuration is untouched, and a receipt bound to that exact map
+is current immediately before the mapped push.
+
 ## Opt in to exact-state result reuse
 
 Reuse is disabled by default. Configuration version 1 may explicitly set

@@ -1,0 +1,24 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/kolabse/skills/execute-verified-development-lifecycle/workspace-map.schema.json",
+  "title": "Task workspace repository map",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["version", "workspace_root", "repositories"],
+  "properties": {
+    "version": {"const": 1, "type": "integer"},
+    "workspace_root": {
+      "type": "string", "minLength": 1,
+      "description": "Absolute workspace root, canonicalized on the executing host."
+    },
+    "repositories": {
+      "type": "object", "minProperties": 1,
+      "propertyNames": {"minLength": 1},
+      "additionalProperties": {
+        "type": "string", "minLength": 1, "maxLength": 300,
+        "pattern": "^(?:\\.|(?!/)(?!.*:)(?!.*\\\\)(?!.*(?:^|/)\\.{1,2}(?:/|$))(?!.*//)(?!.*\\u0000)(?!.*\/$).+)$"
+      },
+      "description": "Exactly the configured repository names; values use forward slashes. Runtime validation rejects duplicate roots, symlinks/junctions, traversal, and non-exact Git roots."
+    }
+  }
+}

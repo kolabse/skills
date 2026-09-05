@@ -199,6 +199,10 @@ def reject_sensitive(value: Any, label: str = "configuration") -> None:
 
 def validate_config(config: dict[str, Any]) -> None:
     required = {"version", "repositories", "rules", "references", "checks", "gates", "adapters", "required_capabilities", "notifications", "documentation", "integration", "production", "delivery", "cleanup"}
+    if "workspace_map_required" in config:
+        required.add("workspace_map_required")
+        if config["workspace_map_required"] is not True:
+            raise LifecycleError("workspace_map_required must be true when declared")
     exact_keys(config, required, "configuration")
     reject_sensitive(config)
     if config["version"] != 1:
@@ -361,12 +365,15 @@ def inspect_rule_file(path: Path, expected_block: str = CODEX_RULE_BLOCK) -> dic
     return {"path": str(path), "status": "installed" if installed else "stale-managed-block", "installed": installed}
 
 
-def rule_statuses(root: Path, config: dict[str, Any], agent: str = "codex") -> list[dict[str, Any]]:
+def rule_statuses(root: Path, config: dict[str, Any], agent: str = "codex", workspace_map: dict[str, Any] | None = None) -> list[dict[str, Any]]:
     results = []
+    selected = repository_roots(root, config, workspace_map)
     for repo in config["repositories"]:
-        repo_root = (root.resolve() / repo["path"]).resolve()
-        if root.resolve() not in (repo_root, *repo_root.parents):
+        repo_root = selected[repo["name"]]
+        if workspace_map is None and root.resolve() not in (repo_root, *repo_root.parents):
             raise LifecycleError(f"repository path escapes project root: {repo['path']}")
+        if workspace_map is not None and path_has_symlink(repo_root / AGENTS[agent]["filename"], Path(workspace_map["workspace_root"])):
+            raise LifecycleError("mapped repository rules must not use a symlink or junction")
         item = inspect_rule_file(repo_root / AGENTS[agent]["filename"], AGENTS[agent]["block"])
         item["repository"] = repo["name"]
         results.append(item)
@@ -377,13 +384,83 @@ def path_has_symlink(path: Path, boundary: Path) -> bool:
     current = path.absolute()
     boundary = boundary.absolute()
     while True:
-        if current.exists() and current.is_symlink():
-            return True
+        try:
+            # Windows junctions are reparse points even on Python 3.11, which
+            # does not expose Path.is_junction(). lstat also sees broken links.
+            if current.is_symlink() or getattr(current.lstat(), "st_file_attributes", 0) & 0x400:
+                return True
+        except FileNotFoundError:
+            pass
         if current == boundary:
             return False
         if boundary not in current.parents:
             return True
         current = current.parent
+
+
+def validate_workspace_map(value: dict[str, Any], names: list[str], *, inspect_git: bool = True) -> dict[str, Any]:
+    """Validate the portable shared contract without consulting canonical clones."""
+    exact_keys(value, {"version", "workspace_root", "repositories"}, "workspace map")
+    if type(value["version"]) is not int or value["version"] != 1:
+        raise LifecycleError("workspace map version must be 1")
+    root_value = value["workspace_root"]
+    if not isinstance(root_value, str) or not root_value or "\x00" in root_value or not Path(root_value).is_absolute():
+        raise LifecycleError("workspace map workspace_root must be an absolute path")
+    try:
+        root = Path(root_value).resolve()
+    except (OSError, RuntimeError, ValueError) as exc:
+        raise LifecycleError("workspace map workspace_root cannot be resolved") from exc
+    if inspect_git and not root.is_dir():
+        raise LifecycleError("workspace map workspace_root must exist")
+    mapping = value["repositories"]
+    if not isinstance(mapping, dict) or set(mapping) != set(names):
+        raise LifecycleError(f"workspace map repositories must exactly match configured repository names: {', '.join(names)}")
+    seen: set[Path] = set()
+    normalized: dict[str, str] = {}
+    for name in names:
+        relative = mapping[name]
+        if (not isinstance(relative, str) or not relative or len(relative) > 300
+                or "\\" in relative or ":" in relative or "\x00" in relative or relative.startswith("/")
+                or (relative != "." and any(part in {"", ".", ".."} for part in relative.split("/")))):
+            raise LifecycleError(f"workspace map repository {name} must use a portable relative path without traversal")
+        lexical = root / relative
+        try:
+            linked = path_has_symlink(lexical, root)
+            repository = lexical.resolve()
+        except (OSError, RuntimeError, ValueError) as exc:
+            raise LifecycleError(f"workspace map repository {name} cannot be resolved") from exc
+        if linked:
+            raise LifecycleError(f"workspace map repository {name} contains a symlink or junction")
+        if root not in (repository, *repository.parents):
+            raise LifecycleError(f"workspace map repository {name} escapes workspace_root")
+        if repository in seen:
+            raise LifecycleError("workspace map contains duplicate resolved repository roots")
+        seen.add(repository)
+        if inspect_git:
+            if not repository.is_dir():
+                raise LifecycleError(f"workspace map repository {name} root does not exist")
+            if Path(run_git(repository, ["rev-parse", "--show-toplevel"])).resolve() != repository:
+                raise LifecycleError(f"workspace map repository {name} is not the exact Git root")
+        normalized[name] = relative
+    return {"version": 1, "workspace_root": str(root), "repositories": normalized}
+
+
+def workspace_from_args(args: argparse.Namespace, config: dict[str, Any]) -> dict[str, Any] | None:
+    source = getattr(args, "workspace_map", None)
+    if source is None:
+        if config.get("workspace_map_required"):
+            raise LifecycleError("workspace map is required by configuration; pass --workspace-map")
+        return None
+    return validate_workspace_map(read_json(Path(source)), declared(config, "repositories"))
+
+
+def repository_roots(root: Path, config: dict[str, Any], workspace_map: dict[str, Any] | None = None) -> dict[str, Path]:
+    if workspace_map is not None:
+        workspace_root = Path(workspace_map["workspace_root"])
+        return {name: (workspace_root / relative).resolve() for name, relative in workspace_map["repositories"].items()}
+    if config.get("workspace_map_required"):
+        raise LifecycleError("workspace map is required by configuration")
+    return {repo["name"]: (root.resolve() / repo["path"]).resolve() for repo in config["repositories"]}
 
 
 def run_git(repo: Path, argv: list[str]) -> str:
@@ -401,7 +478,7 @@ def identifier(value: str, fallback: str) -> str:
     return normalized or fallback
 
 
-def bootstrap_repository_entries(root: Path) -> tuple[list[dict[str, Any]], list[str], list[str]]:
+def bootstrap_repository_entries(root: Path, workspace_map: dict[str, Any] | None = None) -> tuple[list[dict[str, Any]], list[str], list[str]]:
     blockers: list[str] = []
     defaults: list[str] = []
     verify_path = root / VERIFY_CONFIG_REL
@@ -435,15 +512,27 @@ def bootstrap_repository_entries(root: Path) -> tuple[list[dict[str, Any]], list
 
     repositories: list[dict[str, Any]] = []
     used: set[str] = set()
+    named: list[tuple[str, dict[str, Any]]] = []
     for index, item in enumerate(declared, 1):
+        fallback_name = Path(str(item.get("path", "."))).name or root.name
+        name = identifier(str(item.get("name", fallback_name)), f"repository-{index}")
+        if name in used:
+            name = f"{name}-{index}"
+        used.add(name)
+        named.append((name, item))
+    if workspace_map is not None:
+        workspace_map = validate_workspace_map(workspace_map, [name for name, _ in named])
+    for index, item in enumerate(declared, 1):
+        name = named[index - 1][0]
         try:
-            relative = safe_path(item.get("path"), "bootstrap repository.path")
+            relative = workspace_map["repositories"][name] if workspace_map is not None else safe_path(item.get("path"), "bootstrap repository.path")
         except LifecycleError as exc:
             blockers.append(str(exc))
             continue
-        lexical = root / relative
+        boundary = Path(workspace_map["workspace_root"]) if workspace_map is not None else root
+        lexical = boundary / relative
         repository = lexical.resolve()
-        if root not in (repository, *repository.parents) or path_has_symlink(lexical, root):
+        if boundary not in (repository, *repository.parents) or path_has_symlink(lexical, boundary):
             blockers.append(f"repository path escapes the project boundary: {relative}")
             continue
         try:
@@ -467,10 +556,6 @@ def bootstrap_repository_entries(root: Path) -> tuple[list[dict[str, Any]], list
         except LifecycleError as exc:
             blockers.append(f"repository {relative} cannot provide an exact tracked upstream: {exc}")
             continue
-        name = identifier(str(item.get("name", repository.name)), f"repository-{index}")
-        if name in used:
-            name = f"{name}-{index}"
-        used.add(name)
         repositories.append(
             {
                 "name": name,
@@ -525,8 +610,10 @@ def bootstrap_checks(root: Path) -> tuple[list[dict[str, Any]], list[str]]:
     ]
 
 
-def existing_declaration_path(root: Path, repositories: list[dict[str, Any]], candidates: list[str]) -> str | None:
-    boundaries = [root, *[(root / item["path"]).resolve() for item in repositories]]
+def existing_declaration_path(root: Path, repositories: list[dict[str, Any]], candidates: list[str], workspace_map: dict[str, Any] | None = None) -> str | None:
+    boundaries = list(repository_roots(root, {"repositories": repositories}, workspace_map).values())
+    if workspace_map is None:
+        boundaries.insert(0, root)
     for candidate in candidates:
         relative = Path(candidate)
         for boundary in boundaries:
@@ -536,9 +623,9 @@ def existing_declaration_path(root: Path, repositories: list[dict[str, Any]], ca
     return None
 
 
-def build_bootstrap_config(root: Path, agent: str) -> dict[str, Any]:
+def build_bootstrap_config(root: Path, agent: str, workspace_map: dict[str, Any] | None = None) -> dict[str, Any]:
     root = root.resolve()
-    repositories, defaults, blockers = bootstrap_repository_entries(root)
+    repositories, defaults, blockers = bootstrap_repository_entries(root, workspace_map)
     if blockers:
         return {"ready": False, "config": None, "defaults": defaults, "blockers": blockers}
     checks, check_defaults = bootstrap_checks(root)
@@ -548,11 +635,13 @@ def build_bootstrap_config(root: Path, agent: str) -> dict[str, Any]:
         root,
         repositories,
         ["README.md", "docs/requirements.md", "docs/architecture.md", rule_path],
+        workspace_map,
     )
     documentation_path = existing_declaration_path(
         root,
         repositories,
         ["CHANGELOG.md", "docs/reports/work-log.md", "docs/project-digest.md", "README.md", "docs/requirements.md"],
+        workspace_map,
     )
     if reference_path is None:
         blockers.append("no regular project reference was found (README.md, requirements, architecture, or rules)")
@@ -607,14 +696,18 @@ def build_bootstrap_config(root: Path, agent: str) -> dict[str, Any]:
             "merged-cleanup-proof",
         ]
     )
+    if workspace_map is not None:
+        config["workspace_map_required"] = True
     validate_config(config)
     return {"ready": True, "config": config, "defaults": defaults, "blockers": []}
 
 
-def inspect_git_repository(root: Path, configured: dict[str, Any], supplied: dict[str, Any]) -> dict[str, Any]:
-    lexical = root.absolute() / configured["path"]
+def inspect_git_repository(root: Path, configured: dict[str, Any], supplied: dict[str, Any], workspace_map: dict[str, Any] | None = None) -> dict[str, Any]:
+    boundary = Path(workspace_map["workspace_root"]) if workspace_map is not None else root.absolute()
+    relative = workspace_map["repositories"][configured["name"]] if workspace_map is not None else configured["path"]
+    lexical = boundary / relative
     repo = lexical.resolve()
-    if root.resolve() not in (repo, *repo.parents) or path_has_symlink(lexical, root.absolute()):
+    if boundary.resolve() not in (repo, *repo.parents) or path_has_symlink(lexical, boundary):
         raise LifecycleError(f"repository {configured['name']} escapes through an absolute or symlinked path")
     if not repo.is_dir():
         raise LifecycleError(f"repository {configured['name']} root does not exist")
@@ -639,8 +732,10 @@ def inspect_git_repository(root: Path, configured: dict[str, Any], supplied: dic
     return {"name": configured["name"], "root": str(repo), "branch": branch, "head": head, "base": base, "upstream": upstream, "clean": True, "current": True}
 
 
-def inspect_declared_files(root: Path, config: dict[str, Any]) -> list[dict[str, str]]:
-    boundaries = [root.resolve(), *[(root.resolve() / item["path"]).resolve() for item in config["repositories"]]]
+def inspect_declared_files(root: Path, config: dict[str, Any], workspace_map: dict[str, Any] | None = None) -> list[dict[str, str]]:
+    boundaries = list(repository_roots(root, config, workspace_map).values())
+    if workspace_map is None:
+        boundaries.insert(0, root.resolve())
     observed: list[dict[str, str]] = []
     for category in ("rules", "references"):
         for declaration in config[category]:
@@ -662,7 +757,8 @@ def cmd_rules_status(args: argparse.Namespace) -> dict[str, Any]:
     root = Path(args.project_root)
     config, config_hash = load_config(root)
     agent = getattr(args, "agent", "codex")
-    repositories = rule_statuses(root, config, agent)
+    workspace_map = workspace_from_args(args, config)
+    repositories = rule_statuses(root, config, agent, workspace_map)
     return {"mode": "rules-status", "agent": agent, "config_sha256": config_hash, "repositories": repositories, "passed": all(x["installed"] for x in repositories), "mutates_repository": False}
 
 
@@ -672,7 +768,8 @@ def cmd_configure_rules(args: argparse.Namespace) -> dict[str, Any]:
     root = Path(args.project_root)
     agent = getattr(args, "agent", "codex")
     config, config_hash = load_config(root)
-    before = rule_statuses(root, config, agent)
+    workspace_map = workspace_from_args(args, config)
+    before = rule_statuses(root, config, agent, workspace_map)
     malformed = [x["repository"] for x in before if x["status"] == "malformed-markers"]
     if malformed:
         raise LifecycleError(f"malformed or duplicate managed markers: {', '.join(malformed)}")
@@ -697,20 +794,50 @@ def cmd_configure_rules(args: argparse.Namespace) -> dict[str, Any]:
             if os.path.exists(name):
                 os.unlink(name)
         changed.append(item["repository"])
-    after = rule_statuses(root, config, agent)
+    after = rule_statuses(root, config, agent, workspace_map)
     if not all(x["installed"] for x in after):
         raise LifecycleError("managed rule reference did not validate after configuration")
     return {"mode": "configure-rules", "agent": agent, "config_sha256": config_hash, "changed_repositories": changed, "repositories": after, "passed": True, "mutates_repository": bool(changed)}
 
 
-def ensure_external(path: Path, config: dict[str, Any], root: Path) -> None:
+def ensure_external(path: Path, config: dict[str, Any], root: Path, workspace_map: dict[str, Any] | None = None) -> None:
+    lexical = Path(os.path.abspath(path))
     resolved = path.resolve()
     roots = [(root.resolve() / repo["path"]).resolve() for repo in config["repositories"]]
-    if any(resolved == item or item in resolved.parents for item in roots):
+    if workspace_map is not None:
+        roots.extend(repository_roots(root, config, workspace_map).values())
+    candidates = (lexical, resolved) if workspace_map is not None else (resolved,)
+    if any(item in (candidate, *candidate.parents) for item in roots for candidate in candidates):
         raise LifecycleError(f"artifact must be outside configured repositories: {resolved}")
+    if workspace_map is not None:
+        boundary = Path(workspace_map["workspace_root"])
+        if boundary in (lexical, *lexical.parents) and path_has_symlink(lexical, boundary):
+            raise LifecycleError("artifact workspace path contains a symlink or junction")
+        inspected: set[Path] = set()
+        for candidate in candidates:
+            parent = candidate if candidate.is_dir() else candidate.parent
+            while not parent.exists() and parent != parent.parent:
+                parent = parent.parent
+            # Only inspect ancestors of the explicitly named artifact. A .git
+            # marker is enough to reject a worktree even if Git refuses access.
+            for ancestor in (parent, *parent.parents):
+                marker = ancestor / ".git"
+                if marker.exists() or marker.is_symlink():
+                    raise LifecycleError(f"artifact must be outside Git worktrees: {lexical}")
+            if parent.resolve() in inspected:
+                continue
+            inspected.add(parent.resolve())
+            result = subprocess.run(["git", "-C", str(parent), "rev-parse", "--show-toplevel"],
+                                    shell=False, check=False, capture_output=True, text=True,
+                                    env={**os.environ, "LC_ALL": "C", "LANG": "C"})
+            if result.returncode:
+                if "not a git repository" not in result.stderr.casefold():
+                    raise LifecycleError("cannot safely inspect artifact parent Git state")
+            else:
+                raise LifecycleError(f"artifact must be outside Git worktrees: {lexical}")
 
 
-def verify_retained_evidence(root: Path, config: dict[str, Any], checkpoint: dict[str, Any]) -> None:
+def verify_retained_evidence(root: Path, config: dict[str, Any], checkpoint: dict[str, Any], workspace_map: dict[str, Any] | None = None) -> None:
     evidence_path = Path(checkpoint["evidence_ref"])
     if not evidence_path.is_absolute():
         evidence_path = root.resolve() / evidence_path
@@ -718,7 +845,7 @@ def verify_retained_evidence(root: Path, config: dict[str, Any], checkpoint: dic
     if not lexical.exists() or not lexical.is_file() or lexical.is_symlink():
         raise LifecycleError("evidence_ref must identify a regular non-symlink JSON file outside configured repositories")
     resolved = lexical.resolve()
-    ensure_external(resolved, config, root)
+    ensure_external(lexical, config, root, workspace_map)
     evidence = read_json(resolved)
     exact_keys(evidence, {"schema_version", "plan_sha256", "config_sha256", "checkpoint", "observed_at", "subjects", "assertions", "producer", "artifact_sha256"}, "retained evidence")
     reject_sensitive(evidence, "retained evidence")
@@ -776,18 +903,23 @@ def cmd_bootstrap(args: argparse.Namespace) -> dict[str, Any]:
     destination = project_config(root)
     if destination.exists():
         config, config_hash = load_config(root)
+        workspace_map = workspace_from_args(args, config)
         return {
             "mode": "bootstrap", "ready": True, "configured": True,
             "created": False, "config_path": str(destination),
             "config_sha256": config_hash, "config": config, "defaults": [],
             "blockers": [], "mutates_repository": False,
+            **({"repository_path_frame": "workspace-map"} if workspace_map is not None else {}),
         }
-    result = build_bootstrap_config(root, getattr(args, "agent", "codex"))
+    source = getattr(args, "workspace_map", None)
+    workspace_map = read_json(Path(source)) if source is not None else None
+    result = build_bootstrap_config(root, getattr(args, "agent", "codex"), workspace_map)
     payload = {
         "mode": "bootstrap", "ready": result["ready"], "configured": False,
         "created": False, "config_path": str(destination), "config": result["config"],
         "defaults": result["defaults"], "blockers": result["blockers"],
         "mutates_repository": False,
+        **({"repository_path_frame": "workspace-map"} if workspace_map is not None else {}),
     }
     if not result["ready"] or not getattr(args, "apply", False):
         return payload
@@ -810,7 +942,7 @@ def cmd_status(args: argparse.Namespace) -> dict[str, Any]:
             "mutates_repository": False,
         }
     config, config_hash = load_config(Path(args.project_root))
-    return {"mode": "status", "configured": True, "valid": True, "bootstrap_required": False, "version": config["version"], "config_path": str(destination), "config_sha256": config_hash, "repositories": [x["name"] for x in config["repositories"]], "feature_bootstrap": feature_bootstrap(config), "gates": enabled_order(config), "adapters": [x["id"] for x in config["adapters"]], "required_capabilities": config["required_capabilities"], "mutates_repository": False}
+    return {"mode": "status", "configured": True, "valid": True, "bootstrap_required": False, "version": config["version"], "config_path": str(destination), "config_sha256": config_hash, "repositories": [x["name"] for x in config["repositories"]], "feature_bootstrap": feature_bootstrap(config), "gates": enabled_order(config), "adapters": [x["id"] for x in config["adapters"]], "required_capabilities": config["required_capabilities"], "mutates_repository": False, **({"workspace_map_required": True, "repository_path_frame": "workspace-map"} if config.get("workspace_map_required") else {})}
 
 
 def cmd_migrate(args: argparse.Namespace) -> dict[str, Any]:
@@ -838,6 +970,7 @@ def require_exact(label: str, actual: list[str], expected: list[str], blockers: 
 def cmd_plan(args: argparse.Namespace) -> dict[str, Any]:
     root = Path(args.project_root)
     config, config_hash = load_config(root)
+    workspace_map = workspace_from_args(args, config)
     data = read_json(Path(args.input))
     exact_keys(data, {"lifecycle_id", "outcome", "feature_ref", "changed_scope", "repositories", "rules_read", "references_read", "documentation_targets", "notifications"}, "plan input")
     reject_sensitive(data, "plan input")
@@ -863,7 +996,7 @@ def cmd_plan(args: argparse.Namespace) -> dict[str, Any]:
             blockers.append(f"repository {repo.get('name', '?')} has invalid commit identity")
             continue
         try:
-            observed = inspect_git_repository(root.resolve(), configured_repo, repo)
+            observed = inspect_git_repository(root.resolve(), configured_repo, repo, workspace_map)
             repository_observations.append({k: v for k, v in observed.items() if k != "root"})
         except LifecycleError as exc:
             blockers.append(str(exc))
@@ -875,12 +1008,12 @@ def cmd_plan(args: argparse.Namespace) -> dict[str, Any]:
                 safe_path(path, "changed_scope path")
             except LifecycleError as exc:
                 blockers.append(str(exc))
-    installations = rule_statuses(root, config)
+    installations = rule_statuses(root, config, workspace_map=workspace_map)
     for item in installations:
         if not item["installed"]:
             blockers.append(f"repository {item['repository']} lacks the managed lifecycle rule reference ({item['status']})")
     try:
-        declared_files = inspect_declared_files(root, config)
+        declared_files = inspect_declared_files(root, config, workspace_map)
     except LifecycleError as exc:
         declared_files = []
         blockers.append(str(exc))
@@ -894,11 +1027,13 @@ def cmd_plan(args: argparse.Namespace) -> dict[str, Any]:
         "reminders": ["Publish the unchanged feature ref before the first edit; use only its declared bootstrap CI policy and fall back to a passed pipeline", "Complete declared documentation readiness and completion gates", "Record every declared notification disposition", "Production execution is delegated; record only observed handoff and delivery evidence"],
         "blockers": blockers, "ready": not blockers, "mutates_repository": False,
     }
+    if workspace_map is not None:
+        plan["workspace_map"] = workspace_map
     plan["plan_sha256"] = digest(plan)
     out_path, state_path = Path(args.output), Path(args.state_output)
     if out_path.resolve() == state_path.resolve():
         raise LifecycleError("plan and state output paths must be distinct")
-    ensure_external(out_path, config, root); ensure_external(state_path, config, root)
+    ensure_external(out_path, config, root, workspace_map); ensure_external(state_path, config, root, workspace_map)
     atomic_write(out_path, plan)
     state = {"schema_version": 1, "mode": "state", "lifecycle_id": plan["lifecycle_id"], "plan_sha256": plan["plan_sha256"], "config_sha256": config_hash, "current_checkpoint": None, "attempts": {}, "completed": {}, "history": [], "failed": False, "complete": False, "mutates_repository": False}
     state["state_sha256"] = digest(state)
@@ -952,6 +1087,15 @@ def load_bound(root: Path, plan_path: Path, state_path: Path) -> tuple[dict[str,
         raise LifecycleError("configuration changed after planning")
     if state.get("plan_sha256") != plan.get("plan_sha256"):
         raise LifecycleError("state is bound to another plan")
+    workspace_map = None
+    if "workspace_map" in plan:
+        workspace_map = validate_workspace_map(plan["workspace_map"], declared(config, "repositories"), inspect_git=False)
+        if workspace_map != plan["workspace_map"]:
+            raise LifecycleError("bound workspace map root changed after planning")
+    elif config.get("workspace_map_required"):
+        raise LifecycleError("workspace map is required by configuration and must be bound in the plan")
+    ensure_external(plan_path, config, root, workspace_map)
+    ensure_external(state_path, config, root, workspace_map)
     if plan.get("feature_bootstrap", []) != feature_bootstrap(config):
         raise LifecycleError("plan feature_bootstrap does not match configuration")
     if not plan.get("ready"):
@@ -1183,7 +1327,7 @@ def cmd_advance(args: argparse.Namespace) -> dict[str, Any]:
         raise LifecycleError("failed checkpoint requires at least one failed assertion")
     if status == "not-required" and (required or any(not item["passed"] for item in checkpoint["assertions"])):
         raise LifecycleError("not-required is valid only for an optional gate with a passed not-required-by-config assertion")
-    verify_retained_evidence(root, config, checkpoint)
+    verify_retained_evidence(root, config, checkpoint, plan.get("workspace_map"))
     active = enabled_order(config)
     remaining = [item for item in active if item not in state["completed"]]
     if not remaining or name != remaining[0]:
@@ -1214,7 +1358,7 @@ def cmd_advance(args: argparse.Namespace) -> dict[str, Any]:
     state["history"].append(checkpoint)
     state["complete"] = all(item in state["completed"] for item in active) and not state["failed"]
     state["state_sha256"] = digest(state, "state_sha256")
-    ensure_external(state_path, config, root)
+    ensure_external(state_path, config, root, plan.get("workspace_map"))
     atomic_write(state_path, state)
     return {"mode": "advance", "checkpoint": name, "status": status, "current_checkpoint": state["current_checkpoint"], "complete": state["complete"], "state_sha256": state["state_sha256"], "mutates_repository": False}
 
@@ -1276,6 +1420,8 @@ def parser() -> argparse.ArgumentParser:
         item = sub.add_parser(name)
         item.add_argument("--project-root", required=True)
         item.add_argument("--json", action="store_true")
+        if name in {"bootstrap", "plan", "rules-status", "configure-rules"}:
+            item.add_argument("--workspace-map", help="JSON map of configured repository names to task workspace roots")
         return item
     c = common("configure"); c.add_argument("--config-source", required=True); c.set_defaults(func=cmd_configure)
     bs = common("bootstrap"); bs.add_argument("--agent", choices=sorted(AGENTS), default="codex"); bs.add_argument("--apply", action="store_true"); bs.add_argument("--yes", action="store_true"); bs.set_defaults(func=cmd_bootstrap)
