@@ -13,6 +13,11 @@
 
 ### Fixed
 
+- Add a bounded Yandex Compute operation wrapper that binds project scope to
+  fresh ownership checks and verifies VM state after start, stop or restart.
+- Clarify cloud skill invocation and completion reports, downstream wrapper
+  scope checks, and targeted application when broad previews show unrelated
+  drift or check-mode dependencies.
 - Telegram notifications accept UTF-8 message files and decode stdin explicitly
   as UTF-8, avoiding locale-dependent Unicode corruption on Windows. Invalid
   input stops before delivery; an offline dry run checks the input round-trip.
