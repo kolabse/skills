@@ -13,6 +13,11 @@ Treat the project's infrastructure repository, inventory, configuration and
 runbooks as the source of truth. Resolve live state with read-only checks;
 treat remembered resource identifiers and procedures as hints only.
 
+Announce this skill once when selecting it, naming the requested environment
+and operation. Distinguish observed checks from assumptions in progress and
+completion reports; use the compact report below rather than narrating every
+command.
+
 ## Initialize the project
 
 1. Resolve the project root as the parent containing `.agents/skills` for this
@@ -105,9 +110,11 @@ script governing every target and operation.
 - Prefer repository scripts that consume credentials internally.
 - Verify the project `cloud_id`, effective `yc` profile, folder ID, SSH host,
   Kubernetes context/namespace and Git branch immediately before mutation.
-- Pass explicit resource and folder identifiers where supported. Treat a
-  mismatch between project configuration and live context as a stop condition
-  for mutation.
+- Pass explicit resource and folder identifiers where supported. Verify that
+  each resource ID belongs to the configured scope: YC may ignore default
+  Cloud/Folder flags when looking up an ID. A target mismatch blocks mutation;
+  a different global default is handled only by the operation-scoped checks
+  below.
 - If a secret appears in visible output or tracked content, stop exposure,
   report the incident without repeating the value, and recommend rotation.
 
@@ -124,8 +131,9 @@ python <skill-root>/scripts/preflight.py --project-path <project-root> --scan-pa
 
 - Treat every `FAIL` as a stop condition.
 - Resolve every `WARN` against the exact operation. A global `yc` Cloud/Folder
-  mismatch is acceptable only when every cloud command uses explicit project
-  IDs or the configured `--profile`.
+  mismatch is acceptable only when the downstream operation explicitly binds
+  the project scope and verifies target ownership. A profile name or a passed
+  preflight alone is not evidence that later commands remain scoped.
 - Record the authenticated subject, configured Cloud/Folder, Kubernetes
   context/namespace, Terraform workspace and SSH identity evidence that applies
   to the operation.
@@ -134,12 +142,31 @@ python <skill-root>/scripts/preflight.py --project-path <project-root> --scan-pa
 Completion criterion: no failed check remains, and every warning has an explicit
 safe handling decision.
 
+For Compute VM `list`, `get`, `start`, `stop`, and `restart`, use the bounded
+[`yc_project.py` wrapper](scripts/yc_project.py). It loads the configured
+Cloud, Folder and profile, performs fresh scope checks, rejects extra operation
+arguments, and verifies the result without forwarding raw CLI output:
+
+```shell
+python <skill-root>/scripts/yc_project.py --project-path <project-root> -- compute instance get --id <instance-id>
+```
+
+Read [references/operation-scope.md](references/operation-scope.md) before using
+this helper or another repository wrapper. It defines supported commands,
+identity and concurrency limits, and the evidence needed for SSH, Ansible,
+Terraform or Kubernetes. Never use a successful VM check as authorization for
+an arbitrary downstream command.
+
 ## Preview, execute and verify
 
 1. Begin with read-only discovery and resolve exact resource identifiers.
 2. Inspect and reuse repository scripts and declared tooling.
 3. Produce the native preview: Terraform plan, Ansible check/diff, Helm
    template/diff, Kubernetes diff, read-only SQL, or CI inspection.
+   If the full preview includes unrelated drift or cannot model a dependency
+   in check mode, follow the targeted-apply procedure in
+   [operation-scope.md](references/operation-scope.md#targeted-apply-after-a-broad-preview).
+   An incomplete preview does not justify applying the full plan.
 4. Review replacements, deletions, privilege expansion, downtime, data
    movement and rollback.
 5. Execute only the requested scope with explicit targets and environment
@@ -152,6 +179,25 @@ safe handling decision.
 
 Completion criterion: observed external state proves the requested outcome and
 every unexplained change remains outside the success claim.
+
+## Report the operation
+
+Finish with a compact checklist, using `not applicable`, `blocked`, or
+`unverified` when appropriate:
+
+- **Scope:** environment, Cloud/Folder, exact target, and how the executing
+  command was bound to them.
+- **Before:** relevant observed state and preview; identify unrelated drift.
+- **Change:** the authorized action actually attempted, or read-only work.
+- **Verification:** observed result and evidence; distinguish a successful
+  command exit from confirmed external state.
+- **Retries / intervention:** expired access, refresh, manual correction or
+  fallback, plus any unresolved result and rollback position.
+
+Report credential sources or presence only. Do not include token values, raw
+authentication output, or full resource metadata. If execution was attempted
+but verification failed, report that uncertainty and inspect state before
+retrying a mutation.
 
 ## Version infrastructure changes
 
