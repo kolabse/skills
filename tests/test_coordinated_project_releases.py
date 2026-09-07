@@ -136,6 +136,7 @@ class CoordinateRepositoriesTests(unittest.TestCase):
         self.assertTrue(state["ready"])
         plan = self.plan()
         self.assertTrue(plan["ready"])
+        self.assertNotIn("publication_order", plan)
 
         (self.application / "app.txt").write_text("implemented\n", encoding="utf-8")
         git(self.application, "add", "--", "app.txt")

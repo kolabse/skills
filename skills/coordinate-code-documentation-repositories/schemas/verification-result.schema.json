@@ -1,13 +1,132 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://github.com/kolabse/skills/coordinate-code-documentation-repositories/verification-result.schema.json",
-  "type": "object", "additionalProperties": false,
-  "required": ["schema_version", "mode", "plan_sha256", "commits", "blockers", "passed", "mutates_repositories", "report_sha256"],
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "mode",
+    "plan_sha256",
+    "commits",
+    "blockers",
+    "passed",
+    "mutates_repositories",
+    "report_sha256"
+  ],
   "properties": {
-    "schema_version": {"const": 1}, "mode": {"const": "verify"},
-    "plan_sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
-    "commits": {"type": "object", "additionalProperties": false, "required": ["implementation", "documentation"], "properties": {"implementation": {"type": ["string", "null"]}, "documentation": {"type": ["string", "null"]}}},
-    "blockers": {"type": "array", "items": {"type": "string"}}, "passed": {"type": "boolean"},
-    "mutates_repositories": {"const": false}, "report_sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"}
+    "schema_version": {
+      "const": 1,
+      "type": "integer"
+    },
+    "mode": {
+      "const": "verify"
+    },
+    "plan_sha256": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "commits": {
+      "type": "object",
+      "additionalProperties": {
+        "type": [
+          "string",
+          "null"
+        ]
+      },
+      "required": [
+        "implementation",
+        "documentation"
+      ],
+      "properties": {
+        "implementation": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "documentation": {
+          "type": [
+            "string",
+            "null"
+          ]
+        }
+      },
+      "propertyNames": {
+        "type": "string",
+        "pattern": "^[a-z][a-z0-9-]{0,62}$"
+      }
+    },
+    "blockers": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "passed": {
+      "type": "boolean"
+    },
+    "mutates_repositories": {
+      "const": false
+    },
+    "report_sha256": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "repository_results": {
+      "type": "object",
+      "required": [
+        "implementation",
+        "documentation"
+      ],
+      "propertyNames": {
+        "type": "string",
+        "pattern": "^[a-z][a-z0-9-]{0,62}$"
+      },
+      "additionalProperties": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "head",
+          "upstream",
+          "upstream_sha",
+          "validation",
+          "blockers"
+        ],
+        "properties": {
+          "head": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "upstream": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "upstream_sha": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "validation": {
+            "enum": [
+              "passed",
+              "unbound",
+              "missing",
+              "invalid"
+            ]
+          },
+          "blockers": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        }
+      }
+    }
   }
 }
