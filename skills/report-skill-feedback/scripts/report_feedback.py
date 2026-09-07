@@ -89,6 +89,10 @@ def exact_object(value: object, required: set[str], optional: set[str], label: s
 def bounded_text(value: object, label: str, limit: int) -> str:
     if not isinstance(value, str) or not value.strip() or len(value) > limit:
         raise FeedbackError(f"{label} must be non-empty text no longer than {limit} characters")
+    try:
+        value.encode("utf-8")
+    except UnicodeEncodeError as error:
+        raise FeedbackError(f"{label} contains invalid Unicode text") from error
     normalized = " ".join(value.split())
     for kind, pattern in FORBIDDEN:
         if pattern.search(normalized):
@@ -508,4 +512,7 @@ def main(argv: list[str] | None = None) -> int:
 
 
 if __name__ == "__main__":
+    for stream in (sys.stdout, sys.stderr):
+        if hasattr(stream, "reconfigure"):
+            stream.reconfigure(encoding="utf-8")
     raise SystemExit(main())

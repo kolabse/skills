@@ -5,8 +5,10 @@ import copy
 import hashlib
 import io
 import json
+import os
 import re
 import subprocess
+import sys
 import tempfile
 import unittest
 from contextlib import redirect_stderr, redirect_stdout
@@ -66,6 +68,21 @@ class FeedbackFeaturesTests(unittest.TestCase):
                 self.assertNotIn("answers", result)
                 self.assertEqual(result["language"], language)
                 self.assertTrue(all("default" not in item for item in result["questions"]))
+
+    def test_real_cli_emits_utf8_despite_legacy_python_io_encoding(self):
+        for encoding in ("cp1251", "ascii"):
+            with self.subTest(encoding=encoding):
+                completed = subprocess.run(
+                    [sys.executable, str(Path(feedback.__file__)), "prepare", "--skill", "review-code-changes",
+                     "--language", "ru", "--json"],
+                    env={**os.environ, "PYTHONIOENCODING": encoding}, capture_output=True, timeout=20,
+                )
+                self.assertEqual(completed.returncode, 0)
+                result = json.loads(completed.stdout.decode("utf-8"))
+                self.assertEqual(result["language"], "ru")
+                self.assertIn("Назовите один предлагаемый отчёт", result["checklist"][0])
+                self.assertNotIn("\ufffd", completed.stdout.decode("utf-8"))
+                self.assertEqual(completed.stderr, b"")
 
     def test_all_consent_guards_precede_io(self):
         with mock.patch.object(Path, "read_bytes", side_effect=AssertionError("read")), \
@@ -174,6 +191,14 @@ class FeedbackFeaturesTests(unittest.TestCase):
                 payload[key] = value
                 with self.assertRaises(feedback.FeedbackError):
                     feedback.validate(payload)
+
+    def test_lone_surrogate_text_is_rejected_before_report_encoding(self):
+        value = self.payload()
+        value["task_summary"] = "Observation \ud800"
+        with self.assertRaises(feedback.FeedbackError) as caught:
+            feedback.validate(value)
+        self.assertEqual(caught.exception.category, "validation")
+        self.assertNotIn("Observation", str(caught.exception))
 
     def test_schema_version_pattern_matches_runtime(self):
         schema_path = Path(feedback.__file__).parents[1] / "schemas/feedback-input.schema.json"
