@@ -1,6 +1,6 @@
 ---
 name: notify-via-telegram
-description: "Send Telegram notifications about long-running agent tasks through a global destination or a project-specific chat or topic. Use when a task is expected to take several minutes or span multiple stages, waits, deployments, builds, migrations, research passes, or other lengthy work that benefits from start, progress, milestone, problem, blocked, and completion updates; also use whenever the user asks to be notified or kept updated in Telegram or to configure notification routing for a project."
+description: "Send agent-task progress notifications to Telegram and configure their global or project-specific routing. Use when the user requests Telegram updates, a notification request has an established Telegram destination, or applicable user/project instructions already authorize task notifications there. Task duration, complexity, waiting, or deployment alone does not activate this skill. Exclude progress requested only in the current chat, building Telegram products, and unrelated business messages."
 ---
 
 # Notify via Telegram
@@ -12,6 +12,12 @@ Codex Desktop Windows setup fallback below is Codex-specific.
 
 Keep Telegram updates concise, useful away from the workstation, and free of
 credentials, private reasoning, raw logs, and unnecessary implementation detail.
+
+## Establish notification scope
+
+Select this workflow from a Telegram notification or routing request, or from applicable prior authorization for this task. A long or multistage task alone is not authorization to activate notifications. An installed sender or saved destination establishes capability and routing, not permission to send.
+
+Honor an existing user or project instruction without repeatedly asking for permission. If the user requests remote notifications but no channel is established, clarify the destination before configuring or sending; do not silently choose Telegram. A request for progress only in the current conversation excludes this workflow.
 
 ## Configure first use
 

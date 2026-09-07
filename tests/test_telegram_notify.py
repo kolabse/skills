@@ -27,6 +27,10 @@ telegram_notify = importlib.util.module_from_spec(SPEC)
 SPEC.loader.exec_module(telegram_notify)
 
 
+# Bound Windows PowerShell startup and execution on shared CI runners.
+WINDOWS_POWERSHELL_TIMEOUT_SECONDS = 120
+
+
 class TelegramNotifyTests(unittest.TestCase):
     def test_utf8_stdin_ignores_legacy_text_wrapper_encoding(self) -> None:
         text = "Привет ✅\nЁж, café, 中文"
@@ -110,9 +114,9 @@ class TelegramNotifyTests(unittest.TestCase):
                 encoding="utf-8-sig",
             )
             result = subprocess.run(
-                ["powershell", "-NoProfile", "-ExecutionPolicy", "Bypass", "-File", str(script),
+                ["powershell", "-NoProfile", "-NonInteractive", "-ExecutionPolicy", "Bypass", "-File", str(script),
                  sys.executable, str(SCRIPT), str(Path(directory) / "message.txt")],
-                capture_output=True, timeout=30,
+                capture_output=True, stdin=subprocess.DEVNULL, timeout=WINDOWS_POWERSHELL_TIMEOUT_SECONDS,
             )
             self.assertEqual(0, result.returncode, result.stderr)
 
@@ -320,6 +324,7 @@ class TelegramNotifyTests(unittest.TestCase):
             [
                 "powershell",
                 "-NoProfile",
+                "-NonInteractive",
                 "-ExecutionPolicy",
                 "Bypass",
                 "-File",
@@ -328,7 +333,8 @@ class TelegramNotifyTests(unittest.TestCase):
             ],
             capture_output=True,
             text=True,
-            timeout=30,
+            stdin=subprocess.DEVNULL,
+            timeout=WINDOWS_POWERSHELL_TIMEOUT_SECONDS,
             check=False,
         )
         self.assertEqual(0, result.returncode, result.stderr)
