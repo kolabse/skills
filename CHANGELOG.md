@@ -13,6 +13,10 @@
 
 ### Fixed
 
+- Clarify staged authorization from local work to later branch publication,
+  preserving prior edits and requiring fresh base and task verification.
+- Work-log guidance distinguishes saved entries, bounded completeness checks,
+  and the log's own terminal publication record without recursive merge cycles.
 - Add a bounded Yandex Compute operation wrapper that binds project scope to
   fresh ownership checks and verifies VM state after start, stop or restart.
 - Clarify cloud skill invocation and completion reports, downstream wrapper
