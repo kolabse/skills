@@ -157,7 +157,9 @@
         "software-defect-diagnosis"
       ],
       "requires": [],
-      "optional_integrations": [],
+      "optional_integrations": [
+        "test-first-development-evidence"
+      ],
       "configuration": {
         "scope": "project",
         "format": "none",

@@ -1,1 +1,75 @@
-{"skill":"develop-with-test-first-evidence","positive":[{"prompt":"Implement this parser change using strict TDD and show me the red and green commands.","reason":"Explicit TDD with evidence."},{"prompt":"Our project requires test-first development; add the failing regression test before the fix.","reason":"Project policy mandates a red-first cycle."},{"prompt":"Use red-green-refactor for each acceptance rule and retain machine-readable evidence.","reason":"Explicit test-first evidence workflow."}],"negative":[{"prompt":"Add unit tests for the implementation I already finished.","reason":"After-the-fact test coverage is not test-first development."},{"prompt":"Run the existing test suite and summarize failures.","reason":"Test execution alone is not a red-green cycle."},{"prompt":"Diagnose why this flaky test fails in CI.","reason":"This is defect diagnosis rather than requested TDD."}]}
+{
+  "skill": "develop-with-test-first-evidence",
+  "positive": [
+    {
+      "prompt": "Implement this parser change using strict TDD and show me the red and green commands.",
+      "reason": "Explicit TDD with evidence."
+    },
+    {
+      "prompt": "Our project requires test-first development; add the failing regression test before the fix.",
+      "reason": "Project policy mandates a red-first cycle."
+    },
+    {
+      "prompt": "Use red-green-refactor for each acceptance rule and retain machine-readable evidence.",
+      "reason": "Explicit test-first evidence workflow."
+    },
+    {
+      "prompt": "Add pagination to the search endpoint: return at most 20 results and a cursor for the next page.",
+      "reason": "New observable application behavior warrants automatic test-first selection without a TDD keyword."
+    },
+    {
+      "prompt": "Fix the parser so an empty field returns None instead of crashing.",
+      "reason": "A concrete behavioral correction warrants a red-first cycle even without an explicit TDD request."
+    },
+    {
+      "prompt": "The existing regression test already fails on the duplicate request. Fix the handler.",
+      "reason": "An existing diagnostic failing test can establish red without duplicate test coverage."
+    },
+    {
+      "prompt": "Добавь ограничение: один пользователь может отправить не больше пяти запросов в минуту.",
+      "reason": "A Russian new testable behavior request triggers the workflow automatically."
+    },
+    {
+      "prompt": "Исправь сортировку: записи с одинаковой датой должны идти по идентификатору.",
+      "reason": "A Russian behavioral correction requires observable red and green evidence."
+    }
+  ],
+  "negative": [
+    {
+      "prompt": "Add unit tests for the implementation I already finished.",
+      "reason": "After-the-fact test coverage is not test-first development."
+    },
+    {
+      "prompt": "Run the existing test suite and summarize failures.",
+      "reason": "Test execution alone is not a red-green cycle."
+    },
+    {
+      "prompt": "Diagnose why this flaky test fails in CI.",
+      "reason": "This is defect diagnosis rather than requested TDD."
+    },
+    {
+      "prompt": "Find why checkout times out; report the cause but do not change the implementation.",
+      "reason": "Diagnosis-only work does not authorize the implementation cycle."
+    },
+    {
+      "prompt": "Rename the test helpers for readability without changing assertions or production code.",
+      "reason": "Tests-only maintenance does not implement application behavior."
+    },
+    {
+      "prompt": "Fix indentation in this Markdown guide and correct the heading typo.",
+      "reason": "Low-impact document formatting has no behavioral change."
+    },
+    {
+      "prompt": "Покрой тестами уже готовую реализацию, код приложения менять не нужно.",
+      "reason": "Russian after-the-fact coverage is not test-first implementation."
+    },
+    {
+      "prompt": "Выясни причину падения, исправления пока не вноси.",
+      "reason": "Russian diagnosis-only scope excludes implementation."
+    },
+    {
+      "prompt": "Исправь опечатку в комментарии и форматирование README.",
+      "reason": "Russian reversible prose and formatting edits do not require new tests."
+    }
+  ]
+}

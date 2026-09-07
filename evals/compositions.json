@@ -93,13 +93,14 @@
       "reason": "The notification skill owns destination materialization, while project context synchronization transfers only the approved secret-free routing values."
     },
     {
-      "prompt": "Синхронизируй app и docs репозитории, реализуй парное изменение канонической документации и кода, затем привяжи проверки к финальным SHA обоих репозиториев.",
+      "prompt": "Синхронизируй app и docs репозитории, реализуй новое проверяемое поведение API и согласуй каноническую документацию с кодом, затем привяжи проверки к финальным SHA обоих репозиториев.",
       "expected_skills": [
         "synchronize-git-repositories",
         "coordinate-code-documentation-repositories",
+        "develop-with-test-first-evidence",
         "verify-before-push"
       ],
-      "reason": "The paired workflow requires freshness and cross-repository coordination, which invokes commit-bound verification as a mandatory checkpoint before publication."
+      "reason": "The paired workflow requires freshness and cross-repository coordination; behavioral implementation uses test-first evidence before commit-bound verification."
     },
     {
       "prompt": "Выполни стандартный GitFlow-релиз по объявленным ролям веток: сначала синхронизируй репозиторий, затем проверь все gates и итоговый production SHA.",
@@ -119,6 +120,24 @@
         "verify-before-push"
       ],
       "reason": "The documented release coordinates canonical documentation and the GitFlow route, with commit-bound verification at each publication boundary."
+    },
+    {
+      "prompt": "Investigate and fix this unknown regression: page 1 is rejected, although it should be accepted. Preserve the observed failing regression test before the correction and report the same test after it.",
+      "expected_skills": [
+        "diagnose-software-defects",
+        "develop-with-test-first-evidence"
+      ],
+      "reason": "An authorized fix with an unknown cause starts with diagnosis and carries the observed pre-change failure into a test-first correction."
+    },
+    {
+      "prompt": "Сначала проверь актуальность tracking branch без потери моих правок. Затем найди причину и исправь ошибку API: допустимое значение отклоняется. До исправления сохрани падение регрессионного теста, после — его успешный результат; перед push выполни объявленный проектом gate для итогового SHA.",
+      "expected_skills": [
+        "synchronize-git-repositories",
+        "diagnose-software-defects",
+        "develop-with-test-first-evidence",
+        "verify-before-push"
+      ],
+      "reason": "The requested sequence joins safe freshness, diagnosis, a genuine red-green correction, and the exact-state publication gate."
     }
   ]
 }

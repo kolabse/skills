@@ -4,6 +4,15 @@
 
 ### Changed
 
+- Diagnosis activates for direct software error reports and fixes with an
+  unresolved cause; test-first work activates for testable behavioral changes
+  and defect fixes. Both make activation and observed stages visible, retaining
+  diagnosis-only boundaries and distinguishing pre-change red evidence from
+  after-the-fact coverage.
+- Synchronization and pre-push summaries show observed state, actions, checked
+  revisions, and remaining blockers. Verification distinguishes new checks from
+  valid reuse, preserves original evidence timestamps, and does not imply that
+  a successful local gate proves publication or CI success.
 - Global orchestration needs no project activation: Codex metadata explicitly
   permits implicit selection for authorized delegation requests. Guidance
   distinguishes installed copies, effective inventory, observed invocation,

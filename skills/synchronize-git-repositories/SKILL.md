@@ -9,6 +9,9 @@ Treat synchronization as a freshness and preservation check. Bring safe
 fast-forward updates into clean worktrees; never hide, overwrite, or rewrite
 local work merely to make a repository appear current.
 
+Announce this skill once at the start of the workflow. Repeated freshness
+checks within that workflow need result updates, not repeated announcements.
+
 ## Configure the project policy
 
 1. Resolve the project boundary and select the target agent explicitly when
@@ -167,6 +170,10 @@ python <skill-root>/scripts/classify_repository.py \
   --repository <repository-root> --json
 ```
 
+The classifier reads local Git state; it does not fetch or perform its
+recommended action. Establish fetch success separately and report only
+updates actually executed and confirmed by a final recheck.
+
 For diverged branches, distinguish ordinary divergence from `identical-tree`,
 `patch-equivalent`, and one-sided patch representation. These equivalence
 signals show that content may already be represented under different commit
@@ -213,10 +220,29 @@ fetch alone does not prove that the working branch contains upstream changes.
 
 ## Report the result
 
-For each repository report its branch, upstream, clean or dirty state,
-ahead/behind classification, action taken, and remaining blocker. Distinguish
-"fetched" from "fast-forwarded" and "current". Do not claim the whole project
-is synchronized while a required repository remains behind or unresolved.
+Give a compact result for each required repository, using safe repository,
+branch, and tracking-role labels (for example, application / task branch /
+own remote task ref). Omit raw repository identifiers, remote URLs, and
+workstation paths from the user-facing report. Preserve full identities in
+private machine evidence; do not rewrite helper output or paste raw JSON
+or its file path as a substitute for the report.
+
+Include the initial clean/dirty state, fetch outcome and fetched ahead/behind
+counts, actual action, final rechecked state, and remaining blocker. Separate a
+classifier recommendation from an executed action. If a fetch failed, freshness
+is unknown; stale tracking counts cannot establish that a branch is current.
+If no final recheck succeeded, say that the final state is unconfirmed.
+
+Distinguish **fetched**, **fast-forwarded**, **already current**, and **dirty
+work preserved**. A dirty behind-only branch can be fetched and preserved while
+still needing an update. Report each repository independently: one unresolved
+required repository prevents a blanket claim that the project is synchronized.
+
+For example: "Application / task branch / own remote task ref: initially
+clean; fetched, 0 ahead / 2 behind; fast-forwarded; rechecked clean and 0/0;
+no blocker. Documentation / task branch / own remote task ref: initially
+dirty; fetched, 0 ahead / 1 behind; no pull, local edits preserved; rechecked
+dirty and 0/1; update remains blocked by local work."
 
 Completion criterion: the report proves which repositories are current, which
 local work was preserved, what changed during synchronization, and what still

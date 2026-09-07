@@ -1,1 +1,67 @@
-{"skill":"diagnose-software-defects","positive":[{"prompt":"Diagnose why this API intermittently returns stale data; do not fix it yet.","reason":"The requested outcome is causal diagnosis."},{"prompt":"Reproduce this crash and identify the root cause and blast radius.","reason":"A crash investigation is requested."},{"prompt":"Find out why this test became flaky after the dependency upgrade.","reason":"The user asks to diagnose a flaky regression."}],"negative":[{"prompt":"Apply the known null-check fix in parser.py.","reason":"The cause and implementation are already specified."},{"prompt":"Review this pull request for possible regressions.","reason":"A defined change review belongs to code review."},{"prompt":"Add logging to every service.","reason":"Instrumentation implementation is not itself diagnosis."}]}
+{
+  "skill": "diagnose-software-defects",
+  "positive": [
+    {
+      "prompt": "Diagnose why this API intermittently returns stale data; do not fix it yet.",
+      "reason": "The requested outcome is causal diagnosis."
+    },
+    {
+      "prompt": "Reproduce this crash and identify the root cause and blast radius.",
+      "reason": "A crash investigation is requested."
+    },
+    {
+      "prompt": "Find out why this test became flaky after the dependency upgrade.",
+      "reason": "The user asks to diagnose a flaky regression."
+    },
+    {
+      "prompt": "The export returns an empty file even though the table has rows.",
+      "reason": "A direct unexpected-behavior report requires causal investigation without a diagnosis keyword."
+    },
+    {
+      "prompt": "Fix the intermittent login failure; I do not know why it happens.",
+      "reason": "An unknown-cause fix request includes diagnosis and already authorizes the subsequent correction."
+    },
+    {
+      "prompt": "После обновления приложение вылетает при открытии отчёта.",
+      "reason": "A Russian crash report triggers investigation without explicit diagnostic wording."
+    },
+    {
+      "prompt": "Исправь: поиск перестал находить существующие записи, причина неизвестна.",
+      "reason": "A Russian unknown-cause behavioral fix needs diagnosis before correction."
+    }
+  ],
+  "negative": [
+    {
+      "prompt": "Apply the known null-check fix in parser.py.",
+      "reason": "The cause and implementation are already specified."
+    },
+    {
+      "prompt": "Review this pull request for possible regressions.",
+      "reason": "A defined change review belongs to code review."
+    },
+    {
+      "prompt": "Add logging to every service.",
+      "reason": "Instrumentation implementation is not itself diagnosis."
+    },
+    {
+      "prompt": "The null input crash is traced to parser.py:42. Implement the established null guard there.",
+      "reason": "An established cause and specified correction do not need a fresh diagnosis workflow."
+    },
+    {
+      "prompt": "Rewrite the invalid-password error message to sound friendlier.",
+      "reason": "Copyediting error text is not investigating a failure."
+    },
+    {
+      "prompt": "Замени текст ошибки «Invalid input» на «Проверьте введённые данные».",
+      "reason": "Russian error-message copyediting does not report a software defect."
+    },
+    {
+      "prompt": "Причина найдена: пропущена проверка None. Добавь указанную проверку.",
+      "reason": "A Russian known-fix request does not need diagnosis."
+    },
+    {
+      "prompt": "Проверь этот PR на возможные ошибки.",
+      "reason": "A Russian PR review routes to review, not symptom diagnosis."
+    }
+  ]
+}

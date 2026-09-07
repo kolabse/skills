@@ -2,6 +2,14 @@
   "skill": "verify-before-push",
   "positive": [
     {
+      "prompt": "Before pushing this branch, validate the saved check receipt and give me a short PASS or STOP with its checked SHA and whether checks ran again or results were reused.",
+      "reason": "The task requires an actual state-bound gate decision and an evidence-based reuse report."
+    },
+    {
+      "prompt": "Перед push проверь сохранённую отметку и выдай короткий PASS/STOP: какие SHA проверены, когда выполнялись проверки и почему отметка ещё актуальна или уже устарела.",
+      "reason": "The request validates current evidence and reports its original time and actual gate result."
+    },
+    {
       "prompt": "Перед push запусти объявленные проектом тесты и сохрани проверяемую отметку для текущих SHA кода и документации.",
       "reason": "The request explicitly requires checks and evidence bound to multiple repository commits."
     },
@@ -27,6 +35,14 @@
     }
   ],
   "negative": [
+    {
+      "prompt": "Explain what PASS and STOP mean in a pre-push report, without accessing a repository or validating any evidence.",
+      "reason": "Conceptual explanation of report labels is not an actual verification or gate operation."
+    },
+    {
+      "prompt": "Сократи готовый отчёт «STOP: receipt устарел после нового коммита». Не проверяй репозиторий и не запускай gate.",
+      "reason": "Rewriting supplied verification prose does not establish a new gate decision."
+    },
     {
       "prompt": "Покажи, как выглядит команда git push для ветки feature/demo, но ничего не запускай и не проверяй.",
       "reason": "A conceptual command example with an explicit no-execution boundary does not require verification evidence."

@@ -9,6 +9,9 @@ Use project configuration as the source of truth for checks. Evidence proves
 only that declared checks passed for recorded commits and worktrees; it is not
 a substitute for review, CI, or deployment verification.
 
+Announce this skill once at the start of the workflow. Repeated gates within
+that workflow need result updates, not repeated announcements.
+
 ## Configure the project
 
 1. Invoke `$synchronize-git-repositories` and resolve every repository whose
@@ -289,6 +292,32 @@ change. The explicit version-2 reuse contract above permits only delivery of
 the same checked HEAD; it does not waive any other invalidation. Rerun the
 declared checks for every other change; never edit evidence to refresh it.
 
-Report repositories covered, checks passed or intentionally skipped, evidence
-path, verification time, and any stale-state reason. Do not claim that a push
-occurred or CI passed unless separately observed.
+End with a short **PASS** or **STOP** reflecting the actual gate decision for
+the configured repositories. Exit code zero for a repository outside the
+configured set means **not gated**, not verified PASS. A successful check run
+alone does not establish a later gate decision; report a missing gate result
+as unconfirmed rather than infer PASS.
+
+Use safe repository and branch/tracking-role labels plus the checked HEAD
+SHAs. Include the receipt version, original receipt location as a safe
+relative reference or artifact label, original `checked_at`, and whether the
+gate established it as current or rejected it as stale, with the reason.
+If no usable receipt exists, say so; do not invent receipt metadata. Keep full
+identities in private machine evidence and omit raw repository identifiers,
+remote URLs, and workstation paths from the user-facing report. Do not paste
+raw helper JSON or an absolute evidence path in place of the summary.
+
+Summarize enabled required checks and their results, disabled checks with
+their configured skip reasons, and any optional failures allowed by the
+contract. Distinguish newly executed checks from accepted prior results.
+For version-2 reuse, state whether the gate confirmed the original identical
+state or the documented delivery transition to the exact checked HEAD, using
+fresh trusted identity and remote checks. Preserve the original receipt and
+time without restamping. Every new commit invalidates results even with an
+identical tree; version-1 evidence retains strict original-state matching.
+Elapsed age alone establishes neither freshness nor staleness.
+
+For STOP, name the remaining failed check or state/evidence blocker. These
+reporting rules neither bypass the gate nor add a permission requirement.
+Report a push or CI outcome only when separately observed; gate PASS proves
+neither publication nor CI success.

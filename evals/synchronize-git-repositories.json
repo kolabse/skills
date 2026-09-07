@@ -2,6 +2,14 @@
   "skill": "synchronize-git-repositories",
   "positive": [
     {
+      "prompt": "Fetch the application and docs repos before editing. Give me a short report of what actually updated and whether my dirty docs checkout was preserved.",
+      "reason": "The task requires safe synchronization with an observed per-repository action and preservation report."
+    },
+    {
+      "prompt": "Синхронизируй рабочие репозитории и кратко покажи, где был fast-forward, где ветка уже актуальна, а где остался блокер. Пути моего компьютера в ответ не включай.",
+      "reason": "The request combines actual synchronization with a privacy-safe report of distinct outcomes."
+    },
+    {
       "prompt": "Перед началом работы синхронизируй репозитории приложения, инфраструктуры и документации, не потеряв локальные изменения.",
       "reason": "The task explicitly requires safe synchronization of several related repositories."
     },
@@ -31,6 +39,14 @@
     }
   ],
   "negative": [
+    {
+      "prompt": "Rewrite this supplied status more clearly: 'App fetched, docs dirty, no pull.' Do not inspect repositories or run Git.",
+      "reason": "Editing supplied status prose does not require repository synchronization or independent verification."
+    },
+    {
+      "prompt": "Переформулируй для коллег текст: «fetch прошёл, изменения сохранены, ветка отстаёт». Репозитории не открывай и ничего не проверяй.",
+      "reason": "The request is a bounded prose rewrite with no repository operation."
+    },
     {
       "prompt": "Объясни разницу между git merge и git rebase на простом примере.",
       "reason": "A general Git explanation does not require synchronizing a repository."
