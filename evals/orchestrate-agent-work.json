@@ -3,11 +3,15 @@
   "positive": [
     {"prompt":"Use three subagents in parallel to inspect the API, UI, and tests, then integrate their findings.","reason":"The user explicitly requests bounded parallel agent work."},
     {"prompt":"Delegate independent reviews of these four modules and coordinate the combined result.","reason":"Delegation and integration are the requested workflow."},
-    {"prompt":"Our AGENTS.md requires subagents for this migration; assign non-overlapping ownership.","reason":"Applicable project policy explicitly requires subagents."}
+    {"prompt":"Our AGENTS.md requires subagents for this migration; assign non-overlapping ownership.","reason":"Applicable project policy explicitly requires subagents."},
+    {"prompt":"This is a new project with no local skills or activation manifest. Use two subagents to inspect the API and tests independently, then reconcile their findings.","reason":"Explicit delegation selects the globally available workflow without project activation."},
+    {"prompt":"Коллекция навыков установлена глобально. В этом новом проекте поручите двум субагентам независимую проверку интерфейса и тестов, затем объедините результаты.","reason":"A Russian request explicitly authorizes orchestration without naming the skill or requiring local configuration."}
   ],
   "negative": [
     {"prompt":"Fix these three small typos.","reason":"Several edits alone do not justify orchestration."},
     {"prompt":"Create a new Codex task for me to revisit tomorrow.","reason":"A user-visible task is not an internal subagent assignment."},
-    {"prompt":"Explain how parallel programming works.","reason":"Conceptual explanation does not request agent coordination."}
+    {"prompt":"Explain how parallel programming works.","reason":"Conceptual explanation does not request agent coordination."},
+    {"prompt":"The collection is installed globally. Fix the formatting in this new project without using subagents.","reason":"Global installation does not supply delegation authorization."},
+    {"prompt":"Project instructions disable the orchestration workflow here. Respect that setting and inspect these files sequentially yourself.","reason":"An applicable explicit disable suppresses the workflow even if its global copy is visible."}
   ]
 }

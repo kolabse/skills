@@ -13,13 +13,15 @@
     "discovery": {"command": ["{npx}", "--yes", "skills@1.5.22", "add", ".", "--list"], "timeout_seconds": 180},
     "install-codex": {"command": ["{python}", "scripts/smoke_install.py", "--agent", "codex"], "timeout_seconds": 300},
     "install-claude": {"command": ["{python}", "scripts/smoke_install.py", "--agent", "claude-code"], "timeout_seconds": 300},
+    "install-global-codex": {"command": ["{python}", "scripts/smoke_install.py", "--agent", "codex", "--scope", "global"], "timeout_seconds": 300},
+    "install-global-claude": {"command": ["{python}", "scripts/smoke_install.py", "--agent", "claude-code", "--scope", "global"], "timeout_seconds": 300},
     "upgrade-codex": {"command": ["{python}", "scripts/smoke_upgrade.py", "--agent", "codex"], "timeout_seconds": 300},
     "upgrade-claude": {"command": ["{python}", "scripts/smoke_upgrade.py", "--agent", "claude-code"], "timeout_seconds": 300}
   },
   "profiles": {
     "preflight": ["versions", "structural", "localizations", "translation-freshness", "marketplaces", "security", "bootstrap-codex", "bootstrap-claude"],
     "full": ["versions", "structural", "localizations", "translation-freshness", "marketplaces", "security", "bootstrap-codex", "bootstrap-claude", "unit-tests"],
-    "consumers": ["discovery", "install-codex", "install-claude", "upgrade-codex", "upgrade-claude"],
+    "consumers": ["discovery", "install-codex", "install-claude", "install-global-codex", "install-global-claude", "upgrade-codex", "upgrade-claude"],
     "security": ["security"]
   }
 }

@@ -7,6 +7,20 @@ description: "Coordinate explicitly requested subagents or parallel agent work b
 
 Coordinate delegated work without surrendering responsibility for the outcome.
 
+## Use the globally installed workflow
+
+Select this skill for a qualifying request even in a new project with no local
+skill copy, manifest entry, or activation configuration. A global installation
+is sufficient for availability in the agent's supported skill inventory;
+project configuration is optional refinement, not a prerequisite.
+
+Respect an explicit disable in applicable project instructions or the agent's
+effective settings. Do not create local copies or activation files to bypass
+it. Automatic skill selection does not itself authorize subagents: retain the
+delegation boundary below. If discovery or selection is in doubt, follow
+[references/global-availability.md](references/global-availability.md) and
+distinguish installed files, effective inventory, and observed invocation.
+
 ## Define the delegation boundary
 
 1. Confirm that the user or applicable project instructions authorize subagents.

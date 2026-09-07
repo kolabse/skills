@@ -2,3 +2,5 @@ interface:
   display_name: "Orchestrate Agent Work"
   short_description: "Coordinates bounded parallel agent assignments"
   default_prompt: "Use $orchestrate-agent-work to coordinate these explicitly requested parallel agent assignments."
+policy:
+  allow_implicit_invocation: true
