@@ -4,6 +4,10 @@
 
 ### Changed
 
+- Feedback preparation can build validated inputs from consented answers and an
+  explicitly selected skill artifact, separating its version and instruction
+  digest from local reporter diagnostics. English and Russian report templates
+  preserve the individual collection and submission consent boundaries.
 - Cross-repository coordination accepts additional required named roles while
   preserving existing version-1 pairs. Plans can retain publication order;
   completion checks cover every role's published revision, traceability, and
@@ -17,6 +21,8 @@
 
 ### Fixed
 
+- Feedback submission reports sanitized error categories and uncertain outcomes
+  without claiming a failed command necessarily created no issue or retrying it.
 - Coordination guidance recognizes canonical documentation in infrastructure
   repositories, shows a joint progress report, and maps existing task cards to
   formal plan and verification evidence without substituting one for the other.
@@ -40,6 +46,8 @@
 
 ### Added
 
+- An optional local feedback-session ledger records only skill names and report
+  states; its entries cannot authorize evidence collection or external submission.
 - Polish and Ukrainian translations of the public README, contribution guide,
   support, privacy policy, and terms of use complete the currently planned
   localization roadmap. English remains the canonical source.

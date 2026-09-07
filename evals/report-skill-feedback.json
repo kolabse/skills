@@ -2,6 +2,14 @@
   "skill": "report-skill-feedback",
   "positive": [
     {
+      "prompt": "Помоги подготовить отзыв о работе навыка на русском: сначала покажи анкету и запрос согласия, затем используй версию именно вызванной копии.",
+      "reason": "Guided consent preparation, selected artifact identity and report language support bounded skill feedback."
+    },
+    {
+      "prompt": "Track the consent and draft states for these skill feedback reports locally; keep a separate approval for each report and each submission.",
+      "reason": "An optional advisory session ledger supports the existing individual-report workflow."
+    },
+    {
       "prompt": "Сформируй обезличенный отчёт о том, почему review-code-changes не запустился автоматически, и сначала покажи его мне.",
       "reason": "The user requests a privacy-bounded report about observed skill invocation behavior."
     },
@@ -19,6 +27,10 @@
     }
   ],
   "negative": [
+    {
+      "prompt": "Переведи обычный документ с английского на русский.",
+      "reason": "General document translation is unrelated to observed skill feedback."
+    },
     {
       "prompt": "Создай issue с предложением нового навыка из правил этого проекта.",
       "reason": "Reusable candidate contribution belongs to discover-skill-candidates, not usage feedback."

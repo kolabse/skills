@@ -1,0 +1,28 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Optional advisory feedback session ledger",
+  "description": "At most 65536 UTF-8 bytes. Duplicate skill names represent independent reports. States never authorize collection or submission.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "entries"],
+  "properties": {
+    "schema_version": {"type": "integer", "const": 1},
+    "entries": {
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 128,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["skill", "state"],
+        "properties": {
+          "skill": {"type": "string", "minLength": 1, "maxLength": 128, "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$"},
+          "state": {
+            "type": "string",
+            "enum": ["eligible", "awaiting-collection", "collection-consented", "collection-declined", "drafted", "awaiting-submission", "submission-consented", "submission-declined", "submitted", "submission-unknown"]
+          }
+        }
+      }
+    }
+  }
+}
