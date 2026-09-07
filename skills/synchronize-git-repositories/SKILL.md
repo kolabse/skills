@@ -66,6 +66,12 @@ Apply this bootstrap only when the user has authorized repository changes that
 are intended for publication. Do not create remote branches for read-only or
 local-only work.
 
+When the user authorizes local edits first and publication only later, follow
+[references/staged-publication.md](references/staged-publication.md). The
+remote-branch checkpoint occurs when publication becomes authorized; do not
+retroactively treat the earlier authorized local edits as a workflow violation.
+The procedure below applies when publication is authorized from the start.
+
 1. Classify the task and resolve its configured base role: development for
    `feature/` and `bugfix/`, production for an explicitly requested `hotfix/`.
    Release preparation uses `release/` from development. In a trunk-based

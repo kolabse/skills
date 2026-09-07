@@ -30,8 +30,9 @@ transcript of routine command execution.
    Use `$maintain-work-log` for every project task. Maintain the dated,
    chronological log in `docs/reports/work-log.md`; record material changes,
    operations, diagnostics, discussions, decisions, verification, blockers,
-   and rollback results before completing the task. Never record secrets,
-   personal data, private reasoning, or raw sensitive logs.
+   and rollback results before completing the task. Follow the skill's
+   terminal-publication policy for the log's own final publication event.
+   Never record secrets, personal data, private reasoning, or raw sensitive logs.
    <!-- maintain-work-log:end -->
    ```
 
@@ -82,9 +83,10 @@ been either offered for reconstruction or explicitly deferred.
 4. Summarize related low-level commands as one outcome. Do not turn the log into
    a terminal transcript, narrate private chain-of-thought, or claim an outcome
    that was not observed.
-5. Update the log after a meaningful checkpoint and always before the final
-   response. For a discussion-only task, record the resulting decision,
-   clarification, open question, or confirmed absence of change.
+5. Update the log after a meaningful checkpoint and before the final response,
+   subject to the terminal-publication policy below. For a discussion-only task,
+   record the resulting decision, clarification, open question, or confirmed
+   absence of change.
 6. Add entries under the correct date in chronological order. Insert a late
    discovery under its historical date rather than presenting it as current
    work. Preserve unrelated user edits in a dirty worktree.
@@ -93,10 +95,40 @@ been either offered for reconstruction or explicitly deferred.
    identifiers without exposing access details.
 8. Review the resulting diff for chronology, duplicate entries, accidental
    secrets, and statements stronger than the available evidence.
+9. After confirming the saved entry, give one concise confirmation with its
+   date and a link to the log when appropriate. If the event is already present,
+   say so instead of appending a duplicate. Distinguish a saved entry from a
+   draft, a failed write, and a published entry. Use approved project terminology;
+   keep local-only wording rules out of tracked policy files.
 
-Completion criterion: all material work in the task is represented under the
-correct date, verification and remaining risk are distinguishable, and the log
-contains no sensitive values.
+Completion criterion: material work is represented under the correct date,
+except for the narrowly allowed external terminal record below; verification
+and remaining risk are distinguishable, and the log contains no sensitive values.
+
+## Complete the record without a publication loop
+
+The final publication of the log itself cannot be recorded in the same commit
+that publishes it. Before publication, record the verified work and the actual
+pending review/publication status. Afterward, verify the merge or publication
+result and put its reference in the existing authorized task record or final
+response. Do not create another commit or merge solely to record this
+self-referential event. The next related log entry may incorporate the reference.
+
+Apply this exception only to the log's own terminal publication outcome,
+including failure or an unverified result. It does not excuse omitted tests,
+deployments, corrections or other material work after that checkpoint. Never
+write a predicted merge as completed. Respect an explicit project requirement
+for a different final-record location, and do not publish an external comment
+or modify local-only policy without the applicable authorization.
+
+## Check completeness within the task
+
+Offer a read-only completeness check at task completion or when the user asks
+whether material work was recorded. Follow
+[references/completeness-check.md](references/completeness-check.md) to compare
+known task milestones with dated entries. Name the bounded sources and report
+specific missing or partial entries; do not scan unrelated history, equate a
+keyword match with coverage, or claim an exhaustive project audit.
 
 ## Reconstruct missing history
 

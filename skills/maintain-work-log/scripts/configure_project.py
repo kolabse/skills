@@ -14,8 +14,9 @@ CODEX_BLOCK = """<!-- maintain-work-log:start -->
 Use `$maintain-work-log` for every project task. Maintain the dated,
 chronological log in `docs/reports/work-log.md`; record material changes,
 operations, diagnostics, discussions, decisions, verification, blockers,
-and rollback results before completing the task. Never record secrets,
-personal data, private reasoning, or raw sensitive logs.
+and rollback results before completing the task. Follow the skill's
+terminal-publication policy for the log's own final publication event.
+Never record secrets, personal data, private reasoning, or raw sensitive logs.
 <!-- maintain-work-log:end -->"""
 CLAUDE_BLOCK = CODEX_BLOCK.replace("`$maintain-work-log`", "`/maintain-work-log`")
 AGENTS = {
