@@ -1,6 +1,8 @@
 {
   "skill": "coordinate-code-documentation-repositories",
   "positive": [
+    {"prompt": "Измени API в приложении, обнови авторитетный контракт и runbook в инфраструктурном репозитории и проверь согласованность опубликованных ревизий.", "reason": "Canonical documentation may be owned by an infrastructure repository rather than a dedicated docs repository."},
+    {"prompt": "Deliver one change across app code, separate canonical docs, and a third operations repository; use our existing task card and show all required revisions and publication blockers.", "reason": "Additional required repository roles and existing task records still need formal joint coordination."},
     {"prompt": "Реализуй изменение в app-репозитории и одновременно обнови каноническую документацию в отдельном docs-репозитории.", "reason": "The request treats separate implementation and canonical documentation repositories as one change."},
     {"prompt": "Перед публикацией проверь, что код и authoritative documentation описывают одинаковое поведение и оба commit SHA опубликованы.", "reason": "Joint semantic and published-history completion is the skill's core outcome."},
     {"prompt": "Документация проекта находится в соседнем Git-репозитории. Составь связанный план изменения и не считай задачу завершённой без него.", "reason": "A paired read-only plan and fail-closed completion boundary are required."},
@@ -9,6 +11,8 @@
     {"prompt": "Не удаётся найти обязательный documentation repository; сохрани доступное состояние и сообщи, можно ли завершать парное изменение.", "reason": "Missing a required repository role must block joint completion."}
   ],
   "negative": [
+    {"prompt": "Update unrelated spelling mistakes in three independent repositories.", "reason": "Independent edits have no common implementation and canonical documentation contract."},
+    {"prompt": "Исправь скрипт развёртывания и README в том же инфраструктурном репозитории.", "reason": "Infrastructure terminology alone does not make a same-repository change cross-repository coordination."},
     {"prompt": "Добавь комментарий к сложной функции в этом же репозитории.", "reason": "A same-repository code comment is not a paired repository workflow."},
     {"prompt": "Добавь сегодняшнее исправление в пользовательский дайджест проекта.", "reason": "A daily user-facing digest belongs to maintain-project-digest."},
     {"prompt": "Синхронизируй два Git-репозитория и покажи их ahead/behind состояние.", "reason": "Repository freshness alone belongs to synchronize-git-repositories."},

@@ -24,6 +24,8 @@ TOPICS = {
 }
 SHA256_RE = re.compile(r"^[0-9a-f]{64}$")
 COMMIT_RE = re.compile(r"^[0-9a-f]{40}$")
+ROLE_RE = re.compile(r"^[a-z][a-z0-9-]{0,62}$")
+CORE_ROLES = {"implementation", "documentation"}
 UNSAFE_TEXT_RE = re.compile(
     r"(?i)(?:https?://|\b[A-Z]:[\\/]|(?:^|\s)/(?:[^/\s]+/)+|(?:password|secret|token|api[_-]?key)\s*[:=]\s*\S+|"
     r"\b[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}\b)"
@@ -98,23 +100,25 @@ def validate_config(value: dict[str, Any]) -> dict[str, Any]:
     if set(value) != {"version", "repositories", "canonical_documentation", "traceability"}:
         raise CoordinationError("configuration has unknown or missing fields")
     version = value.get("version")
-    if not isinstance(version, int) or version != CONFIG_VERSION:
+    if type(version) is not int or version != CONFIG_VERSION:
         if isinstance(version, int) and version > CONFIG_VERSION:
             raise CoordinationError("configuration uses an unknown newer version")
         raise CoordinationError("configuration version is unsupported")
     repositories = value.get("repositories")
-    if not isinstance(repositories, dict) or set(repositories) != {"implementation", "documentation"}:
-        raise CoordinationError("repositories must declare implementation and documentation exactly once")
+    if not isinstance(repositories, dict) or not CORE_ROLES.issubset(repositories):
+        raise CoordinationError("repositories must declare implementation and documentation")
+    if any(not isinstance(role, str) or not ROLE_RE.fullmatch(role) for role in repositories):
+        raise CoordinationError("repository roles must match ^[a-z][a-z0-9-]{0,62}$")
     normalized_repositories: dict[str, dict[str, str]] = {}
-    for role in ("implementation", "documentation"):
+    for role in ("implementation", "documentation", *sorted(set(repositories) - CORE_ROLES)):
         item = repositories[role]
         if not isinstance(item, dict) or set(item) != {"path"}:
             raise CoordinationError(f"repository role {role} must contain only path")
         normalized_repositories[role] = {
             "path": validate_relative_path(item["path"], f"repositories.{role}.path", allow_parent=True)
         }
-    if normalized_repositories["implementation"]["path"] == normalized_repositories["documentation"]["path"]:
-        raise CoordinationError("implementation and documentation must be separate repositories")
+    if len({item["path"] for item in normalized_repositories.values()}) != len(normalized_repositories):
+        raise CoordinationError("all roles must be separate repositories")
     documentation = value.get("canonical_documentation")
     if not isinstance(documentation, dict) or set(documentation) != {"roots", "required_topics"}:
         raise CoordinationError("canonical_documentation must contain roots and required_topics")
@@ -204,13 +208,13 @@ def resolve_contract(project_root: Path) -> tuple[dict[str, Any], dict[str, Path
     config = validate_config(load_object(config_path, "configuration"))
     roots = {
         role: (project_root / config["repositories"][role]["path"]).resolve()
-        for role in ("implementation", "documentation")
+        for role in config["repositories"]
     }
-    if roots["implementation"] == roots["documentation"]:
-        raise CoordinationError("implementation and documentation must resolve to separate repositories")
+    if len(set(roots.values())) != len(roots):
+        raise CoordinationError("all roles must resolve to separate repositories")
     states = [
         inspect_repository(roots[role], role, config["repositories"][role]["path"])
-        for role in ("implementation", "documentation")
+        for role in config["repositories"]
     ]
     return config, roots, states
 
@@ -266,7 +270,7 @@ def in_canonical_root(path: Path, documentation_root: Path, roots: list[str]) ->
 
 
 def validate_change_input(value: dict[str, Any], config: dict[str, Any], documentation_root: Path) -> dict[str, Any]:
-    if set(value) != {"outcome", "documentation_sources", "documentation_targets", "topics"}:
+    if set(value) - {"publication_order"} != {"outcome", "documentation_sources", "documentation_targets", "topics"}:
         raise CoordinationError("change input has unknown or missing fields")
     outcome = safe_text(value.get("outcome"), "outcome")
     roots = config["canonical_documentation"]["roots"]
@@ -300,7 +304,21 @@ def validate_change_input(value: dict[str, Any], config: dict[str, Any], documen
     missing = set(config["canonical_documentation"]["required_topics"]) - set(topics)
     if missing:
         raise CoordinationError(f"change input omits required topics: {', '.join(sorted(missing))}")
-    return {"outcome": outcome, **normalized, "topics": list(topics)}
+    result = {"outcome": outcome, **normalized, "topics": list(topics)}
+    if "publication_order" in value:
+        result["publication_order"] = validate_publication_order(value["publication_order"], config)
+    return result
+
+
+def validate_publication_order(value: object, config: dict[str, Any]) -> list[str]:
+    if (
+        not isinstance(value, list)
+        or any(not isinstance(role, str) for role in value)
+        or len(value) != len(config["repositories"])
+        or set(value) != set(config["repositories"])
+    ):
+        raise CoordinationError("publication_order must contain every configured role exactly once")
+    return list(value)
 
 
 def ensure_external_output(path: Path, repository_roots: dict[str, Path]) -> None:
@@ -339,6 +357,8 @@ def build_plan(project_root: Path, input_path: Path, output: Path | None) -> dic
         "ready": not blockers,
         "mutates_repositories": False,
     }
+    if "publication_order" in change:
+        plan["publication_order"] = change["publication_order"]
     plan = signed(plan, "plan_sha256")
     if output is not None:
         ensure_external_output(output, roots)
@@ -355,6 +375,53 @@ def verify_digest(value: dict[str, Any], field: str, label: str) -> None:
         raise CoordinationError(f"{label} digest does not match its content")
 
 
+def validate_planned_contract(plan: dict[str, Any], config: dict[str, Any]) -> None:
+    required = {
+        "schema_version", "mode", "config_sha256", "outcome", "documentation_sources",
+        "documentation_targets", "topics", "repositories", "blockers", "ready",
+        "mutates_repositories", "plan_sha256",
+    }
+    if set(plan) - {"publication_order"} != required or type(plan.get("schema_version")) is not int or plan["schema_version"] != 1:
+        raise CoordinationError("plan has unknown, missing, or unsupported fields")
+    repositories = plan.get("repositories")
+    if not isinstance(repositories, dict) or set(repositories) != set(config["repositories"]):
+        raise CoordinationError("plan repositories must contain every configured role exactly once")
+    for role, item in repositories.items():
+        if (
+            not isinstance(item, dict)
+            or set(item) != {"path", "head", "upstream", "upstream_sha"}
+            or item.get("path") != config["repositories"][role]["path"]
+            or not isinstance(item.get("head"), str)
+            or not COMMIT_RE.fullmatch(item["head"])
+            or not isinstance(item.get("upstream_sha"), str)
+            or not COMMIT_RE.fullmatch(item["upstream_sha"])
+            or not isinstance(item.get("upstream"), str)
+            or not item["upstream"]
+        ):
+            raise CoordinationError(f"plan repository contract is invalid: {role}")
+    for field in ("documentation_sources", "documentation_targets"):
+        items = plan[field]
+        if not isinstance(items, list) or not items or any(not isinstance(item, str) for item in items):
+            raise CoordinationError(f"plan {field} must be a non-empty path list")
+        for item in items:
+            validate_relative_path(item, f"plan {field}", allow_parent=False)
+        if len(set(items)) != len(items):
+            raise CoordinationError(f"plan {field} must be unique")
+    topics = plan["topics"]
+    if (
+        not isinstance(topics, list) or not topics
+        or any(not isinstance(topic, str) or topic not in TOPICS for topic in topics)
+        or len(set(topics)) != len(topics)
+        or not set(config["canonical_documentation"]["required_topics"]).issubset(topics)
+    ):
+        raise CoordinationError("plan topics are invalid or omit required topics")
+    safe_text(plan["outcome"], "plan outcome")
+    if plan["blockers"] != [] or plan["mutates_repositories"] is not False:
+        raise CoordinationError("verification requires a blocker-free read-only plan")
+    if "publication_order" in plan:
+        validate_publication_order(plan["publication_order"], config)
+
+
 def verify_completion(project_root: Path, plan_path: Path, input_path: Path) -> dict[str, Any]:
     plan = load_object(plan_path, "plan")
     verify_digest(plan, "plan_sha256", "plan")
@@ -363,19 +430,29 @@ def verify_completion(project_root: Path, plan_path: Path, input_path: Path) -> 
     config, roots, states = resolve_contract(project_root)
     if plan.get("config_sha256") != canonical_digest(config):
         raise CoordinationError("configuration changed after the plan")
+    validate_planned_contract(plan, config)
     evidence = load_object(input_path, "verification input")
     expected_fields = {
         "plan_sha256", "implementation_commit", "documentation_commit",
         "documentation_evidence", "validation_results", "traceability",
     }
-    if set(evidence) != expected_fields:
+    if set(evidence) - {"additional_commits"} != expected_fields:
         raise CoordinationError("verification input has unknown or missing fields")
     if evidence.get("plan_sha256") != plan["plan_sha256"]:
         raise CoordinationError("verification input is bound to another plan")
+    additional_roles = set(config["repositories"]) - CORE_ROLES
+    additional_commits = evidence.get("additional_commits", {})
+    if not isinstance(additional_commits, dict) or set(additional_commits) != additional_roles:
+        raise CoordinationError("additional_commits must contain exactly the configured additional roles")
+    commits = {
+        "implementation": evidence.get("implementation_commit"),
+        "documentation": evidence.get("documentation_commit"),
+        **additional_commits,
+    }
     blockers = [f"{state['role']}: {item}" for state in states for item in state["blockers"]]
     state_by_role = {state["role"]: state for state in states}
-    for role, field in (("implementation", "implementation_commit"), ("documentation", "documentation_commit")):
-        commit = evidence.get(field)
+    for role, commit in commits.items():
+        field = f"{role}_commit" if role in CORE_ROLES else f"additional_commits.{role}"
         if not isinstance(commit, str) or not COMMIT_RE.fullmatch(commit):
             blockers.append(f"{field} is invalid")
             continue
@@ -393,14 +470,13 @@ def verify_completion(project_root: Path, plan_path: Path, input_path: Path) -> 
             ancestry = git(roots[role], "merge-base", "--is-ancestor", planned, commit, check=False)
             if ancestry.returncode != 0:
                 blockers.append(f"{role} final commit does not descend from the planned commit")
-            if role == "implementation":
-                content_change = git(
-                    roots[role], "diff", "--quiet", planned, commit, "--", check=False
-                )
-                if content_change.returncode == 0:
-                    blockers.append("implementation content did not change from the plan")
-                elif content_change.returncode != 1:
-                    blockers.append("implementation content could not be compared")
+            content_change = git(
+                roots[role], "diff", "--quiet", planned, commit, "--", check=False
+            )
+            if content_change.returncode == 0:
+                blockers.append(f"{role} content did not change from the plan")
+            elif content_change.returncode != 1:
+                blockers.append(f"{role} content could not be compared")
     planned_targets = set(plan["documentation_targets"])
     documentation_commit = evidence.get("documentation_commit")
     if (
@@ -445,23 +521,54 @@ def verify_completion(project_root: Path, plan_path: Path, input_path: Path) -> 
             except CoordinationError as error:
                 blockers.append(str(error))
     validations = evidence.get("validation_results")
+    validated_roles: set[str] = set()
+    invalid_validation_roles: set[str] = set()
+    unbound_validation = False
     if not isinstance(validations, list) or not validations:
         blockers.append("validation_results must be a non-empty list")
     else:
         for item in validations:
             if (
                 not isinstance(item, dict)
-                or set(item) != {"name", "status", "evidence_sha256"}
+                or set(item) not in ({"name", "status", "evidence_sha256"}, {"name", "status", "evidence_sha256", "repository", "commit"})
                 or item.get("status") != "passed"
-                or not SHA256_RE.fullmatch(str(item.get("evidence_sha256", "")))
+                or not isinstance(item.get("evidence_sha256"), str)
+                or not SHA256_RE.fullmatch(item["evidence_sha256"])
             ):
                 blockers.append("every validation result must be passed and digest-bound")
-                break
+                if isinstance(item, dict) and isinstance(item.get("repository"), str) and item["repository"] in commits:
+                    invalid_validation_roles.add(item["repository"])
+                continue
             try:
                 safe_text(item.get("name"), "validation result name", maximum=200)
             except CoordinationError as error:
-                blockers.append(str(error))
-                break
+                role = item.get("repository")
+                if isinstance(role, str) and role in commits:
+                    invalid_validation_roles.add(role)
+                    blockers.append(f"{role} {error}")
+                else:
+                    blockers.append(str(error))
+                continue
+            if "repository" not in item:
+                unbound_validation = True
+                continue
+            role = item["repository"]
+            if not isinstance(role, str) or role not in commits:
+                blockers.append("validation result repository must be a configured role")
+                continue
+            if (
+                not isinstance(item["commit"], str)
+                or not COMMIT_RE.fullmatch(item["commit"])
+                or item["commit"] != commits[role]
+                or item["commit"] != state_by_role[role].get("head")
+            ):
+                blockers.append(f"{role} validation result commit does not match the final commit")
+                invalid_validation_roles.add(role)
+                continue
+            validated_roles.add(role)
+    if additional_roles:
+        for role in sorted(set(commits) - validated_roles):
+            blockers.append(f"{role} validation evidence is missing for the final commit")
     traceability = evidence.get("traceability")
     roles: set[str] = set()
     if not isinstance(traceability, list):
@@ -472,8 +579,10 @@ def verify_completion(project_root: Path, plan_path: Path, input_path: Path) -> 
                 not isinstance(item, dict)
                 or set(item) != {"method", "repository", "reference", "evidence_sha256"}
                 or item.get("method") != config["traceability"]["method"]
-                or item.get("repository") not in {"implementation", "documentation"}
-                or not SHA256_RE.fullmatch(str(item.get("evidence_sha256", "")))
+                or not isinstance(item.get("repository"), str)
+                or item["repository"] not in config["repositories"]
+                or not isinstance(item.get("evidence_sha256"), str)
+                or not SHA256_RE.fullmatch(item["evidence_sha256"])
             ):
                 blockers.append("traceability record is invalid or uses the wrong configured method")
                 continue
@@ -483,15 +592,27 @@ def verify_completion(project_root: Path, plan_path: Path, input_path: Path) -> 
                 blockers.append(str(error))
                 continue
             roles.add(item["repository"])
-    if roles != {"implementation", "documentation"}:
-        blockers.append("traceability must cover both repository roles")
+    if roles != set(config["repositories"]):
+        blockers.append("traceability must cover every configured repository role: missing " + ", ".join(sorted(set(config["repositories"]) - roles)))
+        blockers.extend(f"{role} traceability evidence is missing" for role in sorted(set(config["repositories"]) - roles))
     result = {
         "schema_version": 1,
         "mode": "verify",
         "plan_sha256": plan["plan_sha256"],
-        "commits": {
-            "implementation": evidence.get("implementation_commit") if isinstance(evidence.get("implementation_commit"), str) else None,
-            "documentation": evidence.get("documentation_commit") if isinstance(evidence.get("documentation_commit"), str) else None,
+        "commits": {role: commit if isinstance(commit, str) else None for role, commit in commits.items()},
+        "repository_results": {
+            role: {
+                "head": state_by_role[role].get("head"),
+                "upstream": state_by_role[role].get("upstream"),
+                "upstream_sha": state_by_role[role].get("upstream_sha"),
+                "validation": (
+                    "invalid" if role in invalid_validation_roles else
+                    "passed" if role in validated_roles else
+                    "unbound" if unbound_validation and not additional_roles else "missing"
+                ),
+                "blockers": sorted({item for item in blockers if item.startswith((role + " ", role + ":", "additional_commits." + role + " "))}),
+            }
+            for role in commits
         },
         "blockers": sorted(set(blockers)),
         "passed": not blockers,
@@ -539,6 +660,21 @@ def emit(result: dict[str, Any], as_json: bool) -> None:
     else:
         state = result.get("passed", result.get("ready", True))
         print(f"{result['mode']}: {'passed' if state else 'blocked'}")
+        if result["mode"] in {"status", "plan", "verify"}:
+            print("Repository identities use local tracking refs; this helper does not fetch.")
+            repositories = result.get("repository_results", result.get("repositories", {}))
+            if isinstance(repositories, list):
+                repositories = {item["role"]: item for item in repositories}
+            for role, item in repositories.items():
+                head = item.get("head")
+                upstream = item.get("upstream")
+                upstream_sha = item.get("upstream_sha")
+                publication = "matches tracking ref" if head and upstream and head == upstream_sha else "not confirmed by tracking ref"
+                print(f"- {role}: revision={head or 'unavailable'}; upstream={upstream or 'unavailable'}; publication={publication}; validation={item.get('validation', 'not supplied')}")
+            if "publication_order" in result:
+                print("Planned publication order: " + " -> ".join(result["publication_order"]) + " (chronology is not verified)")
+            if result["mode"] == "verify":
+                print("Validation checks supplied digest format and commit bindings, not evidence contents.")
         for blocker in result.get("blockers", []):
             print(f"- {blocker}")
 

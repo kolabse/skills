@@ -4,6 +4,10 @@
 
 ### Changed
 
+- Cross-repository coordination accepts additional required named roles while
+  preserving existing version-1 pairs. Plans can retain publication order;
+  completion checks cover every role's published revision, traceability, and
+  commit-bound validation when additional repositories participate.
 - Verification and lifecycle can select task-specific linked worktrees through
   an explicit workspace map without rewriting an existing project contract.
   Verification receipts bind the source configuration and selected workspace;
@@ -13,6 +17,9 @@
 
 ### Fixed
 
+- Coordination guidance recognizes canonical documentation in infrastructure
+  repositories, shows a joint progress report, and maps existing task cards to
+  formal plan and verification evidence without substituting one for the other.
 - Review guidance activates for defined merge requests, validates existing
   revision-bound reviews before reuse, and maps policy approval to lifecycle
   evidence without treating CI or no findings as an approval.
