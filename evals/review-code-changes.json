@@ -1,1 +1,47 @@
-{"skill":"review-code-changes","positive":[{"prompt":"Review this pull request for correctness bugs; do not change anything.","reason":"A read-only change review is requested."},{"prompt":"Compare this branch with main and report actionable regressions with line references.","reason":"A defined branch diff requires evidence-bound findings."},{"prompt":"Audit commit abc123 for security and compatibility defects.","reason":"The user names an exact change set and review dimensions."}],"negative":[{"prompt":"Explain how this authentication module works.","reason":"General code explanation is not change review."},{"prompt":"Fix all comments left on my pull request.","reason":"Implementing feedback is a remediation workflow."},{"prompt":"Review our whole architecture and propose a redesign.","reason":"A broad architecture assessment has no defined code change."}]}
+{
+  "skill": "review-code-changes",
+  "positive": [
+    {
+      "prompt": "Review this pull request for correctness bugs; do not change anything.",
+      "reason": "A read-only change review is requested."
+    },
+    {
+      "prompt": "Compare this branch with main and report actionable regressions with line references.",
+      "reason": "A defined branch diff requires evidence-bound findings."
+    },
+    {
+      "prompt": "Audit commit abc123 for security and compatibility defects.",
+      "reason": "The user names an exact change set and review dimensions."
+    },
+    {
+      "prompt": "Merge pull request 27 after the checks pass.",
+      "reason": "A defined merge request requires current revision-bound review before integration."
+    },
+    {
+      "prompt": "The exact source and target revisions already have an approved review; merge this PR.",
+      "reason": "The existing review must be validated for reuse at the integration boundary."
+    }
+  ],
+  "negative": [
+    {
+      "prompt": "Explain how this authentication module works.",
+      "reason": "General code explanation is not change review."
+    },
+    {
+      "prompt": "Fix all comments left on my pull request.",
+      "reason": "Implementing feedback is a remediation workflow."
+    },
+    {
+      "prompt": "Review our whole architecture and propose a redesign.",
+      "reason": "A broad architecture assessment has no defined code change."
+    },
+    {
+      "prompt": "Has pull request 27 already been merged?",
+      "reason": "A read-only status question does not request review or integration."
+    },
+    {
+      "prompt": "Explain the difference between squash and merge commits.",
+      "reason": "General Git explanation has no defined integration candidate."
+    }
+  ]
+}
