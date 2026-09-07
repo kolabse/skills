@@ -14,6 +14,13 @@ documentation lives in a separate repository.
 
 ## Resolve the release contract
 
+Announce this skill and the selected standard/hotfix route only when the task
+uses an explicit GitFlow contract and an authorized release request or declared
+default route. An ordinary feature merge, PR status question or branch-cleanup
+request does not create a production release route. If release intent exists
+but the contract is missing, report the missing roles/gates and prepare the
+contract; do not infer GitFlow from branch names.
+
 Apply the `synchronize-git-repositories` project bootstrap on installation,
 update, or first project use to install missing conditional naming/message
 defaults. Explicit project policy always wins. Use `release/` for preparation
@@ -90,6 +97,11 @@ before review completion.
 
 Completion criterion: the digest-bound plan has no blockers and names one
 unambiguous route, source, target, source SHA, remote identities, and gate set.
+
+Start the compact route record in
+[`references/route-reporting.md`](references/route-reporting.md). Update it
+after material progress, retries, blockers and final verification. Keep ordinary
+development integration distinct from this production release route.
 
 ## Execute only authorized mutations
 

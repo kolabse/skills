@@ -13,6 +13,11 @@
 
 ### Fixed
 
+- Review guidance activates for defined merge requests, validates existing
+  revision-bound reviews before reuse, and maps policy approval to lifecycle
+  evidence without treating CI or no findings as an approval.
+- Lifecycle and GitFlow workflows report configured stages, evidence freshness,
+  retries, delivery boundaries, reintegration and cleanup observations explicitly.
 - Clarify staged authorization from local work to later branch publication,
   preserving prior edits and requiring fresh base and task verification.
 - Work-log guidance distinguishes saved entries, bounded completeness checks,

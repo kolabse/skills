@@ -16,6 +16,12 @@ its `AGENTS.md` rules as the default.
 
 ## Resolve the contract
 
+Announce lifecycle activation once when the requested change crosses the
+project's declared gates. Name the contract and intended delivery boundary.
+If the contract is missing or blocked, report that state explicitly; ordinary
+development actions are not proof that the formal lifecycle ran. Do not infer
+all 18 gates from a generic edit or merge request.
+
 On installation/update and first project use, use the installed
 `synchronize-git-repositories` bootstrap to add missing conditional Git workflow
 rules for the selected agent. Its defaults are `feature/` for ordinary work,
@@ -120,6 +126,16 @@ python <skill-root>/scripts/development_lifecycle.py advance --project-root <roo
 Checkpoints are ordered and digest-bound to the plan, configuration, repositories, commits, refs, and retained evidence. The normal route proves: task claim; remotely published feature-before-edit with an observed bootstrap-CI disposition; TDD red then green; changed-scope preflight; review; exact-state push verification; full feature pipeline for the implementation commit; documentation readiness and publication; reviewed merge-request integration into development; delegated production handoff; deployment, marker, and smoke observations; documentation completion; and cleanup representation proof.
 
 A failed checkpoint enters the declared failure loop. Record failure evidence and rewind only to the configured checkpoint; invalidate every downstream checkpoint and rerun it. Never relabel failed, missing, stale, or subject-mismatched evidence as passed.
+
+At `review-complete`, invoke `review-code-changes` and validate its exact
+revision-bound result and the project's approval requirements. Existing current
+review may be reused after validation; CI success or an agent's no-findings
+statement alone cannot replace required approval.
+
+Maintain the compact user-visible checkpoint view described in
+[`references/checkpoint-reporting.md`](references/checkpoint-reporting.md).
+Refresh it after material progress, a failure/rewind, a changed subject, or a
+status request. The view summarizes evidence; it never advances a gate.
 
 Read [`references/evidence-contract.md`](references/evidence-contract.md) when creating or assessing evidence.
 
