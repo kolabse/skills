@@ -14,6 +14,7 @@ from pathlib import Path
 REPOSITORY_ROOT = Path(__file__).resolve().parents[1]
 SKILLS_CLI_VERSION = "1.5.22"
 SUPPORTED_AGENTS = ("codex", "claude-code")
+SUPPORTED_SCOPES = ("project", "global")
 AGENT_LAYOUTS = {"codex": ".agents/skills", "claude-code": ".claude/skills"}
 
 
@@ -22,6 +23,8 @@ class SmokeError(RuntimeError):
 
 
 def file_manifest(root: Path) -> dict[str, str]:
+    if root.is_symlink():
+        raise SmokeError(f"Installed content must be copied, not linked: {root}")
     files: dict[str, str] = {}
     for path in sorted(root.rglob("*")):
         if path.is_symlink():
@@ -50,12 +53,17 @@ def catalog_skills(source: Path) -> list[str]:
 
 
 def verify_installation(
-    source: Path, project: Path, names: list[str], agent: str = "codex"
+    source: Path, project: Path, names: list[str], agent: str = "codex",
+    *, scope: str = "project",
 ) -> None:
+    if scope not in SUPPORTED_SCOPES:
+        raise SmokeError(f"unsupported scope {scope!r}")
     try:
         installed_root = project / AGENT_LAYOUTS[agent]
     except KeyError as error:
         raise SmokeError(f"unsupported agent {agent!r}") from error
+    if installed_root.is_symlink():
+        raise SmokeError(f"Installed content must be copied, not linked: {installed_root}")
     if not installed_root.is_dir():
         raise SmokeError(f"Installer did not create {installed_root}")
     installed_names = sorted(path.name for path in installed_root.iterdir() if path.is_dir())
@@ -76,6 +84,10 @@ def verify_installation(
                 f"Installed {name} differs from source; missing={missing}, "
                 f"unexpected={unexpected}, changed={changed}"
             )
+    # skills@1.5.22 normalizes a local source to null: global add deliberately
+    # skips lock creation. Exact catalog membership and payloads are the oracle.
+    if scope == "global":
+        return
     lock_path = project / "skills-lock.json"
     try:
         lock = json.loads(lock_path.read_text(encoding="utf-8"))
@@ -91,15 +103,34 @@ def verify_installation(
 
 
 def run_smoke(
-    source: Path, npx: str, cli_version: str, timeout: int, agent: str = "codex"
+    source: Path, npx: str, cli_version: str, timeout: int, agent: str = "codex",
+    *, scope: str = "project",
 ) -> int:
     if agent not in SUPPORTED_AGENTS:
         raise SmokeError(f"unsupported agent {agent!r}")
+    if scope not in SUPPORTED_SCOPES:
+        raise SmokeError(f"unsupported scope {scope!r}")
     names = catalog_skills(source)
     with tempfile.TemporaryDirectory(prefix="kolabse-skills-install-") as directory:
         project = Path(directory)
         environment = os.environ.copy()
         environment["DISABLE_TELEMETRY"] = "1"
+        installation_base = project
+        if scope == "global":
+            home = project / "home"
+            home.mkdir()
+            project = project / "consumer"
+            project.mkdir()
+            # Override inherited destinations only in the child's environment.
+            # npm's package cache is not part of this agent-install isolation.
+            environment.update({
+                "HOME": str(home),
+                "USERPROFILE": str(home),
+                "CODEX_HOME": str(home / ".codex"),
+                "CLAUDE_CONFIG_DIR": str(home / ".claude"),
+                "XDG_STATE_HOME": str(home / ".local/state"),
+            })
+            installation_base = home
         result = subprocess.run(
             [
                 npx,
@@ -113,6 +144,7 @@ def run_smoke(
                 agent,
                 "--yes",
                 "--copy",
+                *(["--global"] if scope == "global" else []),
             ],
             cwd=project,
             capture_output=True,
@@ -126,12 +158,14 @@ def run_smoke(
         if result.returncode != 0:
             detail = (result.stdout + "\n" + result.stderr).strip()
             raise SmokeError(f"skills CLI exited with {result.returncode}: {detail[-1000:]}")
-        verify_installation(source, project, names, agent)
-        if "synchronize-git-repositories" in names:
+        if scope == "global" and any(project.iterdir()):
+            raise SmokeError("Global installation changed the empty consumer project")
+        verify_installation(source, installation_base, names, agent, scope=scope)
+        if scope == "project" and "synchronize-git-repositories" in names:
             verify_git_policy_bootstrap(project, agent, environment, timeout)
     print(
         f"Installed and verified {len(names)} copied skill(s) for {agent} "
-        f"with skills@{cli_version}."
+        f"with skills@{cli_version} (scope={scope})."
     )
     return 0
 
@@ -190,15 +224,18 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--cli-version", default=SKILLS_CLI_VERSION)
     parser.add_argument("--timeout", type=int, default=120)
     parser.add_argument("--agent", choices=SUPPORTED_AGENTS, default="codex")
+    parser.add_argument("--scope", choices=SUPPORTED_SCOPES, default="project")
     args = parser.parse_args(argv)
     try:
         if args.timeout <= 0:
             raise SmokeError("timeout must be positive")
+        # Resolve the executable in the real environment before child isolation.
         npx = shutil.which("npx")
         if not npx:
             raise SmokeError("npx was not found")
         return run_smoke(
-            args.source.resolve(), npx, args.cli_version, args.timeout, args.agent
+            args.source.resolve(), npx, args.cli_version, args.timeout, args.agent,
+            scope=args.scope,
         )
     except (SmokeError, OSError, subprocess.SubprocessError) as error:
         print(f"ERROR: {error}", file=sys.stderr)

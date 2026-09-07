@@ -4,6 +4,11 @@
 
 ### Changed
 
+- Global orchestration needs no project activation: Codex metadata explicitly
+  permits implicit selection for authorized delegation requests. Guidance
+  distinguishes installed copies, effective inventory, observed invocation,
+  and host-specific disable controls. Consumer checks exercise isolated global
+  copied installations for both Codex and Claude Code.
 - Feedback preparation can build validated inputs from consented answers and an
   explicitly selected skill artifact, separating its version and instruction
   digest from local reporter diagnostics. English and Russian report templates
