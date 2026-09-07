@@ -1,0 +1,118 @@
+{
+  "schema_version": 1,
+  "suite_digest": "731201ed36885f70ecb7ebb049eece1246e680b8d43f7a05524dfc13af1e9947",
+  "corpus": "release-holdout",
+  "assertion_digest": "ce47fb272d7d06c47c9b71986430c18670b4399f084015780d286ecb310ba485",
+  "selector": {
+    "method": "majority-vote",
+    "run_count": 3,
+    "threshold": 2,
+    "runs": [
+      {
+        "provider": "unobserved",
+        "model": "unobserved",
+        "configuration": "independent-blind-low"
+      },
+      {
+        "provider": "unobserved",
+        "model": "unobserved",
+        "configuration": "independent-blind-low"
+      },
+      {
+        "provider": "unobserved",
+        "model": "unobserved",
+        "configuration": "independent-blind-low"
+      }
+    ]
+  },
+  "summary": {
+    "tp": 30,
+    "fn": 0,
+    "fp": 0,
+    "tn": 30,
+    "assertions": 60,
+    "passed": 60,
+    "failed": 0,
+    "accuracy": 1.0,
+    "precision": 1.0,
+    "recall": 1.0,
+    "composition_cases": 0,
+    "composition_passed": 0,
+    "composition_failed": 0,
+    "composition_accuracy": 0.0
+  },
+  "per_skill": [
+    {
+      "skill": "maintain-work-log",
+      "tp": 4,
+      "fn": 0,
+      "fp": 0,
+      "tn": 4,
+      "precision": 1.0,
+      "recall": 1.0,
+      "specificity": 1.0
+    },
+    {
+      "skill": "notify-via-telegram",
+      "tp": 4,
+      "fn": 0,
+      "fp": 0,
+      "tn": 4,
+      "precision": 1.0,
+      "recall": 1.0,
+      "specificity": 1.0
+    },
+    {
+      "skill": "operate-yandex-cloud",
+      "tp": 4,
+      "fn": 0,
+      "fp": 0,
+      "tn": 4,
+      "precision": 1.0,
+      "recall": 1.0,
+      "specificity": 1.0
+    },
+    {
+      "skill": "release-skill-collection",
+      "tp": 4,
+      "fn": 0,
+      "fp": 0,
+      "tn": 4,
+      "precision": 1.0,
+      "recall": 1.0,
+      "specificity": 1.0
+    },
+    {
+      "skill": "sync-project-context",
+      "tp": 6,
+      "fn": 0,
+      "fp": 0,
+      "tn": 6,
+      "precision": 1.0,
+      "recall": 1.0,
+      "specificity": 1.0
+    },
+    {
+      "skill": "synchronize-git-repositories",
+      "tp": 4,
+      "fn": 0,
+      "fp": 0,
+      "tn": 4,
+      "precision": 1.0,
+      "recall": 1.0,
+      "specificity": 1.0
+    },
+    {
+      "skill": "verify-before-push",
+      "tp": 4,
+      "fn": 0,
+      "fp": 0,
+      "tn": 4,
+      "precision": 1.0,
+      "recall": 1.0,
+      "specificity": 1.0
+    }
+  ],
+  "failures": [],
+  "composition_failures": []
+}
