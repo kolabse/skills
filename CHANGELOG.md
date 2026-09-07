@@ -2,6 +2,8 @@
 
 ## [Unreleased]
 
+## [1.22.0] - 2026-09-07
+
 ### Changed
 
 - Diagnosis activates for direct software error reports and fixes with an
@@ -34,6 +36,14 @@
   branch publication, independent repository gates, and retained evidence.
 
 ### Fixed
+
+- Telegram task notifications activate only for a channel-specific request or
+  applicable prior authorization; task duration and saved routing alone no
+  longer select the workflow. Existing notification authorization remains valid.
+- Windows PowerShell integration tests run noninteractively with closed stdin
+  and a bounded 120-second process budget. This mitigates observed transient
+  overruns without retries or skipped assertions; the original timeout cause
+  remains unconfirmed.
 
 - Feedback submission reports sanitized error categories and uncertain outcomes
   without claiming a failed command necessarily created no issue or retrying it.
@@ -714,6 +724,7 @@ First versioned release of the kolabse skill collection.
 - Tests for configuration migration, fake cloud and infrastructure CLIs,
   installation confirmation, and collection metadata.
 
+[1.22.0]: https://github.com/kolabse/skills/releases/tag/v1.22.0
 [1.21.1]: https://github.com/kolabse/skills/releases/tag/v1.21.1
 [1.21.0]: https://github.com/kolabse/skills/releases/tag/v1.21.0
 [1.20.0]: https://github.com/kolabse/skills/releases/tag/v1.20.0

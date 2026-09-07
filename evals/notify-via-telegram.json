@@ -14,8 +14,8 @@
       "reason": "Long research with milestones and problems is a core notification workflow."
     },
     {
-      "prompt": "Запусти долгий импорт и уведомляй меня удалённо, когда он перейдёт к следующей фазе или завершится.",
-      "reason": "A lengthy phased operation benefits from start, transition, and completion notifications."
+      "prompt": "Запусти долгий импорт и уведомляй меня удалённо, когда он перейдёт к следующей фазе или завершится. The already approved remote notification channel for this task is Telegram.",
+      "reason": "The request uses an already approved Telegram destination without repeating the channel name in the new instruction."
     },
     {
       "prompt": "Сборка займёт около сорока минут; отправь в Telegram сообщение при старте, ошибке и завершении.",
@@ -32,6 +32,14 @@
     {
       "prompt": "Настрой для клиентского проекта отдельный Telegram topic, но продолжай присылать те же обновления и в глобальный канал.",
       "reason": "The user requests a project topic combined with the global destination."
+    },
+    {
+      "prompt": "Our project instructions authorize Telegram progress notifications for release tasks. Prepare the release and follow those instructions.",
+      "reason": "Applicable standing authorization activates the notification workflow."
+    },
+    {
+      "prompt": "Use the Telegram destination I approved earlier for this task and notify me when the import finishes.",
+      "reason": "Earlier task authorization persists; no redundant permission is needed."
     }
   ],
   "negative": [
@@ -62,6 +70,22 @@
     {
       "prompt": "Добавь в приложение экран выбора рабочего пространства и командного канала.",
       "reason": "A product UI feature is unrelated to configuring agent task notifications."
+    },
+    {
+      "prompt": "Run a forty-minute build, diagnose failures, and verify the result.",
+      "reason": "Duration and multiple stages alone do not request external notifications."
+    },
+    {
+      "prompt": "Synchronize app and docs repositories, implement a testable API change, align documentation, and verify the final SHAs.",
+      "reason": "A multistage engineering task does not itself authorize Telegram updates."
+    },
+    {
+      "prompt": "The Telegram sender is installed and configured. Fix the pagination defect and run the tests.",
+      "reason": "Saved configuration is not task notification authorization."
+    },
+    {
+      "prompt": "Send Slack updates during the migration.",
+      "reason": "The user names a different channel."
     }
   ]
 }
