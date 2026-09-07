@@ -1,12 +1,10 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://github.com/kolabse/skills/blob/main/skills/report-skill-feedback/schemas/feedback-input.schema.json",
-  "title": "De-identified skill feedback input",
+  "$id": "https://github.com/kolabse/skills/blob/main/skills/report-skill-feedback/schemas/feedback-answers.schema.json",
+  "title": "Approved skill feedback answers",
   "type": "object",
   "additionalProperties": false,
   "required": [
-    "schema_version",
-    "skill",
     "agent",
     "environment",
     "invocation",
@@ -14,52 +12,6 @@
     "signals"
   ],
   "properties": {
-    "schema_version": {
-      "const": 1,
-      "type": "integer"
-    },
-    "skill": {
-      "type": "object",
-      "additionalProperties": false,
-      "required": [
-        "name",
-        "version"
-      ],
-      "properties": {
-        "name": {
-          "type": "string",
-          "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$"
-        },
-        "version": {
-          "type": "string",
-          "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+(?:[-+][0-9A-Za-z.-]+)?$"
-        },
-        "artifact": {
-          "type": "object",
-          "additionalProperties": false,
-          "required": [
-            "installation_scope",
-            "skill_sha256"
-          ],
-          "properties": {
-            "installation_scope": {
-              "enum": [
-                "global",
-                "project",
-                "plugin",
-                "source",
-                "unknown"
-              ]
-            },
-            "skill_sha256": {
-              "type": "string",
-              "pattern": "^[0-9a-f]{64}$",
-              "description": "SHA-256 of exact selected SKILL.md bytes; not a whole-installation digest or proof of historical use."
-            }
-          }
-        }
-      }
-    },
     "agent": {
       "type": "object",
       "additionalProperties": false,
@@ -221,12 +173,6 @@
       "type": "string",
       "minLength": 1,
       "maxLength": 500
-    },
-    "language": {
-      "enum": [
-        "en",
-        "ru"
-      ]
     }
   }
 }
