@@ -32,6 +32,7 @@ KNOWN_SKILLS = {
     "execute-configured-gitflow-releases",
     "execute-verified-development-lifecycle",
     "maintain-work-log",
+    "maintain-work-plan",
     "maintain-project-digest",
     "notify-via-telegram",
     "operate-yandex-cloud",
