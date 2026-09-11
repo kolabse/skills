@@ -40,7 +40,7 @@ kolabse が管理する、再利用可能なエージェントスキルです。
   - [インフラストラクチャと運用](#インフラストラクチャと運用)
     - [`operate-yandex-cloud`](#operate-yandex-cloud)
   - [スキルコレクションの発展](#スキルコレクションの発展)
-    - [`discover-skill-candidates`](#discover-skill-candidates-実験的)
+    - [`discover-skill-candidates`](#discover-skill-candidates)
     - [`release-skill-collection`](#release-skill-collection)
 - [対応するスキル構成](#対応するスキル構成)
 - [スキルを追加する](#スキルを追加する)
@@ -765,7 +765,7 @@ $operate-yandex-cloud Configure this project for Yandex Cloud operations.
 
 ### スキルコレクションの発展
 
-#### `discover-skill-candidates` 実験的
+#### `discover-skill-candidates`
 
 範囲を限定したプロジェクトとコンテキストの証拠から、スキルを作成することなく、再利用可能なスキルの案を見つけます。
 

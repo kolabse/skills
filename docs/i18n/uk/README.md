@@ -41,7 +41,7 @@
   - [Інфраструктура та експлуатація](#інфраструктура-та-експлуатація)
     - [`operate-yandex-cloud`](#operate-yandex-cloud)
   - [Розвиток колекції навичок](#розвиток-колекції-навичок)
-    - [`discover-skill-candidates`](#discover-skill-candidatesexperimental)
+    - [`discover-skill-candidates`](#discover-skill-candidates)
     - [`release-skill-collection`](#release-skill-collection)
 - [Підтримувані композиції](#підтримувані-композиції)
 - [Додавання навыка](#додавання-навички)
@@ -663,7 +663,7 @@ $operate-yandex-cloud Налаштуй проєкт для роботи з Yande
 
 ### Розвиток колекції навичок
 
-#### `discover-skill-candidates`(experimental)
+#### `discover-skill-candidates`
 
 Знаходить ідеї, що перевикористовуються, навичок в обмежених правилах і контексті, не
 створюючи навичку.

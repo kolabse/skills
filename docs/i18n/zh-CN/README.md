@@ -40,7 +40,7 @@
   - [基础设施与运维](#基础设施与运维)
     - [`operate-yandex-cloud`](#operate-yandex-cloud)
   - [技能集合演进](#技能集合演进)
-    - [`discover-skill-candidates`](#discover-skill-candidates-实验性)
+    - [`discover-skill-candidates`](#discover-skill-candidates)
     - [`release-skill-collection`](#release-skill-collection)
 - [支持的组合](#支持的组合)
 - [添加技能](#添加技能)
@@ -697,7 +697,7 @@ $operate-yandex-cloud Configure this project for Yandex Cloud operations.
 
 ### 技能集合演进
 
-#### `discover-skill-candidates` （实验性）
+#### `discover-skill-candidates`
 
 在限定范围的项目和上下文证据中发现可复用技能构想，但不创建技能。
 

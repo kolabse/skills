@@ -41,7 +41,7 @@ Licencja - [Licencja Apache 2.0](../../../LICENSE). Prawa autorskie 2026 kolabse
   - [Infrastruktura i operacje](#infrastruktura-i-operacje)
     - [`operate-yandex-cloud`](#operate-yandex-cloud)
   - [Rozwój gromadzenia umiejętności](#rozwój-zbioru-umiejętności)
-    - [`discover-skill-candidates`](#discover-skill-candidates-eksperymentalny)
+    - [`discover-skill-candidates`](#discover-skill-candidates)
     - [`release-skill-collection`](#release-skill-collection)
 - [Obsługiwane kompozycje](#obsługiwane-kompozycje)
 - [Dodawanie umiejętności](#dodawanie-umiejętności)
@@ -675,7 +675,7 @@ $operate-yandex-cloud Skonfiguruj projekt do pracy z Yandex Cloud.
 
 ### Rozwój zbioru umiejętności
 
-#### `discover-skill-candidates` (eksperymentalny)
+#### `discover-skill-candidates`
 
 Znajduje pomysły na umiejętności, które można wykorzystać ponownie w ograniczonych zasadach i kontekście, ale nie
 tworzenie umiejętności.

@@ -40,7 +40,7 @@ Sous [licence Apache 2.0](../../../LICENSE). Copyright 2026 kolabse.
   - [Infrastructure et opérations](#infrastructure-et-opérations)
     - [`operate-yandex-cloud`](#operate-yandex-cloud)
   - [Évolution de la collection de skills](#évolution-de-la-collection-de-skills)
-    - [`discover-skill-candidates`](#discover-skill-candidates-expérimental)
+    - [`discover-skill-candidates`](#discover-skill-candidates)
     - [`release-skill-collection`](#release-skill-collection)
 - [Compositions prises en charge](#compositions-prises-en-charge)
 - [Ajouter un skill](#ajouter-un-skill)
@@ -888,7 +888,7 @@ $operate-yandex-cloud Configure this project for Yandex Cloud operations.
 
 ### Évolution de la collection de skills
 
-#### `discover-skill-candidates` (expérimental)
+#### `discover-skill-candidates`
 
 Trouvez des idées de skills réutilisables dans des preuves de projet et de
 contexte délimitées, sans créer de skill.
