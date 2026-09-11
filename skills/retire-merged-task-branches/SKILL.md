@@ -40,8 +40,9 @@ arbitrary directory.
 From a checkout that will remain available, run:
 
 The task branch must not be current in this checkout. If the requested cleanup
-includes restoring it to primary, first switch the clean retained checkout to
-the verified current primary using the existing task authorization. The helper
+includes restoring it to primary, first switch the clean retained checkout with
+`git switch --no-overwrite-ignore <configured-primary>` using the existing task
+authorization. Preserve ignored files if Git refuses that switch. The helper
 does not remove its own checkout or silently switch away from a task branch.
 
 ```shell

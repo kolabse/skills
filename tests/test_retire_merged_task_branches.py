@@ -644,6 +644,29 @@ class RetireMergedTaskBranchesTests(unittest.TestCase):
                          git(self.root, "rev-parse", "refs/heads/main/backup"))
         self.assert_retained()
 
+    def test_restore_primary_preserves_ignored_file_tracked_by_primary(self):
+        self.merge()
+        git(self.root, "switch", "-c", "retained-control", self.initial)
+        (self.root / ".gitignore").write_text("ignored.tmp\ntask.txt\n", encoding="utf-8")
+        git(self.root, "add", ".gitignore")
+        git(self.root, "commit", "-m", "Control checkout ignores task file")
+        valuable = "valuable ignored local content\n"
+        file = self.root / "task.txt"
+        file.write_text(valuable, encoding="utf-8")
+        self.assertEqual("", git(self.root, "status", "--porcelain"))
+        self.assertIn("task.txt", git(self.root, "ls-tree", "--name-only", "main"))
+        self.options["restore_primary"] = True
+        try:
+            path, plan = self.write_plan()
+            result = RETIRE.apply_plan(self.root, path, plan["digest"])
+        except RETIRE.Blocked:
+            result = {"status": "blocked", "completed": []}
+        self.assertEqual(valuable, file.read_text(encoding="utf-8"))
+        self.assertEqual("blocked", result["status"])
+        self.assertEqual([], result["completed"])
+        self.assertEqual("retained-control", git(self.root, "branch", "--show-current"))
+        self.assert_retained()
+
 
 if __name__ == "__main__":
     unittest.main()

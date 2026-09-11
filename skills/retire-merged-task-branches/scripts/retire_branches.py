@@ -379,7 +379,7 @@ def apply_plan(root, path, confirm):
         if options.get("restore_primary") and plan["snapshot"]["current"] != options["primary"]:
             action = {"kind": "restore-primary", "resource": options["primary"]}
             verify_action_boundary()
-            git(root, "switch", options["primary"])
+            git(root, "switch", "--no-overwrite-ignore", options["primary"])
             completed.append(action)
         for value in options.get("remove_worktree", []):
             action = {"kind": "remove-worktree", "resource": value}
