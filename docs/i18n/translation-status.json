@@ -1216,6 +1216,200 @@
           }
         ]
       },
+      "dda998ea454274e2d69e6ef331599b3a4b6ad633423c96387c2ac9495a9e4160": {
+        "sections": [
+          {
+            "heading": "kolabse/skills",
+            "id": "kolabseskills",
+            "sha256": "3f04b87f9f886ec86639276c35151e15de15ea482a1b6434a4dd24eeb4064707"
+          },
+          {
+            "heading": "Table of contents",
+            "id": "table-of-contents",
+            "sha256": "5562d1285d7f37fbd0f30239e351d861cb8813cfe79262f560e7ee6328e522e3"
+          },
+          {
+            "heading": "Install skills",
+            "id": "install-skills",
+            "sha256": "492b30bc7b39ca170e35f53d7f44da3e2fa40cc62b4d09dbe33ecd8cf13e18ea"
+          },
+          {
+            "heading": "Install from the Git marketplaces",
+            "id": "install-from-the-git-marketplaces",
+            "sha256": "eb89a3a0b0f4badd210107d72706e9ce61f6351e389a4b576046f625d109cd5b"
+          },
+          {
+            "heading": "Update installed skills",
+            "id": "update-installed-skills",
+            "sha256": "16cb51a197d8903910d2f1ae7d7109b2cb9a5db7d59add332020318ce4df0c48"
+          },
+          {
+            "heading": "Run without cloning the repository",
+            "id": "run-without-cloning-the-repository",
+            "sha256": "f4fbc63a2561dc1a8e252aae3bbb4481598a999f0802a96c791913929f3d6ca9"
+          },
+          {
+            "heading": "Inspect global installations",
+            "id": "inspect-global-installations",
+            "sha256": "3858d6a56e8d8980160e6e718af40c062073a59c97d431400dd194a8e293b00b"
+          },
+          {
+            "heading": "Install or update a local-development Codex plugin",
+            "id": "install-or-update-a-local-development-codex-plugin",
+            "sha256": "232098fc8d38bb891bf060c95f98c38defc86abbc694f894ae25f5d28a55c03d"
+          },
+          {
+            "heading": "Available skills",
+            "id": "available-skills",
+            "sha256": "7e5a2167537ff389f24570e709d234d8bbf9e166eb35c8d03754d0fa13ea4fc4"
+          },
+          {
+            "heading": "Development and code quality",
+            "id": "development-and-code-quality",
+            "sha256": "ef87f399a0911e6cb9b9632ddf97ef6f5ec21512d0d1f4c11c2be0b0a4cfa8d1"
+          },
+          {
+            "heading": "`develop-with-test-first-evidence` (experimental)",
+            "id": "develop-with-test-first-evidence-experimental",
+            "sha256": "3948bca2dfa49033fb3730b6dbaf48057832d7a3e5c65b8151fe8406fa32d5e6"
+          },
+          {
+            "heading": "`review-code-changes` (experimental)",
+            "id": "review-code-changes-experimental",
+            "sha256": "0b9d81a27c8d837555cec1e0db7eec1de814d10a4ee4e820bdab6c7730c21669"
+          },
+          {
+            "heading": "`diagnose-software-defects` (experimental)",
+            "id": "diagnose-software-defects-experimental",
+            "sha256": "1f177b61c836e6d07b1478aa0a85e70be7b678a3e571c3edf3824b9191e27a80"
+          },
+          {
+            "heading": "`resolve-git-conflicts` (experimental)",
+            "id": "resolve-git-conflicts-experimental",
+            "sha256": "886e1cbc37065ec3800c858fb3c39a068ac55f6272cd136486b8898c5682ecfe"
+          },
+          {
+            "heading": "Repositories and change delivery",
+            "id": "repositories-and-change-delivery",
+            "sha256": "1be41af17db1d05df939691be224fec6caa843224564c193905e81d7dac4e13a"
+          },
+          {
+            "heading": "`synchronize-git-repositories`",
+            "id": "synchronize-git-repositories",
+            "sha256": "b67a350cdc283eef9afc9147d20bd7bb61c3972d6c8c10febf9cb48a65090509"
+          },
+          {
+            "heading": "`verify-before-push`",
+            "id": "verify-before-push",
+            "sha256": "b7badeef7bb85a6529a6afa72b566c6d229ff61dd721e6478dc29fab0c0b5ac4"
+          },
+          {
+            "heading": "`coordinate-code-documentation-repositories` (experimental)",
+            "id": "coordinate-code-documentation-repositories-experimental",
+            "sha256": "73ac1e07a43196ec33a6d7f83f0c7d46f47c5b315fbf75c9b3e7ce9ef0e4d752"
+          },
+          {
+            "heading": "`execute-configured-gitflow-releases` (experimental)",
+            "id": "execute-configured-gitflow-releases-experimental",
+            "sha256": "9919d447b2f52b3ddeb49e7cbc404a1cb70909d26c37172f71d47ae6797b1570"
+          },
+          {
+            "heading": "`execute-verified-development-lifecycle` (experimental)",
+            "id": "execute-verified-development-lifecycle-experimental",
+            "sha256": "0ee66c38e181a1e37fa2d75a03f322922d4c006aa9c76aa6686fb6b18fba86ca"
+          },
+          {
+            "heading": "Project knowledge and continuity",
+            "id": "project-knowledge-and-continuity",
+            "sha256": "6fe391890d4fb707858fa55b184a75d7fc0e29055ecb81e29e1f17ba6a9e5ed3"
+          },
+          {
+            "heading": "`maintain-work-log`",
+            "id": "maintain-work-log",
+            "sha256": "e2723582183169cd5399c1eea05042e2febd8147f7b7a689aae3f7bf8a6905a4"
+          },
+          {
+            "heading": "`maintain-work-plan` (experimental)",
+            "id": "maintain-work-plan-experimental",
+            "sha256": "1c5e45e77113a0fa2e4bcf27ff07d27e664cdbf363f7066f546e749b58d2d6fd"
+          },
+          {
+            "heading": "`maintain-project-digest` (experimental)",
+            "id": "maintain-project-digest-experimental",
+            "sha256": "250675da97f8369f937a48a539fe77ba9ac3bc134ac0951e23a653936458acef"
+          },
+          {
+            "heading": "`sync-project-context`",
+            "id": "sync-project-context",
+            "sha256": "098a78078bbd4f32f2ae6481e583f316940691f9532b92d9acc31eb90da73308"
+          },
+          {
+            "heading": "Coordination and communication",
+            "id": "coordination-and-communication",
+            "sha256": "dcacc2d682301acfce3347c767937e1496f0de77e713bf0938fd36fce72f60c3"
+          },
+          {
+            "heading": "`orchestrate-agent-work` (experimental)",
+            "id": "orchestrate-agent-work-experimental",
+            "sha256": "1ce46bc492be66023763bd3a559d3264e456d3bda287bcaf4fecadcf000fe48d"
+          },
+          {
+            "heading": "`synchronize-team-skills` (experimental)",
+            "id": "synchronize-team-skills-experimental",
+            "sha256": "144d000598c5da98463315cbb9350d844dceac585187647d5f68307e6bc200ec"
+          },
+          {
+            "heading": "`report-skill-feedback` (experimental)",
+            "id": "report-skill-feedback-experimental",
+            "sha256": "5019e635f983edc4a75766989bba3178a999dc0b93fa4572052ff1b4c10410ef"
+          },
+          {
+            "heading": "`notify-via-telegram`",
+            "id": "notify-via-telegram",
+            "sha256": "6d3c3c06bf6bca844f17437095a827e8952b69ceb5e02efcd3ac401522460265"
+          },
+          {
+            "heading": "Infrastructure and operations",
+            "id": "infrastructure-and-operations",
+            "sha256": "1593f0c467e52ff9a433ef739aa1c1636f574d1238e2b62e8edc8ee380d10880"
+          },
+          {
+            "heading": "`operate-yandex-cloud`",
+            "id": "operate-yandex-cloud",
+            "sha256": "2f0ae43b23c20ab0395bf0982de5e8bcaf5171ec1cc3c2e5626cc307eca48221"
+          },
+          {
+            "heading": "Skill collection evolution",
+            "id": "skill-collection-evolution",
+            "sha256": "6718340d67898da8268f4598ea1c404f4e8a95bc73c3d15ce701f30a21c4d3f8"
+          },
+          {
+            "heading": "`discover-skill-candidates` (experimental)",
+            "id": "discover-skill-candidates-experimental",
+            "sha256": "3a06bb15401be2d1ad7b1dd550ed8df54f67b274e4e110743c2eab1b294306a5"
+          },
+          {
+            "heading": "`release-skill-collection`",
+            "id": "release-skill-collection",
+            "sha256": "a248f7ef919a1e17ffca073614deae011b5166761789077a4901ce88dd662753"
+          },
+          {
+            "heading": "Supported compositions",
+            "id": "supported-compositions",
+            "sha256": "7488c5283f6081c4c078c2bd624d1742d7a0bb0461c8041d3726e0e9ad7c755d"
+          },
+          {
+            "heading": "Add a skill",
+            "id": "add-a-skill",
+            "sha256": "9c7a28744fb1fd4a29afb8ee48d10625bffe51420b913b4542923377b4c242d5"
+          },
+          {
+            "heading": "Verify a release",
+            "id": "verify-a-release",
+            "sha256": "e632fb6be24a12a17251844e1bbbafbf4c4f3aa4d4a167ca5f7eec867d0c6019"
+          }
+        ]
+      },
       "ea3f1d528339d6e877b45cc582e2a28cba7dccc95ec3c8d8bd4e0feb276bafed": {
         "sections": [
           {
@@ -1404,6 +1598,205 @@
             "sha256": "e632fb6be24a12a17251844e1bbbafbf4c4f3aa4d4a167ca5f7eec867d0c6019"
           }
         ]
+      },
+      "fd5020306069c3145e84fe2586508d3318acc41fb4e5fc20a720c71a7f30565b": {
+        "sections": [
+          {
+            "heading": "kolabse/skills",
+            "id": "kolabseskills",
+            "sha256": "3f04b87f9f886ec86639276c35151e15de15ea482a1b6434a4dd24eeb4064707"
+          },
+          {
+            "heading": "Table of contents",
+            "id": "table-of-contents",
+            "sha256": "d3610be0217708700655bc78c8afd79ac2cbadbf88e9501d60047d589e32b440"
+          },
+          {
+            "heading": "Install skills",
+            "id": "install-skills",
+            "sha256": "492b30bc7b39ca170e35f53d7f44da3e2fa40cc62b4d09dbe33ecd8cf13e18ea"
+          },
+          {
+            "heading": "Install from the Git marketplaces",
+            "id": "install-from-the-git-marketplaces",
+            "sha256": "eb89a3a0b0f4badd210107d72706e9ce61f6351e389a4b576046f625d109cd5b"
+          },
+          {
+            "heading": "Update installed skills",
+            "id": "update-installed-skills",
+            "sha256": "16cb51a197d8903910d2f1ae7d7109b2cb9a5db7d59add332020318ce4df0c48"
+          },
+          {
+            "heading": "Run without cloning the repository",
+            "id": "run-without-cloning-the-repository",
+            "sha256": "f4fbc63a2561dc1a8e252aae3bbb4481598a999f0802a96c791913929f3d6ca9"
+          },
+          {
+            "heading": "Inspect global installations",
+            "id": "inspect-global-installations",
+            "sha256": "3858d6a56e8d8980160e6e718af40c062073a59c97d431400dd194a8e293b00b"
+          },
+          {
+            "heading": "Install or update a local-development Codex plugin",
+            "id": "install-or-update-a-local-development-codex-plugin",
+            "sha256": "232098fc8d38bb891bf060c95f98c38defc86abbc694f894ae25f5d28a55c03d"
+          },
+          {
+            "heading": "Available skills",
+            "id": "available-skills",
+            "sha256": "7e5a2167537ff389f24570e709d234d8bbf9e166eb35c8d03754d0fa13ea4fc4"
+          },
+          {
+            "heading": "Development and code quality",
+            "id": "development-and-code-quality",
+            "sha256": "ef87f399a0911e6cb9b9632ddf97ef6f5ec21512d0d1f4c11c2be0b0a4cfa8d1"
+          },
+          {
+            "heading": "`develop-with-test-first-evidence` (experimental)",
+            "id": "develop-with-test-first-evidence-experimental",
+            "sha256": "3948bca2dfa49033fb3730b6dbaf48057832d7a3e5c65b8151fe8406fa32d5e6"
+          },
+          {
+            "heading": "`review-code-changes` (experimental)",
+            "id": "review-code-changes-experimental",
+            "sha256": "0b9d81a27c8d837555cec1e0db7eec1de814d10a4ee4e820bdab6c7730c21669"
+          },
+          {
+            "heading": "`diagnose-software-defects` (experimental)",
+            "id": "diagnose-software-defects-experimental",
+            "sha256": "1f177b61c836e6d07b1478aa0a85e70be7b678a3e571c3edf3824b9191e27a80"
+          },
+          {
+            "heading": "`resolve-git-conflicts` (experimental)",
+            "id": "resolve-git-conflicts-experimental",
+            "sha256": "886e1cbc37065ec3800c858fb3c39a068ac55f6272cd136486b8898c5682ecfe"
+          },
+          {
+            "heading": "Repositories and change delivery",
+            "id": "repositories-and-change-delivery",
+            "sha256": "1be41af17db1d05df939691be224fec6caa843224564c193905e81d7dac4e13a"
+          },
+          {
+            "heading": "`synchronize-git-repositories`",
+            "id": "synchronize-git-repositories",
+            "sha256": "b67a350cdc283eef9afc9147d20bd7bb61c3972d6c8c10febf9cb48a65090509"
+          },
+          {
+            "heading": "`verify-before-push`",
+            "id": "verify-before-push",
+            "sha256": "b7badeef7bb85a6529a6afa72b566c6d229ff61dd721e6478dc29fab0c0b5ac4"
+          },
+          {
+            "heading": "`coordinate-code-documentation-repositories` (experimental)",
+            "id": "coordinate-code-documentation-repositories-experimental",
+            "sha256": "73ac1e07a43196ec33a6d7f83f0c7d46f47c5b315fbf75c9b3e7ce9ef0e4d752"
+          },
+          {
+            "heading": "`execute-configured-gitflow-releases` (experimental)",
+            "id": "execute-configured-gitflow-releases-experimental",
+            "sha256": "9919d447b2f52b3ddeb49e7cbc404a1cb70909d26c37172f71d47ae6797b1570"
+          },
+          {
+            "heading": "`execute-verified-development-lifecycle` (experimental)",
+            "id": "execute-verified-development-lifecycle-experimental",
+            "sha256": "0ee66c38e181a1e37fa2d75a03f322922d4c006aa9c76aa6686fb6b18fba86ca"
+          },
+          {
+            "heading": "`retire-merged-task-branches` (experimental)",
+            "id": "retire-merged-task-branches-experimental",
+            "sha256": "b0c973898589c56eb711614aa55b9e36637eb27fa683104bd2f950ac408cc15a"
+          },
+          {
+            "heading": "Project knowledge and continuity",
+            "id": "project-knowledge-and-continuity",
+            "sha256": "6fe391890d4fb707858fa55b184a75d7fc0e29055ecb81e29e1f17ba6a9e5ed3"
+          },
+          {
+            "heading": "`maintain-work-log`",
+            "id": "maintain-work-log",
+            "sha256": "e2723582183169cd5399c1eea05042e2febd8147f7b7a689aae3f7bf8a6905a4"
+          },
+          {
+            "heading": "`maintain-work-plan` (experimental)",
+            "id": "maintain-work-plan-experimental",
+            "sha256": "1c5e45e77113a0fa2e4bcf27ff07d27e664cdbf363f7066f546e749b58d2d6fd"
+          },
+          {
+            "heading": "`maintain-project-digest` (experimental)",
+            "id": "maintain-project-digest-experimental",
+            "sha256": "250675da97f8369f937a48a539fe77ba9ac3bc134ac0951e23a653936458acef"
+          },
+          {
+            "heading": "`sync-project-context`",
+            "id": "sync-project-context",
+            "sha256": "098a78078bbd4f32f2ae6481e583f316940691f9532b92d9acc31eb90da73308"
+          },
+          {
+            "heading": "Coordination and communication",
+            "id": "coordination-and-communication",
+            "sha256": "dcacc2d682301acfce3347c767937e1496f0de77e713bf0938fd36fce72f60c3"
+          },
+          {
+            "heading": "`orchestrate-agent-work` (experimental)",
+            "id": "orchestrate-agent-work-experimental",
+            "sha256": "1ce46bc492be66023763bd3a559d3264e456d3bda287bcaf4fecadcf000fe48d"
+          },
+          {
+            "heading": "`synchronize-team-skills` (experimental)",
+            "id": "synchronize-team-skills-experimental",
+            "sha256": "144d000598c5da98463315cbb9350d844dceac585187647d5f68307e6bc200ec"
+          },
+          {
+            "heading": "`report-skill-feedback` (experimental)",
+            "id": "report-skill-feedback-experimental",
+            "sha256": "5019e635f983edc4a75766989bba3178a999dc0b93fa4572052ff1b4c10410ef"
+          },
+          {
+            "heading": "`notify-via-telegram`",
+            "id": "notify-via-telegram",
+            "sha256": "6d3c3c06bf6bca844f17437095a827e8952b69ceb5e02efcd3ac401522460265"
+          },
+          {
+            "heading": "Infrastructure and operations",
+            "id": "infrastructure-and-operations",
+            "sha256": "1593f0c467e52ff9a433ef739aa1c1636f574d1238e2b62e8edc8ee380d10880"
+          },
+          {
+            "heading": "`operate-yandex-cloud`",
+            "id": "operate-yandex-cloud",
+            "sha256": "2f0ae43b23c20ab0395bf0982de5e8bcaf5171ec1cc3c2e5626cc307eca48221"
+          },
+          {
+            "heading": "Skill collection evolution",
+            "id": "skill-collection-evolution",
+            "sha256": "6718340d67898da8268f4598ea1c404f4e8a95bc73c3d15ce701f30a21c4d3f8"
+          },
+          {
+            "heading": "`discover-skill-candidates`",
+            "id": "discover-skill-candidates",
+            "sha256": "6ea6ba41d7285a838e26ff8967fbb895b10f2d1915fb10a89a0c227a79b90ded"
+          },
+          {
+            "heading": "`release-skill-collection`",
+            "id": "release-skill-collection",
+            "sha256": "a248f7ef919a1e17ffca073614deae011b5166761789077a4901ce88dd662753"
+          },
+          {
+            "heading": "Supported compositions",
+            "id": "supported-compositions",
+            "sha256": "7488c5283f6081c4c078c2bd624d1742d7a0bb0461c8041d3726e0e9ad7c755d"
+          },
+          {
+            "heading": "Add a skill",
+            "id": "add-a-skill",
+            "sha256": "9c7a28744fb1fd4a29afb8ee48d10625bffe51420b913b4542923377b4c242d5"
+          },
+          {
+            "heading": "Verify a release",
+            "id": "verify-a-release",
+            "sha256": "e632fb6be24a12a17251844e1bbbafbf4c4f3aa4d4a167ca5f7eec867d0c6019"
+          }
+        ]
       }
     },
     "SUPPORT.md": {
@@ -1518,9 +1911,9 @@
       "canonical": "README.md",
       "locale": "de",
       "review": "reviewed",
-      "source_sha256": "0c3e3dea2ecbe017c05d8aa3a8419eafff71e229a2546a8085f61b962e00290f",
+      "source_sha256": "fd5020306069c3145e84fe2586508d3318acc41fb4e5fc20a720c71a7f30565b",
       "translation": "docs/i18n/de/README.md",
-      "translation_sha256": "f397c2cc129d71d31fba4e0b5c177d224aae85ce618f4cffc18d2d9be4208028"
+      "translation_sha256": "0ad205ff0a6df6d869dd39663aa24bcdc4af09032455c4f97c1d3e8b9d1f460f"
     },
     {
       "canonical": "SUPPORT.md",
@@ -1558,9 +1951,9 @@
       "canonical": "README.md",
       "locale": "es",
       "review": "reviewed",
-      "source_sha256": "0c3e3dea2ecbe017c05d8aa3a8419eafff71e229a2546a8085f61b962e00290f",
+      "source_sha256": "fd5020306069c3145e84fe2586508d3318acc41fb4e5fc20a720c71a7f30565b",
       "translation": "docs/i18n/es/README.md",
-      "translation_sha256": "31cd2ae1e9bf1ca9933befb71fdf30aa86f129969ac7fa3bc0a057354a03015d"
+      "translation_sha256": "5b147125b1eafcc9178026ded752d1006cb2a0230190ad87723ebeccfd3a2f7a"
     },
     {
       "canonical": "SUPPORT.md",
@@ -1598,9 +1991,9 @@
       "canonical": "README.md",
       "locale": "fr",
       "review": "reviewed",
-      "source_sha256": "0c3e3dea2ecbe017c05d8aa3a8419eafff71e229a2546a8085f61b962e00290f",
+      "source_sha256": "fd5020306069c3145e84fe2586508d3318acc41fb4e5fc20a720c71a7f30565b",
       "translation": "docs/i18n/fr/README.md",
-      "translation_sha256": "620c0950f009f77f4e707d121ddcfae619c017434bd4d805e8c026bf39c7eee6"
+      "translation_sha256": "314735b9df2bc2747baabdad713af068cc04be88947759e70a8ed6e4f15481b0"
     },
     {
       "canonical": "SUPPORT.md",
@@ -1638,9 +2031,9 @@
       "canonical": "README.md",
       "locale": "it",
       "review": "reviewed",
-      "source_sha256": "0c3e3dea2ecbe017c05d8aa3a8419eafff71e229a2546a8085f61b962e00290f",
+      "source_sha256": "fd5020306069c3145e84fe2586508d3318acc41fb4e5fc20a720c71a7f30565b",
       "translation": "docs/i18n/it/README.md",
-      "translation_sha256": "c16ed670ff01326e99fbc0f3b134acc2abbd83ad9af8e6b71c0f80f0ec67ade8"
+      "translation_sha256": "1d9cdfeac65069f3ff5b71f2360700450b9c01f61d63bdd4acdbefe438f89b86"
     },
     {
       "canonical": "SUPPORT.md",
@@ -1678,9 +2071,9 @@
       "canonical": "README.md",
       "locale": "ja",
       "review": "reviewed",
-      "source_sha256": "0c3e3dea2ecbe017c05d8aa3a8419eafff71e229a2546a8085f61b962e00290f",
+      "source_sha256": "fd5020306069c3145e84fe2586508d3318acc41fb4e5fc20a720c71a7f30565b",
       "translation": "docs/i18n/ja/README.md",
-      "translation_sha256": "a343cdf2f6843fd7590d83913e59dc379e7d3703180b42a220a740146b2d0ac5"
+      "translation_sha256": "a3be93fc6055aebb3e35ad672985fee7433765490f934b6b8f612875691c9f4d"
     },
     {
       "canonical": "SUPPORT.md",
@@ -1718,9 +2111,9 @@
       "canonical": "README.md",
       "locale": "ko",
       "review": "reviewed",
-      "source_sha256": "0c3e3dea2ecbe017c05d8aa3a8419eafff71e229a2546a8085f61b962e00290f",
+      "source_sha256": "fd5020306069c3145e84fe2586508d3318acc41fb4e5fc20a720c71a7f30565b",
       "translation": "docs/i18n/ko/README.md",
-      "translation_sha256": "134c2c81ee55122b29c1855b384da669577bf07c04d62ea37e9be55aecfc248f"
+      "translation_sha256": "7f1831f762d4ad9e18a38304f8e7ab34499ff5283d0a041f0c91604444d1c580"
     },
     {
       "canonical": "SUPPORT.md",
@@ -1758,9 +2151,9 @@
       "canonical": "README.md",
       "locale": "pl",
       "review": "reviewed",
-      "source_sha256": "0c3e3dea2ecbe017c05d8aa3a8419eafff71e229a2546a8085f61b962e00290f",
+      "source_sha256": "fd5020306069c3145e84fe2586508d3318acc41fb4e5fc20a720c71a7f30565b",
       "translation": "docs/i18n/pl/README.md",
-      "translation_sha256": "968fb932c825ac0592299b9d1529762f4ce2ed66f8052e999f90e28cd1ab0862"
+      "translation_sha256": "76b93093a8f91cc3415b5483b9aa1e39517d2e9e6956a2e195461cd1cd8e8ef1"
     },
     {
       "canonical": "SUPPORT.md",
@@ -1798,9 +2191,9 @@
       "canonical": "README.md",
       "locale": "pt-BR",
       "review": "reviewed",
-      "source_sha256": "0c3e3dea2ecbe017c05d8aa3a8419eafff71e229a2546a8085f61b962e00290f",
+      "source_sha256": "fd5020306069c3145e84fe2586508d3318acc41fb4e5fc20a720c71a7f30565b",
       "translation": "docs/i18n/pt-BR/README.md",
-      "translation_sha256": "dbee7589b9de86285811f3b36c260a02e55db46eb9cf4a2795fe52e9e17b7664"
+      "translation_sha256": "9611171905622c793a3553831b7ca0619b9c8b41afe5aed4bb6282df0e4bfc4c"
     },
     {
       "canonical": "SUPPORT.md",
@@ -1838,9 +2231,9 @@
       "canonical": "README.md",
       "locale": "ru",
       "review": "reviewed",
-      "source_sha256": "0c3e3dea2ecbe017c05d8aa3a8419eafff71e229a2546a8085f61b962e00290f",
+      "source_sha256": "fd5020306069c3145e84fe2586508d3318acc41fb4e5fc20a720c71a7f30565b",
       "translation": "docs/i18n/ru/README.md",
-      "translation_sha256": "53bb41826442a8f74f85f06a8ae73171f48b8c664319a534b93155d4093155f4"
+      "translation_sha256": "0f682ad62558612838b7198c6305ff14fb5af422689aef3ba8c14a784bec88dd"
     },
     {
       "canonical": "SUPPORT.md",
@@ -1878,9 +2271,9 @@
       "canonical": "README.md",
       "locale": "tr",
       "review": "reviewed",
-      "source_sha256": "0c3e3dea2ecbe017c05d8aa3a8419eafff71e229a2546a8085f61b962e00290f",
+      "source_sha256": "fd5020306069c3145e84fe2586508d3318acc41fb4e5fc20a720c71a7f30565b",
       "translation": "docs/i18n/tr/README.md",
-      "translation_sha256": "cd66405f5e4a7720fc85c160cc8158816c8091869ae439f52ec3a073b0699199"
+      "translation_sha256": "5c7c1b7645bc24bb924c8071337fa84c75ea7986de331d6e5795d4cec6c7ab49"
     },
     {
       "canonical": "SUPPORT.md",
@@ -1918,9 +2311,9 @@
       "canonical": "README.md",
       "locale": "uk",
       "review": "reviewed",
-      "source_sha256": "0c3e3dea2ecbe017c05d8aa3a8419eafff71e229a2546a8085f61b962e00290f",
+      "source_sha256": "fd5020306069c3145e84fe2586508d3318acc41fb4e5fc20a720c71a7f30565b",
       "translation": "docs/i18n/uk/README.md",
-      "translation_sha256": "c430fa14c481b63dbbccb1cb35d9efab467e22d96df9b1dc3f5bffdfa5ee9fb1"
+      "translation_sha256": "458f95fcaeca48c27c85a331f4703a3c9646ed5e1f8746b8193e0f7b357efe09"
     },
     {
       "canonical": "SUPPORT.md",
@@ -1958,9 +2351,9 @@
       "canonical": "README.md",
       "locale": "zh-CN",
       "review": "reviewed",
-      "source_sha256": "0c3e3dea2ecbe017c05d8aa3a8419eafff71e229a2546a8085f61b962e00290f",
+      "source_sha256": "fd5020306069c3145e84fe2586508d3318acc41fb4e5fc20a720c71a7f30565b",
       "translation": "docs/i18n/zh-CN/README.md",
-      "translation_sha256": "e2c7df0bd82a31381bb33acc55b3b4d9939a7efa115a9c62c051c5ba975753e3"
+      "translation_sha256": "27a01788ab8c9247812457344b86f1f54e462498e32287078c88e271a682196e"
     },
     {
       "canonical": "SUPPORT.md",

@@ -138,6 +138,14 @@
         "verify-before-push"
       ],
       "reason": "The requested sequence joins safe freshness, diagnosis, a genuine red-green correction, and the exact-state publication gate."
+    },
+    {
+      "prompt": "Сверь постоянный план работ проекта с результатами приёмки, запиши подтверждённое завершение в журнал работ и убери только завершённые пункты плана.",
+      "expected_skills": [
+        "maintain-work-plan",
+        "maintain-work-log"
+      ],
+      "reason": "The active queue and dated completion record have separate owners; persist verified log entries before plan removal."
     }
   ]
 }

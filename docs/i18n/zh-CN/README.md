@@ -31,6 +31,7 @@
     - [`retire-merged-task-branches`](#retire-merged-task-branches-experimental)
   - [项目知识与连续性](#项目知识与连续性)
     - [`maintain-work-log`](#maintain-work-log)
+    - [`maintain-work-plan`](#maintain-work-plan-实验性)
     - [`maintain-project-digest`](#maintain-project-digest-实验性)
     - [`sync-project-context`](#sync-project-context)
   - [协调与沟通](#协调与沟通)
@@ -526,6 +527,21 @@ python <skill-root>/scripts/retire_branches.py status --json
 
 ```text
 $maintain-work-log Configure this project to maintain its dated work log.
+```
+
+#### `maintain-work-plan` (实验性)
+
+维护持久、有序的项目计划，保留稳定 ID、可选的期望执行日期和依赖关系。
+
+- 首次使用时确认现有计划和工作日志的路径、项目代码、时区及日历策略，并保留现有 Markdown。
+- 与 `maintain-work-log` 配合：验证完成情况并保存带日期的日志条目后，才从当前计划中移除已完成的工作。
+- 可选择将带日期的任务同步到获授权的日历，标题采用 `[项目代码] 任务标题` 格式；检测冲突和重复项，保留手动修改。
+- 辅助工具以只读方式验证规范化输入并预览更改；不包含日历客户端，也不能证明任务已完成。
+
+使用集合现有的安装命令安装。调用方式：
+
+```text
+$maintain-work-plan Configure this project to maintain its ordered work plan alongside its work log.
 ```
 
 #### `maintain-project-digest` （实验性）

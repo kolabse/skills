@@ -31,6 +31,7 @@ Distribuito con la [Apache License 2.0](../../../LICENSE). Copyright 2026 kolabs
     - [`retire-merged-task-branches`](#retire-merged-task-branches-experimental)
   - [Conoscenza e continuità del progetto](#conoscenza-e-continuità-del-progetto)
     - [`maintain-work-log`](#maintain-work-log)
+    - [`maintain-work-plan`](#maintain-work-plan-sperimentale)
     - [`maintain-project-digest`](#maintain-project-digest-sperimentale)
     - [`sync-project-context`](#sync-project-context)
   - [Coordinamento e comunicazione](#coordinamento-e-comunicazione)
@@ -668,6 +669,21 @@ Mantiene il diario datato canonico del progetto in `docs/reports/work-log.md`.
 
 ```text
 $maintain-work-log Configure this project to maintain its dated work log.
+```
+
+#### `maintain-work-plan` (sperimentale)
+
+Mantiene un piano di progetto persistente e ordinato con identificatori stabili, date desiderate facoltative e dipendenze.
+
+- Al primo utilizzo, individua i percorsi esistenti del piano e del registro, il codice del progetto, il fuso orario e le regole del calendario; conserva il Markdown esistente.
+- Collabora con `maintain-work-log`: verifica il completamento e salva la voce datata nel registro prima di rimuovere il lavoro concluso dal piano attivo.
+- Facoltativamente sincronizza le attività datate con un calendario autorizzato, usando titoli come `[CODICE PROGETTO] Titolo attività`; rileva conflitti e duplicati e conserva le modifiche manuali.
+- L’utilità verifica dati normalizzati e mostra le modifiche proposte in sola lettura; non include un client di calendario e non dimostra il completamento.
+
+Si installa tramite i comandi di installazione esistenti della raccolta. Invocazione:
+
+```text
+$maintain-work-plan Configure this project to maintain its ordered work plan alongside its work log.
 ```
 
 #### `maintain-project-digest` (sperimentale)

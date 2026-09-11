@@ -4,11 +4,22 @@
 
 ### Added
 
+- Experimental `maintain-work-plan` maintains ordered project work with stable
+  IDs, dependencies and desired dates, preserves verified outcomes in the work
+  log before removing completed items, and guides optional authorized calendar
+  synchronization with `[project code]` event titles. Its read-only helper
+  validates normalized snapshots and previews identity-bound calendar changes;
+  live calendar writes remain with the agent's available provider tools.
 - Add experimental `retire-merged-task-branches`: prepare and explicitly apply
   revision-bound cleanup plans for merged GitHub/GitLab tasks, preserving newer
   or ambiguous work and requiring explicit selection of inactive task worktrees.
   Conditional reference deletion and partial-result reporting remain separate
   from lifecycle evidence coordination and audited collection-release cleanup.
+
+### Changed
+
+- Work-log guidance preserves task identifiers, follows the declared journal
+  path and supports retryable log-first completion transfer from an active plan.
 
 ## [1.23.0] - 2026-09-11
 

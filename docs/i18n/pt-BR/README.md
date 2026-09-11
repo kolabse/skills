@@ -31,6 +31,7 @@ Licenciado sob a [Licença Apache 2.0](../../../LICENSE). Copyright 2026 kolabse
     - [`retire-merged-task-branches`](#retire-merged-task-branches-experimental)
   - [Conhecimento e continuidade do projeto](#conhecimento-e-continuidade-do-projeto)
     - [`maintain-work-log`](#maintain-work-log)
+    - [`maintain-work-plan`](#maintain-work-plan-experimental)
     - [`maintain-project-digest`](#maintain-project-digest-experimental)
     - [`sync-project-context`](#sync-project-context)
   - [Coordenação e comunicação](#coordenação-e-comunicação)
@@ -660,6 +661,21 @@ Mantenha o diário canônico e datado do projeto em `docs/reports/work-log.md`.
 
 ```text
 $maintain-work-log Configure this project to maintain its dated work log.
+```
+
+#### `maintain-work-plan` (experimental)
+
+Mantém um plano de projeto persistente e ordenado com identificadores estáveis, datas desejadas opcionais e dependências.
+
+- No primeiro uso, identifica os caminhos existentes do plano e do registro, o código do projeto, o fuso horário e as regras do calendário; preserva o Markdown existente.
+- Trabalha com `maintain-work-log`: verifica a conclusão e salva a entrada datada no registro antes de remover o trabalho concluído do plano ativo.
+- Opcionalmente sincroniza tarefas com data com um calendário autorizado, usando títulos como `[CÓDIGO DO PROJETO] Título da tarefa`; detecta conflitos e duplicatas e preserva alterações manuais.
+- O utilitário valida dados normalizados e apresenta propostas de alteração em modo somente leitura; não inclui um cliente de calendário nem comprova a conclusão.
+
+Instale pelos comandos de instalação existentes da coleção. Invocação:
+
+```text
+$maintain-work-plan Configure this project to maintain its ordered work plan alongside its work log.
 ```
 
 #### `maintain-project-digest` (experimental)

@@ -31,6 +31,7 @@ KNOWN_SKILLS = {
     "execute-verified-development-lifecycle",
     "maintain-project-digest",
     "maintain-work-log",
+    "maintain-work-plan",
     "notify-via-telegram",
     "operate-yandex-cloud",
     "orchestrate-agent-work",

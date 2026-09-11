@@ -685,6 +685,52 @@
       ]
     },
     {
+      "name": "maintain-work-plan",
+      "path": "skills/maintain-work-plan",
+      "status": "experimental",
+      "maintainers": [
+        "@kolabse"
+      ],
+      "platforms": [
+        "linux",
+        "macos",
+        "windows"
+      ],
+      "trigger_evals": "evals/maintain-work-plan.json",
+      "license": "Apache-2.0",
+      "provides": [
+        "work-plan"
+      ],
+      "requires": [],
+      "optional_integrations": [
+        "work-log"
+      ],
+      "configuration": {
+        "scope": "project",
+        "format": "none",
+        "status": [
+          "python",
+          "scripts/work_plan.py",
+          "status",
+          "--json"
+        ]
+      },
+      "provenance": {
+        "kind": "original",
+        "source": "Original implementation of https://github.com/kolabse/skills/issues/125 incorporating issues #123 and #124 and maintainer clarification of ordered plans and project-prefixed calendar synchronization",
+        "canonical_repository": "https://github.com/kolabse/skills"
+      },
+      "category": "project-knowledge",
+      "tags": [
+        "prepare",
+        "document",
+        "project",
+        "external-service",
+        "read-only-planning",
+        "mutation"
+      ]
+    },
+    {
       "name": "maintain-project-digest",
       "path": "skills/maintain-project-digest",
       "status": "experimental",

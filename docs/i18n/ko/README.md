@@ -31,6 +31,7 @@ kolabse가 관리하는 재사용 가능한 에이전트 스킬 모음입니다.
     - [`retire-merged-task-branches`](#retire-merged-task-branches-experimental)
   - [프로젝트 지식 및 연속성](#프로젝트-지식-및-연속성)
     - [`maintain-work-log`](#maintain-work-log)
+    - [`maintain-work-plan`](#maintain-work-plan-실험적)
     - [`maintain-project-digest`](#maintain-project-digest-실험적)
     - [`sync-project-context`](#sync-project-context)
   - [조율 및 소통](#조율-및-소통)
@@ -586,6 +587,21 @@ python <skill-root>/scripts/retire_branches.py status --json
 
 ```text
 $maintain-work-log Configure this project to maintain its dated work log.
+```
+
+#### `maintain-work-plan` (실험적)
+
+고정 ID, 선택적인 희망 실행일, 의존 관계를 갖춘 영구적인 프로젝트 계획을 정해진 순서대로 유지합니다.
+
+- 처음 사용할 때 기존 계획과 작업 로그의 경로, 프로젝트 코드, 시간대, 캘린더 정책을 확인하고 기존 Markdown을 보존합니다.
+- `maintain-work-log`와 연계하여 완료 여부를 검증하고 날짜가 있는 로그 항목을 저장한 뒤 완료된 작업을 활성 계획에서 제거합니다.
+- 선택적으로 날짜가 있는 작업을 권한이 부여된 캘린더와 `[프로젝트 코드] 작업 제목` 형식으로 동기화합니다. 충돌과 중복을 감지하고 수동 변경을 보존합니다.
+- 보조 도구는 정규화된 입력을 읽기 전용으로 검증하고 변경안을 보여 줍니다. 캘린더 클라이언트가 포함되어 있지 않으며 완료를 입증하지 않습니다.
+
+컬렉션의 기존 설치 명령으로 설치합니다. 호출 예:
+
+```text
+$maintain-work-plan Configure this project to maintain its ordered work plan alongside its work log.
 ```
 
 #### `maintain-project-digest` (실험적)

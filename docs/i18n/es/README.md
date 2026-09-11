@@ -29,6 +29,7 @@ Distribuido bajo la [Licencia Apache 2.0](../../../LICENSE). Copyright 2026 kola
     - [`retire-merged-task-branches`](#retire-merged-task-branches-experimental)
   - [Conocimiento y continuidad del proyecto](#conocimiento-y-continuidad-del-proyecto)
     - [`maintain-work-log`](#maintain-work-log)
+    - [`maintain-work-plan`](#maintain-work-plan-experimental)
     - [`maintain-project-digest`](#maintain-project-digest-experimental)
     - [`sync-project-context`](#sync-project-context)
   - [Coordinación y comunicación](#coordinación-y-comunicación)
@@ -641,6 +642,21 @@ Mantener la revista canónica de fecha del proyecto en `docs/reports/work-log.md
 
 ```text
 $maintain-work-log Configure this project to maintain its dated work log.
+```
+
+#### `maintain-work-plan` (experimental)
+
+Mantiene un plan de proyecto persistente y ordenado con identificadores estables, fechas deseadas opcionales y dependencias.
+
+- En el primer uso, determina las rutas existentes del plan y del registro, el código del proyecto, la zona horaria y la política del calendario; conserva el Markdown existente.
+- Trabaja junto con `maintain-work-log`: verifica la finalización y guarda la entrada fechada del registro antes de retirar el trabajo terminado del plan activo.
+- Opcionalmente sincroniza las tareas con fecha con un calendario autorizado, usando títulos como `[CÓDIGO DEL PROYECTO] Título de la tarea`; detecta conflictos y duplicados y conserva las modificaciones manuales.
+- La herramienta auxiliar valida entradas normalizadas y muestra propuestas de cambio en modo de solo lectura; no incluye un cliente de calendario ni demuestra la finalización.
+
+Se instala mediante los comandos de instalación existentes de la colección. Invocación:
+
+```text
+$maintain-work-plan Configure this project to maintain its ordered work plan alongside its work log.
 ```
 
 #### `maintain-project-digest` (experimental)
