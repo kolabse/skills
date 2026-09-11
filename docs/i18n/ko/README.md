@@ -28,6 +28,7 @@ kolabse가 관리하는 재사용 가능한 에이전트 스킬 모음입니다.
     - [`coordinate-code-documentation-repositories`](#coordinate-code-documentation-repositories-실험적)
     - [`execute-configured-gitflow-releases`](#execute-configured-gitflow-releases-실험적)
     - [`execute-verified-development-lifecycle`](#execute-verified-development-lifecycle-실험적)
+    - [`retire-merged-task-branches`](#retire-merged-task-branches-experimental)
   - [프로젝트 지식 및 연속성](#프로젝트-지식-및-연속성)
     - [`maintain-work-log`](#maintain-work-log)
     - [`maintain-project-digest`](#maintain-project-digest-실험적)
@@ -549,6 +550,19 @@ $execute-configured-gitflow-releases Run an explicit hotfix release and verify i
 ```text
 $execute-verified-development-lifecycle Plan and verify this change through the project's configured development lifecycle.
 ```
+
+#### `retire-merged-task-branches` (experimental)
+
+GitHub 또는 GitLab의 최신 검토 증거를 바탕으로 병합된 작업 브랜치와 연결된 worktree의 정리를 계획하고 명시적 승인을 받아 실행합니다.
+
+소스 저장소의 신원과 정확한 브랜치 끝 커밋을 확인하고, 수정되었거나 사용 중인 worktree와 보호된 참조를 보존하며, 삭제 전에 정확한 계획에 대한 동의를 요구합니다. 개발 수명 주기 증거 검증과 컬렉션 릴리스 정리는 별도 절차입니다.
+
+먼저 `$synchronize-git-repositories`를 설치하세요. 영구 설정은 필요하지 않으며 첫 계획 전에 읽기 전용 상태 명령을 실행하세요.
+
+```shell
+python <skill-root>/scripts/retire_branches.py status --json
+```
+
 
 ### 프로젝트 지식 및 연속성
 
