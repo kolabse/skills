@@ -28,6 +28,7 @@ Lizenziert unter der [Apache License 2.0](../../../LICENSE). Copyright 2026 kola
     - [`coordinate-code-documentation-repositories`](#coordinate-code-documentation-repositories-experimentell)
     - [`execute-configured-gitflow-releases`](#execute-configured-gitflow-releases-experimentell)
     - [`execute-verified-development-lifecycle`](#execute-verified-development-lifecycle-experimentell)
+    - [`retire-merged-task-branches`](#retire-merged-task-branches-experimental)
   - [Projektwissen und Kontinuität](#projektwissen-und-kontinuität)
     - [`maintain-work-log`](#maintain-work-log)
     - [`maintain-project-digest`](#maintain-project-digest-experimentell)
@@ -637,6 +638,19 @@ Prüfpunkte aktiviert: `$orchestrate-agent-work`, `$diagnose-software-defects`,
 
 ```text
 $execute-verified-development-lifecycle Plan and verify this change through the project's configured development lifecycle.
+```
+
+
+#### `retire-merged-task-branches` (experimental)
+
+Plant und führt mit ausdrücklicher Zustimmung die Bereinigung integrierter Aufgabenbranches und zugehöriger Worktrees anhand aktueller GitHub- oder GitLab-Nachweise aus.
+
+Prüft das Quellrepository und die exakten Branchspitzen, erhält aktive oder geänderte Worktrees sowie geschützte Refs und verlangt vor dem Löschen eine Zustimmung zum konkreten Plan. Die Prüfung von Lifecycle-Nachweisen und die Bereinigung von Collection-Releases bleiben separate Abläufe.
+
+Installieren Sie zuerst `$synchronize-git-repositories`. Es ist keine dauerhafte Konfiguration nötig; führen Sie vor dem ersten Plan den schreibgeschützten Statusbefehl aus.
+
+```shell
+python <skill-root>/scripts/retire_branches.py status --json
 ```
 
 

@@ -37,6 +37,7 @@ KNOWN_SKILLS = {
     "report-skill-feedback",
     "release-skill-collection",
     "resolve-git-conflicts",
+    "retire-merged-task-branches",
     "review-code-changes",
     "sync-project-context",
     "synchronize-git-repositories",

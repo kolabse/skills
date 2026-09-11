@@ -2,6 +2,14 @@
 
 ## [Unreleased]
 
+### Added
+
+- Add experimental `retire-merged-task-branches`: prepare and explicitly apply
+  revision-bound cleanup plans for merged GitHub/GitLab tasks, preserving newer
+  or ambiguous work and requiring explicit selection of inactive task worktrees.
+  Conditional reference deletion and partial-result reporting remain separate
+  from lifecycle evidence coordination and audited collection-release cleanup.
+
 ## [1.23.0] - 2026-09-11
 
 ### Changed

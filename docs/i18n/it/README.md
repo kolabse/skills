@@ -28,6 +28,7 @@ Distribuito con la [Apache License 2.0](../../../LICENSE). Copyright 2026 kolabs
     - [`coordinate-code-documentation-repositories`](#coordinate-code-documentation-repositories-sperimentale)
     - [`execute-configured-gitflow-releases`](#execute-configured-gitflow-releases-sperimentale)
     - [`execute-verified-development-lifecycle`](#execute-verified-development-lifecycle-sperimentale)
+    - [`retire-merged-task-branches`](#retire-merged-task-branches-experimental)
   - [Conoscenza e continuità del progetto](#conoscenza-e-continuità-del-progetto)
     - [`maintain-work-log`](#maintain-work-log)
     - [`maintain-project-digest`](#maintain-project-digest-sperimentale)
@@ -628,6 +629,19 @@ punti di controllo: `$orchestrate-agent-work`, `$diagnose-software-defects`,
 ```text
 $execute-verified-development-lifecycle Plan and verify this change through the project's configured development lifecycle.
 ```
+
+#### `retire-merged-task-branches` (experimental)
+
+Pianifica e applica con autorizzazione esplicita la pulizia dei branch di attività integrati e dei worktree associati usando prove aggiornate da GitHub o GitLab.
+
+Verifica il repository di origine e i commit esatti, preserva worktree attivi o modificati e riferimenti protetti, e richiede il consenso legato al piano esatto prima della rimozione. La verifica delle prove del ciclo di sviluppo e la pulizia delle release della raccolta restano processi separati.
+
+Installa prima `$synchronize-git-repositories`. Non serve una configurazione persistente; esegui il comando di stato in sola lettura prima del primo piano.
+
+```shell
+python <skill-root>/scripts/retire_branches.py status --json
+```
+
 
 ### Conoscenza e continuità del progetto
 

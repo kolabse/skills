@@ -26,6 +26,7 @@ Licensed under the [Apache License 2.0](LICENSE). Copyright 2026 kolabse.
     - [`coordinate-code-documentation-repositories`](#coordinate-code-documentation-repositories-experimental)
     - [`execute-configured-gitflow-releases`](#execute-configured-gitflow-releases-experimental)
     - [`execute-verified-development-lifecycle`](#execute-verified-development-lifecycle-experimental)
+    - [`retire-merged-task-branches`](#retire-merged-task-branches-experimental)
   - [Project knowledge and continuity](#project-knowledge-and-continuity)
     - [`maintain-work-log`](#maintain-work-log)
     - [`maintain-project-digest`](#maintain-project-digest-experimental)
@@ -608,6 +609,19 @@ enables their corresponding checkpoints: `$orchestrate-agent-work`,
 
 ```text
 $execute-verified-development-lifecycle Plan and verify this change through the project's configured development lifecycle.
+```
+
+
+#### `retire-merged-task-branches` (experimental)
+
+Plan and explicitly apply cleanup of merged task branches and linked worktrees using fresh GitHub or GitLab review evidence.
+
+Checks source repository identity and exact branch heads, preserves dirty or active worktrees and protected refs, and requires consent bound to the exact plan before deletion. Lifecycle evidence verification and collection release cleanup remain separate workflows.
+
+Install `$synchronize-git-repositories` first. No persistent configuration is needed; run the read-only status command before the first plan.
+
+```shell
+python <skill-root>/scripts/retire_branches.py status --json
 ```
 
 

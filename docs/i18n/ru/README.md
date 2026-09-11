@@ -29,6 +29,7 @@
     - [`coordinate-code-documentation-repositories`](#coordinate-code-documentation-repositories-experimental)
     - [`execute-configured-gitflow-releases`](#execute-configured-gitflow-releases-experimental)
     - [`execute-verified-development-lifecycle`](#execute-verified-development-lifecycle-experimental)
+    - [`retire-merged-task-branches`](#retire-merged-task-branches-experimental)
   - [Знания и непрерывность проекта](#знания-и-непрерывность-проекта)
     - [`maintain-work-log`](#maintain-work-log)
     - [`maintain-project-digest`](#maintain-project-digest-experimental)
@@ -492,6 +493,19 @@ delivery policy или authorization при неоднозначных данн�
 
 ```text
 $execute-verified-development-lifecycle Спланируй и проверь изменение по настроенному development lifecycle проекта.
+```
+
+
+#### `retire-merged-task-branches` (experimental)
+
+Планирует и по явному разрешению выполняет удаление слитых веток задач и связанных worktree по свежим данным GitHub PR или GitLab MR.
+
+Проверяет исходный репозиторий и точные вершины веток, сохраняет грязные или активные worktree и защищённые refs. Удаление требует согласия на конкретный план. Проверка evidence жизненного цикла и очистка релиза коллекции остаются отдельными процессами.
+
+Сначала установите `$synchronize-git-repositories`. Постоянная конфигурация не нужна; перед первым планом выполните команду status без изменений.
+
+```shell
+python <skill-root>/scripts/retire_branches.py status --json
 ```
 
 

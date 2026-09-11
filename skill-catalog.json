@@ -582,6 +582,58 @@
       ]
     },
     {
+      "name": "retire-merged-task-branches",
+      "path": "skills/retire-merged-task-branches",
+      "status": "experimental",
+      "maintainers": [
+        "@kolabse"
+      ],
+      "platforms": [
+        "linux",
+        "macos",
+        "windows"
+      ],
+      "trigger_evals": "evals/retire-merged-task-branches.json",
+      "license": "Apache-2.0",
+      "provides": [
+        "merged-task-branch-cleanup-planning",
+        "merged-task-branch-cleanup-application"
+      ],
+      "requires": [
+        "repository-freshness"
+      ],
+      "optional_integrations": [
+        "verified-development-lifecycle",
+        "work-log"
+      ],
+      "configuration": {
+        "scope": "project",
+        "format": "none",
+        "status": [
+          "python",
+          "scripts/retire_branches.py",
+          "status",
+          "--json"
+        ]
+      },
+      "provenance": {
+        "kind": "original",
+        "source": "Created to safely retire merged task branches and worktrees using provider review evidence and explicit plan-bound consent",
+        "canonical_repository": "https://github.com/kolabse/skills"
+      },
+      "category": "repository-delivery",
+      "tags": [
+        "verify",
+        "repository",
+        "external-service",
+        "read-only-planning",
+        "mutation",
+        "evidence-producing",
+        "git",
+        "github"
+      ]
+    },
+    {
       "name": "maintain-work-log",
       "path": "skills/maintain-work-log",
       "status": "stable",

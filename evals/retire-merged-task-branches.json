@@ -1,0 +1,43 @@
+{
+  "skill": "retire-merged-task-branches",
+  "positive": [
+    {
+      "prompt": "The GitHub pull request for feature/invoice-export has merged. Show me an exact cleanup plan for its remote and local branches and linked worktree, preserving any dirty or active work.",
+      "reason": "Explicit post-merge task cleanup planning needs review identity, preservation checks, and exact selected resources."
+    },
+    {
+      "prompt": "Apply the merged-task cleanup plan I approved by its SHA-256. Recheck the GitLab merge request source project and branch head, and stop if either changed.",
+      "reason": "Explicit plan-bound application with fresh provider identity and compare-and-swap guards is the core mutation workflow."
+    },
+    {
+      "prompt": "После merge PR через squash проверь исходный head, составь план удаления ветки задачи и её worktree, затем дождись моего подтверждения конкретного плана.",
+      "reason": "Squash-merged task retirement needs provider evidence rather than assuming graph ancestry proves integration."
+    },
+    {
+      "prompt": "Our merged task branch was automatically deleted on GitHub. Plan safe removal of its remaining local branch and clean linked worktree using the pull request identity.",
+      "reason": "Remote absence does not remove the need for a reviewed and preservation-checked local cleanup plan."
+    }
+  ],
+  "negative": [
+    {
+      "prompt": "Fetch the tracked upstreams and fast-forward repositories that are safely behind.",
+      "reason": "Repository freshness alone belongs to synchronize-git-repositories and does not request resource deletion."
+    },
+    {
+      "prompt": "Verify the cleanup evidence checkpoint of our configured development lifecycle; do not delete any resources.",
+      "reason": "Evidence-only lifecycle verification stays in execute-verified-development-lifecycle."
+    },
+    {
+      "prompt": "Audit the published skill collection release and use its release cleanup workflow for the release branch.",
+      "reason": "Collection-specific release audit and cleanup belongs to release-skill-collection."
+    },
+    {
+      "prompt": "Delete this abandoned branch even though its pull request is still open and unmerged.",
+      "reason": "Unmerged branch deletion is outside merged-task retirement scope."
+    },
+    {
+      "prompt": "List all local branches and explain how Git worktrees share repository objects.",
+      "reason": "Generic read-only Git inspection and conceptual help do not request a merged-task cleanup plan."
+    }
+  ]
+}

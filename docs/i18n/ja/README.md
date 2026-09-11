@@ -28,6 +28,7 @@ kolabse が管理する、再利用可能なエージェントスキルです。
     - [`coordinate-code-documentation-repositories`](#coordinate-code-documentation-repositories-実験的)
     - [`execute-configured-gitflow-releases`](#execute-configured-gitflow-releases-実験的)
     - [`execute-verified-development-lifecycle`](#execute-verified-development-lifecycle-実験的)
+    - [`retire-merged-task-branches`](#retire-merged-task-branches-experimental)
   - [プロジェクトの知識と継続性](#プロジェクトの知識と継続性)
     - [`maintain-work-log`](#maintain-work-log)
     - [`maintain-project-digest`](#maintain-project-digest-実験的)
@@ -540,6 +541,19 @@ $execute-configured-gitflow-releases Run an explicit hotfix release and verify i
 
 ```text
 $execute-verified-development-lifecycle Plan and verify this change through the project's configured development lifecycle.
+```
+
+
+#### `retire-merged-task-branches` (experimental)
+
+GitHub または GitLab の最新のレビュー証跡に基づき、マージ済みタスクブランチと関連 worktree の削除を計画し、明示的な許可を得て実行します。
+
+ソースリポジトリの同一性と正確なブランチ先端を確認し、変更済みまたは使用中の worktree と保護された参照を保持します。削除前に、その計画に紐づく同意が必要です。開発ライフサイクルの証跡検証とコレクションリリースのクリーンアップは別の手順です。
+
+まず `$synchronize-git-repositories` をインストールしてください。永続的な設定は不要です。最初の計画前に読み取り専用の状態確認コマンドを実行します。
+
+```shell
+python <skill-root>/scripts/retire_branches.py status --json
 ```
 
 
