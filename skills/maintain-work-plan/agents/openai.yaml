@@ -1,0 +1,4 @@
+interface:
+  display_name: "Maintain Work Plan"
+  short_description: "Keep project tasks, outcomes and calendar aligned"
+  default_prompt: "Use $maintain-work-plan to update this project's ordered work plan and reconcile its dated tasks with the calendar."

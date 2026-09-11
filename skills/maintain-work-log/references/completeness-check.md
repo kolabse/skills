@@ -7,7 +7,8 @@ records. Keep any proposed corrections separate from the observed result.
 ## Establish the comparison boundary
 
 Use the current task's factual milestones, the user-supplied milestone list,
-and the relevant dated sections of `docs/reports/work-log.md`. Name the task or
+and the relevant dated sections of the declared work log (default:
+`docs/reports/work-log.md`). Name the task or
 date range and the sources actually available. Read only explicitly referenced
 validation or publication evidence needed to resolve a milestone. Do not crawl
 older chats, unrelated repositories, inventories or the home directory.

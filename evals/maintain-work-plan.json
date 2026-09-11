@@ -1,0 +1,55 @@
+{
+  "skill": "maintain-work-plan",
+  "positive": [
+    {
+      "prompt": "Добавь в постоянный план проекта подготовку презентации, а следом — её проведение.",
+      "reason": "Persistent project queue with explicit order."
+    },
+    {
+      "prompt": "Перенеси пункт PILOT-015 в плане работ на 21 сентября и синхронизируй связанное событие календаря.",
+      "reason": "Linked plan/calendar scheduling."
+    },
+    {
+      "prompt": "Сверь завершённые пункты плана с журналом, сохрани результаты и убери только принятые задачи.",
+      "reason": "Evidence-based plan/log reconciliation."
+    },
+    {
+      "prompt": "В плане проекта поменяй местами две задачи, сохрани ID и проверь зависимости.",
+      "reason": "Stable identifiers and ordering."
+    },
+    {
+      "prompt": "В правилах проекта требуется вести work-plan.md. Обнови его после подтверждённой приёмки задачи.",
+      "reason": "Applicable persistent-plan policy."
+    },
+    {
+      "prompt": "Задай для плана код Пилот и свяжи датированные пункты с моим разрешённым календарём.",
+      "reason": "Project-specific calendar integration setup."
+    }
+  ],
+  "negative": [
+    {
+      "prompt": "Запиши результаты тестов в журнал работ.",
+      "reason": "Completed record alone belongs to work log."
+    },
+    {
+      "prompt": "Составь краткий план реализации функции перед изменением кода.",
+      "reason": "One-off implementation outline is not a persistent work plan."
+    },
+    {
+      "prompt": "Напомни завтра купить молоко.",
+      "reason": "Personal reminder outside project plan."
+    },
+    {
+      "prompt": "Добавь сегодняшние изменения в пользовательский дайджест.",
+      "reason": "Completed product changes belong to digest."
+    },
+    {
+      "prompt": "Покажи события в моём календаре на завтра.",
+      "reason": "Calendar viewing does not imply project-plan maintenance."
+    },
+    {
+      "prompt": "Реализуй проверку пароля в приложении.",
+      "reason": "Ordinary implementation without plan requirement."
+    }
+  ]
+}

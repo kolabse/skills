@@ -30,6 +30,7 @@ Lizenziert unter der [Apache License 2.0](../../../LICENSE). Copyright 2026 kola
     - [`execute-verified-development-lifecycle`](#execute-verified-development-lifecycle-experimentell)
   - [Projektwissen und Kontinuität](#projektwissen-und-kontinuität)
     - [`maintain-work-log`](#maintain-work-log)
+    - [`maintain-work-plan`](#maintain-work-plan-experimentell)
     - [`maintain-project-digest`](#maintain-project-digest-experimentell)
     - [`sync-project-context`](#sync-project-context)
   - [Koordination und Kommunikation](#koordination-und-kommunikation)
@@ -664,6 +665,21 @@ Das maßgebliche datierte Projektjournal unter `docs/reports/work-log.md` pflege
 
 ```text
 $maintain-work-log Configure this project to maintain its dated work log.
+```
+
+#### `maintain-work-plan` (experimentell)
+
+Pflegt einen dauerhaften, geordneten Projektplan mit stabilen IDs, optionalen Wunschterminen und Abhängigkeiten.
+
+- Klärt beim ersten Einsatz vorhandene Plan- und Protokollpfade, Projektcode, Zeitzone und Kalenderregeln; bewahrt vorhandenes Markdown.
+- Arbeitet mit `maintain-work-log` zusammen: prüft den Abschluss und speichert den datierten Protokolleintrag, bevor erledigte Arbeit aus dem aktiven Plan entfernt wird.
+- Synchronisiert auf Wunsch datierte Aufgaben mit einem autorisierten Kalender und Titeln wie `[PROJEKTCODE] Aufgabentitel`; erkennt Konflikte und Duplikate und bewahrt manuelle Änderungen.
+- Das Hilfsprogramm prüft normalisierte Eingaben ausschließlich lesend und zeigt Änderungsvorschläge; es enthält keinen Kalenderclient und weist keinen Aufgabenabschluss nach.
+
+Installation über die vorhandenen Installationsbefehle der Sammlung. Aufruf:
+
+```text
+$maintain-work-plan Configure this project to maintain its ordered work plan alongside its work log.
 ```
 
 #### `maintain-project-digest` (experimentell)

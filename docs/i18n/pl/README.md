@@ -31,6 +31,7 @@ Licencja - [Licencja Apache 2.0](../../../LICENSE). Prawa autorskie 2026 kolabse
     - [`execute-verified-development-lifecycle`](#execute-verified-development-lifecycle-eksperymentalny)
   - [Wiedza o projekcie i ciągłość](#ciągłość-wiedzy-i-projektu)
     - [`maintain-work-log`](#maintain-work-log)
+    - [`maintain-work-plan`](#maintain-work-plan-eksperymentalny)
     - [`maintain-project-digest`](#maintain-project-digest-eksperymentalny)
     - [`sync-project-context`](#sync-project-context)
   - [Koordynacja i komunikacja](#koordynacja-i-komunikacja)
@@ -512,6 +513,21 @@ dzienniki aplikacji, śledzenie czasu lub niepotwierdzone zdarzenia.
 
 ```text
 $maintain-work-log Skonfiguruj prowadzenie datowanego dziennika projektu.
+```
+
+#### `maintain-work-plan` (eksperymentalny)
+
+Utrzymuje trwały, uporządkowany plan projektu ze stałymi identyfikatorami, opcjonalnymi preferowanymi datami i zależnościami.
+
+- Przy pierwszym użyciu ustala istniejące ścieżki planu i dziennika, kod projektu, strefę czasową i zasady korzystania z kalendarza; zachowuje istniejący Markdown.
+- Współpracuje z `maintain-work-log`: weryfikuje ukończenie i zapisuje datowany wpis w dzienniku przed usunięciem zakończonej pracy z aktywnego planu.
+- Opcjonalnie synchronizuje zadania z datami z kalendarzem po uzyskaniu upoważnienia, używając tytułów `[KOD PROJEKTU] Tytuł zadania`; wykrywa konflikty i duplikaty oraz zachowuje ręczne zmiany.
+- Narzędzie pomocnicze tylko odczytuje i sprawdza znormalizowane dane oraz przedstawia proponowane zmiany; nie zawiera klienta kalendarza ani nie potwierdza ukończenia.
+
+Instalacja odbywa się za pomocą istniejących poleceń instalacji kolekcji. Wywołanie:
+
+```text
+$maintain-work-plan Configure this project to maintain its ordered work plan alongside its work log.
 ```
 
 #### `maintain-project-digest` (eksperymentalny)

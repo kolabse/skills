@@ -30,6 +30,7 @@ kolabse tarafından bakımı yapılan, yeniden kullanılabilir ajan becerileri.
     - [`execute-verified-development-lifecycle`](#execute-verified-development-lifecycle-deneysel)
   - [Proje bilgisi ve süreklilik](#proje-bilgisi-ve-süreklilik)
     - [`maintain-work-log`](#maintain-work-log)
+    - [`maintain-work-plan`](#maintain-work-plan-deneysel)
     - [`maintain-project-digest`](#maintain-project-digest-deneysel)
     - [`sync-project-context`](#sync-project-context)
   - [Koordinasyon ve iletişim](#koordinasyon-ve-iletişim)
@@ -616,6 +617,21 @@ $execute-verified-development-lifecycle Plan and verify this change through the 
 
 ```text
 $maintain-work-log Configure this project to maintain its dated work log.
+```
+
+#### `maintain-work-plan` (deneysel)
+
+Sabit kimlikler, isteğe bağlı hedef tarihler ve bağımlılıklarla kalıcı, sıralı bir proje planı tutar.
+
+- İlk kullanımda mevcut plan ve günlük yollarını, proje kodunu, saat dilimini ve takvim politikasını belirler; mevcut Markdown içeriğini korur.
+- `maintain-work-log` ile birlikte çalışır: tamamlanan işi etkin plandan kaldırmadan önce tamamlanmayı doğrular ve tarihli günlük kaydını kaydeder.
+- İsteğe bağlı olarak tarihli görevleri izin verilmiş bir takvimle `[PROJE KODU] Görev başlığı` biçiminde eşitler; çakışmaları ve yinelenen kayıtları tespit eder, elle yapılan değişiklikleri korur.
+- Yardımcı araç, normalleştirilmiş girdiyi salt okunur biçimde doğrular ve önerilen değişiklikleri gösterir; takvim istemcisi içermez ve tamamlanmayı kanıtlamaz.
+
+Koleksiyonun mevcut kurulum komutlarıyla kurulur. Çağırma:
+
+```text
+$maintain-work-plan Configure this project to maintain its ordered work plan alongside its work log.
 ```
 
 #### `maintain-project-digest` (deneysel)

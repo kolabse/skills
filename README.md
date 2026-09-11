@@ -28,6 +28,7 @@ Licensed under the [Apache License 2.0](LICENSE). Copyright 2026 kolabse.
     - [`execute-verified-development-lifecycle`](#execute-verified-development-lifecycle-experimental)
   - [Project knowledge and continuity](#project-knowledge-and-continuity)
     - [`maintain-work-log`](#maintain-work-log)
+    - [`maintain-work-plan`](#maintain-work-plan-experimental)
     - [`maintain-project-digest`](#maintain-project-digest-experimental)
     - [`sync-project-context`](#sync-project-context)
   - [Coordination and communication](#coordination-and-communication)
@@ -634,6 +635,21 @@ Maintain the canonical dated project journal at `docs/reports/work-log.md`.
 
 ```text
 $maintain-work-log Configure this project to maintain its dated work log.
+```
+
+#### `maintain-work-plan` (experimental)
+
+Maintain an ordered, persistent project plan with stable IDs, optional desired dates and dependencies.
+
+- On first use, resolve existing plan/log paths, project code, timezone and calendar policy; preserve existing Markdown.
+- Pair with `maintain-work-log`: verify completion and save the dated journal entry before removing finished work from the active plan.
+- Optionally synchronize dated items with an authorized calendar using `[PROJECT CODE] Task title`; detect conflicts and duplicates and preserve manual edits.
+- The read-only helper validates normalized input and previews changes; it includes no calendar client and does not prove completion.
+
+Install through the collection's existing installation commands. Invoke with:
+
+```text
+$maintain-work-plan Configure this project to maintain its ordered work plan alongside its work log.
 ```
 
 #### `maintain-project-digest` (experimental)

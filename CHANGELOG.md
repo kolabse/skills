@@ -2,6 +2,20 @@
 
 ## [Unreleased]
 
+### Added
+
+- Experimental `maintain-work-plan` maintains ordered project work with stable
+  IDs, dependencies and desired dates, preserves verified outcomes in the work
+  log before removing completed items, and guides optional authorized calendar
+  synchronization with `[project code]` event titles. Its read-only helper
+  validates normalized snapshots and previews identity-bound calendar changes;
+  live calendar writes remain with the agent's available provider tools.
+
+### Changed
+
+- Work-log guidance preserves task identifiers, follows the declared journal
+  path and supports retryable log-first completion transfer from an active plan.
+
 ## [1.22.0] - 2026-09-07
 
 ### Changed

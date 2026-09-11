@@ -30,6 +30,7 @@ Sous [licence Apache 2.0](../../../LICENSE). Copyright 2026 kolabse.
     - [`execute-verified-development-lifecycle`](#execute-verified-development-lifecycle-expérimental)
   - [Connaissances du projet et continuité](#connaissances-du-projet-et-continuité)
     - [`maintain-work-log`](#maintain-work-log)
+    - [`maintain-work-plan`](#maintain-work-plan-expérimental)
     - [`maintain-project-digest`](#maintain-project-digest-expérimental)
     - [`sync-project-context`](#sync-project-context)
   - [Coordination et communication](#coordination-et-communication)
@@ -655,6 +656,21 @@ Maintenez le journal de projet canonique daté dans `docs/reports/work-log.md`.
 
 ```text
 $maintain-work-log Configure this project to maintain its dated work log.
+```
+
+#### `maintain-work-plan` (expérimental)
+
+Maintient un plan de projet persistant et ordonné avec des identifiants stables, des dates souhaitées facultatives et des dépendances.
+
+- À la première utilisation, détermine les chemins existants du plan et du journal, le code du projet, le fuseau horaire et les règles du calendrier ; préserve le Markdown existant.
+- Fonctionne avec `maintain-work-log` : vérifie l’achèvement et enregistre l’entrée datée du journal avant de retirer le travail terminé du plan actif.
+- Synchronise facultativement les tâches datées avec un calendrier autorisé, avec des titres comme `[CODE DU PROJET] Titre de la tâche` ; détecte les conflits et les doublons et préserve les modifications manuelles.
+- L’utilitaire valide les données normalisées et présente les modifications proposées en lecture seule ; il ne contient aucun client de calendrier et ne prouve pas l’achèvement.
+
+Installation via les commandes d’installation existantes de la collection. Invocation :
+
+```text
+$maintain-work-plan Configure this project to maintain its ordered work plan alongside its work log.
 ```
 
 #### `maintain-project-digest` (expérimental)

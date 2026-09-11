@@ -1,0 +1,32 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Normalized work-plan snapshot",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "project_id", "project_code", "id_prefix", "historical_ids", "tasks"],
+  "properties": {
+    "schema_version": {"type": "integer", "const": 1},
+    "project_id": {"$ref": "#/$defs/text"},
+    "project_code": {"$ref": "#/$defs/text"},
+    "id_prefix": {"type": "string", "pattern": "^[A-Za-z][A-Za-z0-9_-]*$"},
+    "historical_ids": {"type": "array", "uniqueItems": true, "items": {"$ref": "#/$defs/text"}},
+    "tasks": {"type": "array", "items": {"$ref": "#/$defs/task"}}
+  },
+  "$defs": {
+    "text": {"type": "string", "minLength": 1, "pattern": "^[^\\s\\x00-\\x1f](?:[^\\x00-\\x1f]*[^\\s\\x00-\\x1f])?$"},
+    "timestamp": {"type": "string", "format": "date-time", "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}[+-][0-9]{2}:[0-9]{2}$"},
+    "task": {
+      "type": "object", "additionalProperties": false,
+      "required": ["id", "title", "status", "depends_on", "desired_date"],
+      "properties": {
+        "id": {"$ref": "#/$defs/text"}, "title": {"$ref": "#/$defs/text"},
+        "status": {"enum": ["planned", "in_progress", "blocked", "partial", "acceptance_pending"]},
+        "depends_on": {"type": "array", "uniqueItems": true, "items": {"$ref": "#/$defs/text"}},
+        "desired_date": {"anyOf": [{"type": "null"}, {"type": "string", "format": "date", "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}$"}]},
+        "starts_at": {"$ref": "#/$defs/timestamp"},
+        "duration_minutes": {"type": "integer", "minimum": 1}
+      },
+      "dependentRequired": {"starts_at": ["duration_minutes"], "duration_minutes": ["starts_at"]}
+    }
+  }
+}

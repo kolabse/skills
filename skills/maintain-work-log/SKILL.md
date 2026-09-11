@@ -5,9 +5,26 @@ description: "Maintain the canonical dated project work log at docs/reports/work
 
 # Maintain Work Log
 
-Treat `docs/reports/work-log.md` as the project's durable operational record.
+Use the project's declared journal path; `docs/reports/work-log.md` is the
+default when no path is declared. Do not configure a second default-path log
+when an existing project journal lives elsewhere.
 Record observable facts and decisions, not private reasoning, credentials, or a
 transcript of routine command execution.
+
+## Pair the journal with an active work plan
+
+When a task belongs to a persistent work plan, preserve its stable ID in the
+dated outcome and verification record. Use `maintain-work-plan` for queue
+ordering, dependencies, desired dates and linked calendar events; recording an
+outcome alone does not require creating a plan or accessing a calendar.
+
+Before removing a completed plan item, save and reread its supported completion
+entry. Reuse a matching entry on retry, and distinguish a historical mention
+or partial result from verified completion. Retain unfinished acceptance work
+and child items. A failed journal write leaves the plan item active; if the
+journal succeeds but the plan edit fails, report the partial update and reuse
+the saved entry on retry. Do not erase journal history to simulate a two-file
+transaction. Follow the owning plan/generator for the actual plan update.
 
 ## Configure the project
 
