@@ -1,6 +1,6 @@
 {
   "schema_version": 2,
-  "collection_version": "1.22.0",
+  "collection_version": "1.23.0",
   "supported_agents": [
     "claude-code",
     "codex"
@@ -10,11 +10,11 @@
   "composition_evidence_schema": "schemas/composition-evidence.schema.json",
   "composition_result_schema": "schemas/composition-result.schema.json",
   "release_holdout": {
-    "name": "release-holdout-v4",
-    "path": "evals/release-holdout-v4.json",
-    "sha256": "d5be9dfab3ff21623ea8f21bd7ca7178fbd1b2c42c3c620b014781b976095751",
+    "name": "release-holdout-v5",
+    "path": "evals/release-holdout-v5.json",
+    "sha256": "406ffb61146bacba8b553a11b46941003985b8e505a71f9bddd44648b0484a1a",
     "baseline_release": "v1.22.0",
-    "baseline_report": "evals/baselines/release-holdout-v4-v1.22.0.json"
+    "baseline_report": "evals/baselines/release-holdout-v5-v1.22.0.json"
   },
   "compositions": [
     {
@@ -1050,7 +1050,8 @@
     {
       "name": "discover-skill-candidates",
       "path": "skills/discover-skill-candidates",
-      "status": "experimental",
+      "status": "stable",
+      "stable_since": "1.23.0",
       "maintainers": [
         "@kolabse"
       ],

@@ -38,7 +38,7 @@ Distribuido bajo la [Licencia Apache 2.0](../../../LICENSE). Copyright 2026 kola
   - [Infraestructura y operaciones](#infraestructura-y-operaciones)
     - [`operate-yandex-cloud`](#operate-yandex-cloud)
   - [Evolución de la colección de habilidades](#evolución-de-la-colección-de-habilidades)
-    - [`discover-skill-candidates`](#discover-skill-candidates-experimental)
+    - [`discover-skill-candidates`](#discover-skill-candidates)
     - [`release-skill-collection`](#release-skill-collection)
 - [Composiciones compatibles](#composiciones-compatibles)
 - [Añadir una habilidad](#añadir-una-habilidad)
@@ -851,7 +851,7 @@ $operate-yandex-cloud Configure this project for Yandex Cloud operations.
 
 ### Evolución de la colección de habilidades
 
-#### `discover-skill-candidates` (experimental)
+#### `discover-skill-candidates`
 
 Encontrar ideas de habilidad reutilizables en proyecto consolidado y evidencia contextual sin
 creando una habilidad.

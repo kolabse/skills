@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
 import subprocess
 import sys
 import tempfile
@@ -144,6 +145,37 @@ class DiscoverSkillCandidatesTests(unittest.TestCase):
             self.assertTrue(rule["git"]["tracked"])
             self.assertFalse(rule["git"]["modified"])
             self.assertTrue(rule["git"]["blob_oid"])
+
+    def test_cli_preserves_unicode_with_restrictive_stdout_encoding(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            project = Path(directory) / "project"
+            initialize_project(project, "# Workflow\n\nInspect input \u2192 verify result.\n")
+            expected = self.inventory(project)
+            environment = {**os.environ, "PYTHONIOENCODING": "ascii:strict"}
+            for flags in ([], ["--json"]):
+                with self.subTest(flags=flags):
+                    result = subprocess.run(
+                        [sys.executable, str(SCRIPT_DIRECTORY / "discover_candidates.py"),
+                         "inventory", "--project-path", str(project), *flags],
+                        env=environment, capture_output=True, text=True, encoding="ascii",
+                    )
+                    self.assertEqual(0, result.returncode, result.stdout + result.stderr)
+                    self.assertEqual(expected, json.loads(result.stdout))
+
+    def test_cli_json_error_preserves_unicode_with_restrictive_stdout_encoding(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            missing = Path(directory) / "missing-\u2192"
+            result = subprocess.run(
+                [sys.executable, str(SCRIPT_DIRECTORY / "discover_candidates.py"),
+                 "inventory", "--project-path", str(missing), "--json"],
+                env={**os.environ, "PYTHONIOENCODING": "ascii:strict"},
+                capture_output=True, text=True, encoding="ascii",
+            )
+            self.assertEqual(1, result.returncode)
+            self.assertEqual("", result.stderr)
+            payload = json.loads(result.stdout)
+            self.assertFalse(payload["ok"])
+            self.assertIn("missing-\u2192", payload["error"])
 
     def test_managed_blocks_and_skill_references_stay_together(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
@@ -720,7 +752,7 @@ class DiscoverSkillCandidatesTests(unittest.TestCase):
             project = root / "project"
             project.mkdir()
             output = root / "result.json"
-            result = {"valid": True, "value": "portable"}
+            result = {"valid": True, "value": "portable \u2192"}
 
             discover_candidates.write_explicit_output(
                 argparse.Namespace(output=str(output), project_path=str(project)),
@@ -728,6 +760,7 @@ class DiscoverSkillCandidatesTests(unittest.TestCase):
             )
 
             self.assertEqual(result, json.loads(output.read_text(encoding="utf-8")))
+            self.assertIn("portable \u2192", output.read_text(encoding="utf-8"))
             with self.assertRaisesRegex(
                 discover_candidates.DiscoveryError, "outside the analyzed project"
             ):

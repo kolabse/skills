@@ -40,7 +40,7 @@ kolabse tarafından bakımı yapılan, yeniden kullanılabilir ajan becerileri.
   - [Altyapı ve operasyonlar](#altyapı-ve-operasyonlar)
     - [`operate-yandex-cloud`](#operate-yandex-cloud)
   - [Beceri koleksiyonunun gelişimi](#beceri-koleksiyonunun-gelişimi)
-    - [`discover-skill-candidates`](#discover-skill-candidates-deneysel)
+    - [`discover-skill-candidates`](#discover-skill-candidates)
     - [`release-skill-collection`](#release-skill-collection)
 - [Desteklenen bileşimler](#desteklenen-bileşimler)
 - [Beceri ekleme](#beceri-ekleme)
@@ -845,7 +845,7 @@ $operate-yandex-cloud Configure this project for Yandex Cloud operations.
 
 ### Beceri koleksiyonunun gelişimi
 
-#### `discover-skill-candidates` (deneysel)
+#### `discover-skill-candidates`
 
 Beceri oluşturmadan, sınırlı proje ve bağlam kanıtlarında yeniden kullanılabilir
 beceri fikirleri bulun.

@@ -40,7 +40,7 @@ Lizenziert unter der [Apache License 2.0](../../../LICENSE). Copyright 2026 kola
   - [Infrastruktur und Betrieb](#infrastruktur-und-betrieb)
     - [`operate-yandex-cloud`](#operate-yandex-cloud)
   - [Weiterentwicklung der Skill-Sammlung](#weiterentwicklung-der-skill-sammlung)
-    - [`discover-skill-candidates`](#discover-skill-candidates-experimentell)
+    - [`discover-skill-candidates`](#discover-skill-candidates)
     - [`release-skill-collection`](#release-skill-collection)
 - [Unterstützte Kombinationen](#unterstützte-kombinationen)
 - [Einen Skill hinzufügen](#einen-skill-hinzufügen)
@@ -904,7 +904,7 @@ $operate-yandex-cloud Configure this project for Yandex Cloud operations.
 
 ### Weiterentwicklung der Skill-Sammlung
 
-#### `discover-skill-candidates` (experimentell)
+#### `discover-skill-candidates`
 
 Wiederverwendbare Skill-Ideen in abgegrenzten Projekt- und Kontextnachweisen
 finden, ohne einen Skill zu erstellen.

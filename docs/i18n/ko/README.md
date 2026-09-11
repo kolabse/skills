@@ -40,7 +40,7 @@ kolabse가 관리하는 재사용 가능한 에이전트 스킬 모음입니다.
   - [인프라 및 운영](#인프라-및-운영)
     - [`operate-yandex-cloud`](#operate-yandex-cloud)
   - [스킬 모음의 발전](#스킬-모음의-발전)
-    - [`discover-skill-candidates`](#discover-skill-candidates-실험적)
+    - [`discover-skill-candidates`](#discover-skill-candidates)
     - [`release-skill-collection`](#release-skill-collection)
 - [지원하는 조합](#지원하는-조합)
 - [스킬 추가](#스킬-추가)
@@ -777,7 +777,7 @@ $operate-yandex-cloud Configure this project for Yandex Cloud operations.
 
 ### 스킬 모음의 발전
 
-#### `discover-skill-candidates` (실험적)
+#### `discover-skill-candidates`
 
 스킬을 만들지 않고 범위가 한정된 프로젝트 및 컨텍스트 증거에서 재사용 가능한 스킬 아이디어를 찾습니다.
 

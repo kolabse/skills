@@ -41,7 +41,7 @@
   - [Инфраструктура и эксплуатация](#инфраструктура-и-эксплуатация)
     - [`operate-yandex-cloud`](#operate-yandex-cloud)
   - [Развитие коллекции навыков](#развитие-коллекции-навыков)
-    - [`discover-skill-candidates`](#discover-skill-candidates-experimental)
+    - [`discover-skill-candidates`](#discover-skill-candidates)
     - [`release-skill-collection`](#release-skill-collection)
 - [Поддерживаемые композиции](#поддерживаемые-композиции)
 - [Добавление навыка](#добавление-навыка)
@@ -675,7 +675,7 @@ $operate-yandex-cloud Настрой проект для работы с Yandex 
 
 ### Развитие коллекции навыков
 
-#### `discover-skill-candidates` (experimental)
+#### `discover-skill-candidates`
 
 Находит переиспользуемые идеи навыков в ограниченных правилах и контексте, не
 создавая навык.
