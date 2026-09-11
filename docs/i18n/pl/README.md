@@ -29,6 +29,7 @@ Licencja - [Licencja Apache 2.0](../../../LICENSE). Prawa autorskie 2026 kolabse
     - [`coordinate-code-documentation-repositories`](#coordinate-code-documentation-repositories-eksperymentalny)
     - [`execute-configured-gitflow-releases`](#execute-configured-gitflow-releases-eksperymentalny)
     - [`execute-verified-development-lifecycle`](#execute-verified-development-lifecycle-eksperymentalny)
+    - [`retire-merged-task-branches`](#retire-merged-task-branches-experimental)
   - [Wiedza o projekcie i ciągłość](#ciągłość-wiedzy-i-projektu)
     - [`maintain-work-log`](#maintain-work-log)
     - [`maintain-work-plan`](#maintain-work-plan-eksperymentalny)
@@ -42,7 +43,7 @@ Licencja - [Licencja Apache 2.0](../../../LICENSE). Prawa autorskie 2026 kolabse
   - [Infrastruktura i operacje](#infrastruktura-i-operacje)
     - [`operate-yandex-cloud`](#operate-yandex-cloud)
   - [Rozwój gromadzenia umiejętności](#rozwój-zbioru-umiejętności)
-    - [`discover-skill-candidates`](#discover-skill-candidates-eksperymentalny)
+    - [`discover-skill-candidates`](#discover-skill-candidates)
     - [`release-skill-collection`](#release-skill-collection)
 - [Obsługiwane kompozycje](#obsługiwane-kompozycje)
 - [Dodawanie umiejętności](#dodawanie-umiejętności)
@@ -496,6 +497,19 @@ $execute-verified-development-lifecycle Zaplanuj i zweryfikuj zmianę zgodnie ze
 ```
 
 
+#### `retire-merged-task-branches` (experimental)
+
+Planuje i za wyraźną zgodą wykonuje usuwanie scalonych gałęzi zadań oraz powiązanych worktree na podstawie aktualnych dowodów z GitHub lub GitLab.
+
+Sprawdza repozytorium źródłowe i dokładne końcówki gałęzi, zachowuje aktywne lub zmienione worktree i chronione referencje oraz wymaga zgody na konkretny plan przed usunięciem. Weryfikacja dowodów cyklu rozwoju i sprzątanie wydań kolekcji pozostają odrębnymi procesami.
+
+Najpierw zainstaluj `$synchronize-git-repositories`. Trwała konfiguracja nie jest potrzebna; przed pierwszym planem uruchom polecenie statusu tylko do odczytu.
+
+```shell
+python <skill-root>/scripts/retire_branches.py status --json
+```
+
+
 ### Ciągłość wiedzy i projektu
 
 #### `maintain-work-log`
@@ -691,7 +705,7 @@ $operate-yandex-cloud Skonfiguruj projekt do pracy z Yandex Cloud.
 
 ### Rozwój zbioru umiejętności
 
-#### `discover-skill-candidates` (eksperymentalny)
+#### `discover-skill-candidates`
 
 Znajduje pomysły na umiejętności, które można wykorzystać ponownie w ograniczonych zasadach i kontekście, ale nie
 tworzenie umiejętności.

@@ -29,6 +29,7 @@
     - [`coordinate-code-documentation-repositories`](#coordinate-code-documentation-repositories-experimental)
     - [`execute-configured-gitflow-releases`](#execute-configured-gitflow-releases-experimental)
     - [`execute-verified-development-lifecycle`](#execute-verified-development-lifecycle-experimental)
+    - [`retire-merged-task-branches`](#retire-merged-task-branches-experimental)
   - [Знания и непрерывность проекта](#знания-и-непрерывность-проекта)
     - [`maintain-work-log`](#maintain-work-log)
     - [`maintain-work-plan`](#maintain-work-plan-экспериментальный)
@@ -42,7 +43,7 @@
   - [Инфраструктура и эксплуатация](#инфраструктура-и-эксплуатация)
     - [`operate-yandex-cloud`](#operate-yandex-cloud)
   - [Развитие коллекции навыков](#развитие-коллекции-навыков)
-    - [`discover-skill-candidates`](#discover-skill-candidates-experimental)
+    - [`discover-skill-candidates`](#discover-skill-candidates)
     - [`release-skill-collection`](#release-skill-collection)
 - [Поддерживаемые композиции](#поддерживаемые-композиции)
 - [Добавление навыка](#добавление-навыка)
@@ -496,6 +497,19 @@ $execute-verified-development-lifecycle Спланируй и проверь и�
 ```
 
 
+#### `retire-merged-task-branches` (experimental)
+
+Планирует и по явному разрешению выполняет удаление слитых веток задач и связанных worktree по свежим данным GitHub PR или GitLab MR.
+
+Проверяет исходный репозиторий и точные вершины веток, сохраняет грязные или активные worktree и защищённые refs. Удаление требует согласия на конкретный план. Проверка evidence жизненного цикла и очистка релиза коллекции остаются отдельными процессами.
+
+Сначала установите `$synchronize-git-repositories`. Постоянная конфигурация не нужна; перед первым планом выполните команду status без изменений.
+
+```shell
+python <skill-root>/scripts/retire_branches.py status --json
+```
+
+
 ### Знания и непрерывность проекта
 
 #### `maintain-work-log`
@@ -691,7 +705,7 @@ $operate-yandex-cloud Настрой проект для работы с Yandex 
 
 ### Развитие коллекции навыков
 
-#### `discover-skill-candidates` (experimental)
+#### `discover-skill-candidates`
 
 Находит переиспользуемые идеи навыков в ограниченных правилах и контексте, не
 создавая навык.

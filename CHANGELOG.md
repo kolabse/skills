@@ -10,11 +10,33 @@
   synchronization with `[project code]` event titles. Its read-only helper
   validates normalized snapshots and previews identity-bound calendar changes;
   live calendar writes remain with the agent's available provider tools.
+- Add experimental `retire-merged-task-branches`: prepare and explicitly apply
+  revision-bound cleanup plans for merged GitHub/GitLab tasks, preserving newer
+  or ambiguous work and requiring explicit selection of inactive task worktrees.
+  Conditional reference deletion and partial-result reporting remain separate
+  from lifecycle evidence coordination and audited collection-release cleanup.
 
 ### Changed
 
 - Work-log guidance preserves task identifiers, follows the declared journal
   path and supports retryable log-first completion transfer from an active plan.
+
+## [1.23.0] - 2026-09-11
+
+### Changed
+
+- Promote `discover-skill-candidates` to stable with independent project trials,
+  reviewed portable public contributions, copied-consumer checks and a new
+  immutable release holdout covering discovery and candidate intake.
+- Candidate discovery explicitly activates for received contribution-package
+  validation while excluding unrelated JSON configuration validation.
+
+### Fixed
+
+- Discovery CLI JSON succeeds with restrictive Windows stdout encodings while
+  preserving Unicode values, content digests and UTF-8 output files. Errors
+  containing Unicode paths also remain valid JSON instead of raising a second
+  encoding exception.
 
 ## [1.22.0] - 2026-09-07
 
@@ -738,6 +760,7 @@ First versioned release of the kolabse skill collection.
 - Tests for configuration migration, fake cloud and infrastructure CLIs,
   installation confirmation, and collection metadata.
 
+[1.23.0]: https://github.com/kolabse/skills/releases/tag/v1.23.0
 [1.22.0]: https://github.com/kolabse/skills/releases/tag/v1.22.0
 [1.21.1]: https://github.com/kolabse/skills/releases/tag/v1.21.1
 [1.21.0]: https://github.com/kolabse/skills/releases/tag/v1.21.0

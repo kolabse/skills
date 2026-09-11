@@ -1368,12 +1368,12 @@ def main() -> int:
         }
         result = commands[args.command](args)
         write_explicit_output(args, result)
-        print(json.dumps(result, ensure_ascii=False, indent=2 if args.json else None, sort_keys=True))
+        print(json.dumps(result, ensure_ascii=True, indent=2 if args.json else None, sort_keys=True))
         return 0
     except (DiscoveryError, OSError, ValueError) as error:
         payload = {"ok": False, "error": str(error)}
         if getattr(args, "json", False):
-            print(json.dumps(payload, ensure_ascii=False, sort_keys=True))
+            print(json.dumps(payload, ensure_ascii=True, sort_keys=True))
         else:
             print(f"ERROR: {error}", file=sys.stderr)
         return 1

@@ -28,6 +28,7 @@
     - [`coordinate-code-documentation-repositories`](#coordinate-code-documentation-repositories-实验性)
     - [`execute-configured-gitflow-releases`](#execute-configured-gitflow-releases-实验性)
     - [`execute-verified-development-lifecycle`](#execute-verified-development-lifecycle-实验性)
+    - [`retire-merged-task-branches`](#retire-merged-task-branches-experimental)
   - [项目知识与连续性](#项目知识与连续性)
     - [`maintain-work-log`](#maintain-work-log)
     - [`maintain-work-plan`](#maintain-work-plan-实验性)
@@ -41,7 +42,7 @@
   - [基础设施与运维](#基础设施与运维)
     - [`operate-yandex-cloud`](#operate-yandex-cloud)
   - [技能集合演进](#技能集合演进)
-    - [`discover-skill-candidates`](#discover-skill-candidates-实验性)
+    - [`discover-skill-candidates`](#discover-skill-candidates)
     - [`release-skill-collection`](#release-skill-collection)
 - [支持的组合](#支持的组合)
 - [添加技能](#添加技能)
@@ -491,6 +492,19 @@ $execute-configured-gitflow-releases Run an explicit hotfix release and verify i
 $execute-verified-development-lifecycle Plan and verify this change through the project's configured development lifecycle.
 ```
 
+#### `retire-merged-task-branches` (experimental)
+
+根据 GitHub 或 GitLab 的最新审查证据，规划已合并任务分支及关联 worktree 的清理，并在明确授权后执行。
+
+核实源仓库身份和精确的分支顶端提交，保留有修改或正在使用的 worktree 以及受保护的引用，删除前要求针对确切计划的同意。开发生命周期证据验证和技能集合发布清理仍是独立流程。
+
+请先安装 `$synchronize-git-repositories`。无需持久配置；首次规划前运行只读状态命令。
+
+```shell
+python <skill-root>/scripts/retire_branches.py status --json
+```
+
+
 ### 项目知识与连续性
 
 #### `maintain-work-log`
@@ -713,7 +727,7 @@ $operate-yandex-cloud Configure this project for Yandex Cloud operations.
 
 ### 技能集合演进
 
-#### `discover-skill-candidates` （实验性）
+#### `discover-skill-candidates`
 
 在限定范围的项目和上下文证据中发现可复用技能构想，但不创建技能。
 

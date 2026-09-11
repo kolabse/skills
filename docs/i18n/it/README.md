@@ -28,6 +28,7 @@ Distribuito con la [Apache License 2.0](../../../LICENSE). Copyright 2026 kolabs
     - [`coordinate-code-documentation-repositories`](#coordinate-code-documentation-repositories-sperimentale)
     - [`execute-configured-gitflow-releases`](#execute-configured-gitflow-releases-sperimentale)
     - [`execute-verified-development-lifecycle`](#execute-verified-development-lifecycle-sperimentale)
+    - [`retire-merged-task-branches`](#retire-merged-task-branches-experimental)
   - [Conoscenza e continuità del progetto](#conoscenza-e-continuità-del-progetto)
     - [`maintain-work-log`](#maintain-work-log)
     - [`maintain-work-plan`](#maintain-work-plan-sperimentale)
@@ -41,7 +42,7 @@ Distribuito con la [Apache License 2.0](../../../LICENSE). Copyright 2026 kolabs
   - [Infrastruttura e operazioni](#infrastruttura-e-operazioni)
     - [`operate-yandex-cloud`](#operate-yandex-cloud)
   - [Evoluzione della raccolta di skill](#evoluzione-della-raccolta-di-skill)
-    - [`discover-skill-candidates`](#discover-skill-candidates-sperimentale)
+    - [`discover-skill-candidates`](#discover-skill-candidates)
     - [`release-skill-collection`](#release-skill-collection)
 - [Composizioni supportate](#composizioni-supportate)
 - [Aggiungere una skill](#aggiungere-una-skill)
@@ -630,6 +631,19 @@ punti di controllo: `$orchestrate-agent-work`, `$diagnose-software-defects`,
 $execute-verified-development-lifecycle Plan and verify this change through the project's configured development lifecycle.
 ```
 
+#### `retire-merged-task-branches` (experimental)
+
+Pianifica e applica con autorizzazione esplicita la pulizia dei branch di attività integrati e dei worktree associati usando prove aggiornate da GitHub o GitLab.
+
+Verifica il repository di origine e i commit esatti, preserva worktree attivi o modificati e riferimenti protetti, e richiede il consenso legato al piano esatto prima della rimozione. La verifica delle prove del ciclo di sviluppo e la pulizia delle release della raccolta restano processi separati.
+
+Installa prima `$synchronize-git-repositories`. Non serve una configurazione persistente; esegui il comando di stato in sola lettura prima del primo piano.
+
+```shell
+python <skill-root>/scripts/retire_branches.py status --json
+```
+
+
 ### Conoscenza e continuità del progetto
 
 #### `maintain-work-log`
@@ -913,7 +927,7 @@ $operate-yandex-cloud Configure this project for Yandex Cloud operations.
 
 ### Evoluzione della raccolta di skill
 
-#### `discover-skill-candidates` (sperimentale)
+#### `discover-skill-candidates`
 
 Individua idee per skill riutilizzabili in evidenze circoscritte di progetto e
 di contesto, senza creare una skill.

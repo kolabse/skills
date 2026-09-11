@@ -28,6 +28,7 @@ Lizenziert unter der [Apache License 2.0](../../../LICENSE). Copyright 2026 kola
     - [`coordinate-code-documentation-repositories`](#coordinate-code-documentation-repositories-experimentell)
     - [`execute-configured-gitflow-releases`](#execute-configured-gitflow-releases-experimentell)
     - [`execute-verified-development-lifecycle`](#execute-verified-development-lifecycle-experimentell)
+    - [`retire-merged-task-branches`](#retire-merged-task-branches-experimental)
   - [Projektwissen und Kontinuität](#projektwissen-und-kontinuität)
     - [`maintain-work-log`](#maintain-work-log)
     - [`maintain-work-plan`](#maintain-work-plan-experimentell)
@@ -41,7 +42,7 @@ Lizenziert unter der [Apache License 2.0](../../../LICENSE). Copyright 2026 kola
   - [Infrastruktur und Betrieb](#infrastruktur-und-betrieb)
     - [`operate-yandex-cloud`](#operate-yandex-cloud)
   - [Weiterentwicklung der Skill-Sammlung](#weiterentwicklung-der-skill-sammlung)
-    - [`discover-skill-candidates`](#discover-skill-candidates-experimentell)
+    - [`discover-skill-candidates`](#discover-skill-candidates)
     - [`release-skill-collection`](#release-skill-collection)
 - [Unterstützte Kombinationen](#unterstützte-kombinationen)
 - [Einen Skill hinzufügen](#einen-skill-hinzufügen)
@@ -641,6 +642,19 @@ $execute-verified-development-lifecycle Plan and verify this change through the 
 ```
 
 
+#### `retire-merged-task-branches` (experimental)
+
+Plant und führt mit ausdrücklicher Zustimmung die Bereinigung integrierter Aufgabenbranches und zugehöriger Worktrees anhand aktueller GitHub- oder GitLab-Nachweise aus.
+
+Prüft das Quellrepository und die exakten Branchspitzen, erhält aktive oder geänderte Worktrees sowie geschützte Refs und verlangt vor dem Löschen eine Zustimmung zum konkreten Plan. Die Prüfung von Lifecycle-Nachweisen und die Bereinigung von Collection-Releases bleiben separate Abläufe.
+
+Installieren Sie zuerst `$synchronize-git-repositories`. Es ist keine dauerhafte Konfiguration nötig; führen Sie vor dem ersten Plan den schreibgeschützten Statusbefehl aus.
+
+```shell
+python <skill-root>/scripts/retire_branches.py status --json
+```
+
+
 ### Projektwissen und Kontinuität
 
 #### `maintain-work-log`
@@ -920,7 +934,7 @@ $operate-yandex-cloud Configure this project for Yandex Cloud operations.
 
 ### Weiterentwicklung der Skill-Sammlung
 
-#### `discover-skill-candidates` (experimentell)
+#### `discover-skill-candidates`
 
 Wiederverwendbare Skill-Ideen in abgegrenzten Projekt- und Kontextnachweisen
 finden, ohne einen Skill zu erstellen.

@@ -52,6 +52,10 @@
   ],
   "negative": [
     {
+      "prompt": "Проверь JSON настроек приложения на синтаксические ошибки и соответствие его схеме.",
+      "reason": "Generic JSON configuration validation is not received skill-candidate package validation."
+    },
+    {
       "prompt": "Создай новый навык обработки PDF по этому подробному техническому заданию.",
       "reason": "The user already supplied a concrete skill brief; direct authoring belongs to skill-creator."
     },

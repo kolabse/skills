@@ -26,6 +26,7 @@ Distribuido bajo la [Licencia Apache 2.0](../../../LICENSE). Copyright 2026 kola
     - [`coordinate-code-documentation-repositories`](#coordinate-code-documentation-repositories-experimental)
     - [`execute-configured-gitflow-releases`](#execute-configured-gitflow-releases-experimental)
     - [`execute-verified-development-lifecycle`](#execute-verified-development-lifecycle-experimental)
+    - [`retire-merged-task-branches`](#retire-merged-task-branches-experimental)
   - [Conocimiento y continuidad del proyecto](#conocimiento-y-continuidad-del-proyecto)
     - [`maintain-work-log`](#maintain-work-log)
     - [`maintain-work-plan`](#maintain-work-plan-experimental)
@@ -39,7 +40,7 @@ Distribuido bajo la [Licencia Apache 2.0](../../../LICENSE). Copyright 2026 kola
   - [Infraestructura y operaciones](#infraestructura-y-operaciones)
     - [`operate-yandex-cloud`](#operate-yandex-cloud)
   - [Evolución de la colección de habilidades](#evolución-de-la-colección-de-habilidades)
-    - [`discover-skill-candidates`](#discover-skill-candidates-experimental)
+    - [`discover-skill-candidates`](#discover-skill-candidates)
     - [`release-skill-collection`](#release-skill-collection)
 - [Composiciones compatibles](#composiciones-compatibles)
 - [Añadir una habilidad](#añadir-una-habilidad)
@@ -605,6 +606,19 @@ $execute-verified-development-lifecycle Plan and verify this change through the 
 ```
 
 
+#### `retire-merged-task-branches` (experimental)
+
+Planifica y aplica con autorización explícita la limpieza de ramas de tareas fusionadas y sus worktrees usando evidencia reciente de GitHub o GitLab.
+
+Verifica la identidad del repositorio de origen y los commits exactos, conserva worktrees activos o con cambios y refs protegidas, y exige consentimiento vinculado al plan exacto antes de eliminar. La verificación de evidencias del ciclo de desarrollo y la limpieza de versiones de la colección son procesos separados.
+
+Instala primero `$synchronize-git-repositories`. No necesita configuración persistente; ejecuta el comando de estado de solo lectura antes del primer plan.
+
+```shell
+python <skill-root>/scripts/retire_branches.py status --json
+```
+
+
 ### Conocimiento y continuidad del proyecto
 
 #### `maintain-work-log`
@@ -867,7 +881,7 @@ $operate-yandex-cloud Configure this project for Yandex Cloud operations.
 
 ### Evolución de la colección de habilidades
 
-#### `discover-skill-candidates` (experimental)
+#### `discover-skill-candidates`
 
 Encontrar ideas de habilidad reutilizables en proyecto consolidado y evidencia contextual sin
 creando una habilidad.

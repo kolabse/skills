@@ -28,6 +28,7 @@ kolabse tarafından bakımı yapılan, yeniden kullanılabilir ajan becerileri.
     - [`coordinate-code-documentation-repositories`](#coordinate-code-documentation-repositories-deneysel)
     - [`execute-configured-gitflow-releases`](#execute-configured-gitflow-releases-deneysel)
     - [`execute-verified-development-lifecycle`](#execute-verified-development-lifecycle-deneysel)
+    - [`retire-merged-task-branches`](#retire-merged-task-branches-experimental)
   - [Proje bilgisi ve süreklilik](#proje-bilgisi-ve-süreklilik)
     - [`maintain-work-log`](#maintain-work-log)
     - [`maintain-work-plan`](#maintain-work-plan-deneysel)
@@ -41,7 +42,7 @@ kolabse tarafından bakımı yapılan, yeniden kullanılabilir ajan becerileri.
   - [Altyapı ve operasyonlar](#altyapı-ve-operasyonlar)
     - [`operate-yandex-cloud`](#operate-yandex-cloud)
   - [Beceri koleksiyonunun gelişimi](#beceri-koleksiyonunun-gelişimi)
-    - [`discover-skill-candidates`](#discover-skill-candidates-deneysel)
+    - [`discover-skill-candidates`](#discover-skill-candidates)
     - [`release-skill-collection`](#release-skill-collection)
 - [Desteklenen bileşimler](#desteklenen-bileşimler)
 - [Beceri ekleme](#beceri-ekleme)
@@ -594,6 +595,19 @@ etkinleştirdiğinde kurun: `$orchestrate-agent-work`, `$diagnose-software-defec
 $execute-verified-development-lifecycle Plan and verify this change through the project's configured development lifecycle.
 ```
 
+#### `retire-merged-task-branches` (experimental)
+
+Güncel GitHub veya GitLab inceleme kanıtlarıyla birleştirilmiş görev dallarını ve bağlı worktree’leri temizlemeyi planlar ve açık izinle uygular.
+
+Kaynak depo kimliğini ve tam dal uçlarını doğrular, değişmiş veya etkin worktree’leri ve korunan referansları muhafaza eder; silmeden önce tam plana bağlı onay gerektirir. Geliştirme yaşam döngüsü kanıt doğrulaması ve koleksiyon sürümü temizliği ayrı iş akışlarıdır.
+
+Önce `$synchronize-git-repositories` kurun. Kalıcı yapılandırma gerekmez; ilk plandan önce salt okunur durum komutunu çalıştırın.
+
+```shell
+python <skill-root>/scripts/retire_branches.py status --json
+```
+
+
 ### Proje bilgisi ve süreklilik
 
 #### `maintain-work-log`
@@ -861,7 +875,7 @@ $operate-yandex-cloud Configure this project for Yandex Cloud operations.
 
 ### Beceri koleksiyonunun gelişimi
 
-#### `discover-skill-candidates` (deneysel)
+#### `discover-skill-candidates`
 
 Beceri oluşturmadan, sınırlı proje ve bağlam kanıtlarında yeniden kullanılabilir
 beceri fikirleri bulun.
