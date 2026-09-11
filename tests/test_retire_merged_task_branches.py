@@ -617,6 +617,33 @@ class RetireMergedTaskBranchesTests(unittest.TestCase):
         self.assertTrue(worktree.exists())
         self.assert_retained()
 
+    def test_missing_exact_task_ref_preserves_single_child_during_remote_only_retirement(self):
+        self.merge()
+        parent = "refs/heads/feature/completed"
+        child = parent + "/followup"
+        git(self.root, "update-ref", "-d", parent, self.task)
+        git(self.root, "update-ref", child, self.task)
+        self.assertIsNone(RETIRE.oid(self.root, parent))
+        path, plan = self.write_plan()
+        self.assertIsNone(plan["snapshot"]["local_source"])
+        result = RETIRE.apply_plan(self.root, path, plan["digest"])
+        self.assertEqual("applied", result["status"])
+        self.assertEqual(["delete-remote"], [action["kind"] for action in result["completed"]])
+        self.assertEqual(self.task, git(self.root, "rev-parse", child))
+        self.assertEqual("", git(self.root, "ls-remote", "origin", parent))
+
+    def test_missing_exact_primary_ref_cannot_be_substituted_by_tracking_child(self):
+        self.merge()
+        git(self.root, "switch", "-c", "retained-checkout")
+        git(self.root, "update-ref", "-d", "refs/heads/main")
+        git(self.root, "branch", "main/backup", "HEAD")
+        git(self.root, "branch", "--set-upstream-to=origin/main", "main/backup")
+        with self.assertRaises(RETIRE.Blocked):
+            self.write_plan()
+        self.assertEqual(git(self.root, "rev-parse", "HEAD"),
+                         git(self.root, "rev-parse", "refs/heads/main/backup"))
+        self.assert_retained()
+
 
 if __name__ == "__main__":
     unittest.main()

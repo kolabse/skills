@@ -56,11 +56,13 @@ def git(root, *args):
 
 
 def oid(root, ref):
-    value = git(root, "for-each-ref", "--format=%(objectname) %(symref)", ref)
-    if not value:
+    output = git(root, "for-each-ref", "--format=%(refname) %(objectname) %(symref)", ref)
+    matches = [line.split() for line in output.splitlines()
+               if line.split() and line.split()[0] == ref]
+    if not matches:
         return None
-    require(len(value.split()) == 1, "Ambiguous or symbolic ref")
-    value = value.split()[0]
+    require(len(matches) == 1 and len(matches[0]) == 2, "Ambiguous or symbolic ref")
+    value = matches[0][1]
     require(re.fullmatch(r"[0-9a-f]{40,64}", value), "Invalid object identity")
     return value
 
