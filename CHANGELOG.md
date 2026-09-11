@@ -2,6 +2,8 @@
 
 ## [Unreleased]
 
+## [1.24.0] - 2026-09-11
+
 ### Added
 
 - Experimental `maintain-work-plan` maintains ordered project work with stable
@@ -760,6 +762,7 @@ First versioned release of the kolabse skill collection.
 - Tests for configuration migration, fake cloud and infrastructure CLIs,
   installation confirmation, and collection metadata.
 
+[1.24.0]: https://github.com/kolabse/skills/releases/tag/v1.24.0
 [1.23.0]: https://github.com/kolabse/skills/releases/tag/v1.23.0
 [1.22.0]: https://github.com/kolabse/skills/releases/tag/v1.22.0
 [1.21.1]: https://github.com/kolabse/skills/releases/tag/v1.21.1
