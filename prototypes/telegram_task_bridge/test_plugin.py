@@ -11,6 +11,33 @@ from build_plugin import build, FILES
 
 
 class PluginTests(unittest.TestCase):
+    @unittest.skipUnless(os.name == 'nt', 'Windows lifecycle wrapper')
+    def test_serve_forwards_client_identity_and_shared_paths(self):
+        for agent in (None, 'codex', 'claude-code'):
+            with self.subTest(agent=agent), tempfile.TemporaryDirectory() as folder:
+                root = Path(folder)
+                controller = root / 'plugin_control.ps1'
+                shutil.copyfile(Path(__file__).with_name('plugin_control.ps1'), controller)
+                # A private pause marker bypasses scheduler access in the bootstrap.
+                (root / 'receiver-paused').touch()
+                config = root / 'config.json'
+                config.write_text('{}')
+                database = root / 'shared.sqlite3'
+                fake_server = root / 'server.py'
+                fake_server.write_text('import json, sys; print(json.dumps(sys.argv[1:]))')
+                command = ['powershell.exe', '-NoProfile', '-NonInteractive', '-File',
+                           str(controller), 'serve', '-PythonPath', sys.executable,
+                           '-ServerPath', str(fake_server), '-DatabasePath', str(database),
+                           '-ConfigPath', str(config)]
+                if agent is not None:
+                    command += ['-Agent', agent]
+                result = subprocess.run(command, capture_output=True, text=True, timeout=30)
+                self.assertEqual(result.returncode, 0, result.stderr)
+                self.assertEqual(json.loads(result.stdout),
+                                 ['serve', '--db', str(database), '--config', str(config),
+                                  '--agent', agent or 'codex'])
+                self.assertIn('paused', result.stderr)
+
     def test_build_from_fresh_checkout_and_refuse_unrelated_directory(self):
         with tempfile.TemporaryDirectory() as folder:
             root = Path(folder) / 'telegram-task-bridge'

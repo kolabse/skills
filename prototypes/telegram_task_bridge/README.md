@@ -1,6 +1,6 @@
 # Telegram task bridge — capability prototype (#131)
 
-Local MCP tools for cooperative Codex tasks. A separate receiver saves Telegram
+Local MCP tools for cooperative Codex and Claude Code tasks. A separate receiver saves Telegram
 replies in SQLite; each task explicitly polls its own inbox. The bridge does not
 attach to Desktop's internal App Server, wake idle tasks, steer running turns, or
 answer native questions/approval prompts. Telegram text grants no extra host permissions.
@@ -35,6 +35,12 @@ Telegram replies; follow the installed skill's `references/task-bridge.md`.
 No separate plugin or ZIP is needed for this path. Copying updated skill files
 does not itself deploy or activate a receiver. The standalone packaging below
 remains available for isolated prototype testing.
+
+Claude Code on native Windows uses the same receiver as Codex, with a separate
+user-scoped MCP registration described in the installed skill. Pass
+`-Agent claude-code` to the controller (`--agent claude-code` to the Python
+server) for client-labelled questions. Omitting the option preserves Codex
+behaviour. WSL and native approval forwarding are outside this workflow.
 
 Maintainers: after changing prototype runtime/setup files, run
 `python scripts/bundle_telegram_bridge.py` from the repository root. Collection

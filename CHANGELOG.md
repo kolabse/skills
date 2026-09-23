@@ -2,6 +2,15 @@
 
 ## [Unreleased]
 
+## [1.24.2] - 2026-09-23
+
+### Added
+
+- Enable experimental Telegram question replies in Claude Code on native Windows
+  through the normally updated `notify-via-telegram` skill. Claude Code and Codex
+  share one receiver with separate task credentials and client-labelled questions;
+  disconnecting one client preserves the other's receiver. Setup remains opt-in.
+
 ## [1.24.1] - 2026-09-23
 
 ### Added
@@ -773,6 +782,7 @@ First versioned release of the kolabse skill collection.
 - Tests for configuration migration, fake cloud and infrastructure CLIs,
   installation confirmation, and collection metadata.
 
+[1.24.2]: https://github.com/kolabse/skills/releases/tag/v1.24.2
 [1.24.1]: https://github.com/kolabse/skills/releases/tag/v1.24.1
 [1.24.0]: https://github.com/kolabse/skills/releases/tag/v1.24.0
 [1.23.0]: https://github.com/kolabse/skills/releases/tag/v1.23.0

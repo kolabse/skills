@@ -19,7 +19,10 @@ def main():
     parser.add_argument("--config")
     parser.add_argument("--offline", action="store_true")
     parser.add_argument("--health-file")
+    parser.add_argument("--agent", choices=["codex", "claude-code"], default="codex",
+                        help="Client identity for this MCP process's question messages")
     args = parser.parse_args()
+    agent_name = {"codex": "Codex", "claude-code": "Claude Code"}[args.agent]
     if args.offline and args.mode != "serve":
         parser.error("offline mode supports serve only")
     if not args.offline and not args.config:
@@ -63,9 +66,9 @@ def main():
         try:
             with receiver_lock(delivery_lock, wait_seconds=40):
                 message_id = (secrets.randbits(50) if args.offline else telegram.send(
-                    f"[Codex: {store.task_label(task_id, secret)}]\n"
+                    f"[{agent_name}: {store.task_label(task_id, secret)}]\n"
                     f"Задача {task_id[:8]}, вопрос {question['question_id'][:8]}\n{text}\n\n"
-                    "Ответьте на это сообщение. Ответ не заменяет разрешения Codex."))
+                    f"Ответьте на это сообщение. Ответ не заменяет разрешения {agent_name}."))
                 store.mark_sent(question["question_id"], message_id)
         except Exception:
             store.mark_failed(question["question_id"])

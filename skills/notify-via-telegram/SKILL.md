@@ -1,21 +1,21 @@
 ---
 name: notify-via-telegram
-description: "Send agent-task progress notifications to Telegram, configure routing, or enable and use experimental task-scoped Telegram replies in Codex on Windows. Use when the user requests Telegram updates, answering agent questions via Telegram, receiver setup or updates, or applicable instructions authorize task notifications there. Task duration, complexity, waiting, or deployment alone does not activate this skill. Exclude progress requested only in the current chat, building Telegram products, and unrelated business messages."
+description: "Send agent-task progress notifications to Telegram, configure routing, or enable and use experimental task-scoped Telegram replies in Codex or Claude Code on Windows. Use when the user requests Telegram updates, answering agent questions via Telegram, receiver setup or updates, or applicable instructions authorize task notifications there. Task duration, complexity, waiting, or deployment alone does not activate this skill. Exclude progress requested only in the current chat, building Telegram products, and unrelated business messages."
 ---
 
 # Notify via Telegram
 
 This skill is portable between Codex and Claude Code. Invoke it as
 `$notify-via-telegram` in Codex or `/notify-via-telegram` in Claude Code. The
-Python sender and its configuration contract are shared; only the optional
-Codex Desktop Windows setup fallback below is Codex-specific.
+Python sender and its configuration contract are shared. The optional reply
+receiver supports both agents on native Windows; MCP registration is per agent.
 
 Keep Telegram updates concise, useful away from the workstation, and free of
 credentials, private reasoning, raw logs, and unnecessary implementation detail.
 
 ## Enable replies from Telegram
 
-For Telegram questions, replies, or receiver lifecycle requests in Codex on
+For Telegram questions, replies, or receiver lifecycle requests in Codex or Claude Code on
 Windows, read [the task bridge workflow](references/task-bridge.md). Its setup
 and runtime are bundled in this skill and arrive through the normal collection
 update, including copied skill and collection-plugin installations. No separate
