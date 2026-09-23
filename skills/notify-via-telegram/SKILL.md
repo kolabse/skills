@@ -1,6 +1,6 @@
 ---
 name: notify-via-telegram
-description: "Send agent-task progress notifications to Telegram and configure their global or project-specific routing. Use when the user requests Telegram updates, a notification request has an established Telegram destination, or applicable user/project instructions already authorize task notifications there. Task duration, complexity, waiting, or deployment alone does not activate this skill. Exclude progress requested only in the current chat, building Telegram products, and unrelated business messages."
+description: "Send agent-task progress notifications to Telegram, configure routing, or enable and use experimental task-scoped Telegram replies in Codex on Windows. Use when the user requests Telegram updates, answering agent questions via Telegram, receiver setup or updates, or applicable instructions authorize task notifications there. Task duration, complexity, waiting, or deployment alone does not activate this skill. Exclude progress requested only in the current chat, building Telegram products, and unrelated business messages."
 ---
 
 # Notify via Telegram
@@ -12,6 +12,22 @@ Codex Desktop Windows setup fallback below is Codex-specific.
 
 Keep Telegram updates concise, useful away from the workstation, and free of
 credentials, private reasoning, raw logs, and unnecessary implementation detail.
+
+## Enable replies from Telegram
+
+For Telegram questions, replies, or receiver lifecycle requests in Codex on
+Windows, read [the task bridge workflow](references/task-bridge.md). Its setup
+and runtime are bundled in this skill and arrive through the normal collection
+update, including copied skill and collection-plugin installations. No separate
+plugin or ZIP is required. This optional mode remains experimental; the portable
+notification sender below is unchanged. A collection update delivers files but
+does not enable a receiver or deploy code into a running receiver automatically.
+
+When the user requests updating an enabled bridge, deploy the bundled runtime
+through that workflow after updating the collection. Keep notification-only
+users unconfigured. Never run the sender's chat discovery (`getUpdates`) while
+the bridge receiver is polling; use an explicit destination ID for routing
+changes, or stop the receiver first when authorized.
 
 ## Establish notification scope
 

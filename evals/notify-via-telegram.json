@@ -2,6 +2,18 @@
   "skill": "notify-via-telegram",
   "positive": [
     {
+      "prompt": "Обнови набор навыков и включи ответы на вопросы Codex через Telegram на моем Windows ПК.",
+      "reason": "Explicit opt-in to the bundled experimental Windows task receiver."
+    },
+    {
+      "prompt": "После обновления notify-via-telegram обнови уже настроенный получатель, сохрани переписку и паузу.",
+      "reason": "Explicit deployment of bundled receiver code after a skill update."
+    },
+    {
+      "prompt": "Задай уточняющий вопрос по этой задаче через Telegram и прочитай мой ответ.",
+      "reason": "A task-scoped question and reply request uses the experimental bridge."
+    },
+    {
       "prompt": "Задача займёт несколько часов. Присылай мне в Телеграм начало, переходы между этапами и итог.",
       "reason": "The user explicitly requests Telegram lifecycle notifications for a long task."
     },

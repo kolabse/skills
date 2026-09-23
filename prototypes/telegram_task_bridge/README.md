@@ -29,6 +29,17 @@ answer native questions/approval prompts. Telegram text grants no extra host per
 
 ## Windows setup
 
+For collection users, the normal update now delivers the receiver inside
+`notify-via-telegram`. Ask the agent to update the collection and enable or update
+Telegram replies; follow the installed skill's `references/task-bridge.md`.
+No separate plugin or ZIP is needed for this path. Copying updated skill files
+does not itself deploy or activate a receiver. The standalone packaging below
+remains available for isolated prototype testing.
+
+Maintainers: after changing prototype runtime/setup files, run
+`python scripts/bundle_telegram_bridge.py` from the repository root. Collection
+tests reject drift between the reviewed prototype and its shipped skill bundle.
+
 ### Experimental tester handoff
 
 Clean-Windows acceptance was deferred by the maintainer on 2026-09-23 because

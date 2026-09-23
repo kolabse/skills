@@ -2,6 +2,15 @@
 
 ## [Unreleased]
 
+### Added
+
+- Deliver the experimental Windows Telegram task receiver inside
+  `notify-via-telegram` through ordinary collection updates, including copied
+  skills and the collection plugin. Enable or update it by asking the agent;
+  a separate plugin download and manual terminal activation are unnecessary.
+  Receiver setup remains opt-in and existing private data and pause state are
+  preserved. Clean-Windows acceptance remains deferred.
+
 ## [1.24.0] - 2026-09-11
 
 ### Added
