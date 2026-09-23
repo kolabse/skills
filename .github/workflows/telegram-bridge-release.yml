@@ -1,0 +1,83 @@
+name: Release Telegram bridge
+
+on:
+  push:
+    tags: ["telegram-task-bridge-v*"]
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: Existing annotated Telegram bridge tag
+        required: true
+        type: string
+
+permissions:
+  actions: read
+  contents: write
+  id-token: write
+  attestations: write
+
+concurrency:
+  group: telegram-release-${{ inputs.tag || github.ref_name }}
+  cancel-in-progress: false
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      RELEASE_TAG: ${{ inputs.tag || github.ref_name }}
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: refs/tags/${{ env.RELEASE_TAG }}
+          fetch-depth: 0
+          path: source
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: "3.13"
+      - name: Verify annotated integrated source and successful CI
+        shell: bash
+        run: |
+          set -euo pipefail
+          [[ "$RELEASE_TAG" =~ ^telegram-task-bridge-v[0-9]+\.[0-9]+\.[0-9]+$ ]]
+          test "$(git -C source cat-file -t "refs/tags/$RELEASE_TAG")" = tag
+          test "$(git -C source rev-parse HEAD)" = "$(git -C source rev-list -n 1 "$RELEASE_TAG")"
+          test "$GITHUB_REF" = "refs/tags/$RELEASE_TAG"
+          test "$GITHUB_SHA" = "$(git -C source rev-parse HEAD)"
+          git -C source merge-base --is-ancestor HEAD origin/main
+          python source/scripts/check_bridge_release_ci.py --source source --repository "$GITHUB_REPOSITORY"
+      - name: Build deterministic plugin package and verify checksums
+        run: |
+          python source/scripts/build_release.py --telegram-bridge --source source --tag "$RELEASE_TAG" --output dist
+          python source/scripts/build_release.py --verify dist/SHA256SUMS
+      - name: Attest every published file
+        uses: actions/attest-build-provenance@4d101475d8b20a2381f78447822ac1eab6504dd8 # v4.2.2
+        with:
+          subject-path: dist/*
+      - name: Publish immutable prerelease assets
+        shell: bash
+        run: |
+          set -euo pipefail
+          if ! gh release view "$RELEASE_TAG" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+            gh release create "$RELEASE_TAG" --repo "$GITHUB_REPOSITORY" --verify-tag --draft --prerelease --latest=false --title "Telegram Task Bridge ${RELEASE_TAG#telegram-task-bridge-v} (experimental)" --notes-file source/prototypes/telegram_task_bridge/RELEASE-NOTES.md
+          fi
+          mkdir -p published
+          for asset in dist/*; do
+            name="$(basename "$asset")"
+            if gh release view "$RELEASE_TAG" --repo "$GITHUB_REPOSITORY" --json assets --jq '.assets[].name' | grep -Fxq "$name"; then
+              gh release download "$RELEASE_TAG" --repo "$GITHUB_REPOSITORY" --pattern "$name" --dir published
+              cmp "$asset" "published/$name"
+            else
+              gh release upload "$RELEASE_TAG" "$asset" --repo "$GITHUB_REPOSITORY"
+            fi
+          done
+          gh release view "$RELEASE_TAG" --repo "$GITHUB_REPOSITORY" --json assets --jq '.assets[].name' | sort > published-assets.txt
+          find dist -maxdepth 1 -type f -printf '%f\n' | sort > expected-assets.txt
+          cmp expected-assets.txt published-assets.txt
+          gh release download "$RELEASE_TAG" --repo "$GITHUB_REPOSITORY" --dir audit-assets
+          python source/scripts/build_release.py --verify audit-assets/SHA256SUMS
+          for asset in audit-assets/*; do
+            gh attestation verify "$asset" --repo "$GITHUB_REPOSITORY" --signer-workflow "$GITHUB_REPOSITORY/.github/workflows/telegram-bridge-release.yml" --source-digest "$GITHUB_SHA" --source-ref "refs/tags/$RELEASE_TAG"
+          done
+          gh release edit "$RELEASE_TAG" --repo "$GITHUB_REPOSITORY" --draft=false --prerelease --latest=false

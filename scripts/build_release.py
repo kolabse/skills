@@ -9,6 +9,7 @@ import re
 import subprocess
 import sys
 import tarfile
+import tempfile
 import zipfile
 from pathlib import Path
 from typing import Iterable
@@ -44,6 +45,90 @@ TAG_PATTERN = re.compile(
     r"^v[0-9]+\.[0-9]+\.[0-9]+(?:[-+][0-9A-Za-z]+(?:[.-][0-9A-Za-z]+)*)?$"
 )
 ZIP_TIMESTAMP = (1980, 1, 1, 0, 0, 0)
+BRIDGE_NAME = "telegram-task-bridge"
+BRIDGE_SOURCE = "prototypes/telegram_task_bridge"
+BRIDGE_DOCS = ("README.md", "WINDOWS-ACCEPTANCE.md", "VALIDATION.md", "RELEASE-NOTES.md")
+BRIDGE_INPUTS = (
+    "build_plugin.py", "plugin-manifest.json", "server.py", "store.py",
+    "telegram.py", "receiver.py", "requirements.txt", "manage_receiver.ps1",
+    "plugin_control.ps1", "plugin_setup.ps1", "installer.py",
+    "configure_telegram.ps1", *BRIDGE_DOCS,
+)
+
+
+def bridge_git(source: Path, *args: str) -> bytes:
+    result = subprocess.run(
+        ["git", "-C", str(source), *args], capture_output=True, timeout=30,
+        check=False,
+    )
+    if result.returncode:
+        # Git errors can contain source names or configuration; keep them private.
+        raise ValueError("Could not validate committed Telegram bridge source")
+    return result.stdout
+
+
+def build_telegram_bridge_release(source: Path, tag: str, output: Path) -> list[Path]:
+    suffix = tag.removeprefix(BRIDGE_NAME + "-")
+    if tag == suffix or not TAG_PATTERN.fullmatch(suffix):
+        raise ValueError("Unsupported Telegram bridge release tag")
+    source = source.resolve()
+    output = output.resolve()
+    if output == source or source in output.parents:
+        raise ValueError("Release output must be outside the source repository")
+    if output.exists() and (not output.is_dir() or any(output.iterdir())):
+        raise ValueError("Release output must be an empty directory")
+    root = Path(bridge_git(source, "rev-parse", "--show-toplevel").decode().strip()).resolve()
+    if root != source:
+        raise ValueError("Source must be the Git repository root")
+    commit = bridge_git(source, "rev-parse", "--verify", "HEAD^{commit}").decode().strip()
+    if not re.fullmatch(r"[0-9a-f]{40}|[0-9a-f]{64}", commit):
+        raise ValueError("Source must have a real Git commit")
+    relevant = ("LICENSE", BRIDGE_SOURCE)
+    if bridge_git(source, "status", "--porcelain=v1", "--untracked-files=all", "--", *relevant).strip():
+        raise ValueError("Telegram bridge release source must be clean")
+    # Include ignored files in the check, since credentials often live there.
+    # Interpreter caches are never inputs and may be left by verification.
+    others = bridge_git(source, "ls-files", "--others", "-z", "--", *relevant)
+    for name in others.decode("utf-8").split("\0"):
+        if name and "__pycache__" not in Path(name).parts and Path(name).suffix not in {".pyc", ".pyo"}:
+            raise ValueError("Unexpected untracked Telegram bridge source inputs")
+    paths = [Path("LICENSE"), *(Path(BRIDGE_SOURCE) / name for name in BRIDGE_INPUTS)]
+    tree = bridge_git(source, "ls-tree", "-r", "-z", commit, "--", *relevant)
+    if any(entry.startswith(b"120000 ") for entry in tree.split(b"\0")):
+        raise ValueError("Release inputs must not be symbolic links")
+    for relative in paths:
+        path = source / relative
+        if any(part.is_symlink() for part in (path, *path.parents)):
+            raise ValueError("Release inputs must not be symbolic links")
+    entries = release_entries(source, [source / path for path in paths], commit)
+    with tempfile.TemporaryDirectory(prefix="telegram-bridge-release-") as temporary:
+        snapshot = Path(temporary) / "source"
+        package = Path(temporary) / BRIDGE_NAME
+        for relative, content in entries:
+            target = snapshot / relative
+            target.parent.mkdir(parents=True, exist_ok=True)
+            target.write_bytes(content.replace(b"\r\n", b"\n"))
+        manifest = json.loads((snapshot / BRIDGE_SOURCE / "plugin-manifest.json").read_text(encoding="utf-8"))
+        if not isinstance(manifest, dict) or manifest.get("name") != BRIDGE_NAME or manifest.get("version") != suffix[1:]:
+            raise ValueError("Telegram bridge manifest name/version does not match release tag")
+        built = subprocess.run(
+            [sys.executable, "-I", str(snapshot / BRIDGE_SOURCE / "build_plugin.py"), str(package)],
+            cwd=snapshot, capture_output=True, timeout=60, check=False,
+        )
+        if built.returncode:
+            raise ValueError("Committed Telegram bridge package builder failed")
+        for name in BRIDGE_DOCS:
+            (package / name).write_bytes((snapshot / BRIDGE_SOURCE / name).read_bytes())
+        packaged = []
+        for path in sorted(package.rglob("*")):
+            if path.is_symlink():
+                raise ValueError("Package must not contain symbolic links")
+            if path.is_file():
+                packaged.append((path.relative_to(package), path.read_bytes().replace(b"\r\n", b"\n")))
+        output.mkdir(parents=True, exist_ok=True)
+        zip_path = output / f"{tag}.zip"
+        write_zip(zip_path, BRIDGE_NAME, packaged)
+    return write_release_metadata(output, tag, commit, [zip_path])
 
 
 def sha256_file(path: Path) -> str:
@@ -269,7 +354,10 @@ def build_release(source: Path, tag: str, output: Path) -> list[Path]:
     write_zip(zip_path, prefix, entries)
     write_tar_gz(tar_path, prefix, entries)
 
-    artifacts = [zip_path, tar_path]
+    return write_release_metadata(output, tag, commit, [zip_path, tar_path])
+
+
+def write_release_metadata(output: Path, tag: str, commit: str, artifacts: list[Path]) -> list[Path]:
     manifest_path = output / "release-manifest.json"
     manifest = {
         "schema_version": 1,
@@ -330,18 +418,20 @@ def main() -> int:
     parser.add_argument("--tag")
     parser.add_argument("--output", type=Path)
     parser.add_argument("--verify", type=Path)
+    parser.add_argument("--telegram-bridge", action="store_true")
     args = parser.parse_args()
 
     try:
         if args.verify:
-            if any(value is not None for value in (args.source, args.tag, args.output)):
+            if args.telegram_bridge or any(value is not None for value in (args.source, args.tag, args.output)):
                 parser.error("--verify cannot be combined with build arguments")
             verify_checksums(args.verify)
             print(f"Verified checksums from {args.verify}.")
             return 0
         if args.source is None or args.tag is None or args.output is None:
             parser.error("--source, --tag, and --output are required when building")
-        artifacts = build_release(args.source, args.tag, args.output)
+        builder = build_telegram_bridge_release if args.telegram_bridge else build_release
+        artifacts = builder(args.source, args.tag, args.output)
         for path in artifacts:
             print(path)
         return 0
