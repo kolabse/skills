@@ -11,6 +11,13 @@
   ],
   "checks": [
     {
+      "name": "telegram-bridge-prototype",
+      "cwd": ".",
+      "command": ["python", "prototypes/telegram_task_bridge/run_checks.py"],
+      "timeout_seconds": 600,
+      "required": true
+    },
+    {
       "name": "collection-full",
       "cwd": ".",
       "command": ["python", "scripts/check_collection.py", "run", "--profile", "full"],

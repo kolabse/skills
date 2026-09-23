@@ -1,0 +1,12 @@
+{
+  "name": "telegram-task-bridge",
+  "version": "0.1.0",
+  "description": "Experimental Windows Telegram task receiver for Codex.",
+  "author": {"name": "kolabse"},
+  "skills": "./skills/",
+  "mcpServers": "./.mcp.json",
+  "interface": {
+    "displayName": "Telegram Task Bridge (Experimental)",
+    "category": "Productivity"
+  }
+}
