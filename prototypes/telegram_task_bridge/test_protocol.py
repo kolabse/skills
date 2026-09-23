@@ -44,15 +44,16 @@ class OfflineProtocolTest(unittest.IsolatedAsyncioTestCase):
         }
         with tempfile.TemporaryDirectory(prefix="bridge-offline-protocol-") as directory:
             database = Path(directory) / "state.sqlite3"
-            parameters = StdioServerParameters(
-                command=sys.executable,
-                args=[str(Path(__file__).with_name("server.py").resolve()),
-                      "serve", "--offline", "--db", str(database)],
-                cwd=str(Path(__file__).resolve().parent),
-            )
+            def parameters(agent):
+                return StdioServerParameters(
+                    command=sys.executable,
+                    args=[str(Path(__file__).with_name("server.py").resolve()),
+                          "serve", "--offline", "--db", str(database), "--agent", agent],
+                    cwd=str(Path(__file__).resolve().parent),
+                )
             # Each Client starts its own actual server subprocess and MCP session.
-            async with Client(parameters, read_timeout_seconds=15) as first:
-                async with Client(parameters, read_timeout_seconds=15) as second:
+            async with Client(parameters("codex"), read_timeout_seconds=15) as first:
+                async with Client(parameters("claude-code"), read_timeout_seconds=15) as second:
                     for client in (first, second):
                         listed = await client.list_tools()
                         self.assertEqual({tool.name for tool in listed.tools}, expected_tools)

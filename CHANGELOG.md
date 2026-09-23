@@ -2,6 +2,13 @@
 
 ## [Unreleased]
 
+### Added
+
+- Enable experimental Telegram question replies in Claude Code on native Windows
+  through the normally updated `notify-via-telegram` skill. Claude Code and Codex
+  share one receiver with separate task credentials and client-labelled questions;
+  disconnecting one client preserves the other's receiver. Setup remains opt-in.
+
 ## [1.24.1] - 2026-09-23
 
 ### Added

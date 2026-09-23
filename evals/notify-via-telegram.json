@@ -2,6 +2,14 @@
   "skill": "notify-via-telegram",
   "positive": [
     {
+      "prompt": "В Claude Code на Windows включи ответы на вопросы через Telegram после обычного обновления набора навыков.",
+      "reason": "Explicit opt-in to Claude Code registration of the shared Windows receiver."
+    },
+    {
+      "prompt": "Отключи Telegram bridge только в Claude Code, оставь его работающим для Codex.",
+      "reason": "Client-specific disconnection must preserve the shared receiver."
+    },
+    {
       "prompt": "Обнови набор навыков и включи ответы на вопросы Codex через Telegram на моем Windows ПК.",
       "reason": "Explicit opt-in to the bundled experimental Windows task receiver."
     },

@@ -8,7 +8,9 @@ param(
     [string]$ReceiverPythonPath = (Join-Path $env:LOCALAPPDATA 'codex\telegram-task-bridge\venv\Scripts\pythonw.exe'),
     [string]$ServerPath = (Join-Path $env:LOCALAPPDATA 'codex\telegram-task-bridge\runtime\server.py'),
     [string]$DatabasePath = (Join-Path $env:LOCALAPPDATA 'codex\telegram-task-bridge\live.sqlite3'),
-    [string]$ConfigPath = (Join-Path $env:LOCALAPPDATA 'codex\telegram-notify\config.json')
+    [string]$ConfigPath = (Join-Path $env:LOCALAPPDATA 'codex\telegram-notify\config.json'),
+    [ValidateSet('codex', 'claude-code')]
+    [string]$Agent = 'codex'
 )
 
 Set-StrictMode -Version Latest
@@ -100,7 +102,7 @@ try {
         if ($bootstrapState.state -eq 'unavailable') {
             throw 'Receiver lifecycle is busy or unavailable. Retry MCP connection after setup finishes.'
         }
-        & $PythonPath $ServerPath serve --db $DatabasePath --config $ConfigPath
+        & $PythonPath $ServerPath serve --db $DatabasePath --config $ConfigPath --agent $Agent
         $exitCode = $LASTEXITCODE
     } else {
         if ($Action -in @('ensure', 'start', 'stop', 'uninstall')) {

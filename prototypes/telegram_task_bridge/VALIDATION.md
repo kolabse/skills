@@ -1,5 +1,26 @@
 # Capability check — 2026-09-18
 
+## Claude Code Windows extension — 2026-09-23
+
+Claude Code CLI 2.1.280 successfully registered the offline stdio server in an
+isolated user scope and reported `Connected`. The optional `smoke_claude.py`
+helper verified exact Cyrillic/spaced argument persistence, refusal to replace
+an existing same-name entry, and scoped removal preserving unrelated entries.
+Run it with `--claude <claude-executable> --python <python-with-bridge-requirements>`.
+It does not install dependencies or modify the user's real configuration.
+
+Targeted runtime tests passed (7 tests): client-labelled question/slot text,
+Windows controller argument forwarding, existing bootstrap behaviour, and two
+real MCP server processes (`codex` and `claude-code`) exchanging simulated replies
+through one temporary database while rejecting mixed task credentials.
+New identity tests failed before the implementation and passed afterward.
+
+These are CLI connection and offline protocol results. An authenticated Claude
+model session asking a question and consuming a human Telegram reply has not
+been exercised. No live receiver settings or messages were changed for these tests.
+
+## Original Codex qualification
+
 Release qualification: experimental. On 2026-09-23 the user explicitly deferred
 clean-Windows acceptance because the test VM could not obtain usable VPN/internet
 connectivity. No successful clean-machine install or credential-dialog acceptance
