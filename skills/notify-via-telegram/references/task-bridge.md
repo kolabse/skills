@@ -67,8 +67,7 @@ retain ordinary notifications; this Windows receiver workflow is not supported t
 4. Ask the user to restart the selected client or open a new session that loads
    the new tools; in Claude Code inspect `/mcp` for connection status.
    Verify that all six bridge tools are actually available and inspect receiver
-   status. When a test is requested, send one question, have the user Reply to
-   that exact message in Telegram, poll and acknowledge the matching reply.
+   status. When a test is requested, run the [Reply self-check](#reply-self-check).
    Configuration alone is not proof of delivery or loaded tools. Report setup,
    MCP connection, and actual Telegram exchange separately.
 
@@ -77,6 +76,49 @@ scheduled receiver. The `codex/` directory name is retained for compatibility;
 do not create a second Claude receiver or copy its database. Each MCP session
 registers its own task credentials. Claude questions use `[Claude Code: ...]`,
 while existing Codex connections keep `[Codex: ...]`.
+
+## Reply self-check
+
+Use this short live check when the user requests testing Telegram replies in
+the current Codex or Claude Code session. An ordinary skill update does not
+authorize a test message. Use the existing approved personal chat; do not
+change routing, reinstall the receiver or resume a paused receiver just to test.
+
+1. Verify that all six bridge tools are available in this session. Run the
+   controller's `status` command from [Updates and lifecycle](#updates-and-lifecycle)
+   and require `receiver_state: ready`. If tools are missing or the receiver is
+   paused, stopped, unhealthy or still starting, report the actual state and
+   the needed next step; do not claim success from configuration alone.
+2. Call `register_task` for an isolated self-check registration labelled with
+   the current project/task and "Reply self-check". Keep its task id and secret
+   private. Choose a harmless expected response, such as a short numeric code,
+   and send **one** `ask_question` asking the user to Reply to that exact message
+   with the code. Keep the returned question id for correlation. Continue only
+   when the send status is `sent`; an uncertain send is not a reason to resend.
+3. Follow [Task exchange and limits](#task-exchange-and-limits) while waiting.
+   Poll this registration with `poll_replies`. An empty poll means no answer yet.
+   Require the returned question id to match and compare the answer to the
+   expected code (ignoring surrounding whitespace only). Do not substitute a
+   reply from another question. Report mismatched text as a failed response
+   check; it must not be presented as a successful self-check.
+4. After reading the matching reply, call `acknowledge_reply` for that question,
+   then call `poll_replies` again with the same credentials. Require an empty
+   list to confirm the consumed reply is no longer returned. An acknowledgement
+   error or a repeated reply leaves this check incomplete; do not send a second
+   question to conceal it. A mismatch may still be acknowledged as consumed,
+   but that does not change its failed response result.
+5. Report the observed stages: receiver ready, question sent, expected reply
+   received, acknowledgement completed, post-acknowledgement inbox empty.
+   Mark unexecuted stages as not checked. Overall success requires every stage.
+
+Report three separate facts after an update or self-check: **skill files**
+(observed collection version), **receiver runtime deployment** (performed or
+not performed; reconnect needed if applicable), and **live Reply exchange**
+(client tested and stage results). A successful Reply exchange with an existing
+receiver does not prove new runtime code was deployed. Record Codex and Claude
+Code results separately; success in one client is not evidence for the other.
+Do not include credentials or raw conversation text in the report, and do not
+infer clean-Windows acceptance, idle-task wakeup or native approval support.
 
 ## Updates and lifecycle
 

@@ -2,6 +2,15 @@
 
 ## [Unreleased]
 
+## [1.24.3] - 2026-09-23
+
+### Improved
+
+- Add a requested Reply self-check to `notify-via-telegram`: verify receiver
+  readiness, correlate one expected answer, acknowledge it and confirm an empty
+  inbox. Report skill-file updates, runtime deployment and each client's live
+  exchange separately, without treating partial checks as success (#137).
+
 ## [1.24.2] - 2026-09-23
 
 ### Added
@@ -782,6 +791,7 @@ First versioned release of the kolabse skill collection.
 - Tests for configuration migration, fake cloud and infrastructure CLIs,
   installation confirmation, and collection metadata.
 
+[1.24.3]: https://github.com/kolabse/skills/releases/tag/v1.24.3
 [1.24.2]: https://github.com/kolabse/skills/releases/tag/v1.24.2
 [1.24.1]: https://github.com/kolabse/skills/releases/tag/v1.24.1
 [1.24.0]: https://github.com/kolabse/skills/releases/tag/v1.24.0
