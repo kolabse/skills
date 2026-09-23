@@ -50,6 +50,18 @@ through Codex's supported local-plugin/personal-marketplace workflow. Then ask
 the agent to run the installed plugin's `scripts/setup.ps1 install`.
 Do not use the production bot on a second machine with another active poller.
 
+Published experimental packages use tags `telegram-task-bridge-vX.Y.Z` and are
+separate GitHub prereleases. Download the ZIP, `release-manifest.json` and
+`SHA256SUMS` from the same release. Check the ZIP hash against `SHA256SUMS` and,
+when GitHub CLI is available, verify each file with
+`gh attestation verify <file> --repo kolabse/skills`. Extract the ZIP's
+`telegram-task-bridge` folder and ask Codex to install that local plugin.
+
+Maintainers build the release from a clean committed checkout using
+`python scripts/build_release.py --telegram-bridge --source . --tag telegram-task-bridge-v0.1.0 --output <empty-directory-outside-repository>`.
+The dedicated release workflow requires an annotated tag on integrated source
+and successful main-branch CI for that exact commit before publishing assets.
+
 ### Installed plugin mode
 
 The local `telegram-task-bridge` plugin packages this prototype, its MCP server
