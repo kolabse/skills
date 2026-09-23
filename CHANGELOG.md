@@ -2,6 +2,13 @@
 
 ## [Unreleased]
 
+### Improved
+
+- Add a requested Reply self-check to `notify-via-telegram`: verify receiver
+  readiness, correlate one expected answer, acknowledge it and confirm an empty
+  inbox. Report skill-file updates, runtime deployment and each client's live
+  exchange separately, without treating partial checks as success (#137).
+
 ## [1.24.2] - 2026-09-23
 
 ### Added

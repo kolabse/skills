@@ -22,6 +22,8 @@ update, including copied skill and collection-plugin installations. No separate
 plugin or ZIP is required. This optional mode remains experimental; the portable
 notification sender below is unchanged. A collection update delivers files but
 does not enable a receiver or deploy code into a running receiver automatically.
+For a requested connection test, follow the [Reply self-check](references/task-bridge.md#reply-self-check)
+and report skill-file updates, runtime deployment and live exchange separately.
 
 When the user requests updating an enabled bridge, deploy the bundled runtime
 through that workflow after updating the collection. Keep notification-only
