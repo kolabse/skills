@@ -2,6 +2,8 @@
 
 ## [Unreleased]
 
+## [1.24.1] - 2026-09-23
+
 ### Added
 
 - Deliver the experimental Windows Telegram task receiver inside
@@ -771,6 +773,7 @@ First versioned release of the kolabse skill collection.
 - Tests for configuration migration, fake cloud and infrastructure CLIs,
   installation confirmation, and collection metadata.
 
+[1.24.1]: https://github.com/kolabse/skills/releases/tag/v1.24.1
 [1.24.0]: https://github.com/kolabse/skills/releases/tag/v1.24.0
 [1.23.0]: https://github.com/kolabse/skills/releases/tag/v1.23.0
 [1.22.0]: https://github.com/kolabse/skills/releases/tag/v1.22.0
