@@ -2,6 +2,21 @@
 
 ## [Unreleased]
 
+### Improved
+
+- Make authorized ordinary Telegram updates replyable through an already enabled,
+  compatible receiver. Correlate one optional Reply per update, poll at checkpoints
+  and before completion, and explain bounded waits and late replies. Preserve
+  project destinations and explicitly report one-way fallback (#140).
+- Add opt-in exact-commit GitHub CI receipts to `verify-before-push` and
+  CI-assisted collection release checks. Verify configured workflow/job coverage
+  and latest attempts instead of repeating equivalent local tests after merge;
+  retain local archive construction, checksums, review, holdout and asset audit
+  (#139).
+- Document delivered Telegram capabilities and the remaining Desktop adapter,
+  task selection, wakeup and acceptance work. Keep the parent issue and
+  experimental status open (#131).
+
 ## [1.24.3] - 2026-09-23
 
 ### Improved

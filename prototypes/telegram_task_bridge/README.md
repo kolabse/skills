@@ -7,7 +7,7 @@ answer native questions/approval prompts. Telegram text grants no extra host per
 
 ## Scope
 
-- Six tools: `register_task`, `ask_question`, `open_instruction_slot`,
+- Seven tools: `register_task`, `ask_question`, `send_update`, `open_instruction_slot`,
   `poll_replies`, `question_status`, `acknowledge_reply`.
 - Registration returns a task id and secret. Retain both privately in that task.
   Labels should identify project/task for the human; they are not verified Desktop ids.
@@ -232,4 +232,10 @@ tools from two existing user tasks, then polling/acknowledging their distinct re
 
 Uninstall MCP configuration with `codex mcp remove telegram-task-bridge`, stop the
 receiver, and remove external state only when its retained messages are no longer needed.
-This prototype is not packaged or enabled as a production skill.
+The runtime is bundled in `notify-via-telegram` through normal collection updates;
+enabling or deploying a receiver remains an explicit operation. The mode is experimental.
+
+## Scope tracking
+
+See [issue 131 status and remaining work](ROADMAP.md) for the delivered
+cooperative subset, acceptance limits and the remaining Desktop adapter work.
