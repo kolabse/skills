@@ -21,7 +21,9 @@ class GitHubCIEvidenceTests(unittest.TestCase):
     def setUp(self):
         self.temporary = tempfile.TemporaryDirectory()
         self.addCleanup(self.temporary.cleanup)
-        self.root = Path(self.temporary.name)
+        # Direct helper calls need the same canonical root used by the CLI;
+        # macOS temporary directories can be reached through /var aliases.
+        self.root = Path(self.temporary.name).resolve()
         self.remote = self.root / "remote.git"
         self.project = self.root / "project"
         self.git(self.root, "init", "--bare", str(self.remote))
