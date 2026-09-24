@@ -2,6 +2,8 @@
 
 ## [Unreleased]
 
+## [1.25.0] - 2026-09-24
+
 ### Improved
 
 - Make authorized ordinary Telegram updates replyable through an already enabled,
@@ -806,6 +808,7 @@ First versioned release of the kolabse skill collection.
 - Tests for configuration migration, fake cloud and infrastructure CLIs,
   installation confirmation, and collection metadata.
 
+[1.25.0]: https://github.com/kolabse/skills/releases/tag/v1.25.0
 [1.24.3]: https://github.com/kolabse/skills/releases/tag/v1.24.3
 [1.24.2]: https://github.com/kolabse/skills/releases/tag/v1.24.2
 [1.24.1]: https://github.com/kolabse/skills/releases/tag/v1.24.1
