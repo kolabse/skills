@@ -136,7 +136,16 @@ would care now, and no notification exists solely to report activity.
 
 ## Send updates
 
-Send plain-text messages with:
+For authorized notifications, first read
+[replyable updates](references/task-bridge.md#replyable-progress-updates).
+When an enabled receiver is ready, the session exposes `send_update`, and the
+effective project route is compatible, send every update through that tool and
+poll replies at checkpoints and before finishing. Existing notification
+authorization covers these updates; do not ask for it again. It does not enable
+an unused receiver or change the destination. Honor an explicit one-way request.
+
+When that path is unavailable, report that notifications are one-way and why.
+Send plain-text messages through the portable sender with:
 
 ```shell
 python <skill-root>/scripts/telegram_notify.py send \

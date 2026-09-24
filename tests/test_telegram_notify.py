@@ -32,6 +32,56 @@ WINDOWS_POWERSHELL_TIMEOUT_SECONDS = 120
 
 
 class TelegramNotifyTests(unittest.TestCase):
+    def test_bridge_route_compatibility_preserves_effective_routing(self) -> None:
+        saved = {"bot_token": "123:saved", "chat_id": "42"}
+        cases = [
+            ({}, "42", "", "123:saved", True, "same_saved_private_destination"),
+            ({"delivery_mode": "project-only", "chat_id": "42"}, "99", "7", "123:saved", True, "same_saved_private_destination"),
+            ({"delivery_mode": "global-and-project", "chat_id": "042"}, "42", "", "123:saved", True, "same_saved_private_destination"),
+            ({"delivery_mode": "global-and-project", "chat_id": "99"}, "42", "", "123:saved", False, "multiple_destinations"),
+            ({"delivery_mode": "project-only", "chat_id": "99"}, "42", "", "123:saved", False, "different_destination"),
+            ({}, "42", "7", "123:saved", False, "topic_not_supported"),
+            ({"delivery_mode": "project-only", "chat_id": "42", "message_thread_id": "7"}, "42", "", "123:saved", False, "topic_not_supported"),
+            ({}, "42", "", "456:override", False, "different_bot_identity"),
+            ({}, "99", "", "123:saved", False, "different_destination"),
+        ]
+        for profile, chat, thread, token, expected, reason in cases:
+            with self.subTest(profile=profile, chat=chat, thread=thread, expected=expected):
+                self.assertEqual((expected, reason), telegram_notify.bridge_route_compatibility(
+                    token, chat, thread, profile, saved))
+
+    def test_bridge_route_compatibility_requires_valid_saved_private_identity(self) -> None:
+        for saved in ({}, {"bot_token": "123:saved", "chat_id": "-42"},
+                      {"bot_token": "invalid", "chat_id": "42"},
+                      {"bot_token": "123:saved", "chat_id": "42", "message_thread_id": "7"}):
+            self.assertEqual((False, "receiver_private_destination_unavailable"),
+                             telegram_notify.bridge_route_compatibility("123:saved", "42", "", {}, saved))
+
+    def test_project_status_reports_safe_bridge_compatibility_with_environment_overrides(self) -> None:
+        with tempfile.TemporaryDirectory() as folder:
+            root = Path(folder)
+            project = root / "project"
+            project.mkdir()
+            config = root / "codex/telegram-notify/config.json"
+            telegram_notify.save_config(config, {"bot_token": "123:saved", "chat_id": "42"})
+            args = telegram_notify.build_parser().parse_args([
+                "project-status", "--project-path", str(project), "--json"])
+            for overrides, compatible, reason in (
+                ({}, True, "same_saved_private_destination"),
+                ({"TELEGRAM_BOT_TOKEN": "456:override"}, False, "different_bot_identity"),
+                ({"TELEGRAM_CHAT_ID": "99"}, False, "different_destination"),
+                ({"TELEGRAM_MESSAGE_THREAD_ID": "7"}, False, "topic_not_supported"),
+            ):
+                environment = {"LOCALAPPDATA": folder, **overrides}
+                with self.subTest(reason=reason), patch.dict(os.environ, environment, clear=True), redirect_stdout(io.StringIO()) as output:
+                    self.assertTrue(telegram_notify.command_project_status(args, config))
+                result = json.loads(output.getvalue())
+                self.assertEqual(result["bridge_compatible"], compatible if os.name == "nt" else False)
+                self.assertEqual(result["bridge_compatibility_reason"],
+                                 reason if os.name == "nt" else "receiver_configuration_unavailable")
+                self.assertNotIn("123:saved", output.getvalue())
+                self.assertNotIn("456:override", output.getvalue())
+
     def test_utf8_stdin_ignores_legacy_text_wrapper_encoding(self) -> None:
         text = "Привет ✅\nЁж, café, 中文"
         stream = io.TextIOWrapper(io.BytesIO(text.encode("utf-8")), encoding="cp1251")

@@ -65,9 +65,11 @@ class Telegram:
             raise TelegramError("Destination is not the configured private chat")
         return self.call("getMe")["id"]
 
-    def send(self, text):
-        result = self.call("sendMessage", chat_id=self.chat_id, text=text,
-                           reply_markup={"force_reply": True, "selective": True})
+    def send(self, text, *, force_reply=True):
+        payload = {"chat_id": self.chat_id, "text": text}
+        if force_reply:
+            payload["reply_markup"] = {"force_reply": True, "selective": True}
+        result = self.call("sendMessage", **payload)
         return result["message_id"]
 
     def receive(self, store, update):

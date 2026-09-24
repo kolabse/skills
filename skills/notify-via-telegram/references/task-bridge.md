@@ -66,7 +66,7 @@ retain ordinary notifications; this Windows receiver workflow is not supported t
    cache so subsequent skill updates do not invalidate the MCP path.
 4. Ask the user to restart the selected client or open a new session that loads
    the new tools; in Claude Code inspect `/mcp` for connection status.
-   Verify that all six bridge tools are actually available and inspect receiver
+   Verify that all seven bridge tools (including `send_update`) are available and inspect receiver
    status. When a test is requested, run the [Reply self-check](#reply-self-check).
    Configuration alone is not proof of delivery or loaded tools. Report setup,
    MCP connection, and actual Telegram exchange separately.
@@ -84,7 +84,7 @@ the current Codex or Claude Code session. An ordinary skill update does not
 authorize a test message. Use the existing approved personal chat; do not
 change routing, reinstall the receiver or resume a paused receiver just to test.
 
-1. Verify that all six bridge tools are available in this session. Run the
+1. Verify that the six question/reply tools are available in this session. Run the
    controller's `status` command from [Updates and lifecycle](#updates-and-lifecycle)
    and require `receiver_state: ready`. If tools are missing or the receiver is
    paused, stopped, unhealthy or still starting, report the actual state and
@@ -153,6 +153,62 @@ it owns the declaration instead. Disconnecting a client must not stop or uninsta
 the shared receiver used by the other client. An explicit shared stop/uninstall
 affects both clients; make that scope clear before carrying it out. Updating or
 removing skill files alone does not stop the external receiver.
+
+## Replyable progress updates
+
+For already authorized notifications, use this path for ordinary start,
+progress, problem and completion messages, even when they contain no question.
+Respect an explicit request for one-way notifications. Before the first send:
+
+1. Inspect `telegram_notify.py project-status --project-path <project-root> --json`.
+   Require `bridge_compatible: true`; this checks that the effective project
+   destinations and bot match the saved personal route used by the receiver.
+   Missing compatibility information from an older installation is not proof
+   of compatibility. For work outside a project, use the actual working
+   directory only after establishing that no project profile applies.
+2. Require the loaded `send_update` tool and controller `receiver_state: ready`.
+   If the runtime is older, paused, unavailable, or the route is incompatible,
+   say that notifications are one-way and name the reason. Use the portable
+   sender with the actual project path. Do not bypass a project-only route,
+   silently drop a second destination, start a receiver, or update it merely
+   to send progress. Offer the relevant setup/update step without blocking work.
+3. Register the actual task once and retain its credentials privately for the
+   task's lifetime. Send each update with `send_update`, keep its `question_id`,
+   and continue only on `sent`. Do not also send the same update through the
+   portable sender. For an unknown delivery outcome, inspect `question_status`;
+   do not resend or switch senders to conceal uncertainty.
+
+Each update accepts one optional Reply to that exact message and expires after
+`ttl_seconds` (default 3600). Use an explicit longer TTL for a known long stage,
+within the tool's accepted range. Empty polls are normal for optional updates;
+they never grant permission or imply agreement. A reply is ordinary task input,
+not a native approval. Read its originating update and consider whether it is
+still applicable before acting. Acknowledge only after consuming it, then poll
+again to verify it is no longer returned. Distinguish receipt from execution.
+
+Poll the registration at meaningful stage boundaries, before consequential
+decisions, and before sending a completion update. Incorporate applicable
+instructions before declaring completion. After the completion update, allow
+a bounded 30-second reply window, polling every 10 seconds, then perform a final
+poll immediately before ending the turn. A user's explicit waiting preference
+takes precedence. Continue independent work during waits where possible.
+When a reply requires clarification, use the question workflow below; do not
+treat the optional-update deadline as an answer to that question.
+
+Make the completion message explain that late replies require resuming this
+same task. There is no automatic wakeup. Replies captured before expiry remain
+available until consumed; replies first arriving after expiry are rejected.
+On resumption, poll the retained registration before sending another update.
+If its credentials were lost, report that recovery is unavailable rather than
+registering a new task and claiming its empty inbox proves no previous reply.
+Do not wait indefinitely, and do not claim a late response was processed while
+the agent was inactive.
+
+For a requested live test of ordinary updates, send one harmless `send_update`,
+have the user Reply with a chosen code, and apply the self-check's correlation,
+content, acknowledgement and empty-inbox checks. A successful `ask_question`
+self-check alone does not test ordinary-update routing. Keep tests opt-in;
+routine updates do not authorize extra test messages.
 
 ## Task exchange and limits
 

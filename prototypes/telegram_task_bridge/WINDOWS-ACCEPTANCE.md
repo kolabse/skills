@@ -29,7 +29,7 @@ to open a terminal or activate hooks. Never publish credential-bearing logs.
 4. Enter valid test-bot credentials. Verify restricted config permissions, private
    venv creation, pinned MCP dependency, one scheduled task and a fresh `ready`
    heartbeat. Confirm no manual hook activation or terminal entry was required.
-5. Reload Codex and verify six native MCP tools. Explicitly authorize a test
+5. Reload Codex and verify seven native MCP tools. Explicitly authorize a test
    question to the test chat, reply to that exact message, poll and acknowledge;
    poll again to verify the inbox is empty.
 6. Pause through the agent, then sign out and back in. Verify polling remains

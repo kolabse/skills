@@ -61,14 +61,23 @@ def main():
         """Register this task; retain its returned task_id and secret privately."""
         return store.register(label)
 
-    def send_question(task_id, secret, text, ttl_seconds):
+    def send_question(task_id, secret, text, ttl_seconds, *, optional_reply=False):
         question = store.create_question(task_id, secret, text, ttl_seconds)
+        if optional_reply:
+            guidance = (
+                "При желании отправьте один ответ через Reply на это сообщение. "
+                f"Ответ принимается в течение {ttl_seconds} сек. "
+                "Агент проверяет ответы в контрольных точках; автоматического пробуждения нет. "
+                f"Ответ не заменяет разрешения {agent_name}.")
+        else:
+            guidance = f"Ответьте на это сообщение. Ответ не заменяет разрешения {agent_name}."
         try:
             with receiver_lock(delivery_lock, wait_seconds=40):
                 message_id = (secrets.randbits(50) if args.offline else telegram.send(
                     f"[{agent_name}: {store.task_label(task_id, secret)}]\n"
-                    f"Задача {task_id[:8]}, вопрос {question['question_id'][:8]}\n{text}\n\n"
-                    f"Ответьте на это сообщение. Ответ не заменяет разрешения {agent_name}."))
+                    f"Задача {task_id[:8]}, {'обновление' if optional_reply else 'вопрос'} "
+                    f"{question['question_id'][:8]}\n{text}\n\n{guidance}",
+                    **({"force_reply": False} if optional_reply else {})))
                 store.mark_sent(question["question_id"], message_id)
         except Exception:
             store.mark_failed(question["question_id"])
@@ -81,6 +90,15 @@ def main():
     def ask_question(task_id: str, secret: str, text: str, ttl_seconds: int = 3600) -> dict:
         """Send a question. Poll explicitly for its reply; sending does not wait."""
         return send_question(task_id, secret, text, ttl_seconds)
+
+    @mcp.tool()
+    def send_update(task_id: str, secret: str, text: str, ttl_seconds: int = 3600) -> dict:
+        """Send an ordinary update with one optional Reply, polled at checkpoints.
+
+        Returns a question_id for the existing status and acknowledgement tools.
+        Does not wait for a reply or automatically wake an idle task.
+        """
+        return send_question(task_id, secret, text, ttl_seconds, optional_reply=True)
 
     @mcp.tool()
     def open_instruction_slot(task_id: str, secret: str, ttl_seconds: int = 86400) -> dict:
