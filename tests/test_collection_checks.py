@@ -14,6 +14,27 @@ import check_collection
 
 
 class SharedCollectionChecksTests(unittest.TestCase):
+    def test_ci_policy_covers_equivalent_shared_commands_and_platforms(self):
+        root = Path(__file__).resolve().parents[1]
+        config = json.loads((root / ".agents/verify-before-push/config.json").read_text(encoding="utf-8"))
+        mapping = config["github_ci"]["checks"]
+        self.assertEqual(set(mapping), {item["name"] for item in config["checks"] if item.get("enabled", True)})
+        expected = {
+            "collection-full": ("full", {f"validate ({os}, {version})" for os in
+                ("ubuntu-latest", "windows-latest", "macos-latest") for version in ("3.11", "3.13")}),
+            "consumer-smoke": ("consumers", {"skills-cli-discovery"}),
+        }
+        for name, (profile, jobs) in expected.items():
+            entry = next(item for item in config["checks"] if item["name"] == name)
+            self.assertEqual(entry["command"][1:], ["scripts/check_collection.py", "run", "--profile", profile])
+            self.assertEqual(set(mapping[name]["jobs"]), jobs)
+            workflow = (root / mapping[name]["workflow"]).read_text(encoding="utf-8")
+            self.assertIn(f"run: python scripts/check_collection.py run --profile {profile}", workflow)
+        bridge = mapping["telegram-bridge-prototype"]
+        self.assertEqual(set(bridge["jobs"]), {"windows-prototype (3.11)", "windows-prototype (3.13)"})
+        self.assertIn("run: python prototypes/telegram_task_bridge/run_checks.py",
+                      (root / bridge["workflow"]).read_text(encoding="utf-8"))
+
     def program(self, root):
         value = {"schema_version": 1, "checks": {"fast": {"command": ["{python}", "fast.py"], "timeout_seconds": 10}, "slow": {"command": ["{python}", "slow.py"], "timeout_seconds": 20}}, "profiles": {"preflight": ["fast"], "full": ["fast", "slow"]}}
         (root / "collection-checks.json").write_text(json.dumps(value), encoding="utf-8")

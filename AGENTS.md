@@ -18,6 +18,12 @@ Use `$verify-before-push` before pushing protected repositories. Run the
 project-declared checks and require current evidence bound to the exact Git
 commits and worktrees being pushed. Treat missing, failed, malformed, or stale
 evidence as a stop condition for a protected push.
+Use the canonical helper at `skills/verify-before-push/scripts/verify_before_push.py`.
+For the clean integrated `main` commit, the explicit `run --source github-ci`
+mode may accept the complete workflow/job mapping declared in the verification
+configuration. Keep local verification for new unpublished commits. For a
+release using this mode, run `release-skill-collection check --source github-ci`
+to build archives and verify checksums locally; retain all other release gates.
 <!-- verify-before-push:end -->
 
 <!-- git-workflow-defaults:start -->

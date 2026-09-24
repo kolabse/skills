@@ -39,7 +39,7 @@ class OfflineProtocolTest(unittest.IsolatedAsyncioTestCase):
 
     async def test_two_stdio_servers_share_state_but_isolate_task_credentials(self):
         expected_tools = {
-            "register_task", "ask_question", "open_instruction_slot",
+            "register_task", "ask_question", "open_instruction_slot", "send_update",
             "poll_replies", "question_status", "acknowledge_reply",
         }
         with tempfile.TemporaryDirectory(prefix="bridge-offline-protocol-") as directory:
@@ -110,6 +110,7 @@ class OfflineProtocolTest(unittest.IsolatedAsyncioTestCase):
                     mixed = {"task_id": task_a["task_id"], "secret": task_b["secret"]}
                     await self.denied(second, "poll_replies", **mixed)
                     await self.denied(second, "ask_question", **mixed, text="unauthorized")
+                    await self.denied(second, "send_update", **mixed, text="unauthorized")
                     await self.denied(second, "open_instruction_slot", **mixed)
                     for tool in ("question_status", "acknowledge_reply"):
                         await self.denied(second, tool, **mixed, question_id=q_a)
@@ -124,6 +125,24 @@ class OfflineProtocolTest(unittest.IsolatedAsyncioTestCase):
                     await self.call(first, "acknowledge_reply", **task_a, question_id=q_a)
                     await self.call(first, "acknowledge_reply", **task_b, question_id=q_b)
                     self.assertEqual(await self.call(second, "poll_replies", **task_b), [])
+
+                    update = await self.call(first, "send_update", **task_a, text="Build passed")
+                    self.assertEqual(update["mode"], "offline")
+                    self.assertEqual(update["status"], "sent")
+                    q_update = update["question_id"]
+                    with closing(sqlite3.connect(database)) as connection:
+                        message_id = connection.execute(
+                            "SELECT message_id FROM questions WHERE question_id=?", (q_update,)
+                        ).fetchone()[0]
+                    with closing(Store(database)) as receiver:
+                        self.assertEqual(receiver.receive(103, message_id, "Ship it")["status"],
+                                         "answered")
+                    self.assertEqual(await self.call(second, "poll_replies", **task_b), [])
+                    replies = await self.call(second, "poll_replies", **task_a)
+                    self.assertEqual([(row["question_id"], row["answer"]) for row in replies],
+                                     [(q_update, "Ship it")])
+                    await self.call(first, "acknowledge_reply", **task_a, question_id=q_update)
+                    self.assertEqual(await self.call(second, "poll_replies", **task_a), [])
 
 
 if __name__ == "__main__":

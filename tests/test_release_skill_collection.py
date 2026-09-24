@@ -145,6 +145,97 @@ def release_audit(tag: str, commit: str) -> dict[str, object]:
 
 
 class ReleaseSkillCollectionTests(unittest.TestCase):
+    def test_ci_gate_requires_construction_and_current_provider_evidence(self) -> None:
+        commit = "a" * 40
+        checks = [{"name": "collection-full", "source": "github-ci", "passed": True,
+                   "receipt_sha256": "b" * 64}, passing_result("build"), passing_result("checksums")]
+        report = {"schema_version": 2, "mode": "check", "mutates_repository": False,
+                  "blockers": [], "post_check_repository": {"head": commit, "dirty": False},
+                  "source": "github-ci", "passed": True, "checks": checks,
+                  "evidence": {"tag": "v9.9.9", "commit": commit,
+                               "checks_sha256": release_collection.canonical_digest(checks)}}
+        report["report_sha256"] = release_collection.canonical_digest(report)
+        gates = {name: signed_gate(commit) for name in release_collection.REQUIRED_GATES}
+        gates["locked_holdout"] = signed_gate(commit, assertion_digest="c" * 64)
+        gates["supported_platform_ci"] = signed_gate(commit, platforms=["linux", "macos", "windows"])
+        gates["consumer_smoke"] = signed_gate(commit, agents=["claude-code", "codex"])
+        gates["local_release_check"] = signed_gate(commit, source="github-ci", check_report=report)
+        value = {"schema_version": 1, "tag": "v9.9.9", "commit": commit, "gates": gates}
+        value["evidence_sha256"] = release_collection.canonical_digest(value)
+        with patch.object(release_collection, "load_object", return_value=value), \
+                patch.object(release_collection, "verified_ci_receipt", return_value={"receipt_sha256": "b" * 64}) as provider:
+            self.assertTrue(release_collection.verify_commit_evidence(ROOT, "v9.9.9", ROOT / "unused", commit)["valid"])
+            provider.assert_called_once()
+        with patch.object(release_collection, "load_object", return_value=value), \
+                patch.object(release_collection, "verified_ci_receipt", side_effect=release_collection.ReleaseError("CI failed")):
+            with self.assertRaisesRegex(release_collection.ReleaseError, "CI failed"):
+                release_collection.verify_commit_evidence(ROOT, "v9.9.9", ROOT / "unused", commit)
+        for bad_report in (None, {**report, "checks": checks[:1]},
+                           {**report, "checks": [checks[0], {**checks[1], "returncode": 1}, checks[2]]},
+                           {**report, "checks": [checks[0], checks[1], {**checks[2], "timed_out": True}]}):
+            if isinstance(bad_report, dict):
+                bad_report["report_sha256"] = release_collection.canonical_digest({
+                    k: v for k, v in bad_report.items() if k != "report_sha256"})
+            gates["local_release_check"] = signed_gate(commit, source="github-ci", check_report=bad_report)
+            value["evidence_sha256"] = release_collection.canonical_digest({
+                k: v for k, v in value.items() if k != "evidence_sha256"})
+            with patch.object(release_collection, "load_object", return_value=value), \
+                    patch.object(release_collection, "verified_ci_receipt") as provider:
+                with self.assertRaises(release_collection.ReleaseError):
+                    release_collection.verify_commit_evidence(ROOT, "v9.9.9", ROOT / "unused", commit)
+                provider.assert_not_called()
+
+    def test_ci_check_reuses_full_but_runs_build_and_checksums(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            fixture = ReleaseFixture(Path(directory))
+            (fixture.root / "collection-checks.json").write_text("{}", encoding="utf-8")
+            (fixture.root / "scripts/check_collection.py").write_text("# fixture", encoding="utf-8")
+            git(fixture.root, "add", ".")
+            git(fixture.root, "commit", "-qm", "shared checks")
+            receipt = {"receipt_sha256": "b" * 64, "checks": [
+                {"name": "collection-full", "status": "passed", "source": "github-ci"}]}
+            calls = []
+            def execute(root, name, arguments, timeout):
+                calls.append(name)
+                return passing_result(name)
+            with patch.object(release_collection, "verified_ci_receipt", return_value=receipt) as verify, \
+                    patch.object(release_collection, "run_command", side_effect=execute):
+                result = release_collection.check(fixture.root, fixture.tag, None, "github-ci")
+            self.assertTrue(result["passed"], result["blockers"])
+            self.assertEqual(calls, ["build", "checksums"])
+            self.assertEqual(verify.call_count, 2)
+            self.assertEqual(result["checks"][0]["source"], "github-ci")
+            self.assertNotIn("returncode", result["checks"][0])
+
+    def test_ci_check_failure_never_builds(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            fixture = ReleaseFixture(Path(directory))
+            (fixture.root / "collection-checks.json").write_text("{}", encoding="utf-8")
+            (fixture.root / "scripts/check_collection.py").write_text("# fixture", encoding="utf-8")
+            git(fixture.root, "add", ".")
+            git(fixture.root, "commit", "-qm", "shared checks")
+            with patch.object(release_collection, "verified_ci_receipt",
+                              side_effect=release_collection.ReleaseError("CI pending")), \
+                    patch.object(release_collection, "run_command") as execute:
+                with self.assertRaisesRegex(release_collection.ReleaseError, "CI pending"):
+                    release_collection.check(fixture.root, fixture.tag, None, "github-ci")
+            execute.assert_not_called()
+
+    def test_ci_check_rejects_new_receipt_after_construction(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            fixture = ReleaseFixture(Path(directory))
+            (fixture.root / "collection-checks.json").write_text("{}", encoding="utf-8")
+            (fixture.root / "scripts/check_collection.py").write_text("# fixture", encoding="utf-8")
+            git(fixture.root, "add", ".")
+            git(fixture.root, "commit", "-qm", "shared checks")
+            receipts = [{"receipt_sha256": value * 64, "checks": [
+                {"name": "collection-full", "status": "passed", "source": "github-ci"}]} for value in ("a", "b")]
+            with patch.object(release_collection, "verified_ci_receipt", side_effect=receipts), \
+                    patch.object(release_collection, "run_command", side_effect=lambda root, name, args, timeout: passing_result(name)):
+                result = release_collection.check(fixture.root, fixture.tag, None, "github-ci")
+            self.assertFalse(result["passed"])
+            self.assertIn("GitHub CI evidence changed during release construction", result["blockers"])
+
     def setUp(self) -> None:
         identity = patch.object(release_collection, "remote_repository", return_value="kolabse/skills")
         identity.start()

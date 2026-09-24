@@ -416,6 +416,42 @@ def command_project_configure(args: argparse.Namespace, path: Path) -> None:
         print("Project test notification sent.")
 
 
+def bridge_route_compatibility(
+    token: str, global_chat: str, global_thread: str,
+    profile: dict[str, str], receiver_config: dict[str, Any],
+) -> tuple[bool, str]:
+    """Compare effective routing with saved receiver identity, without network access."""
+    saved_token = receiver_config.get("bot_token", "")
+    saved_chat = receiver_config.get("chat_id", "")
+    try:
+        if (not saved_token or not saved_chat
+                or normalize_bot_token(saved_token) != saved_token
+                or int(normalize_chat_id(str(saved_chat))) <= 0
+                or receiver_config.get("message_thread_id")):
+            return False, "receiver_private_destination_unavailable"
+    except (TelegramError, ValueError, TypeError):
+        return False, "receiver_private_destination_unavailable"
+    if token != saved_token:
+        return False, "different_bot_identity"
+    destinations = []
+    if profile.get("delivery_mode", "global-only") in {"global-only", "global-and-project"}:
+        destinations.append((global_chat, global_thread))
+    if profile:
+        destinations.append((profile["chat_id"], profile.get("message_thread_id", "")))
+    try:
+        # Telegram IDs are numeric; equivalent numeric spellings are one route.
+        effective = {(int(chat), thread) for chat, thread in destinations}
+    except (ValueError, TypeError):
+        return False, "invalid_effective_destination"
+    if any(thread for _, thread in effective):
+        return False, "topic_not_supported"
+    if len(effective) != 1:
+        return False, "multiple_destinations"
+    if effective != {(int(saved_chat), "")}:
+        return False, "different_destination"
+    return True, "same_saved_private_destination"
+
+
 def command_project_status(args: argparse.Namespace, path: Path) -> bool:
     token, global_chat, global_thread = resolve_credentials(load_config(path))
     if token:
@@ -432,6 +468,15 @@ def command_project_status(args: argparse.Namespace, path: Path) -> bool:
     configured = bool(token) and (
         (global_enabled and bool(global_chat)) or (project_enabled and bool(profile.get("chat_id")))
     )
+    compatible, compatibility_reason = False, "receiver_configuration_unavailable"
+    if os.name == "nt" and os.environ.get("LOCALAPPDATA"):
+        receiver_path = Path(os.environ["LOCALAPPDATA"]) / "codex/telegram-notify/config.json"
+        try:
+            receiver_config = load_config(receiver_path)
+        except TelegramError:
+            receiver_config = {}
+        compatible, compatibility_reason = bridge_route_compatibility(
+            token, global_chat, global_thread, profile, receiver_config)
     state = {
         "skill": "notify-via-telegram",
         "scope": "project",
@@ -443,6 +488,8 @@ def command_project_status(args: argparse.Namespace, path: Path) -> bool:
         "project_thread_id": profile.get("message_thread_id", "not configured"),
         "project_config_file": str(profile_path),
         "bot_token": "configured" if token else "missing",
+        "bridge_compatible": compatible,
+        "bridge_compatibility_reason": compatibility_reason,
     }
     if args.json:
         print(json.dumps(state, ensure_ascii=False, sort_keys=True))

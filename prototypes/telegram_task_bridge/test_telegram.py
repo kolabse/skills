@@ -9,6 +9,17 @@ from prototypes.telegram_task_bridge.telegram import Telegram, TelegramError, bi
 
 
 class TelegramTests(unittest.TestCase):
+    def test_send_keeps_question_force_reply_but_updates_omit_it(self):
+        adapter = Telegram.__new__(Telegram)
+        adapter.chat_id = 123
+        with patch.object(adapter, "call", return_value={"message_id": 456}) as call:
+            self.assertEqual(adapter.send("Question?"), 456)
+            call.assert_called_once_with("sendMessage", chat_id=123, text="Question?",
+                                         reply_markup={"force_reply": True, "selective": True})
+            call.reset_mock()
+            self.assertEqual(adapter.send("Progress", force_reply=False), 456)
+            call.assert_called_once_with("sendMessage", chat_id=123, text="Progress")
+
     def test_sender_chat_and_reply_filter_and_restart(self):
         with tempfile.TemporaryDirectory() as tmp:
             path = Path(tmp) / "state.db"

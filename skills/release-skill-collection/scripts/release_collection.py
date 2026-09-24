@@ -360,7 +360,35 @@ def prepare_output(
     return output, None
 
 
-def check(root: Path, tag: str, output_root: Path | None) -> dict[str, Any]:
+def verified_ci_receipt(root: Path, commit: str) -> dict[str, Any]:
+    """Revalidate the configured provider receipt; a supplied pass flag is insufficient."""
+    verifier = root / "skills/verify-before-push/scripts/verify_before_push.py"
+    if not verifier.is_file():
+        raise ReleaseError("CI-assisted release requires the collection verification helper")
+    config_path = root / ".agents/verify-before-push/config.json"
+    config_bytes = config_path.read_bytes()
+    config = load_object(config_path, "verification configuration")
+    relative = config.get("evidence_file", ".agents/verify-before-push/evidence.json")
+    path = (root / relative).resolve()
+    if not path.is_relative_to(root.resolve()):
+        raise ReleaseError("verification receipt must remain inside the project")
+    before = path.read_bytes()
+    result = run_command(root, "verify-github-ci", [sys.executable, str(verifier),
+                         "verify", "--project-root", str(root)], 180)
+    if not result["passed"]:
+        raise ReleaseError("GitHub CI receipt verification failed")
+    receipt = load_object(path, "GitHub CI receipt")
+    if path.read_bytes() != before or config_path.read_bytes() != config_bytes:
+        raise ReleaseError("GitHub CI receipt or configuration changed during verification")
+    if receipt.get("version") != 3 or receipt.get("source") != "github-ci":
+        raise ReleaseError("CI-assisted release requires an explicit version-3 GitHub CI receipt")
+    states = receipt.get("repositories", [])
+    if len(states) != 1 or states[0].get("head") != commit or states[0].get("clean") is not True:
+        raise ReleaseError("GitHub CI receipt is not bound to this clean release commit")
+    return receipt
+
+
+def check(root: Path, tag: str, output_root: Path | None, source: str = "local") -> dict[str, Any]:
     root = root.resolve()
     plan = inspect(root, tag)
     blockers = list(plan["blockers"])
@@ -372,6 +400,10 @@ def check(root: Path, tag: str, output_root: Path | None) -> dict[str, Any]:
             blockers.append("declared shared check program requires scripts/check_collection.py")
     if plan["repository"].get("dirty"):
         blockers.append("local release checks require a clean worktree")
+    if source not in {"local", "github-ci"}:
+        blockers.append("unknown release check source")
+    if source == "github-ci" and not (root / "collection-checks.json").exists():
+        blockers.append("CI-assisted release requires the shared collection check manifest")
     output: Path | None = None
     temporary: tempfile.TemporaryDirectory[str] | None = None
     output, temporary = prepare_output(
@@ -380,8 +412,16 @@ def check(root: Path, tag: str, output_root: Path | None) -> dict[str, Any]:
     try:
         if not blockers and output is not None:
             for name, arguments, timeout in active_checks:
-                command = [sys.executable, *arguments]
-                result = run_command(root, name, command, timeout)
+                if source == "github-ci":
+                    receipt = verified_ci_receipt(root, plan["repository"]["head"])
+                    accepted = [item for item in receipt["checks"] if item.get("name") == name]
+                    if len(accepted) != 1 or accepted[0].get("status") != "passed" or accepted[0].get("source") != "github-ci":
+                        raise ReleaseError("GitHub CI receipt does not cover the shared full check")
+                    result = {"name": name, "passed": True, "source": "github-ci",
+                              "receipt_sha256": receipt["receipt_sha256"]}
+                else:
+                    command = [sys.executable, *arguments]
+                    result = run_command(root, name, command, timeout)
                 results.append(result)
                 if not result["passed"]:
                     break
@@ -419,12 +459,19 @@ def check(root: Path, tag: str, output_root: Path | None) -> dict[str, Any]:
         post_check_state = repository_state(root)
         if not blockers and post_check_state.get("dirty"):
             blockers.append("local release checks mutated the repository worktree")
+        if post_check_state.get("head") != plan["repository"].get("head"):
+            blockers.append("release commit changed while checks were running")
+        if source == "github-ci" and not blockers and results:
+            receipt = verified_ci_receipt(root, plan["repository"]["head"])
+            if receipt["receipt_sha256"] != results[0].get("receipt_sha256"):
+                blockers.append("GitHub CI evidence changed during release construction")
         passed = not blockers and len(results) == len(active_checks) + 2 and all(
             item["passed"] for item in results
         )
         response = {
             **plan,
             "mode": "check",
+            "source": source,
             "blockers": blockers,
             "ready_for_local_checks": not blockers,
             "checks": results,
@@ -488,6 +535,41 @@ def verify_commit_evidence(
         if gate.get("commit") != commit:
             raise ReleaseError(f"release gate is bound to another commit: {name}")
         verify_digest(gate, "evidence_sha256", f"release gate {name}")
+    local_gate = gates["local_release_check"]
+    if local_gate.get("source") not in {None, "local", "github-ci"}:
+        raise ReleaseError("unsupported release verification source")
+    if local_gate.get("source") == "github-ci":
+        report = local_gate.get("check_report")
+        if not isinstance(report, dict):
+            raise ReleaseError("CI-assisted release gate requires its construction check report")
+        verify_digest(report, "report_sha256", "CI-assisted construction report")
+        if (report.get("source") != "github-ci" or report.get("passed") is not True
+                or report.get("schema_version") != 2 or report.get("mode") != "check"
+                or report.get("mutates_repository") is not False or report.get("blockers") != []
+                or not isinstance(report.get("evidence"), dict)
+                or not isinstance(report.get("post_check_repository"), dict)
+                or report["post_check_repository"].get("head") != commit
+                or report["post_check_repository"].get("dirty") is not False
+                or report.get("evidence", {}).get("commit") != commit
+                or report.get("evidence", {}).get("tag") != tag):
+            raise ReleaseError("CI-assisted construction report has a different release subject")
+        checks = report.get("checks", [])
+        if (not isinstance(checks, list) or any(not isinstance(item, dict) for item in checks)
+                or [item.get("name") for item in checks] != ["collection-full", "build", "checksums"]
+                or any(item.get("passed") is not True for item in checks)
+                or any(item.get("source") == "github-ci" for item in checks[1:])):
+            raise ReleaseError("CI-assisted gate requires successful local build and checksums")
+        for item in checks[1:]:
+            if (type(item.get("returncode")) is not int or item["returncode"] != 0
+                    or item.get("timed_out") is not False or "source" in item
+                    or not isinstance(item.get("output_tail"), str)
+                    or not SHA256_PATTERN.fullmatch(str(item.get("output_sha256", "")))):
+                raise ReleaseError("CI-assisted gate contains invalid local construction results")
+        if report["evidence"].get("checks_sha256") != canonical_digest(checks):
+            raise ReleaseError("CI-assisted construction checks digest mismatch")
+        receipt = verified_ci_receipt(root, commit)
+        if checks[0].get("source") != "github-ci" or checks[0].get("receipt_sha256") != receipt["receipt_sha256"]:
+            raise ReleaseError("CI-assisted construction report uses another CI receipt")
     platforms = gates["supported_platform_ci"].get("platforms")
     if platforms != list(SUPPORTED_PLATFORMS):
         raise ReleaseError("supported-platform CI evidence is incomplete")
@@ -1132,6 +1214,7 @@ def main(argv: list[str] | None = None) -> int:
             child.add_argument("--tag", required=True)
         if name == "check":
             child.add_argument("--output-root", type=Path)
+            child.add_argument("--source", choices=["local", "github-ci"], default="local")
     evidence = subparsers.add_parser("verify-evidence")
     evidence.add_argument("--project-root", type=Path, required=True)
     evidence.add_argument("--tag", required=True)
@@ -1172,7 +1255,7 @@ def main(argv: list[str] | None = None) -> int:
         elif args.command == "plan":
             result = inspect(root, args.tag)
         elif args.command == "check":
-            result = check(root, args.tag, args.output_root)
+            result = check(root, args.tag, args.output_root, args.source)
         elif args.command == "verify-evidence":
             result = verify_evidence(root, args.tag, args.evidence)
         elif args.command == "route-plan":
