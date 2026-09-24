@@ -7,7 +7,14 @@
   "properties": {
     "schema_version": {"const": 2},
     "mode": {"const": "check"},
-    "checks": {"type": "array", "items": {"type": "object", "required": ["name", "passed", "timed_out", "output_sha256", "output_tail"]}},
+    "source": {"enum": ["local", "github-ci"]},
+    "checks": {"type": "array", "items": {"oneOf": [
+      {"type": "object", "required": ["name", "passed", "timed_out", "output_sha256", "output_tail"], "not": {"required": ["source"]}},
+      {"type": "object", "additionalProperties": false, "required": ["name", "passed", "source", "receipt_sha256"], "properties": {
+        "name": {"const": "collection-full"}, "passed": {"const": true},
+        "source": {"const": "github-ci"}, "receipt_sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"}
+      }}
+    ]}},
     "passed": {"type": "boolean"},
     "evidence": {"type": "object", "required": ["tag", "commit", "checks_sha256"]},
     "external_gates_remaining": {"type": "array", "items": {"type": "string"}},

@@ -256,6 +256,74 @@ Completion criterion: any reused result proves the same checked subject and
 identities, fresh remote state, and an unchanged original receipt. Report reuse
 explicitly; do not describe reused results as newly executed checks.
 
+## Reuse GitHub Actions results explicitly
+
+Local verification remains the default. To collect successful GitHub Actions
+results for an already published commit, add an optional `github_ci` policy to
+configuration version 1 and explicitly select `run --source github-ci`:
+
+```json
+"github_ci": {
+  "repository": "owner/repository",
+  "remote": "origin",
+  "branch": "main",
+  "event": "push",
+  "checks": {
+    "unit-tests": {
+      "workflow": ".github/workflows/validate.yml",
+      "jobs": ["Unit tests (ubuntu-latest, 3.13)"]
+    }
+  }
+}
+```
+
+Map every enabled configured check to an exact workflow path and one or more
+exact job display names, including matrix suffixes. Disabled checks retain
+their configured skip reasons. Duplicate workflow/job assignments, missing
+enabled checks, and unknown policy fields fail closed. The initial CI mode
+supports one configured repository and rejects workspace maps. Neither
+configure nor migrate adds a CI policy or changes the default source.
+
+```shell
+python <skill-root>/scripts/verify_before_push.py run --project-root <project-root> --source github-ci
+python <skill-root>/scripts/verify_before_push.py verify --project-root <project-root>
+```
+
+The worktree must be clean, on the configured branch, and track that branch
+through the configured remote. The helper checks GitHub repository identities
+for fetch and push, fetches the remote, and requires HEAD to equal the freshly
+advertised branch SHA. It uses authenticated `gh api` against `github.com`;
+GitHub Enterprise and offline validation are not supported by this mode.
+No trusted local environment digest is needed for CI receipts.
+
+For each workflow, the helper queries runs for the exact HEAD, branch, and
+`push` event without filtering for success. It selects the newest run number,
+then validates its current attempt and attempt-specific jobs. The run's
+repository, head repository, SHA, branch, event, and workflow path must match.
+Every expected job must be unique, completed, and successful for that attempt.
+Missing, skipped, pending, cancelled, failed, malformed, or ambiguous results
+stop verification; an older successful run never substitutes for a newer
+unsuccessful run. Responses with more than 100 runs or jobs, incomplete counts,
+or API errors also fail closed.
+
+Successful collection writes version-3 evidence with `source: github-ci`,
+the configuration digest, exact clean Git state and tracking identity,
+original verification time, workflow run IDs/numbers/attempts, job IDs and
+conclusions, and a receipt digest. CI check results identify their source;
+they never invent local command exit codes. CI establishes the configured
+workflow/job results, not execution of local command arrays by this helper.
+
+Every subsequent `verify` or protected `gate` queries GitHub again and requires
+the original run, attempt, and job observations to remain current. A changed
+attempt invalidates the receipt even if the new attempt succeeds. A new
+explicit CI run can collect new evidence; failures invalidate its previous
+receipt. Reusing a current receipt preserves its bytes, verification time,
+and file timestamp. Git, CI, and configuration are checked again at collection
+boundaries; observations are not a lock preventing a later remote change.
+Version-1 and version-2 local receipts and the outside-repository gate behavior
+remain supported. Report accepted CI results explicitly as prior CI execution,
+with the original receipt version/time and current gate decision.
+
 ## Validate before push
 
 Validate all configured repositories with:

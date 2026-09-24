@@ -1,5 +1,29 @@
 {
   "version": 1,
+  "github_ci": {
+    "repository": "kolabse/skills",
+    "remote": "origin",
+    "branch": "main",
+    "event": "push",
+    "checks": {
+      "telegram-bridge-prototype": {
+        "workflow": ".github/workflows/telegram-bridge.yml",
+        "jobs": ["windows-prototype (3.11)", "windows-prototype (3.13)"]
+      },
+      "collection-full": {
+        "workflow": ".github/workflows/validate.yml",
+        "jobs": [
+          "validate (ubuntu-latest, 3.11)", "validate (ubuntu-latest, 3.13)",
+          "validate (windows-latest, 3.11)", "validate (windows-latest, 3.13)",
+          "validate (macos-latest, 3.11)", "validate (macos-latest, 3.13)"
+        ]
+      },
+      "consumer-smoke": {
+        "workflow": ".github/workflows/validate.yml",
+        "jobs": ["skills-cli-discovery"]
+      }
+    }
+  },
   "evidence_file": ".agents/verify-before-push/evidence.json",
   "repositories": [
     {

@@ -34,6 +34,12 @@ Use the collection's declared policies and scripts as the source of truth. Keep 
    That profile is also used by local pre-push verification and CI, with fast
    bootstrap and localization gates before unit tests. A missing declared runner
    is a blocker; projects without that manifest keep the legacy checks above.
+   When project policy explicitly maps these checks to trusted GitHub CI, use
+   `verify-before-push run --source github-ci` on the integrated primary SHA,
+   then `check --source github-ci`. This verifies the provider receipt, accepts
+   the shared full profile from CI, and still builds and checksums archives
+   locally. Default `check` continues to run local tests. See
+   [CI-assisted release checks](references/github-ci.md) for the evidence contract.
 5. Assemble the five required external gate records and verify their exact commit binding, platform coverage, assertion digest, and top-level document digest:
 
    ```shell

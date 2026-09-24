@@ -15,6 +15,7 @@ import tempfile
 from datetime import datetime, timezone
 from pathlib import Path, PureWindowsPath
 from typing import Any
+from urllib.parse import quote, urlencode
 
 
 CONFIG_RELATIVE = Path(".agents/verify-before-push/config.json")
@@ -267,6 +268,8 @@ def load_execution_context(
 def validate_config_document(
     config: dict[str, Any], project_root: Path, *, validate_checks: bool = True,
 ) -> Path:
+    if set(config) - {"version", "repositories", "checks", "evidence_file", "reuse_verified_results", "github_ci"}:
+        raise VerificationError("Configuration contains unknown fields")
     if type(config.get("version")) is not int or config["version"] != 1:
         raise VerificationError("Configuration version must be 1")
     if not isinstance(config.get("reuse_verified_results", False), bool):
@@ -282,6 +285,10 @@ def validate_config_document(
         raise VerificationError("evidence_file must be a non-empty string")
     evidence_path = resolve_inside(project_root, evidence_value, "evidence_file")
     roots = [validate_repository_entry(entry, project_root)[1] for entry in repositories]
+    if len(roots) != len(set(roots)) or len({entry["name"] for entry in repositories}) != len(repositories):
+        raise VerificationError("Repository names and Git roots must be unique")
+    if "github_ci" in config:
+        validate_github_ci_policy(config)
     if not validate_checks:
         return evidence_path
     names: set[str] = set()
@@ -361,6 +368,8 @@ def configure_project(project_root: Path, source: Path | None, agent: str = "cod
 def validate_repository_entry(entry: Any, project_root: Path) -> tuple[str, Path, bool, bool]:
     if not isinstance(entry, dict):
         raise VerificationError("Each repository entry must be an object")
+    if set(entry) - {"name", "path", "require_clean", "require_upstream_current"}:
+        raise VerificationError("Repository contains unknown fields")
     name, value = entry.get("name"), entry.get("path")
     if not isinstance(name, str) or not name or not isinstance(value, str) or not value:
         raise VerificationError("Each repository requires non-empty name and path")
@@ -471,6 +480,8 @@ def validate_check(
 ) -> tuple[str, Path, list[str], int, bool, str]:
     if not isinstance(entry, dict):
         raise VerificationError("Each check entry must be an object")
+    if set(entry) - {"name", "cwd", "command", "timeout_seconds", "enabled", "required", "skip_reason"}:
+        raise VerificationError("Check contains unknown fields")
     name = entry.get("name")
     cwd_value = entry.get("cwd", ".")
     command = entry.get("command")
@@ -481,7 +492,7 @@ def validate_check(
     if not isinstance(command, list) or not command or not all(isinstance(arg, str) and arg for arg in command):
         raise VerificationError(f"Check {name!r} command must be a non-empty string array")
     timeout = entry.get("timeout_seconds", 600)
-    if not isinstance(timeout, int) or timeout < 1 or timeout > 86400:
+    if type(timeout) is not int or timeout < 1 or timeout > 86400:
         raise VerificationError(f"Check {name!r} timeout_seconds is invalid")
     enabled = entry.get("enabled", True)
     required = entry.get("required", True)
@@ -725,6 +736,250 @@ def validate_receipt(
     validate_results(config, evidence.get("checks"), project_root, reusable=version == 2)
 
 
+def validate_github_ci_policy(config: dict[str, Any]) -> dict[str, Any]:
+    policy = config.get("github_ci")
+    if not isinstance(policy, dict) or set(policy) != {"repository", "remote", "branch", "event", "checks"}:
+        raise VerificationError("github_ci requires exactly repository, remote, branch, event, and checks")
+    if len(config["repositories"]) != 1:
+        raise VerificationError("GitHub CI evidence supports exactly one repository")
+    if not isinstance(policy["repository"], str) or not re.fullmatch(r"[A-Za-z0-9_-]+/[A-Za-z0-9_-][A-Za-z0-9_.-]*", policy["repository"]):
+        raise VerificationError("github_ci repository must be owner/repository")
+    for key in ("remote", "branch"):
+        if not isinstance(policy[key], str) or not policy[key] or policy[key].startswith("-") or re.search(r"[\s\x00-\x1f\x7f]", policy[key]):
+            raise VerificationError(f"github_ci {key} must be a non-empty Git identifier")
+    if policy["event"] != "push":
+        raise VerificationError("github_ci event must be push")
+    names = [entry.get("name") for entry in config["checks"] if isinstance(entry, dict)]
+    if len(names) != len(config["checks"]) or any(not isinstance(name, str) or not name for name in names) or len(set(names)) != len(names):
+        raise VerificationError("Configured check names must be unique strings")
+    enabled = {entry["name"] for entry in config["checks"] if entry.get("enabled", True)}
+    mappings = policy["checks"]
+    if not enabled or not isinstance(mappings, dict) or set(mappings) != enabled:
+        raise VerificationError("github_ci checks must map exactly all enabled checks")
+    claimed: set[tuple[str, str]] = set()
+    for mapping in mappings.values():
+        if not isinstance(mapping, dict) or set(mapping) != {"workflow", "jobs"}:
+            raise VerificationError("Each CI check requires exactly workflow and jobs")
+        workflow = mapping["workflow"]
+        if not isinstance(workflow, str) or not re.fullmatch(r"\.github/workflows/[A-Za-z0-9_.-]+\.ya?ml", workflow):
+            raise VerificationError("CI workflow must be an exact .github/workflows YAML path")
+        jobs = mapping["jobs"]
+        if not isinstance(jobs, list) or not jobs or any(not isinstance(job, str) or not job.strip() or re.search(r"[\x00-\x1f\x7f]", job) for job in jobs):
+            raise VerificationError("CI jobs must contain exact non-empty job names")
+        for job in jobs:
+            key = (workflow, job)
+            if key in claimed:
+                raise VerificationError("CI workflow/job identifiers must be unique across checks")
+            claimed.add(key)
+    return policy
+
+
+def github_api(project_root: Path, endpoint: str) -> dict[str, Any]:
+    # Pin the official host even when GH_HOST points at another installation.
+    result = run_process(["gh", "api", "--hostname", "github.com", "-H", "Accept: application/vnd.github+json",
+                          "-H", "X-GitHub-Api-Version: 2022-11-28", endpoint], project_root, 60)
+    if result.returncode:
+        raise VerificationError("GitHub Actions API request failed")
+    def unique(pairs: list[tuple[str, Any]]) -> dict[str, Any]:
+        value: dict[str, Any] = {}
+        for key, item in pairs:
+            if key in value:
+                raise VerificationError("GitHub API contains duplicate JSON keys")
+            value[key] = item
+        return value
+    try:
+        value = json.loads(result.stdout, object_pairs_hook=unique)
+    except (ValueError, UnicodeDecodeError) as error:
+        raise VerificationError("GitHub Actions API returned malformed JSON") from error
+    if not isinstance(value, dict):
+        raise VerificationError("GitHub Actions API response must be an object")
+    return value
+
+
+def github_ci_git_identity(config: dict[str, Any], project_root: Path, states: list[dict[str, Any]]) -> dict[str, Any]:
+    policy = validate_github_ci_policy(config)
+    _, repo, _, _ = validate_repository_entry(config["repositories"][0], project_root)
+    if len(states) != 1 or not states[0]["clean"]:
+        raise VerificationError("GitHub CI evidence requires an exact clean repository")
+    if git(repo, "check-ref-format", "--branch", policy["branch"], check=False).decode().strip() != policy["branch"]:
+        raise VerificationError("github_ci branch is invalid")
+    identity = tracking_identity(repo)
+    if (identity["branch"] != "refs/heads/" + policy["branch"] or identity["remote"] != policy["remote"]
+            or identity["merge"] != "refs/heads/" + policy["branch"]):
+        raise VerificationError("GitHub CI branch and tracking remote must match the configured policy")
+    for mode in ([], ["--push"]):
+        urls = git(repo, "remote", "get-url", *mode, "--all", policy["remote"]).decode().splitlines()
+        if len(urls) != 1:
+            raise VerificationError("GitHub CI requires one unambiguous GitHub remote URL")
+        match = re.fullmatch(r"(?:https://github\.com/|git@github\.com:|ssh://git@github\.com/)([A-Za-z0-9_-]+/[A-Za-z0-9_.-]+?)(?:\.git)?/?", urls[0])
+        if match is None or match[1].casefold() != policy["repository"].casefold():
+            raise VerificationError("GitHub CI remote repository identity does not match policy")
+    git(repo, "fetch", "--prune", policy["remote"])
+    ref = "refs/heads/" + policy["branch"]
+    records = [line.split() for line in git(repo, "ls-remote", "--exit-code", policy["remote"], ref).decode().splitlines()]
+    if records != [[states[0]["head"], ref]] or git(repo, "rev-parse", "@{upstream}").decode().strip() != states[0]["head"]:
+        raise VerificationError("GitHub CI requires HEAD to equal the freshly advertised configured branch")
+    return identity
+
+
+def ci_page(value: dict[str, Any], key: str) -> list[dict[str, Any]]:
+    count, items = value.get("total_count"), value.get(key)
+    if (type(count) is not int or count < 0 or count > 100 or not isinstance(items, list)
+            or count != len(items) or any(not isinstance(item, dict) for item in items)):
+        raise VerificationError("GitHub CI response is malformed or truncated (maximum 100 records)")
+    return items
+
+
+def positive_ci_id(value: Any) -> bool:
+    return type(value) is int and value > 0
+
+
+def validate_ci_run(run: dict[str, Any], policy: dict[str, Any], workflow: str, head: str) -> None:
+    path = run.get("path")
+    if (not isinstance(path, str) or path.split("@", 1)[0] != workflow
+            or ("@" in path and not path.split("@", 1)[1])
+            or run.get("head_sha") != head or run.get("head_branch") != policy["branch"]
+            or run.get("event") != policy["event"]):
+        raise VerificationError("CI run SHA, branch, event, or workflow identity mismatch")
+    for key in ("repository", "head_repository"):
+        identity = run.get(key)
+        if (not isinstance(identity, dict) or not isinstance(identity.get("full_name"), str)
+                or identity["full_name"].casefold() != policy["repository"].casefold()):
+            raise VerificationError("CI run repository identity mismatch")
+    if any(not positive_ci_id(run.get(key)) for key in ("id", "run_attempt", "run_number")):
+        raise VerificationError("CI run identifiers are malformed")
+
+
+def latest_ci_run(project_root: Path, policy: dict[str, Any], workflow: str, head: str) -> dict[str, Any]:
+    prefix = "repos/" + policy["repository"] + "/actions"
+    query = urlencode({"branch": policy["branch"], "event": policy["event"], "head_sha": head, "per_page": 100})
+    runs = ci_page(github_api(project_root, f"{prefix}/workflows/{quote(workflow, safe='')}/runs?{query}"), "workflow_runs")
+    if not runs:
+        raise VerificationError("No matching GitHub CI workflow run")
+    for run in runs:
+        validate_ci_run(run, policy, workflow, head)
+    if len({run["id"] for run in runs}) != len(runs) or len({run["run_number"] for run in runs}) != len(runs):
+        raise VerificationError("GitHub CI run identifiers are duplicated")
+    # Select before inspecting results; never fall back to an older success.
+    latest = max(runs, key=lambda run: run["run_number"])
+    run = github_api(project_root, f"{prefix}/runs/{latest['id']}")
+    validate_ci_run(run, policy, workflow, head)
+    if any(run[key] != latest[key] for key in ("id", "run_number", "run_attempt")):
+        raise VerificationError("CI run attempt changed during collection")
+    if run.get("status") != "completed" or run.get("conclusion") != "success":
+        raise VerificationError("Latest GitHub CI run/attempt is not completed successfully")
+    return run
+
+
+def collect_github_ci(config: dict[str, Any], project_root: Path, states: list[dict[str, Any]]) -> dict[str, Any]:
+    policy = validate_github_ci_policy(config)
+    identity = github_ci_git_identity(config, project_root, states)
+    head = states[0]["head"]
+    prefix = "repos/" + policy["repository"] + "/actions"
+    workflows: dict[str, dict[str, Any]] = {}
+    for workflow in sorted({item["workflow"] for item in policy["checks"].values()}):
+        run = latest_ci_run(project_root, policy, workflow, head)
+        jobs = ci_page(github_api(project_root, f"{prefix}/runs/{run['id']}/attempts/{run['run_attempt']}/jobs?per_page=100"), "jobs")
+        if any(not positive_ci_id(job.get("id")) or not isinstance(job.get("name"), str) for job in jobs) or len({job["id"] for job in jobs}) != len(jobs):
+            raise VerificationError("GitHub CI job identifiers are malformed or duplicated")
+        expected = sorted(job for item in policy["checks"].values() if item["workflow"] == workflow for job in item["jobs"])
+        observations = []
+        for name in expected:
+            matches = [job for job in jobs if job["name"] == name]
+            if len(matches) != 1:
+                raise VerificationError(f"CI job {name!r} is missing or ambiguous")
+            job = matches[0]
+            if (not positive_ci_id(job.get("run_id")) or not positive_ci_id(job.get("run_attempt"))
+                    or job.get("run_id") != run["id"] or job.get("run_attempt") != run["run_attempt"]
+                    or job.get("head_sha") != head or job.get("status") != "completed" or job.get("conclusion") != "success"):
+                raise VerificationError(f"CI job {name!r} is not a successful result for the exact run attempt")
+            observations.append({"name": name, "id": job["id"], "status": "completed", "conclusion": "success"})
+        workflows[workflow] = {"workflow": workflow, "run_id": run["id"], "run_number": run["run_number"],
+                               "run_attempt": run["run_attempt"], "head_sha": head, "head_branch": policy["branch"],
+                               "event": policy["event"], "repository": policy["repository"],
+                               "status": "completed", "conclusion": "success", "jobs": observations}
+    # A rerun can start after its attempt-specific jobs were requested. Recheck
+    # every accepted workflow after all job queries, including earlier workflows
+    # that could have changed while collecting later ones. Consumers (including
+    # verify/gate) must never accept a snapshot already superseded at this boundary.
+    for workflow, observation in workflows.items():
+        latest = latest_ci_run(project_root, policy, workflow, head)
+        if (latest["id"], latest["run_number"], latest["run_attempt"]) != (
+                observation["run_id"], observation["run_number"], observation["run_attempt"]):
+            raise VerificationError("CI workflow run or attempt changed after collecting jobs")
+    if github_ci_git_identity(config, project_root, states) != identity:
+        raise VerificationError("GitHub CI tracking identity changed during collection")
+    return {"git_identity": identity, "workflows": list(workflows.values())}
+
+
+def github_ci_results(config: dict[str, Any]) -> list[dict[str, Any]]:
+    return [{"name": entry["name"], "status": "passed", "source": "github-ci"} if entry.get("enabled", True)
+            else {"name": entry["name"], "status": "skipped", "reason": entry["skip_reason"]}
+            for entry in config["checks"]]
+
+
+def validate_github_ci_receipt(config: dict[str, Any], evidence: dict[str, Any], project_root: Path,
+                               current: list[dict[str, Any]], binding: str) -> None:
+    keys = {"version", "source", "config_sha256", "checked_at", "repositories", "checks", "github_ci", "receipt_sha256"}
+    if set(evidence) != keys or type(evidence["version"]) is not int or evidence["version"] != 3 or evidence["source"] != "github-ci":
+        raise VerificationError("GitHub CI evidence has an invalid structure")
+    if evidence["config_sha256"] != binding or evidence["receipt_sha256"] != digest({k: v for k, v in evidence.items() if k != "receipt_sha256"}):
+        raise VerificationError("GitHub CI evidence configuration or receipt digest mismatch")
+    try:
+        timestamp = datetime.fromisoformat(evidence["checked_at"].replace("Z", "+00:00"))
+        if timestamp.tzinfo is None:
+            raise ValueError("missing timezone")
+    except (AttributeError, TypeError, ValueError) as error:
+        raise VerificationError("GitHub CI evidence verification time is malformed") from error
+    if canonical_json(evidence["repositories"]) != canonical_json(current) or evidence["checks"] != github_ci_results(config):
+        raise VerificationError("GitHub CI evidence is stale or its check results are malformed")
+    if canonical_json(evidence["github_ci"]) != canonical_json(collect_github_ci(config, project_root, current)):
+        raise VerificationError("GitHub CI observations changed; original run and attempt must remain current")
+
+
+def run_github_ci_verification(project_root: Path, workspace_map: Path | None = None) -> Path:
+    if workspace_map is not None:
+        raise VerificationError("GitHub CI evidence does not support workspace maps")
+    context = load_execution_context(project_root)
+    _, config, _, evidence_path, binding = context
+    completed = False
+    try:
+        validate_config_document(config, project_root)
+        validate_github_ci_policy(config)
+        refresh_required_upstreams(config, project_root)
+        before = capture_states(config, project_root)
+        observations = collect_github_ci(config, project_root, before)
+        if evidence_path.is_file():
+            try:
+                old = load_json(evidence_path, "Evidence")
+                validate_github_ci_receipt(config, old, project_root, before, binding)
+            except VerificationError:
+                pass
+            else:
+                if context != load_execution_context(project_root) or before != capture_states(config, project_root):
+                    raise VerificationError("State or configuration changed while validating GitHub CI evidence")
+                completed = True
+                print(f"GitHub CI results reused without rewriting evidence: {evidence_path}")
+                return evidence_path
+        # Recheck the API and remote at the boundary to catch a rerun or branch
+        # move during collection. This is still an observation, not a CI lock.
+        if observations != collect_github_ci(config, project_root, before) or before != capture_states(config, project_root):
+            raise VerificationError("Git or CI state changed during collection")
+        if context != load_execution_context(project_root):
+            raise VerificationError("Configuration changed during GitHub CI collection")
+        evidence = {"version": 3, "source": "github-ci", "config_sha256": binding,
+                    "checked_at": datetime.now(timezone.utc).replace(microsecond=0).isoformat().replace("+00:00", "Z"),
+                    "repositories": before, "checks": github_ci_results(config), "github_ci": observations}
+        evidence["receipt_sha256"] = digest(evidence)
+        write_atomic(evidence_path, evidence)
+        completed = True
+        print(f"GitHub CI evidence written: {evidence_path}")
+        return evidence_path
+    finally:
+        if not completed:
+            evidence_path.unlink(missing_ok=True)
+
+
 def run_verification(project_root: Path, trusted_environment: str | None = None, workspace_map: Path | None = None) -> Path:
     canonical_root = project_root
     context = load_execution_context(canonical_root, workspace_map)
@@ -795,6 +1050,14 @@ def verify_evidence(project_root: Path, repository: Path | None = None, trusted_
     refresh_required_upstreams(config, project_root)
     evidence = load_json(evidence_path, "Evidence")
     current = capture_states(config, project_root)
+    if evidence.get("version") == 3:
+        if workspace_map is not None:
+            raise VerificationError("GitHub CI evidence does not support workspace maps")
+        validate_github_ci_receipt(config, evidence, project_root, current, binding)
+        if context != load_execution_context(canonical_root) or current != capture_states(config, project_root):
+            raise VerificationError("State or configuration changed while validating GitHub CI evidence")
+        print(f"GitHub CI evidence is current: {evidence_path}")
+        return True
     identity = reuse_identity(config, project_root, trusted_environment) if evidence.get("version") == 2 else None
     validate_receipt(config, evidence, current, identity, project_root, expected_binding=binding)
     if workspace_map is not None and context != load_execution_context(canonical_root, workspace_map):
@@ -814,6 +1077,8 @@ def main(argv: list[str] | None = None) -> int:
             child.add_argument("--workspace-map", type=Path)
         if command == "gate":
             child.add_argument("--repository", type=Path, required=True)
+        if command == "run":
+            child.add_argument("--source", choices=("local", "github-ci"), default="local")
         if command == "configure":
             child.add_argument("--config-source", type=Path)
         if command in {"configure", "status", "migrate"}:
@@ -823,7 +1088,10 @@ def main(argv: list[str] | None = None) -> int:
     project_root = args.project_root.resolve()
     try:
         if args.command == "run":
-            run_verification(project_root, args.trusted_environment_fingerprint, args.workspace_map)
+            if args.source == "github-ci":
+                run_github_ci_verification(project_root, args.workspace_map)
+            else:
+                run_verification(project_root, args.trusted_environment_fingerprint, args.workspace_map)
         elif args.command == "verify":
             verify_evidence(project_root, trusted_environment=args.trusted_environment_fingerprint, workspace_map=args.workspace_map)
         elif args.command == "gate":

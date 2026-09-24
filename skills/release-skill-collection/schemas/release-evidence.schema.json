@@ -12,7 +12,25 @@
       "type": "object",
       "required": ["local_release_check", "locked_holdout", "consumer_smoke", "supported_platform_ci", "review"],
       "properties": {
-        "local_release_check": {"$ref": "#/$defs/gate"},
+        "local_release_check": {"allOf": [
+          {"$ref": "#/$defs/gate"},
+          {"properties": {"source": {"enum": ["local", "github-ci"]}},
+           "if": {"required": ["source"], "properties": {"source": {"const": "github-ci"}}},
+           "then": {"required": ["check_report"], "properties": {"check_report": {
+             "type": "object", "required": ["schema_version", "mode", "mutates_repository", "blockers", "post_check_repository", "source", "passed", "checks", "evidence", "report_sha256"],
+             "properties": {
+               "schema_version": {"const": 2}, "mode": {"const": "check"},
+               "mutates_repository": {"const": false}, "blockers": {"const": []},
+               "source": {"const": "github-ci"}, "passed": {"const": true},
+               "post_check_repository": {"type": "object", "required": ["head", "dirty"], "properties": {"dirty": {"const": false}}},
+               "checks": {"type": "array", "minItems": 3, "maxItems": 3, "prefixItems": [
+                 {"type": "object", "required": ["name", "source", "passed", "receipt_sha256"], "properties": {"name": {"const": "collection-full"}, "source": {"const": "github-ci"}, "passed": {"const": true}}},
+                 {"allOf": [{"$ref": "#/$defs/localConstruction"}, {"properties": {"name": {"const": "build"}}}]},
+                 {"allOf": [{"$ref": "#/$defs/localConstruction"}, {"properties": {"name": {"const": "checksums"}}}]}
+               ]}
+             }
+           }}}}
+        ]},
         "locked_holdout": {"$ref": "#/$defs/gate"},
         "consumer_smoke": {"$ref": "#/$defs/consumerSmokeGate"},
         "supported_platform_ci": {"$ref": "#/$defs/gate"},
@@ -24,6 +42,12 @@
   },
   "additionalProperties": false,
   "$defs": {
+    "localConstruction": {
+      "type": "object", "required": ["name", "passed", "returncode", "timed_out", "output_sha256", "output_tail"],
+      "not": {"required": ["source"]},
+      "properties": {"passed": {"const": true}, "returncode": {"type": "integer", "const": 0},
+        "timed_out": {"const": false}, "output_sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"}, "output_tail": {"type": "string"}}
+    },
     "gate": {
       "type": "object",
       "required": ["passed", "commit", "evidence_sha256"],
