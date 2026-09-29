@@ -84,12 +84,14 @@ python ~/.agents/skills/synchronize-git-repositories/scripts/configure_project.p
 python ~/.claude/skills/synchronize-git-repositories/scripts/configure_project.py bootstrap --project-path . --agent claude-code --apply --yes --json
 ```
 
-Convenções ausentes assumem os padrões `feature/`, `bugfix/`, `release/`, `hotfix/`
-e os tipos de commit `feat`, `fix`, `refactor`, `docs`, `test`, `chore`. Prefixos,
-papéis de branches e formatos de commit explícitos do projeto continuam tendo
-precedência. Nenhuma branch persistente ou hook Git é criado. Atualizações
-globais gerenciadas aplicam a mesma inicialização ao projeto ativo escolhido;
-atualizações não confirmadas apenas a planejam.
+O bootstrap configura a sincronização sem adicionar modelos de nomes de branches.
+O agente de instalação oferece separadamente a escolha da política de nomes;
+a aprovação da instalação (`--yes`) não confirma essa escolha. Sem resposta,
+o comportamento atual é preservado. As preferências confirmadas são privadas,
+separadas por aplicativo e lidas por esta habilidade antes de escolher uma branch;
+elas não alteram as regras nativas do aplicativo. As regras do projeto, os papéis
+das branches e os formatos de commit existentes são preservados. Nenhuma branch
+ou hook Git é criado. Consulte a [política de nomes de branches](../../../skills/synchronize-git-repositories/references/branch-naming-policy.md).
 
 Inicialize imediatamente o contrato do ciclo de vida do projeto quando seus
 padrões observáveis forem suficientes (use o caminho

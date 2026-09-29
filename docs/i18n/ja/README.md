@@ -84,11 +84,13 @@ python ~/.agents/skills/synchronize-git-repositories/scripts/configure_project.p
 python ~/.claude/skills/synchronize-git-repositories/scripts/configure_project.py bootstrap --project-path . --agent claude-code --apply --yes --json
 ```
 
-規約が未設定の場合、接頭辞は `feature/`、`bugfix/`、`release/`、`hotfix/`、
-コミットタイプは `feat`、`fix`、`refactor`、`docs`、`test`、`chore` が既定値です。
-プロジェクトで明示された接頭辞、ブランチの役割、コミット形式が優先されます。
-永続的なブランチや Git フックは作成しません。管理されたグローバル更新でも、明示的に選択した
-アクティブなプロジェクトに同じ初期設定を適用します。未確認の更新では計画だけを行います。
+Bootstrap はブランチ名のテンプレートを追加せずに同期を設定します。
+インストールを行うエージェントが命名ポリシーの選択を別途案内します。インストールの承認
+(`--yes`) は、この選択への同意ではありません。回答がなければ現在の動作を維持します。
+確認済みの設定はアプリケーションごとに非公開で保存され、このスキルがブランチ選択前に
+読み込みます。アプリケーション本来のルールは変更しません。既存のプロジェクトルール、
+ブランチの役割、コミット形式は維持されます。ブランチや Git フックは作成しません。
+[ブランチ命名ポリシー](../../../skills/synchronize-git-repositories/references/branch-naming-policy.md)を参照してください。
 
 観測可能な既定値で十分な場合、プロジェクトのライフサイクル契約を直ちに初期化します。
 使用するエージェントのパスを選んでください。

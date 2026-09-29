@@ -114,6 +114,13 @@ contain no machine paths or secrets, and are ready for ordinary code review.
 6. Re-run `status`. Report observable remaining drift and ask the user to start
    a new agent task when files changed.
 
+After installing/updating Git workflow skills, offer local naming configuration
+through the installed `synchronize-git-repositories` skill's branch-policy
+workflow for each selected application. Installation consent is not a naming
+choice. Without an answer, preserve existing behavior; on ordinary updates
+preserve the confirmed preference. This separate local setup must not copy
+private preferences into the team document or other users' installations.
+
 The helper invokes the pinned `skills` CLI without a shell and installs only
 the declared names from the pinned collection release into each declared
 global agent layout. Project configuration remains outside installed folders

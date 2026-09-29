@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import importlib.util
 import json
+import os
 import subprocess
 import sys
 import tempfile
@@ -17,19 +18,48 @@ SPEC.loader.exec_module(POLICY)
 
 
 class GitPolicyDefaultsTests(unittest.TestCase):
-    def test_configure_installs_conditional_defaults_for_both_agents(self) -> None:
+    def test_existing_confirmed_choice_survives_bootstrap_update(self) -> None:
+        for agent in ("codex", "claude-code"):
+            with self.subTest(agent=agent), tempfile.TemporaryDirectory() as directory:
+                root = Path(directory).resolve()
+                private = root / "private"
+                choice = root / "choice.json"
+                choice.write_text(json.dumps({"schema_version": 1,
+                    "honor_project_policy": True, "fallback": "collection"}), encoding="utf-8")
+                command = [sys.executable, str(SCRIPT.with_name("branch_policy.py")),
+                    "configure", "--agent", agent, "--choice-file", str(choice),
+                    "--config-root", str(private)]
+                preview = subprocess.run(command, check=True, capture_output=True, text=True)
+                digest = json.loads(preview.stdout)["plan_digest"]
+                subprocess.run([*command, "--confirm", "--expected-digest", digest],
+                    check=True, capture_output=True, text=True)
+                config = private / (agent + ".json")
+                original = config.read_bytes()
+                for _ in range(2):
+                    state, _ = POLICY.configure(root, agent, private)
+                    self.assertEqual("configured", state["naming_policy"]["state"])
+                    self.assertFalse(state["defaults_configured"])
+                    self.assertEqual(original, config.read_bytes())
+
+    def setUp(self) -> None:
+        self.private = tempfile.TemporaryDirectory()
+        self.addCleanup(self.private.cleanup)
+        environment = patch.dict(os.environ, {
+            "CODEX_HOME": str(Path(self.private.name).resolve() / "codex"),
+            "CLAUDE_CONFIG_DIR": str(Path(self.private.name).resolve() / "claude"),
+        })
+        environment.start()
+        self.addCleanup(environment.stop)
+
+    def test_configure_installs_sync_without_consent_to_naming_defaults(self) -> None:
         for agent, filename in (("codex", "AGENTS.md"), ("claude-code", "CLAUDE.md")):
             with self.subTest(agent=agent), tempfile.TemporaryDirectory() as directory:
                 root = Path(directory)
                 state, changed = POLICY.configure(root, agent)
                 content = (root / filename).read_text(encoding="utf-8")
                 self.assertTrue(changed)
-                self.assertTrue(state["defaults_configured"])
-                for token in ("feature/", "bugfix/", "release/", "hotfix/", "feat", "fix", "refactor", "docs", "test", "chore", "development", "production"):
-                    self.assertIn(token, content)
-                self.assertIn("explicit project or user", content)
-                self.assertIn("independently", content)
-                self.assertIn("trunk", content)
+                self.assertFalse(state["defaults_configured"])
+                self.assertNotIn(POLICY.DEFAULTS_START, content)
                 self.assertIn("configured base", content)
                 original = (root / filename).read_bytes()
                 self.assertFalse(POLICY.configure(root, agent)[1])
@@ -45,11 +75,21 @@ class GitPolicyDefaultsTests(unittest.TestCase):
             path.write_bytes(custom)
             POLICY.configure(root)
             self.assertTrue(path.read_bytes().startswith(custom))
-            self.assertIn(b"git-workflow-defaults:start", path.read_bytes())
+            self.assertEqual(custom, path.read_bytes())
             custom_defaults = b"<!-- git-workflow-defaults:start -->\r\nMy rules.\r\n<!-- git-workflow-defaults:end -->\r\n"
             path.write_bytes(custom + custom_defaults)
             self.assertFalse(POLICY.configure(root)[1])
             self.assertEqual(custom + custom_defaults, path.read_bytes())
+
+    def test_existing_known_defaults_are_preserved(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            original = (POLICY.CODEX_BLOCK + "\n\n" + POLICY.DEFAULTS_BLOCK + "\n").encode()
+            (root / "AGENTS.md").write_bytes(original)
+            state, changed = POLICY.configure(root)
+            self.assertFalse(changed)
+            self.assertTrue(state["defaults_configured"])
+            self.assertEqual(original, (root / "AGENTS.md").read_bytes())
 
     def test_malformed_default_markers_block_before_sync_write(self) -> None:
         for text in ("<!-- git-workflow-defaults:start -->\n", "<!-- git-workflow-defaults:end -->\n<!-- git-workflow-defaults:start -->", "<!-- git-workflow-defaults:start --><!-- git-workflow-defaults:end -->" * 2):
@@ -114,7 +154,7 @@ class GitPolicyDefaultsTests(unittest.TestCase):
     def test_bootstrap_plan_is_read_only_and_apply_requires_confirmation(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
-            argv = [sys.executable, str(SCRIPT), "bootstrap", "--project-path", str(root), "--json"]
+            argv = [sys.executable, str(SCRIPT), "bootstrap", "--project-path", str(root), "--policy-config-root", str(Path(self.private.name).resolve() / "policy"), "--json"]
             plan = subprocess.run(argv, capture_output=True, text=True)
             self.assertEqual(0, plan.returncode, plan.stderr)
             self.assertFalse(json.loads(plan.stdout)["configured"])
@@ -124,7 +164,9 @@ class GitPolicyDefaultsTests(unittest.TestCase):
             self.assertEqual([], list(root.iterdir()))
             applied = subprocess.run([*argv, "--apply", "--yes"], capture_output=True, text=True)
             self.assertEqual(0, applied.returncode, applied.stderr)
-            self.assertTrue(json.loads(applied.stdout)["defaults_configured"])
+            self.assertFalse(json.loads(applied.stdout)["defaults_configured"])
+            self.assertEqual("unconfigured", json.loads(applied.stdout)["naming_policy"]["state"])
+            self.assertFalse((Path(self.private.name).resolve() / "policy").exists())
 
 
 if __name__ == "__main__":

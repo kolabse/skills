@@ -659,6 +659,7 @@ def update_skills(
     global_root: Path | None = None,
     as_json: bool = False,
     agent: str = DEFAULT_AGENT,
+    policy_config_root: Path | None = None,
 ) -> dict[str, Any]:
     agent = verified_agent(agent)
     if scope == "global" and global_root is not None:
@@ -743,7 +744,8 @@ def update_skills(
     configuration: list[dict[str, Any]] = []
     if scope in {"project", "global"}:
         bootstrap_commands = git_policy_bootstrap_commands(
-            project, selected, agent, confirmed=yes, global_install=scope == "global"
+            project, selected, agent, confirmed=yes, global_install=scope == "global",
+            policy_config_root=policy_config_root,
         ) + lifecycle_bootstrap_commands(
             project, selected, agent, confirmed=yes, global_install=scope == "global"
         )
@@ -764,15 +766,11 @@ def update_skills(
                             and not yes and payload.get("valid", True)
                             and (
                                 payload.get("changes_required")
-                                or payload.get("defaults_configured") is False
+                                or payload.get("configured") is False
                             )
                         )
                         else "created" if payload.get("created")
-                        else "configured" if (
-                            payload.get("defaults_configured", payload.get("configured"))
-                            if name == "synchronize-git-repositories"
-                            else payload.get("configured")
-                        )
+                        else "configured" if payload.get("configured")
                         else "blocked"
                     ),
                     "result": payload,
@@ -781,6 +779,9 @@ def update_skills(
     if not as_json:
         for item in configuration:
             print(f"[{item['status']}] {item['skill']} configuration")
+            naming = item["result"].get("naming_policy", {})
+            if naming.get("state") in {"unconfigured", "confirmation-pending"}:
+                print("NOTICE: Branch naming choice is pending for skill workflows; installation approval does not change preferences.")
     outcomes: list[dict[str, Any]] = []
     for name in selected:
         old = before_by_name[name]
@@ -844,8 +845,9 @@ def git_policy_bootstrap_commands(
     agent: str = DEFAULT_AGENT,
     confirmed: bool = False,
     global_install: bool = False,
+    policy_config_root: Path | None = None,
 ) -> list[tuple[str, list[str]]]:
-    """Bootstrap project Git defaults only for Git workflow skill updates."""
+    """Bootstrap synchronization only; naming preferences need separate consent."""
     agent = verified_agent(agent)
     name = "synchronize-git-repositories"
     triggers = {
@@ -873,6 +875,8 @@ def git_policy_bootstrap_commands(
         python_executable(), str(helper), "bootstrap",
         "--project-path", str(root), "--agent", agent, "--json",
     ]
+    if policy_config_root is not None:
+        command.extend(["--policy-config-root", str(policy_config_root)])
     if confirmed:
         command.extend(["--apply", "--yes"])
     return [(name, command)]
@@ -1240,6 +1244,7 @@ def build_parser() -> argparse.ArgumentParser:
     update.add_argument("--include-user-config", action="store_true")
     update.add_argument("--global-root", type=Path)
     update.add_argument("--json", action="store_true")
+    update.add_argument("--policy-config-root", type=Path)
     update.add_argument(
         "--adopt-legacy",
         action="store_true",
@@ -1333,6 +1338,7 @@ def main(argv: list[str] | None = None) -> int:
             global_root=args.global_root,
             as_json=args.json,
             agent=args.agent,
+            policy_config_root=args.policy_config_root,
         )
         if args.migrate:
             migration = migrate(

@@ -4,8 +4,12 @@ These are fallback conventions, not permission to replace a project's branch
 model. Resolve applicable user instructions, repository rules (including linked
 contribution guides), and configured lifecycle/release contracts first. Explicit
 policy wins independently for each prefix, base/target role, and commit format.
-If sources disagree, stop and resolve the conflict; do not silently rewrite
-configuration or treat a tool's generic `codex/` suggestion as project policy.
+Resolve differences using the actual instruction hierarchy and permitted user
+overrides. Explain the selected source; stop only for unresolved ambiguity.
+An authoritative application instruction is different from a generic tool
+suggestion. Neither a skill reference nor saved JSON changes that hierarchy.
+Before naming and publication, use the
+[branch-policy preflight](branch-naming-policy.md).
 
 ## Branch selection before the first edit
 
@@ -21,6 +25,11 @@ Use a short task slug, optionally including the issue number, for example
 maintenance task can use `feature/` without being a `feat` commit. Branch kind
 and commit type are independent; never infer an urgent production operation
 from the word "fix" alone.
+
+The prefix column describes the collection templates offered to the user, not
+an automatic installation choice. Without an accepted collection preference,
+preserve the applicable application/project/user naming rule. Resolve base
+roles and commit formats independently from naming preferences.
 
 `develop` and `main` are examples of development and production roles, not
 names to impose. Reuse declared `dev`, `development`, `production`, or other
@@ -56,14 +65,17 @@ helper installs agent rules, not Git hooks or a server-side commit validator.
 
 The synchronization helper's `bootstrap` plans without writes and applies only
 with `--apply --yes`. `configure` is its explicit setup alternative. Both are
-idempotent and preserve custom managed blocks and unrelated rules. The separate
-`git-workflow-defaults` block is explicitly conditional, so an existing project
-convention remains effective without unreliable parsing of free-form prose.
+idempotent and preserve custom managed blocks and unrelated rules. New setup
+does not insert the old `git-workflow-defaults` naming block. Existing blocks
+remain unchanged and must be considered as project instructions; preference
+configuration never removes them automatically. Ask for naming preferences
+separately using the branch-policy workflow. No answer means no preference
+write, including during unattended updates.
 
 Project-scoped managed updates bootstrap the installed synchronization helper
 when synchronization, lifecycle, or GitFlow release skills are selected.
 Direct third-party installers cannot run collection post-install hooks: the
 installing agent must invoke bootstrap. Global/plugin installations have no
 project scope; perform setup on first use in each authorized project instead
-of scanning or changing unrelated projects. Report defaults added, custom rules
+of scanning or changing unrelated projects. Report synchronization rules added, custom rules
 preserved, and any blocked setup. Re-read rules before choosing each branch.

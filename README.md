@@ -83,12 +83,13 @@ python ~/.agents/skills/synchronize-git-repositories/scripts/configure_project.p
 python ~/.claude/skills/synchronize-git-repositories/scripts/configure_project.py bootstrap --project-path . --agent claude-code --apply --yes --json
 ```
 
-Missing conventions default to `feature/`, `bugfix/`, `release/`, `hotfix/` and
-commit types `feat`, `fix`, `refactor`, `docs`, `test`, `chore`. Explicit project
-prefixes, branch roles and commit formats remain authoritative. No persistent
-branches or Git hooks are created. Global managed updates apply this same
-bootstrap to the explicitly selected active project; unconfirmed updates only
-plan it.
+Bootstrap configures synchronization without adding branch-name templates.
+The installing agent offers a naming-policy choice separately; installation
+approval (`--yes`) is not consent to that choice. Without an answer, existing
+behavior is preserved. Confirmed preferences are private and per application,
+and are read by this skill before choosing a branch; they do not change native
+application rules. Existing project rules, branch roles and commit formats stay
+intact. No branches or Git hooks are created. See [branch naming policy](skills/synchronize-git-repositories/references/branch-naming-policy.md).
 
 Initialize the project lifecycle contract immediately
 when its observable defaults are sufficient (use the path for your agent):

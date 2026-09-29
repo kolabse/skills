@@ -80,9 +80,10 @@ python ~/.agents/skills/synchronize-git-repositories/scripts/configure_project.p
 python ~/.claude/skills/synchronize-git-repositories/scripts/configure_project.py bootstrap --project-path . --agent claude-code --apply --yes --json
 ```
 
-缺失的约定默认使用 `feature/`、`bugfix/`、`release/`、`hotfix/` 和提交类型 `feat`、`fix`、`refactor`、`docs`、`test`、`chore`。
-项目明确指定的前缀、分支角色和提交格式仍具有权威性。不会创建持久分支或 Git 钩子。
-受管理的全局更新会为明确选择的活动项目应用同样的引导初始化；尚未确认的更新只会生成计划。
+Bootstrap 配置同步，但不添加分支名称模板。安装代理会单独询问命名策略的选择；
+安装批准（`--yes`）不代表同意该选择。没有回答时，保留当前行为。确认后的偏好设置
+按应用私下保存，由本技能在选择分支前读取，不会更改应用自身的规则。现有项目规则、
+分支角色和提交格式保持不变。不会创建分支或 Git 钩子。参见[分支命名策略](../../../skills/synchronize-git-repositories/references/branch-naming-policy.md)。
 
 当可观察的默认值足够时，应立即初始化项目生命周期约定（使用对应代理的路径）：
 

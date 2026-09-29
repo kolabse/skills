@@ -40,7 +40,9 @@ further implementation work. The already-authorized local changes remain valid.
    [linked-worktree recipe](linked-worktrees.md) when the task worktree is dirty
    or already contains commits. Satisfy every applicable protected-push gate
    for that anchor; evidence for a dirty or different worktree is insufficient.
-4. Select an unused remote task ref and publish the verified base SHA to it.
+4. Resolve the branch naming policy and check the final name against its saved
+   decision using [branch-policy preflight](branch-naming-policy.md), then
+   select an unused remote task ref and publish the verified base SHA to it.
    Do not push the local task HEAD in place of the base bootstrap. If the
    intended ref is occupied, establish its recorded ownership or choose a new
    unambiguous task name; never overwrite it to make the checkpoint pass.
