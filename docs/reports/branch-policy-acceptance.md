@@ -18,6 +18,9 @@ global application instructions, or authorize publication/release operations.
 - The resolver respects declared priority and explicit delegation. It explains
   why an application default, project rule, explicit choice or saved fallback
   won. Mandatory project rules cannot be disabled by optional preference flags.
+- An application with no naming rule is represented explicitly by null. Project
+  instructions or a confirmed concrete fallback can resolve without fabricated
+  application templates; wholly missing policy remains unresolved.
 - Final-name checks reject changed context, settings, provider observations,
   helper/entrypoint artifacts or a different branch. They do not replace Git
   verification or independently prove completeness of the supplied context.
@@ -26,7 +29,7 @@ global application instructions, or authorize publication/release operations.
 
 ## Verification
 
-Focused local suites exercised the helper (22 tests), project policy setup
+Focused local suites exercised the helper (25 tests), project policy setup
 (10), managed updates (51), copied-install smoke fixtures (11), and Claude
 rules (6). These suites passed with Windows permission/platform-dependent
 skips; symlink-capability skips are not evidence that those scenarios executed

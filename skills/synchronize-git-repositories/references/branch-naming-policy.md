@@ -90,7 +90,8 @@ Create a private context document for `resolve`. Supply:
 
 - `schema_version: 1`, `agent`, `task_kind` and a concrete `slug`;
 - `application_rule`: source, priority, instruction evidence, four templates
-  and whether that instruction permits user choice;
+  and whether that instruction permits user choice, or explicit `null` when
+  the application declares no naming rule;
 - optional `project_rule` and `explicit_user_rule`, with the same provenance;
 - `binding_rule` for the highest-priority mandatory naming constraint, including
   a mandatory project rule; a preference cannot override this constraint;
@@ -112,6 +113,14 @@ can apply when the application expressly permits this choice. A saved
 `honor_project_policy: false` disables that optional override, not mandatory
 project instructions. A higher-priority explicit user rule is evaluated by its
 actual priority rather than by a lower-priority default's permission flag.
+
+Do not invent application templates merely to fill the context. With
+`application_rule: null`, an applicable project/binding/explicit rule or an
+accepted concrete fallback can still resolve the name. A fallback selected
+without an application rule reports `priority: null` rather than an invented
+instruction priority. If no usable rule exists and the user has not chosen a
+concrete fallback, resolve that missing information before publication. An
+explicit null records observed absence, not permission to ignore instructions.
 
 ```shell
 python <skill-root>/scripts/branch_policy.py resolve --context <context.json> --output <decision.json>

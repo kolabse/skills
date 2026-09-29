@@ -22,6 +22,11 @@ allows_user_choice. Other stronger non-delegating instructions make that context
 inconsistent. Optional project_rule defaults apply where permitted unless a
 confirmed preference disables them. A mandatory rule is never overridden by
 preferences. Explicit choices obey priority and any higher rule's delegation.
+Set application_rule explicitly to null when no application naming rule exists;
+never fabricate an application template or priority. Other declared rules and
+confirmed preferences can then resolve the name. Without them, resolution blocks.
+A fallback selected without an application rule has priority: null because it
+does not derive a ranking from an external application instruction.
 
 configure without --confirm returns a plan and digest without writing. Review
 the concrete plan; only --confirm --expected-digest DIGEST adopts it. --yes is
@@ -287,6 +292,8 @@ def _context(value):
         raise PolicyError("hotfix requires an explicit urgent production fix request")
     for key in ("application_rule", "binding_rule", "project_rule", "explicit_user_rule"):
         if key in value:
+            if key == "application_rule" and value[key] is None:
+                continue
             _rule(value[key], application=key == "application_rule")
     if "collection_metadata" in value:
         _object(value["collection_metadata"], ("version", "source"))
@@ -324,22 +331,25 @@ def resolve(context_file, config_root=None):
     render = lambda rule: _branch(rule["templates"][context["task_kind"]].replace("{slug}", context["slug"]))
     selected = binding or app
     explanation = ["Evaluated caller-supplied declared context; this does not prove instruction completeness."]
+    if app is None:
+        explanation.append("No application naming rule was declared; no application template or priority is inferred.")
     if binding:
         explanation.append("Highest mandatory binding rule takes precedence over preferences.")
         if explicit and render(explicit) != render(binding):
             raise PolicyError("Explicit user choice conflicts with the binding instruction")
     else:
-        if project and project["priority"] == app["priority"] and render(project) != render(app):
+        if project and app and project["priority"] == app["priority"] and render(project) != render(app):
             raise PolicyError("Ambiguous equal-priority application and project rules")
         # Existing project instructions use the application's express delegation;
         # no persistent preference is inferred from an unattended installation.
         honor_project = preference is None or preference["choice"]["honor_project_policy"]
-        if project and (project["priority"] < app["priority"] or
-                        (app["allows_user_choice"] and honor_project)):
+        if project and ((app is None and honor_project) or
+                        (app is not None and (project["priority"] < app["priority"] or
+                         (app["allows_user_choice"] and honor_project)))):
             selected = project
-        permitted = selected.get("allows_user_choice", False)
+        permitted = selected is None or selected.get("allows_user_choice", False)
         if explicit:
-            if render(explicit) != render(selected):
+            if selected is not None and render(explicit) != render(selected):
                 if explicit["priority"] == selected["priority"]:
                     raise PolicyError("Ambiguous equal-priority explicit user and applicable rules")
                 if explicit["priority"] > selected["priority"] and not permitted:
@@ -354,13 +364,18 @@ def resolve(context_file, config_root=None):
             elif selected is app and choice["fallback"] != "application":
                 snapshot = preference["accepted_snapshot"]
                 selected = {"source": snapshot["identity"] + " (confirmed " + choice["fallback"] + ")",
-                            "priority": app["priority"] + 1, "templates": snapshot["templates"],
+                            "priority": app["priority"] + 1 if app else None, "templates": snapshot["templates"],
                             "evidence": "Explicit confirmed private preference, revision " + snapshot["revision"]}
-                explanation.append("Application permits the confirmed fallback preference.")
+                explanation.append("Application permits the confirmed fallback preference." if app else
+                                   "Confirmed fallback applies without an application naming constraint; its priority is not inferred.")
         elif preference and not permitted:
             explanation.append("Saved preference cannot override the applicable instruction's restriction on user choice.")
+    if selected is None:
+        raise PolicyError("No applicable naming rule: application default is absent; supply an actual project/user rule or explicitly confirm a concrete fallback")
     branch = render(selected)
-    candidates = [(app["source"], render(app)), ("kolabse/skills collection default", render(COLLECTION))]
+    candidates = [("kolabse/skills collection default", render(COLLECTION))]
+    if app:
+        candidates.append((app["source"], render(app)))
     if project:
         candidates.append((project["source"], render(project)))
     for source, alternative in candidates:

@@ -60,6 +60,42 @@ class BranchPolicyTests(unittest.TestCase):
         self.assertEqual(decision["branch"], "codex/repair")
         self.assertIn("bugfix/repair", " ".join(decision["explanation"]))
 
+    def test_absent_application_default_uses_confirmed_collection(self):
+        self.context["application_rule"] = None
+        self.configure()
+        decision = self.resolve()
+        self.assertEqual(decision["branch"], "bugfix/repair")
+        self.assertIsNone(decision["priority"])
+        self.assertIn("no application", " ".join(decision["explanation"]).lower())
+
+    def test_absent_application_default_uses_project_or_explicit_or_binding(self):
+        self.context["application_rule"] = None
+        self.context["explicit_user_rule"] = self.rule("explicit user", "chosen/{slug}", priority=20)
+        self.assertEqual(self.resolve()["branch"], "chosen/repair")
+        self.context.pop("explicit_user_rule")
+        self.context["binding_rule"] = self.rule("mandatory", "required/{slug}", priority=1)
+        self.assertEqual(self.resolve()["branch"], "required/repair")
+        self.context.pop("binding_rule")
+        self.assertFalse(self.config.exists())
+        self.context["project_rule"] = self.rule("project instruction", "project/{slug}", priority=30)
+        self.assertEqual(self.resolve()["branch"], "project/repair")
+        self.configure(honor_project_policy=False)
+        self.assertEqual(self.resolve()["branch"], "bugfix/repair")
+        self.context["explicit_user_rule"] = self.rule("explicit user", "chosen/{slug}", priority=20)
+        self.assertEqual(self.resolve()["branch"], "chosen/repair")
+        self.context.pop("explicit_user_rule")
+        self.context["binding_rule"] = self.rule("mandatory", "required/{slug}", priority=1)
+        self.assertEqual(self.resolve()["branch"], "required/repair")
+
+    def test_absent_application_and_no_other_policy_blocks_without_writes(self):
+        self.context["application_rule"] = None
+        with self.assertRaisesRegex(self.policy.PolicyError, "No applicable naming rule"):
+            self.resolve()
+        self.assertFalse(self.config.exists())
+        self.configure("application")
+        with self.assertRaisesRegex(self.policy.PolicyError, "No applicable naming rule"):
+            self.resolve()
+
     def test_confirmed_collection_only_where_application_permits(self):
         self.configure()
         self.assertEqual(self.resolve()["branch"], "bugfix/repair")
