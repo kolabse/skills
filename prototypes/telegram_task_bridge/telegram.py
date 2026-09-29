@@ -90,6 +90,10 @@ class Telegram:
         store.advance_offset(update["update_id"])
         return {"status": "ignored"}
 
+    def mark_obsolete(self, message_id):
+        return self.call("editMessageText", chat_id=self.chat_id, message_id=message_id,
+                         text="Утратило актуальность — задача отменена.")
+
 
 def bind_database(path, identity):
     """Prevent reusing message ids/offsets across bots or destinations."""

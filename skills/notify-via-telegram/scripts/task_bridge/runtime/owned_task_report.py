@@ -10,7 +10,7 @@ class RunReport:
     PHASES = {"preflight", "initializing", "starting_thread", "starting_turn",
               "running", "sending_question", "waiting_reply", "dispatching_reply",
               "reply_dispatched", "reply_acknowledged", "turn_completed",
-              "sending_result", "completed"}
+              "sending_result", "cancelling", "completed"}
 
     def __init__(self, path):
         self.path = Path(path)
@@ -55,3 +55,8 @@ class RunReport:
         if self.data["status"] == "running":
             self._save(dict(self.data, status="interrupted" if interrupted else "failed",
                             updated_at=time.time()))
+
+    def cancellation_notice(self, outcome):
+        if outcome not in {"not_needed", "invalidation_failed", "edit_failed", "updated"}:
+            raise ValueError("Invalid cancellation notice outcome")
+        self._save(dict(self.data, cancellation_notice=outcome, updated_at=time.time()))

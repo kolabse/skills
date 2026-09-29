@@ -54,7 +54,8 @@ class TelegramChannel:
             key = "delivery:" + os.path.normcase(str(self.database)).casefold()
             with receiver_lock(key, wait_seconds=40):
                 checkpoint()
-                message = self.telegram.send("[Codex: отдельная тестовая задача]\n" + text)
+                message = self.telegram.send("[Codex: отдельная тестовая задача]\n" + text
+                                             + "\nОтветьте через «Ответить» на это сообщение.", force_reply=False)
                 self.store.mark_sent(self.question, message)
         except TaskError:
             self.store.mark_failed(self.question)
@@ -81,6 +82,21 @@ class TelegramChannel:
 
     def close(self):
         self.store.close()
+
+    def cancel_question(self):
+        if self.question is None:
+            return "not_needed"
+        try:
+            message_id = self.store.cancel_question(**self.credentials, question_id=self.question)
+        except Exception:
+            return "invalidation_failed"
+        if message_id is None:
+            return "not_needed"
+        try:
+            self.telegram.mark_obsolete(message_id)
+        except Exception:
+            return "edit_failed"
+        return "updated"
 
 
 def run_task(rpc, channel, workdir, timeout=600, clock=time.monotonic,
@@ -239,7 +255,11 @@ def main():
                      is_cancelled=is_cancelled)
         return 0
     except (KeyboardInterrupt, TaskCancelled):
-        report.stop(interrupted=True)
+        if report.data["status"] == "running":
+            report.phase("cancelling")
+            if channel:
+                report.cancellation_notice(channel.cancel_question())
+            report.stop(interrupted=True)
         return 130
     except Exception:
         report.stop()

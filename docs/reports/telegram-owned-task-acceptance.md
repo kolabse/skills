@@ -51,3 +51,23 @@ versions remain blocked rather than assumed compatible.
 
 This document does not substitute for exact-commit pre-push evidence, GitHub CI,
 required provider approvals, or a release audit.
+
+## Cancellation-message follow-up
+
+The user requested marking cancelled questions obsolete. The updated runtime
+was installed through the same update path; all files again matched the bundle.
+Aggregate runtime SHA-256:
+`c388a075f4262a3b7facd103ca6e27f08df38f81c5055ea805d7657f428ba8d7`.
+
+A fresh installed-MCP test reached `waiting_reply`, was cancelled, and exited
+with `status: interrupted`, `phase: cancelling`, and
+`cancellation_notice: updated`. Telegram accepted replacement of the original
+question text with “Утратило актуальность — задача отменена.” Reply dispatch,
+turn completion and result-send flags all remained false. No user reply was
+needed for this test. Offline tests cover late-reply rejection, edit failure,
+no repeated edit and preservation of already acknowledged answers.
+
+This follow-up changes owned questions to ordinary Reply-capable messages
+without ForceReply; Telegram only permits editing messages without reply markup
+or with inline keyboards. Existing cooperative questions keep their behavior.
+See [Telegram message editing](https://core.telegram.org/bots/api#updating-messages).

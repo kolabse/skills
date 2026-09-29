@@ -138,6 +138,8 @@ class Store:
             row = db.execute("SELECT * FROM questions WHERE message_id=?", (reply_message_id,)).fetchone()
             if row is None:
                 return {"status": "unknown"}
+            if row["status"] == "cancelled":
+                return {"status": "cancelled"}
             if row["status"] == "expired":
                 return {"status": "expired"}
             if row["status"] in ("answered", "acknowledged"):
@@ -159,6 +161,19 @@ class Store:
             if row is None:
                 raise ValueError("unknown question")
             return self._public(row)
+
+    def cancel_question(self, task_id, secret, question_id):
+        """Close unconsumed input before best-effort editing of its bot message."""
+        with self._transaction() as db:
+            self._authorize(db, task_id, secret)
+            row = db.execute("SELECT status,message_id FROM questions WHERE question_id=? AND task_id=?",
+                             (question_id, task_id)).fetchone()
+            if row is None:
+                raise ValueError("unknown question")
+            if row["status"] in ("acknowledged", "cancelled"):
+                return None
+            db.execute("UPDATE questions SET status='cancelled',answer=NULL WHERE question_id=?", (question_id,))
+            return row["message_id"]
 
     def poll(self, task_id, secret):
         with self._transaction() as db:

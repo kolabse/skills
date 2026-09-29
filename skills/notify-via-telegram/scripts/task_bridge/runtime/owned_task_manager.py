@@ -145,6 +145,8 @@ class OwnedTaskManager:
             if not isinstance(data, dict) or data.get("status") not in {"running", "completed", "failed", "interrupted", "cancelled"}:
                 return None
             report = {"status": data["status"]}
+            if data.get("cancellation_notice") in {"not_needed", "invalidation_failed", "edit_failed", "updated"}:
+                report["cancellation_notice"] = data["cancellation_notice"]
             if data.get("phase") in RunReport.PHASES:
                 report["phase"] = data["phase"]
             for key in ("reply_dispatched", "turn_completed", "result_sent"):

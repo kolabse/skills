@@ -25,7 +25,7 @@ class ManagerTests(unittest.TestCase):
         self.manager = self.new_manager()
         self.run = self.enterContext(patch("owned_task_manager.subprocess.run"))
         self.run.side_effect = lambda argv, **kw: subprocess.CompletedProcess(
-            argv, 0, "codex-cli 0.155.0-alpha.16.3\n" if argv[-1] == "--version" else "", 
+            argv, 0, "codex-cli 0.155.0-alpha.16.3\n" if argv[-1] == "--version" else "",
             "" if argv[-1] == "--version" else "Logged in using ChatGPT\n")
         self.spawn = self.enterContext(patch("owned_task_manager.subprocess.Popen"))
         self.spawn.return_value.poll.return_value = None

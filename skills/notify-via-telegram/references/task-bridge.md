@@ -268,7 +268,11 @@ For an explicit request such as "Запусти отдельную тестов�
    terminate its child process tree; this mode is not a detached service.
 5. On a cancellation request, call `cancel_owned_task` with the same credentials
    and inspect status. `cancel_requested` means requested, not finished; blocking
-   network operations may delay cancellation. Sent messages cannot be recalled.
+   network operations may delay cancellation. The bridge closes the unconsumed
+   question and attempts once to replace its text with “Утратило актуальность —
+   задача отменена.” Check `cancellation_notice` for the edit outcome; an edit
+   failure does not reactivate the question. Already acknowledged replies are
+   preserved. Existing questions sent with ForceReply may not be editable.
 
 Each registration permits one launch. Repeating start only inspects that launch;
 never create another registration merely to retry uncertain delivery. After MCP

@@ -74,6 +74,15 @@ before external actions and while waiting, but cannot recall already sent input
 or messages, and can wait for an in-flight network call to finish. Only the
 owned App Server is interrupted; no process is killed by a stored PID.
 
+New owned-task questions omit ForceReply so Telegram can edit their text. On
+cancellation, the store first closes the unconsumed question, then the bridge
+attempts once to replace its text with “Утратило актуальность — задача отменена.”
+Late replies to a cancelled question are rejected. `cancellation_notice` reports
+`updated`, `edit_failed`, `invalidation_failed`, or `not_needed`; failure to edit
+does not reopen the question or turn interruption into completion. Already
+acknowledged answers are preserved. Existing cooperative question tools retain
+ForceReply and their current behavior.
+
 ### Direct diagnostic invocation
 
 First ensure exactly one receiver is running, using the configured bot and the

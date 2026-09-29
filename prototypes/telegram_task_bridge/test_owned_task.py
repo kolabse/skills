@@ -2,11 +2,12 @@ import unittest
 import json
 import tempfile
 import time
+import sys
 from contextlib import nullcontext
 from pathlib import Path
 from unittest.mock import Mock, patch
 
-from owned_task import TaskError, TaskCancelled, TelegramChannel, run_task
+from owned_task import TaskError, TaskCancelled, TelegramChannel, run_task, main
 from owned_task_report import RunReport
 from store import Store
 
@@ -217,6 +218,29 @@ class OwnedTaskTests(unittest.TestCase):
 
 
 class ReportTests(unittest.TestCase):
+    def test_main_finishes_cancellation_notice_before_terminal_report(self):
+        executable = Path(self.temp.name) / "codex.exe"
+        executable.touch()
+        scratch = Path(self.temp.name) / "scratch"
+        scratch.mkdir()
+        channel = Mock()
+        def cancel():
+            data = json.loads(self.path.read_text())
+            self.assertEqual(data["phase"], "cancelling")
+            self.assertEqual(data["status"], "running")
+            return "edit_failed"
+        channel.cancel_question.side_effect = cancel
+        argv = ["owned_task.py", "--live", "--codex-executable", str(executable),
+                "--workdir", str(scratch), "--report", str(self.path), "--database", "db", "--config", "config"]
+        with patch.object(sys, "argv", argv), patch("owned_task.TelegramChannel", return_value=channel), \
+                patch("owned_task.AppServer", return_value=nullcontext(object())), \
+                patch("owned_task.run_task", side_effect=TaskCancelled("cancel")):
+            self.assertEqual(main(), 130)
+        data = json.loads(self.path.read_text())
+        self.assertEqual(data["status"], "interrupted")
+        self.assertEqual(data["cancellation_notice"], "edit_failed")
+        channel.close.assert_called_once()
+
     def setUp(self):
         self.temp = tempfile.TemporaryDirectory()
         self.addCleanup(self.temp.cleanup)
@@ -322,6 +346,45 @@ class TelegramChannelTests(unittest.TestCase):
         with self.assertRaises(TaskCancelled):
             channel.ask("Question", 60, checkpoint=checkpoint)
         self.telegram.send.assert_not_called()
+
+    def test_cancel_closes_reply_before_edit_and_edits_once(self):
+        channel = self.channel()
+        channel.ask("Question", 60)
+        self.assertFalse(self.telegram.send.call_args.kwargs["force_reply"])
+        def edit(message_id):
+            self.assertEqual(message_id, 789)
+            self.assertEqual(channel.store.receive(4, 789, "late")["status"], "cancelled")
+        self.telegram.mark_obsolete.side_effect = edit
+        self.assertEqual(channel.cancel_question(), "updated")
+        self.assertEqual(channel.cancel_question(), "not_needed")
+        self.telegram.mark_obsolete.assert_called_once()
+        self.assertEqual(channel.store.poll(**channel.credentials), [])
+
+    def test_edit_failure_does_not_reopen_question_or_retry(self):
+        channel = self.channel()
+        channel.ask("Question", 60)
+        self.telegram.mark_obsolete.side_effect = OSError("unavailable")
+        self.assertEqual(channel.cancel_question(), "edit_failed")
+        self.assertEqual(channel.store.receive(5, 789, "late")["status"], "cancelled")
+        self.assertEqual(channel.cancel_question(), "not_needed")
+        self.telegram.mark_obsolete.assert_called_once()
+
+    def test_cancel_discards_unconsumed_answer(self):
+        channel = self.channel()
+        channel.ask("Question", 60)
+        channel.store.receive(6, 789, "unused")
+        channel.cancel_question()
+        self.assertEqual(channel.store.poll(**channel.credentials), [])
+        self.assertIsNone(channel.store.get_question(**channel.credentials, question_id=channel.question)["answer"])
+
+    def test_cancel_preserves_already_consumed_answer(self):
+        channel = self.channel()
+        channel.ask("Question", 60)
+        channel.store.receive(7, 789, "consumed")
+        channel.acknowledge()
+        self.assertEqual(channel.cancel_question(), "not_needed")
+        self.telegram.mark_obsolete.assert_not_called()
+        self.assertEqual(channel.store.get_question(**channel.credentials, question_id=channel.question)["status"], "acknowledged")
 
     def test_paused_receiver_prevents_network_calls(self):
         (self.db.parent / "receiver-paused").touch()
