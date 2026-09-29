@@ -19,9 +19,13 @@ def main():
     parser.add_argument("--config")
     parser.add_argument("--offline", action="store_true")
     parser.add_argument("--health-file")
+    parser.add_argument("--owned-task-codex", type=Path,
+                        help="Opt in to separate Codex test tasks using this explicit executable")
     parser.add_argument("--agent", choices=["codex", "claude-code"], default="codex",
                         help="Client identity for this MCP process's question messages")
     args = parser.parse_args()
+    if args.owned_task_codex and (args.mode != "serve" or args.offline or args.agent != "codex"):
+        parser.error("owned tasks require live Codex serve mode")
     agent_name = {"codex": "Codex", "claude-code": "Claude Code"}[args.agent]
     if args.offline and args.mode != "serve":
         parser.error("offline mode supports serve only")
@@ -120,6 +124,38 @@ def main():
         """Mark a reply consumed, without claiming that its instruction was executed."""
         store.ack(task_id, secret, question_id)
         return {"status": "acknowledged", "executed": False}
+
+    if args.agent == "codex" and not args.offline:
+        from owned_task_manager import OwnedTaskManager
+        owned = OwnedTaskManager(Path(args.db).resolve().parent / "owned-tasks",
+                                args.owned_task_codex, Path(args.db), Path(args.config))
+
+        @mcp.tool()
+        def start_owned_task(task_id: str, secret: str) -> dict:
+            """Explicitly start one separate Codex communication test, never a Desktop task.
+
+            Register a fresh task first. Checks Codex login/version and receiver readiness.
+            Repeating with the same credentials only returns status; it never relaunches.
+            The test asks for a short word in Telegram and returns its final result.
+            """
+            store.authenticate(task_id, secret)
+            return owned.start(task_id)
+
+        @mcp.tool()
+        def owned_task_status(task_id: str, secret: str) -> dict:
+            """Read private progress. Unknown liveness is not success or permission to replay."""
+            store.authenticate(task_id, secret)
+            return owned.status(task_id)
+
+        @mcp.tool()
+        def cancel_owned_task(task_id: str, secret: str) -> dict:
+            """Request cooperative cancellation of this owned task only; inspect status afterward.
+
+            Already dispatched input and Telegram messages cannot be recalled.
+            Does not stop the receiver or another Desktop task.
+            """
+            store.authenticate(task_id, secret)
+            return owned.cancel(task_id)
 
     mcp.run()
 

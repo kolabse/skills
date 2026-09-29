@@ -8,6 +8,7 @@ from contextlib import closing
 import json
 from pathlib import Path
 import sqlite3
+import shutil
 import sys
 import tempfile
 import unittest
@@ -19,6 +20,37 @@ from store import Store
 
 
 class OfflineProtocolTest(unittest.IsolatedAsyncioTestCase):
+    async def test_packaged_codex_tools_load_and_block_unready_receiver(self):
+        from build_plugin import FILES
+        with tempfile.TemporaryDirectory(prefix="bridge-packaged-tools-") as directory:
+            root = Path(directory)
+            for name in FILES:
+                shutil.copyfile(Path(__file__).with_name(name), root / name)
+            config = root / "config.json"
+            config.write_text("{}")
+            # Real copied MCP server/protocol; fake only Telegram preflight.
+            # Network is forbidden and the missing health file blocks task start.
+            script = (
+                "import pathlib,types,urllib.request,server,telegram; "
+                "urllib.request.urlopen=lambda *a,**k: (_ for _ in ()).throw(RuntimeError('network forbidden')); "
+                "server.Telegram=lambda *a: types.SimpleNamespace(chat_id=123,preflight=lambda:456); "
+                "server.bind_bot_database=lambda *a: None; "
+                "telegram.state_dir=lambda:pathlib.Path.cwd()/'locks'; server.main()")
+            params = StdioServerParameters(command=sys.executable,
+                args=["-c", script, "serve", "--db", str(root / "state.sqlite3"),
+                      "--config", str(config)], cwd=str(root))
+            async with Client(params, read_timeout_seconds=15) as client:
+                names = {tool.name for tool in (await client.list_tools()).tools}
+                self.assertTrue({"start_owned_task", "owned_task_status", "cancel_owned_task"} <= names)
+                task = await self.call(client, "register_task", label="packaged test")
+                result = await self.call(client, "start_owned_task", **task)
+                self.assertEqual(result["status"], "blocked")
+                self.assertEqual(result["error"], "receiver_not_ready")
+                self.assertEqual((await self.call(client, "owned_task_status", **task))["status"], "not_started")
+                self.assertEqual((await self.call(client, "cancel_owned_task", **task))["status"], "not_started")
+                other = await self.call(client, "register_task", label="other")
+                await self.denied(client, "cancel_owned_task", task_id=task["task_id"], secret=other["secret"])
+
     async def call(self, client, name, **arguments):
         result = await client.call_tool(name, arguments)
         self.assertFalse(result.is_error, f"{name} failed: {result.content}")

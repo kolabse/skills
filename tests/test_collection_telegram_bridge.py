@@ -2,6 +2,7 @@
 import importlib.util
 from pathlib import Path
 import shutil
+import subprocess
 import sys
 import tempfile
 import unittest
@@ -68,6 +69,18 @@ class CollectionBridgeTests(unittest.TestCase):
             spec.loader.exec_module(module)
             for name in module.FILES:
                 self.assertTrue((target / bundle.TARGET / "runtime" / name).is_file())
+            # Import the delivered modules outside this checkout. Merely loading
+            # the launcher must not probe Codex or start any process.
+            runtime = target / bundle.TARGET / "runtime"
+            probe = subprocess.run([sys.executable, "-I", "-c",
+                "import sys,pathlib,subprocess; sys.path.insert(0,sys.argv[1]); "
+                "from owned_task_manager import OwnedTaskManager; "
+                "subprocess.run=lambda *a,**k: (_ for _ in ()).throw(RuntimeError('unexpected probe')); "
+                "subprocess.Popen=subprocess.run; "
+                "m=OwnedTaskManager(pathlib.Path(sys.argv[1])/'state',None,pathlib.Path('db'),pathlib.Path('config')); "
+                "assert m.children == {}", str(runtime)],
+                cwd=root, capture_output=True, text=True, timeout=15)
+            self.assertEqual(probe.returncode, 0, probe.stderr)
 
 
 if __name__ == "__main__":

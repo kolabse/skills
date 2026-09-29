@@ -66,7 +66,7 @@ retain ordinary notifications; this Windows receiver workflow is not supported t
    cache so subsequent skill updates do not invalidate the MCP path.
 4. Ask the user to restart the selected client or open a new session that loads
    the new tools; in Claude Code inspect `/mcp` for connection status.
-   Verify that all seven bridge tools (including `send_update`) are available and inspect receiver
+   Verify that all seven cooperative bridge tools (including `send_update`) are available and inspect receiver
    status. When a test is requested, run the [Reply self-check](#reply-self-check).
    Configuration alone is not proof of delivery or loaded tools. Report setup,
    MCP connection, and actual Telegram exchange separately.
@@ -239,3 +239,45 @@ computer awake; the selected agent must be actively polling to consume replies.
 Clean-Windows acceptance was deferred because the test VM had networking issues.
 Keep this mode experimental and report observed readiness separately from that
 remaining acceptance test.
+
+## Separate Codex communication test
+
+The updated runtime additionally exposes `start_owned_task`, `owned_task_status`,
+and `cancel_owned_task` in live Codex MCP sessions. Claude Code and offline mode
+retain their existing tools. Availability does not start a task or authorize a
+Telegram message. After the normal collection update, apply its bundled runtime
+update using the lifecycle workflow above, then reload MCP in Codex. Do not ask
+users to open PowerShell; perform the requested setup as the agent.
+
+For an explicit request such as "Запусти отдельную тестовую задачу через Telegram":
+
+1. Explain that this creates a separate Codex task owned by the bridge. It does
+   not attach to an existing Desktop task or implement arbitrary project work.
+2. Register a fresh task and retain its credentials. Call `start_owned_task` with
+   those credentials. It checks receiver health, discovers the tested bundled
+   Codex executable and verifies ChatGPT login. Discovery scans only the known
+   local Codex installation directory; it never downloads or installs Codex.
+3. On a blocked preflight, report the returned reason. Version support is limited
+   to the verified 0.155.0-alpha.16.3 and 0.158.0-alpha.2.1 protocols. Do not claim other versions are
+   compatible or silently change the user's login, receiver or installation.
+4. On launch, ask the user to Reply to the test question with a short word. The
+   owned task receives it automatically and sends the result. Use
+   `owned_task_status` at bounded checkpoints; no extra polling of reply tools is
+   required for this separate task. Keep its credentials in this conversation
+   and the MCP session open until completion. Closing the client/session may
+   terminate its child process tree; this mode is not a detached service.
+5. On a cancellation request, call `cancel_owned_task` with the same credentials
+   and inspect status. `cancel_requested` means requested, not finished; blocking
+   network operations may delay cancellation. Sent messages cannot be recalled.
+
+Each registration permits one launch. Repeating start only inspects that launch;
+never create another registration merely to retry uncertain delivery. After MCP
+restart, process liveness can be `unknown`, while the nested report retains the
+last observation. Treat that as uncertainty, not completion or permission to
+replay. Cancellation uses a task-specific marker, not a stored PID kill.
+
+One bot must still have one receiver across all PCs. A closed Codex window does
+not prove its background receiver stopped. Keep routing and pause preferences
+intact. The successful September 24 live experiment proves the communication
+scenario. The September 29 installed-runtime acceptance also passed completion
+and cancellation using 0.158.0-alpha.2.1. Clean-Windows acceptance remains deferred.
