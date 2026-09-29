@@ -1,13 +1,13 @@
 # Implementation queue
 
 Updated: 2026-09-29. This queue records accepted work, not completed fixes or
-release authorization. Existing Telegram changes remain in progress.
+release authorization. Version 1.26.0 is authorized; broader Telegram work remains in progress.
 
 | Order | Item | State | Completion criteria |
 | --- | --- | --- | --- |
-| 1 | [#131: Telegram bridge](https://github.com/kolabse/skills/issues/131) | Bounded owned-task package merged in #143; release deferred | Installed-package start/reply/completion/cancel acceptance passed, including obsolete-question editing. Existing Desktop task control and restart recovery remain separate work. |
-| 2 | [#142: branch-name policy resolution](https://github.com/kolabse/skills/issues/142) | Merged in PR #144; release deferred | Resolve and record the effective naming rule before the first remote branch publication; explain mismatches; cover conflicting defaults in acceptance tests. |
-| Release gate | `report-skill-feedback` stabilization | Candidate acceptance; CRLF fix prepared | Complete the [evidence assessment](reports/report-skill-feedback-stability.md), then promote in a versioned release with `stable_since`. |
+| 1 | [#131: Telegram bridge](https://github.com/kolabse/skills/issues/131) | Bounded owned-task package merged in #143; included in 1.26.0 | Installed-package start/reply/completion/cancel acceptance passed, including obsolete-question editing. Existing Desktop task control and restart recovery remain separate work. |
+| 2 | [#142: branch-name policy resolution](https://github.com/kolabse/skills/issues/142) | Merged in PR #144; included in 1.26.0 | Resolve and record the effective naming rule before the first remote branch publication; explain mismatches; cover conflicting defaults in acceptance tests. |
+| After release | `report-skill-feedback` stabilization | CRLF fix included in 1.26.0; colleague acceptance deferred until after release | Gather native-client and real submission observations with report-specific consent; complete the [evidence assessment](reports/report-skill-feedback-stability.md) before promotion. Keep experimental in 1.26.0. |
 
 ## #142 — branch policy preflight
 
@@ -93,5 +93,4 @@ Acceptance cases:
    invent a local artifact version from the plugin version.
 
 Do not rename already published branches, change priorities, or force-push as a
-side effect of this queue entry. Issue #142 remains open until implemented and
-verified. No external comment or duplicate issue was created during this triage.
+side effect of this queue entry. Issue #142 was closed after implementation and verification in PR #144. No external comment or duplicate issue was created during this triage.
