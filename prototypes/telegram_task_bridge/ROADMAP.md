@@ -16,10 +16,33 @@ Source: https://github.com/kolabse/skills/issues/131.
 | Sender-visible receipt/execution states | Tools distinguish sent/unknown/answered/acknowledged/expired; agents report observed outcomes. | Automatic Telegram receipts, persistent execution reconciliation and message-retention policy need a separate design. |
 | Installation and clients | Standard collection update bundles runtime, with Windows setup/controller and per-client Codex/Claude registration. | Clean-Windows acceptance remains deferred; live tests must name the client and deployed runtime. |
 
-The next implementation stage should first establish supported access to the
-intended existing task. Task menus, external steering and idle wakeup must not
-be advertised from the existence of internal app tools alone. Keep the mode
-experimental until its remaining acceptance boundaries have observed evidence.
+## Selected incremental path: bridge-owned tasks
+
+The user selected a separate App Server task owned by the bridge. This mode is
+explicitly distinct from the existing Desktop task adapter above. The bounded
+question/reply/automatic-continuation/result scenario passed a controlled live
+run on 2026-09-24. See [prototype and evidence](OWNED-TASK.md).
+
+The source prototype now has bounded pipe writes, an atomic progress report,
+and opt-in MCP start/status/cancel tools with authenticated task ownership.
+Preflight checks the tested Codex version, ChatGPT login and receiver health.
+Offline tests cover failure paths and duplicate launches. No receiver is started
+or reconfigured by the task controller, and uncertain sends are never replayed.
+
+Before distributing this mode through the standard collection update:
+
+1. Review and integrate the prototype with the repository's required checks.
+2. The normal bundle now includes the MCP entry point and lazy executable
+   discovery. Publish the reviewed update, apply its runtime update and reload
+   MCP so users can request start/status/cancel without running a terminal.
+3. Validate lifecycle and cooperative cancellation after installation; document
+   the no-replay recovery contract and one-receiver policy across multiple PCs.
+   A stale progress file is not proof of liveness.
+4. Exercise the packaged entry point with live acceptance, including failure
+   paths, before claiming readiness for general use.
+
+Supported access to existing Desktop tasks remains a separate prerequisite for
+Desktop task menus, steering and idle wakeup. The parent issue stays open.
 
 This review does not enable a receiver, send a test message, modify a user's
 client configuration, or declare the parent issue complete.

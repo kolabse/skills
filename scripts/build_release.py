@@ -52,6 +52,7 @@ BRIDGE_INPUTS = (
     "build_plugin.py", "plugin-manifest.json", "server.py", "store.py",
     "telegram.py", "receiver.py", "requirements.txt", "manage_receiver.ps1",
     "plugin_control.ps1", "plugin_setup.ps1", "installer.py",
+    "owned_task.py", "owned_task_manager.py", "owned_task_report.py", "owned_task_rpc.py",
     "configure_telegram.ps1", *BRIDGE_DOCS,
 )
 

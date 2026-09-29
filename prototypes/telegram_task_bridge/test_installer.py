@@ -87,6 +87,23 @@ class InstallerTests(unittest.TestCase):
         self.assertTrue((Path(result["backup"]) / "server.py").is_file())
         self.assert_preserved()
 
+    def test_legacy_update_adds_owned_runtime_and_rollback_removes_only_new_files(self):
+        added = [name for name in FILES if name.startswith("owned_task")]
+        self.assertEqual(len(added), 4)
+        for name in added:
+            (self.install.runtime / name).unlink()
+        self.install.bad_health = True
+        with self.assertRaises(SetupError):
+            self.install.execute("update")
+        for name in added:
+            self.assertFalse((self.install.runtime / name).exists())
+        self.assertEqual((self.install.runtime / "server.py").read_text(), "old server.py")
+        self.assert_preserved()
+        self.install.execute("update")
+        for name in added:
+            self.assertEqual((self.install.runtime / name).read_text(), "new " + name)
+        self.assert_preserved()
+
     def test_failed_preflight_never_stops_existing_receiver(self):
         self.install.bad_preflight = True
         with self.assertRaises(SetupError):

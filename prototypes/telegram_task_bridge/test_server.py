@@ -5,7 +5,7 @@ import sys
 import tempfile
 import types
 import unittest
-from unittest.mock import patch
+from unittest.mock import Mock, patch
 
 import server
 from store import Store
@@ -13,7 +13,7 @@ from telegram import Telegram, TelegramError
 
 
 class ServerClientTests(unittest.TestCase):
-    def run_update_scenario(self, scenario, *, send_error=False):
+    def run_update_scenario(self, scenario, *, send_error=False, owned_manager=None, agent="codex"):
         """Exercise registered tools, real adapter filtering, and durable state."""
         with tempfile.TemporaryDirectory() as folder:
             registered_tools = {}
@@ -54,10 +54,14 @@ class ServerClientTests(unittest.TestCase):
                 return store
 
             argv = ["server.py", "serve", "--db", str(Path(folder) / "state.sqlite3"),
-                    "--config", str(Path(folder) / "unused-config.json")]
+                    "--config", str(Path(folder) / "unused-config.json"), "--agent", agent]
+            modules = {"mcp.server": types.SimpleNamespace(MCPServer=FakeMCP)}
+            if owned_manager is not None:
+                modules["owned_task_manager"] = types.SimpleNamespace(
+                    OwnedTaskManager=Mock(return_value=owned_manager))
             try:
                 with patch.object(sys, "argv", argv), \
-                        patch.dict(sys.modules, {"mcp.server": types.SimpleNamespace(MCPServer=FakeMCP)}), \
+                        patch.dict(sys.modules, modules), \
                         patch.object(server, "Telegram", return_value=adapter), \
                         patch.object(server, "Store", side_effect=open_store), \
                         patch.object(server, "bind_bot_database"), \
@@ -67,6 +71,28 @@ class ServerClientTests(unittest.TestCase):
             finally:
                 for store in stores:
                     store.close()
+
+    def test_claude_does_not_expose_codex_owned_tools(self):
+        def scenario(tools, *unused):
+            self.assertNotIn("start_owned_task", tools)
+            self.assertNotIn("owned_task_status", tools)
+            self.assertNotIn("cancel_owned_task", tools)
+        self.run_update_scenario(scenario, agent="claude-code")
+
+    def test_owned_tools_authenticate_before_manager_access(self):
+        manager = Mock()
+        def scenario(tools, *unused):
+            task = tools["register_task"]("Owned test")
+            other = tools["register_task"]("Other")
+            for tool, method in (("start_owned_task", "start"),
+                                 ("owned_task_status", "status"),
+                                 ("cancel_owned_task", "cancel")):
+                with self.assertRaises(PermissionError):
+                    tools[tool](task["task_id"], other["secret"])
+                getattr(manager, method).assert_not_called()
+                tools[tool](**task)
+                getattr(manager, method).assert_called_once_with(task["task_id"])
+        self.run_update_scenario(scenario, owned_manager=manager)
 
     @staticmethod
     def reply(adapter, store, update_id, message_id=1, text="Continue with option B"):

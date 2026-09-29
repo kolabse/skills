@@ -6,7 +6,8 @@ ROOT = Path(__file__).resolve().parents[1]
 SOURCE = Path("prototypes/telegram_task_bridge")
 TARGET = Path("skills/notify-via-telegram/scripts/task_bridge")
 RUNTIME = ("server.py", "store.py", "telegram.py", "receiver.py", "requirements.txt",
-           "manage_receiver.ps1", "plugin_control.ps1")
+           "manage_receiver.ps1", "plugin_control.ps1", "owned_task.py",
+           "owned_task_manager.py", "owned_task_report.py", "owned_task_rpc.py")
 INPUTS = {**{f"runtime/{name}": name for name in RUNTIME},
           "setup.ps1": "plugin_setup.ps1", "installer.py": "installer.py",
           "configure_telegram.ps1": "configure_telegram.ps1"}

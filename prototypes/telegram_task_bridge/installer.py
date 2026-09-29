@@ -13,7 +13,8 @@ import uuid
 
 
 FILES = ("server.py", "store.py", "telegram.py", "receiver.py", "requirements.txt",
-         "manage_receiver.ps1", "plugin_control.ps1")
+         "manage_receiver.ps1", "plugin_control.ps1", "owned_task.py",
+         "owned_task_manager.py", "owned_task_report.py", "owned_task_rpc.py")
 
 
 class SetupError(RuntimeError):
@@ -132,7 +133,7 @@ class Installer:
     def validate(self, candidate):
         script = ("import sys,pathlib; sys.path.insert(0,sys.argv[1]); "
                   "[compile(p.read_bytes(),str(p),'exec') for p in pathlib.Path(sys.argv[1]).glob('*.py')]; "
-                  "import server,store,telegram,receiver; from mcp.server import MCPServer; "
+                  "import server,store,telegram,receiver,owned_task,owned_task_manager; from mcp.server import MCPServer; "
                   "telegram.Telegram(sys.argv[2]).preflight()")
         # Read-only API preflight: no polling, sends, or live database migrations.
         run([str(self.python), "-c", script, str(candidate), str(self.config)])
