@@ -1,0 +1,43 @@
+{
+  "candidate_commit": "04258a3cb55a9cac63a9b5ecee923dee3959cdf2",
+  "skill_digest": "79d483b84ec2ca5aa1d49ab815e960887fb14a9373259fbec64ec63ad831c662",
+  "observed_at": "2026-09-29T08:49:36.332396+00:00",
+  "environment": {
+    "os": "windows",
+    "python": "3.13.7"
+  },
+  "results": [
+    {
+      "command": [
+        "python",
+        "-m",
+        "unittest",
+        "discover",
+        "-s",
+        "tests",
+        "-p",
+        "test_report*feedback*.py",
+        "-v"
+      ],
+      "exit_code": 0,
+      "tests": 25,
+      "output_sha256": "fc3c937a691b622cfaf52cc026bc522d47ab49db5dc30329f93b4f5a4b4f6c08"
+    },
+    {
+      "command": [
+        "python",
+        "-m",
+        "unittest",
+        "discover",
+        "-s",
+        "tests",
+        "-p",
+        "test_feedback_session.py",
+        "-v"
+      ],
+      "exit_code": 0,
+      "tests": 7,
+      "output_sha256": "0e47eb53ec0490e1af447e4c1435a8881f50f8a6c696fefb3a81aa72e887295b"
+    }
+  ]
+}

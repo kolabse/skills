@@ -165,7 +165,7 @@ def artifact_metadata(root: Path) -> dict[str, Any]:
     except (OSError, UnicodeDecodeError) as error:
         raise FeedbackError("cannot read selected SKILL.md", "artifact") from error
     frontmatter = re.match(r"\A---\r?\n(.*?)\r?\n---(?:\r?\n|$)", text, re.DOTALL)
-    names = re.findall(r"^name:[ \t]*([^\r\n]+?)[ \t]*$", frontmatter.group(1), re.MULTILINE) if frontmatter else []
+    names = re.findall(r"^name:[ \t]*([^\r\n]+?)[ \t]*\r?$", frontmatter.group(1), re.MULTILINE) if frontmatter else []
     name = names[0].strip() if len(names) == 1 else ""
     if len(name) >= 2 and name[0] in "\"'" and name[-1] == name[0]:
         name = name[1:-1]

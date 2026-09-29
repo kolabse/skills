@@ -1,0 +1,21 @@
+{
+  "observed_at": "2026-09-29T08:30:19.868909+00:00",
+  "candidate_commit": "3711b8a3c855a576af2d5e2ab718e72ed3325a6f",
+  "results": [
+    {
+      "case": "lf",
+      "observed": "accepted",
+      "raw_sha256": "a3862f9aae1105412b78eb4025415bdd2092b959986b7664ee226822c9629923"
+    },
+    {
+      "case": "crlf",
+      "observed": "selected skill name does not match collection metadata",
+      "raw_sha256": "afdd169491a4ee0486cf7257ab4bb544dec8966632741a2555850c83ffdb507c"
+    },
+    {
+      "case": "bom-crlf",
+      "observed": "selected skill name does not match collection metadata",
+      "raw_sha256": "caa0326326a6af5358787b03769877df1929670ac0f35fd3884a6f528aa38bed"
+    }
+  ]
+}

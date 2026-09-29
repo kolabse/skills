@@ -1,0 +1,105 @@
+{
+  "schema_version": 1,
+  "skill": "report-skill-feedback",
+  "candidate_version": "1.25.0",
+  "candidate_commit": "3711b8a3c855a576af2d5e2ab718e72ed3325a6f",
+  "digest_algorithm": "sha256 of UTF-8 canonical JSON sorted-key file records in git-ls-files order; raw checkout bytes",
+  "skill_digest": "4ddda111392b9dcea721ebe742443cae705229a162a5b74f808969b02102b086",
+  "files": [
+    {
+      "path": "SKILL.md",
+      "sha256": "329df7ca5b383d1efec533f3c2433d773415d3968f31eb60bd348529ce065202",
+      "size": 7652
+    },
+    {
+      "path": "agents/openai.yaml",
+      "sha256": "991dfef236ba45da8118067c1987ce7633bc19940994cf7327c3a1cfda9411f6",
+      "size": 378
+    },
+    {
+      "path": "collection-metadata.json",
+      "sha256": "b83ea6be695dd13f813772cedaf6a67cba178b8bf0846a416ca9515066b427ed",
+      "size": 239
+    },
+    {
+      "path": "references/preparation-and-session.md",
+      "sha256": "6459f9c4dd201ca2e987e7be903819095d476c11fca8a06c078cdbbd422d8bda",
+      "size": 5407
+    },
+    {
+      "path": "schemas/feedback-answers.schema.json",
+      "sha256": "a1787a155f57c7e87cd1473c336d49b94aa8431603f368ce0f8221afad6c2ee1",
+      "size": 3922
+    },
+    {
+      "path": "schemas/feedback-input.schema.json",
+      "sha256": "6bc33804b0bf13c2cbb86a304ee97318eb0f2ecc9562c36c3151d879e2435068",
+      "size": 5288
+    },
+    {
+      "path": "schemas/feedback-session.schema.json",
+      "sha256": "2d582c6487fcd1a285e3084b7fc4272f0e55beca64199b610a26e7d1d809a977",
+      "size": 1123
+    },
+    {
+      "path": "scripts/feedback_session.py",
+      "sha256": "96fd7d9bd495d45a1d93a34cbdd04066d6dada883618f7fc05884ce21b6179e6",
+      "size": 5603
+    },
+    {
+      "path": "scripts/report_feedback.py",
+      "sha256": "be23a45f10932ae67693a17cd3b262538db5b427cb61946dfa2e4da00bcf4c1f",
+      "size": 31248
+    }
+  ],
+  "observed_at": "2026-09-29T08:26:04.641142+00:00",
+  "git_blob_files": [
+    {
+      "path": "SKILL.md",
+      "sha256": "c181947a3111ca1ea3d8cb80419b70ba4caa925d5b15d9611604095e16bd59bf",
+      "size": 7503
+    },
+    {
+      "path": "agents/openai.yaml",
+      "sha256": "b291e3cd838e0b27aefb806281ec70dbd4ef39d961ecc8f9ae7b4558425fddf9",
+      "size": 374
+    },
+    {
+      "path": "collection-metadata.json",
+      "sha256": "71e080b6678398b075172ea6614a9ee027ebf83032b84aa2b520d3f1dc33ff76",
+      "size": 231
+    },
+    {
+      "path": "references/preparation-and-session.md",
+      "sha256": "c174eb049b33165be01791b3620f1d5afe50deb8758b4b5f205dd637b2cccdb1",
+      "size": 5312
+    },
+    {
+      "path": "schemas/feedback-answers.schema.json",
+      "sha256": "a42150e3d2c026d6c9e2c57d78e7b2f0dedc079129e2e712572af01697601c05",
+      "size": 3744
+    },
+    {
+      "path": "schemas/feedback-input.schema.json",
+      "sha256": "0a85b85cf503ccf1ccd865b4ee47dab6086e78490b27dc8b64ac90804d6ea938",
+      "size": 5056
+    },
+    {
+      "path": "schemas/feedback-session.schema.json",
+      "sha256": "ca0ff80ce9ac1f55ce627c8b0f6165859ec94075997be622d9171982013d3720",
+      "size": 1095
+    },
+    {
+      "path": "scripts/feedback_session.py",
+      "sha256": "e6a382556194239c6e9e444dec6a545350a5c89bf8c53614a07a0b756c45b247",
+      "size": 5461
+    },
+    {
+      "path": "scripts/report_feedback.py",
+      "sha256": "52a0661e78c084561a7477c9905e0992b16d8111ff43ffc49c62dd9e660fad9e",
+      "size": 30730
+    }
+  ],
+  "git_content_digest": "2273c5bdbcfb5c9cfc08a1a0da542beb2b6ce3d507d7e07c79d318c51dd5252a",
+  "checkout_note": "skill_digest binds raw evaluated checkout/copy bytes; git_content_digest binds canonical committed blobs independently of checkout line endings."
+}

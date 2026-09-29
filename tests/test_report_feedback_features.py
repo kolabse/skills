@@ -7,6 +7,7 @@ import io
 import json
 import os
 import re
+import shutil
 import subprocess
 import sys
 import tempfile
@@ -55,6 +56,54 @@ class FeedbackFeaturesTests(unittest.TestCase):
         self.assertEqual(result["observed_skill"]["version"], "2.3.4")
         self.assertEqual(result["reporter"]["name"], "report-skill-feedback")
         self.assertNotIn(str(self.skill_root), self.output.read_text(encoding="utf-8"))
+
+    def test_builder_accepts_line_endings_and_bom_without_normalizing_digest(self):
+        for newline in ("\n", "\r\n"):
+            for bom in (b"", b"\xef\xbb\xbf"):
+                for name in ("review-code-changes", '"review-code-changes"'):
+                    with self.subTest(newline=repr(newline), bom=bool(bom), name=name):
+                        raw = bom + newline.join([
+                            "---", f"name: {name}", "description: Review changes.",
+                            "---", "Body", "",
+                        ]).encode("utf-8")
+                        (self.skill_root / "SKILL.md").write_bytes(raw)
+                        self.assertEqual("2.3.4", feedback.build_input(self.build_args())["observed_skill"]["version"])
+                        value = json.loads(self.output.read_text(encoding="utf-8"))
+                        self.assertEqual(hashlib.sha256(raw).hexdigest(), value["skill"]["artifact"]["skill_sha256"])
+                        self.assertEqual(raw, (self.skill_root / "SKILL.md").read_bytes())
+
+    def test_builder_rejects_duplicate_names_with_crlf_or_mixed_endings(self):
+        for first_ending in ("\n", "\r\n"):
+            raw = ("---\r\nname: review-code-changes" + first_ending
+                   + "name: review-code-changes\r\ndescription: Review changes.\r\n---\r\n").encode("utf-8")
+            (self.skill_root / "SKILL.md").write_bytes(raw)
+            with self.subTest(first_ending=repr(first_ending)), self.assertRaises(feedback.FeedbackError):
+                feedback.build_input(self.build_args())
+            self.assertFalse(self.output.exists())
+
+    def test_copied_bundle_builds_and_previews_outside_repository(self):
+        source = Path(feedback.__file__).resolve().parents[1]
+        copied = self.root / "installed" / "report-skill-feedback"
+        shutil.copytree(source, copied, ignore=shutil.ignore_patterns("__pycache__", "*.pyc"))
+        script = copied / "scripts" / "report_feedback.py"
+        built = self.root / "copied-input.json"
+        report = self.root / "copied-report.md"
+        commands = [
+            ["build-input", "--answers", str(self.answers_path), "--skill-root", str(copied),
+             "--installation-scope", "global", "--collection-consent", "--output", str(built), "--json"],
+            ["draft", "--input", str(built), "--output", str(report), "--collection-consent", "--json"],
+        ]
+        for arguments in commands:
+            result = subprocess.run([sys.executable, str(script), *arguments], cwd=self.root,
+                capture_output=True, timeout=20)
+            self.assertEqual(0, result.returncode, (result.stdout, result.stderr))
+        value = json.loads(built.read_text(encoding="utf-8"))
+        self.assertEqual("report-skill-feedback", value["skill"]["name"])
+        self.assertEqual(hashlib.sha256((copied / "SKILL.md").read_bytes()).hexdigest(),
+                         value["skill"]["artifact"]["skill_sha256"])
+        preview = json.loads(result.stdout)
+        self.assertFalse(preview["submitted"])
+        self.assertEqual(report.read_text(encoding="utf-8"), preview["preview"])
 
     def test_prepare_is_pure_and_contains_no_answers(self):
         with mock.patch.object(Path, "read_bytes", side_effect=AssertionError("read")), \

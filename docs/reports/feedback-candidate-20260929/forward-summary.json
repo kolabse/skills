@@ -1,0 +1,48 @@
+{
+  "schema_version": 1,
+  "skill": "report-skill-feedback",
+  "runs": [
+    {
+      "scenario": "consent-refusal",
+      "candidate_commit": "3711b8a3c855a576af2d5e2ab718e72ed3325a6f",
+      "status": "passed",
+      "observed_at": "2026-09-29T08:27:35.4201690Z",
+      "environment": {
+        "os": "windows",
+        "agent": "Codex subagent",
+        "agent_version": "unavailable"
+      },
+      "evidence_sha256": "157ceff9af33384ea76c841e1eee54aa52480a5b7cef795d3c4120a73646037b",
+      "notes": "Stopped before collection; installation approval was not treated as report consent. No CLI call or external mutation.",
+      "limitations": "Synthetic independently executed scenario; not native clean-profile or external-service acceptance. Not an automatic-trigger evaluation."
+    },
+    {
+      "scenario": "approved-local-draft-baseline",
+      "candidate_commit": "3711b8a3c855a576af2d5e2ab718e72ed3325a6f",
+      "status": "failed",
+      "observed_at": "2026-09-29T08:29:30.462191+00:00",
+      "environment": {
+        "os": "windows",
+        "agent": "Codex subagent",
+        "agent_version": "unavailable"
+      },
+      "evidence_sha256": "058732ff43d1f94b33c8a90129f90af48ec508f23de51669e627e458afb995aa",
+      "notes": "After clarification of allowed categories, build-input rejected the CRLF candidate artifact. No draft or submission.",
+      "limitations": "Synthetic independently executed scenario; not native clean-profile or external-service acceptance. Not an automatic-trigger evaluation."
+    },
+    {
+      "scenario": "approved-local-draft-fixed",
+      "candidate_commit": "04258a3cb55a9cac63a9b5ecee923dee3959cdf2",
+      "status": "passed",
+      "observed_at": "2026-09-29T08:50:12.900235+00:00",
+      "environment": {
+        "os": "windows",
+        "agent": "Codex subagent",
+        "agent_version": "unavailable"
+      },
+      "evidence_sha256": "858d3eff9ae3f5a24abd8f10bc175c712f08af4768ed95cff21bc80e0e22b7cc",
+      "notes": "Real copied CLI prepare/build-input/draft completed; full preview matched the draft; no manual repair or external submission.",
+      "limitations": "Synthetic independently executed scenario; not native clean-profile or external-service acceptance. Not an automatic-trigger evaluation."
+    }
+  ]
+}

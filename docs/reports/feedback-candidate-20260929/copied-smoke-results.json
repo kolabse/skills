@@ -1,0 +1,133 @@
+{
+  "candidate_commit": "04258a3cb55a9cac63a9b5ecee923dee3959cdf2",
+  "skill_digest": "79d483b84ec2ca5aa1d49ab815e960887fb14a9373259fbec64ec63ad831c662",
+  "observed_at": "2026-09-29T08:48:56.677832+00:00",
+  "environment": {
+    "os": "windows",
+    "python": "3.13.7"
+  },
+  "results": [
+    {
+      "layout": "codex",
+      "steps": [
+        {
+          "name": "status",
+          "exit_code": 0,
+          "output_sha256": "0e85013e49aa12c721a69d4457a0dbfe219731c6830fa9b156ac9d4b19b193bb"
+        },
+        {
+          "name": "prepare-ru",
+          "exit_code": 0,
+          "output_sha256": "8cc55f05d449b923c21a4e0123a695045953b546099a1b76fa9ddb1b617e8c51"
+        },
+        {
+          "name": "build-consent-refusal",
+          "exit_code": 1,
+          "output_sha256": "417cf841263c27948e83abcafdc23829cd77b917d8f091a1a9edcd14fc6b5aeb"
+        },
+        {
+          "name": "build",
+          "exit_code": 0,
+          "output_sha256": "8c737fcaa55672f550421bb290d50bd286ab3950d75d162ba07527039b18801a"
+        },
+        {
+          "name": "draft",
+          "exit_code": 0,
+          "output_sha256": "359da22ef5720a74dfd380c0aa9fe2f46d6f3cff1002df6c0102d0686f1f780f"
+        },
+        {
+          "name": "repeat-draft",
+          "exit_code": 0,
+          "output_sha256": "359da22ef5720a74dfd380c0aa9fe2f46d6f3cff1002df6c0102d0686f1f780f"
+        },
+        {
+          "name": "submit-consent-refusal",
+          "exit_code": 1,
+          "output_sha256": "1bed8ecda88923dcf2c5de7e027f4e0328d45b2221f100c5fed51493982299d0"
+        },
+        {
+          "name": "tampered-report-refused",
+          "passed": true
+        },
+        {
+          "name": "ledger-create",
+          "exit_code": 0,
+          "output_sha256": "948aab29518cd67812c78229dbb16f920ecf5b14c3dd8de7e85c22967a7cd572"
+        },
+        {
+          "name": "ledger-show",
+          "exit_code": 0,
+          "output_sha256": "948aab29518cd67812c78229dbb16f920ecf5b14c3dd8de7e85c22967a7cd572"
+        },
+        {
+          "name": "ledger-project-refusal",
+          "exit_code": 2,
+          "output_sha256": "29f66514e9ebbd7f5e358a8675cc728bc6ad195c96e2be168cb8e7d37b277c6e"
+        }
+      ],
+      "passed": true,
+      "limitations": "CLI copied bundle only; agent field is synthetic. Not a native client profile or external submission."
+    },
+    {
+      "layout": "claude-code",
+      "steps": [
+        {
+          "name": "status",
+          "exit_code": 0,
+          "output_sha256": "ad16b69b9d962de5f825c1b506da098771342543c2a3cd21defa9a3d2050439b"
+        },
+        {
+          "name": "prepare-ru",
+          "exit_code": 0,
+          "output_sha256": "8cc55f05d449b923c21a4e0123a695045953b546099a1b76fa9ddb1b617e8c51"
+        },
+        {
+          "name": "build-consent-refusal",
+          "exit_code": 1,
+          "output_sha256": "417cf841263c27948e83abcafdc23829cd77b917d8f091a1a9edcd14fc6b5aeb"
+        },
+        {
+          "name": "build",
+          "exit_code": 0,
+          "output_sha256": "c01567edd0b488a9e2f6a90b7c94332186c4416d4ad72f8c14c81d8ab747db28"
+        },
+        {
+          "name": "draft",
+          "exit_code": 0,
+          "output_sha256": "74bf57962f146bf12bc2282e2ab008f26a6ed03cb3bc1197c10fdcb79dfff1c6"
+        },
+        {
+          "name": "repeat-draft",
+          "exit_code": 0,
+          "output_sha256": "74bf57962f146bf12bc2282e2ab008f26a6ed03cb3bc1197c10fdcb79dfff1c6"
+        },
+        {
+          "name": "submit-consent-refusal",
+          "exit_code": 1,
+          "output_sha256": "1bed8ecda88923dcf2c5de7e027f4e0328d45b2221f100c5fed51493982299d0"
+        },
+        {
+          "name": "tampered-report-refused",
+          "passed": true
+        },
+        {
+          "name": "ledger-create",
+          "exit_code": 0,
+          "output_sha256": "948aab29518cd67812c78229dbb16f920ecf5b14c3dd8de7e85c22967a7cd572"
+        },
+        {
+          "name": "ledger-show",
+          "exit_code": 0,
+          "output_sha256": "948aab29518cd67812c78229dbb16f920ecf5b14c3dd8de7e85c22967a7cd572"
+        },
+        {
+          "name": "ledger-project-refusal",
+          "exit_code": 2,
+          "output_sha256": "29f66514e9ebbd7f5e358a8675cc728bc6ad195c96e2be168cb8e7d37b277c6e"
+        }
+      ],
+      "passed": true,
+      "limitations": "CLI copied bundle only; agent field is synthetic. Not a native client profile or external submission."
+    }
+  ]
+}
