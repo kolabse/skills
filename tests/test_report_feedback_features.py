@@ -56,6 +56,30 @@ class FeedbackFeaturesTests(unittest.TestCase):
         self.assertEqual(result["reporter"]["name"], "report-skill-feedback")
         self.assertNotIn(str(self.skill_root), self.output.read_text(encoding="utf-8"))
 
+    def test_builder_accepts_line_endings_and_bom_without_normalizing_digest(self):
+        for newline in ("\n", "\r\n"):
+            for bom in (b"", b"\xef\xbb\xbf"):
+                for name in ("review-code-changes", '"review-code-changes"'):
+                    with self.subTest(newline=repr(newline), bom=bool(bom), name=name):
+                        raw = bom + newline.join([
+                            "---", f"name: {name}", "description: Review changes.",
+                            "---", "Body", "",
+                        ]).encode("utf-8")
+                        (self.skill_root / "SKILL.md").write_bytes(raw)
+                        self.assertEqual("2.3.4", feedback.build_input(self.build_args())["observed_skill"]["version"])
+                        value = json.loads(self.output.read_text(encoding="utf-8"))
+                        self.assertEqual(hashlib.sha256(raw).hexdigest(), value["skill"]["artifact"]["skill_sha256"])
+                        self.assertEqual(raw, (self.skill_root / "SKILL.md").read_bytes())
+
+    def test_builder_rejects_duplicate_names_with_crlf_or_mixed_endings(self):
+        for first_ending in ("\n", "\r\n"):
+            raw = ("---\r\nname: review-code-changes" + first_ending
+                   + "name: review-code-changes\r\ndescription: Review changes.\r\n---\r\n").encode("utf-8")
+            (self.skill_root / "SKILL.md").write_bytes(raw)
+            with self.subTest(first_ending=repr(first_ending)), self.assertRaises(feedback.FeedbackError):
+                feedback.build_input(self.build_args())
+            self.assertFalse(self.output.exists())
+
     def test_prepare_is_pure_and_contains_no_answers(self):
         with mock.patch.object(Path, "read_bytes", side_effect=AssertionError("read")), \
              mock.patch.object(Path, "resolve", side_effect=AssertionError("resolve")), \
