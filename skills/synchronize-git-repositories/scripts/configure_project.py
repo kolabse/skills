@@ -186,7 +186,7 @@ def main(argv: list[str] | None = None) -> int:
         else:
             state = configure(args.project_path, args.agent, args.policy_config_root)[0] if args.command == "configure" else inspect(args.project_path, args.agent, args.policy_config_root)
         if args.json:
-            print(json.dumps(state, ensure_ascii=False, sort_keys=True))
+            print(json.dumps(state, ensure_ascii=True, sort_keys=True))
         else:
             print(f"{'configured' if state['configured'] else 'not configured'}: {state['agents_file']}")
         return 0 if state["valid"] and (state["configured"] or args.command == "bootstrap") else 1

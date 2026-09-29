@@ -18,6 +18,26 @@ SPEC.loader.exec_module(POLICY)
 
 
 class GitPolicyDefaultsTests(unittest.TestCase):
+    def test_bootstrap_json_preserves_unicode_policy_on_ascii_console(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory).resolve()
+            private = root / "private"
+            private.mkdir()
+            snapshot = {"schema_version": 1, "identity": "\u56e2\u961f", "revision": "1",
+                "templates": {kind: "\u56e2\u961f/{slug}" for kind in ("feature", "bugfix", "release", "hotfix")}}
+            provider = root / "provider.json"
+            provider.write_text(json.dumps(snapshot), encoding="utf-8")
+            preference = {"schema_version": 1, "agent": "codex", "scope": "skill-workflows",
+                "choice": {"schema_version": 1, "honor_project_policy": True,
+                    "fallback": "user-global", "provider": {"identity": snapshot["identity"], "template_source": str(provider)}},
+                "accepted_snapshot": snapshot}
+            (private / "codex.json").write_text(json.dumps(preference), encoding="utf-8")
+            result = subprocess.run([sys.executable, str(SCRIPT), "bootstrap",
+                "--project-path", str(root), "--policy-config-root", str(private), "--json"],
+                capture_output=True, env={**os.environ, "PYTHONIOENCODING": "ascii"})
+            self.assertEqual(0, result.returncode, result.stderr)
+            self.assertEqual(snapshot, json.loads(result.stdout)["naming_policy"]["provider_snapshot"])
+
     def test_existing_confirmed_choice_survives_bootstrap_update(self) -> None:
         for agent in ("codex", "claude-code"):
             with self.subTest(agent=agent), tempfile.TemporaryDirectory() as directory:

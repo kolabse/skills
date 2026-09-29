@@ -365,7 +365,7 @@ def read_global_state(
 
 def print_state(state: dict[str, Any], as_json: bool) -> None:
     if as_json:
-        print(json.dumps(state, ensure_ascii=False, indent=2, sort_keys=True))
+        print(json.dumps(state, ensure_ascii=True, indent=2, sort_keys=True))
         return
     print(
         f"Collection: {state['collection']} ({state['scope']}; "
@@ -1313,7 +1313,7 @@ def main(argv: list[str] | None = None) -> int:
                 args.agent,
             )
             if args.json:
-                print(json.dumps(result, ensure_ascii=False, indent=2, sort_keys=True))
+                print(json.dumps(result, ensure_ascii=True, indent=2, sort_keys=True))
             else:
                 for outcome in result["outcomes"]:
                     print(
@@ -1325,7 +1325,7 @@ def main(argv: list[str] | None = None) -> int:
             result = migrate(
                 args.project_path, args.include_user_config, args.timeout, args.agent
             )
-            print(json.dumps(result, ensure_ascii=False, indent=2, sort_keys=True))
+            print(json.dumps(result, ensure_ascii=True, indent=2, sort_keys=True))
             return 0
         result = update_skills(
             args.project_path,
@@ -1346,7 +1346,7 @@ def main(argv: list[str] | None = None) -> int:
             )
             result["migration"] = migration
         if args.json:
-            print(json.dumps(result, ensure_ascii=False, indent=2, sort_keys=True))
+            print(json.dumps(result, ensure_ascii=True, indent=2, sort_keys=True))
         return 0
     except ManagerError as error:
         if getattr(args, "json", False):
@@ -1365,7 +1365,7 @@ def main(argv: list[str] | None = None) -> int:
                     }
                 ],
             }
-            print(json.dumps(failure, ensure_ascii=False, indent=2, sort_keys=True), file=sys.stderr)
+            print(json.dumps(failure, ensure_ascii=True, indent=2, sort_keys=True), file=sys.stderr)
         else:
             print(f"MANAGER_FAILED: {error}", file=sys.stderr)
         return 1

@@ -7,7 +7,7 @@ import sys
 import tempfile
 import unittest
 from contextlib import redirect_stderr
-from io import StringIO
+from io import BytesIO, StringIO, TextIOWrapper
 from pathlib import Path
 from unittest.mock import patch
 
@@ -18,6 +18,15 @@ import manage_installed_skills as manager  # noqa: E402
 
 
 class ManageInstalledSkillsTests(unittest.TestCase):
+    def test_update_json_preserves_unicode_policy_on_ascii_console(self) -> None:
+        payload = {"configuration": [{"result": {"naming_policy": {"source": "\u56e2\u961f"}}}]}
+        buffer = BytesIO()
+        with TextIOWrapper(buffer, encoding="ascii") as stream:
+            with patch.object(manager, "update_skills", return_value=payload), patch.object(sys, "stdout", stream):
+                self.assertEqual(0, manager.main(["update", "synchronize-git-repositories", "--json", "--yes"]))
+            stream.flush()
+            self.assertEqual(payload, json.loads(buffer.getvalue()))
+
     NEW_SKILLS = {
         "orchestrate-agent-work",
         "develop-with-test-first-evidence",

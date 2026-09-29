@@ -25,16 +25,17 @@ global application instructions, or authorize publication/release operations.
   helper/entrypoint artifacts or a different branch. They do not replace Git
   verification or independently prove completeness of the supplied context.
 - CLI JSON supports non-ASCII rule/branch text even with an ASCII output
-  encoding. Decision output cannot overwrite the selected provider source.
+  encoding, including bootstrap and managed-update wrappers. Decision output cannot overwrite the selected provider source.
 
 ## Verification
 
 Focused local suites exercised the helper (25 tests), project policy setup
-(10), managed updates (51), copied-install smoke fixtures (11), and Claude
+(11), managed updates (52), copied-install smoke fixtures (11), and Claude
 rules (6). These suites passed with Windows permission/platform-dependent
 skips; symlink-capability skips are not evidence that those scenarios executed
 on this machine. Helper tests first reproduced absent functionality; the two
-later CLI/output regressions also failed before their fixes.
+later CLI/output regressions, including both installer wrappers, also failed
+before their fixes.
 
 The declared preflight profile passed: version/structure, all localizations and
 translation freshness, marketplaces, security, and Codex/Claude bootstrap.
