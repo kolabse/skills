@@ -2,6 +2,37 @@
 
 ## [Unreleased]
 
+## [1.26.0] - 2026-09-29
+
+### Added
+
+- Add managed, bounded Codex test tasks to the experimental Telegram receiver,
+  including start, status, reply and cancellation through the normally updated
+  collection. Reject late replies and mark canceled questions as obsolete
+  (#131, #143). Existing Desktop task control and restart recovery remain
+  separate work.
+- Offer explicit branch-naming preferences for Codex and Claude Code, with
+  project-rule priority, application defaults, confirmed alternative providers
+  and a final-name check before publication. Preserve existing preferences and
+  never treat installation as consent to change naming rules (#142, #144).
+
+### Fixed
+
+- Accept CRLF and BOM/CRLF skill frontmatter when preparing feedback reports,
+  reject duplicate names even with mixed line endings, and retain hashes of the
+  original artifact bytes (#145).
+- Preserve Unicode JSON through Windows preference and installation workflows.
+- Allow sufficient time for the expanded Windows check suite and retain partial
+  diagnostics when a check times out.
+
+### Acceptance status
+
+- Keep `report-skill-feedback` experimental. Native-client and real submission
+  feedback will be gathered from colleagues after release; automated tests and
+  copied-bundle checks do not substitute for those observations.
+- Keep Telegram capabilities experimental; clean-Windows and deferred Desktop
+  adapter scenarios are not claimed as completed.
+
 ## [1.25.0] - 2026-09-24
 
 ### Improved
@@ -808,6 +839,7 @@ First versioned release of the kolabse skill collection.
 - Tests for configuration migration, fake cloud and infrastructure CLIs,
   installation confirmation, and collection metadata.
 
+[1.26.0]: https://github.com/kolabse/skills/releases/tag/v1.26.0
 [1.25.0]: https://github.com/kolabse/skills/releases/tag/v1.25.0
 [1.24.3]: https://github.com/kolabse/skills/releases/tag/v1.24.3
 [1.24.2]: https://github.com/kolabse/skills/releases/tag/v1.24.2

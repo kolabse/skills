@@ -103,3 +103,25 @@ client forward evidence and the advertised external-outcome boundary. Obtain
 fresh report-specific consent before any real collection, and fresh preview
 approval before any external submission. Release preparation owns the immutable
 holdout, maturity change and published-artifact audit.
+
+## Release decision, 2026-09-29
+
+The user authorized inclusion of the CRLF repair in 1.26.0 while deferring
+native-client and real report acceptance to colleagues after release. This
+does not promote the skill: `experimental` remains unchanged. PR #145 passed
+all ten GitHub checks and was merged as
+`fd618d24132d8b2901a4ad999b0ce1688586e9fc`.
+
+A subsequent Codex CLI 0.147.0 fixture run loaded the selected candidate, but
+the execution policy rejected helper execution and report creation; the write
+error explicitly identified a read-only sandbox. No report was created or
+submitted. The nine candidate files retained their recorded raw hashes. Global
+skills remained visible, so this was not a clean-profile acceptance result.
+Claude Code acceptance was explicitly deferred by the user. Local raw records
+remain outside the repository.
+
+After release, request bounded colleague observations for both native clients,
+record the actual installed release and artifact provenance, and distinguish
+local preview success from an observed GitHub submission. Obtain separate
+report-specific collection and submission approvals. Do not turn existing
+historical issues into evidence of an unidentified reporter build.
