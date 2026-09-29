@@ -45,7 +45,7 @@
       "name": "collection-full",
       "cwd": ".",
       "command": ["python", "scripts/check_collection.py", "run", "--profile", "full"],
-      "timeout_seconds": 1800,
+      "timeout_seconds": 2700,
       "required": true
     },
     {

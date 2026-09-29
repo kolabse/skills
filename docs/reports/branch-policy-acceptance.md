@@ -61,3 +61,14 @@ publication. Direct third-party installers cannot conduct the setup conversation
 the skill offers it on first use. Other workflows that do not use the skill are
 not governed by the saved JSON. No changes were made to the user's live naming
 preferences during development or acceptance.
+
+## Full-suite runtime diagnosis
+
+The first exact-commit run passed the Telegram bridge checks but exhausted the
+unit-test limit of 1500 seconds. An unchanged diagnostic run completed all 732
+tests successfully in 1809.378 seconds with nine platform-dependent skips on
+Windows. The unit-test budget is now 2400 seconds, with 2700 seconds for the
+full-profile wrappers and 45 minutes for CI. All checks remain required.
+Timeout failures now retain their partial diagnostic output instead of reporting
+an empty output digest. The runner regression test failed before that fix.
+These observations do not replace the final exact-commit pre-push gate.
