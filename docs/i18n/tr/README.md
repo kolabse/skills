@@ -84,12 +84,13 @@ python ~/.agents/skills/synchronize-git-repositories/scripts/configure_project.p
 python ~/.claude/skills/synchronize-git-repositories/scripts/configure_project.py bootstrap --project-path . --agent claude-code --apply --yes --json
 ```
 
-Eksik kurallar varsayılan olarak `feature/`, `bugfix/`, `release/`, `hotfix/`
-ve `feat`, `fix`, `refactor`, `docs`, `test`, `chore` commit türlerini kullanır.
-Projenin açıkça belirttiği önekler, dal rolleri ve commit biçimleri esas olmaya
-devam eder. Kalıcı dallar veya Git kancaları oluşturulmaz. Yönetilen genel
-güncellemeler aynı başlangıç işlemini açıkça seçilen etkin projeye uygular;
-onaylanmamış güncellemeler yalnızca bunu planlar.
+Bootstrap, dal adı şablonları eklemeden eşitlemeyi yapılandırır.
+Kurulumu yapan ajan, adlandırma politikası seçimini ayrıca sunar; kurulum onayı
+(`--yes`) bu seçimi onaylamaz. Yanıt verilmezse mevcut davranış korunur.
+Onaylanan tercihler her uygulama için ayrı ve özel olarak saklanır; bu beceri
+dal seçmeden önce onları okur, uygulamanın yerleşik kurallarını değiştirmez.
+Mevcut proje kuralları, dal rolleri ve commit biçimleri korunur. Dal veya Git
+kancası oluşturulmaz. Bkz. [dal adlandırma politikası](../../../skills/synchronize-git-repositories/references/branch-naming-policy.md).
 
 Gözlemlenebilir varsayılanları yeterliyse proje yaşam döngüsü sözleşmesini hemen
 başlatın (ajanınıza uygun yolu kullanın):

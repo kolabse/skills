@@ -85,12 +85,13 @@ python ~/.agents/skills/synchronize-git-repositories/scripts/configure_project.p
 python ~/.claude/skills/synchronize-git-repositories/scripts/configure_project.py bootstrap --project-path . --agent claude-code --apply --yes --json
 ```
 
-Jeśli nie ma jeszcze umów, prefiksy `feature/`, `bugfix/`, `release/`,
-`hotfix/` i typy zatwierdzeń `feat`, `fix`, `refactor`, `docs`, `test`, `chore`.
-Jawne przedrostki, role gałęzi i formaty zatwierdzeń zachowują priorytet.
-Stałe gałęzie i haki Git nie są tworzone. Zarządzana aktualizacja globalna
-wykonuje ten sam bootstrap dla jawnie wybranego aktywnego projektu; bez
-potwierdzenia to tylko plan.
+Bootstrap konfiguruje synchronizację bez dodawania szablonów nazw gałęzi.
+Agent instalujący osobno proponuje wybór polityki nazewnictwa; zgoda na instalację
+(`--yes`) nie potwierdza tego wyboru. Bez odpowiedzi bieżące zachowanie pozostaje
+bez zmian. Potwierdzone preferencje są prywatne i odrębne dla każdej aplikacji;
+ta umiejętność odczytuje je przed wyborem gałęzi, bez zmiany natywnych reguł
+aplikacji. Istniejące reguły projektu, role gałęzi i formaty commitów pozostają
+nienaruszone. Nie powstają gałęzie ani haki Git. Zobacz [politykę nazw gałęzi](../../../skills/synchronize-git-repositories/references/branch-naming-policy.md).
 
 Natychmiast utwórz umowę dotyczącą cyklu życia projektu, jeśli zaobserwowane naruszenia są wystarczające
 (użyj ścieżki agenta):

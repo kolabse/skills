@@ -83,11 +83,12 @@ python ~/.agents/skills/synchronize-git-repositories/scripts/configure_project.p
 python ~/.claude/skills/synchronize-git-repositories/scripts/configure_project.py bootstrap --project-path . --agent claude-code --apply --yes --json
 ```
 
-규칙이 없으면 기본 접두사는 `feature/`, `bugfix/`, `release/`, `hotfix/`이고,
-커밋 유형은 `feat`, `fix`, `refactor`, `docs`, `test`, `chore`입니다.
-명시된 프로젝트 접두사, 브랜치 역할, 커밋 형식이 계속 우선합니다.
-상시 브랜치나 Git 훅은 생성하지 않습니다. 관리형 전역 업데이트는 명시적으로 선택한
-활성 프로젝트에 같은 초기화를 적용하며, 확인되지 않은 업데이트는 계획만 세웁니다.
+Bootstrap은 브랜치 이름 템플릿을 추가하지 않고 동기화를 설정합니다.
+설치하는 에이전트가 이름 정책 선택을 별도로 안내하며, 설치 승인(`--yes`)은 이 선택에
+대한 동의가 아닙니다. 응답이 없으면 현재 동작을 유지합니다. 확인된 설정은 애플리케이션별로
+비공개 저장되며 이 스킬이 브랜치를 선택하기 전에 읽습니다. 애플리케이션 자체의 규칙은
+변경하지 않습니다. 기존 프로젝트 규칙, 브랜치 역할과 커밋 형식은 유지됩니다. 브랜치나
+Git 훅은 생성하지 않습니다. [브랜치 이름 정책](../../../skills/synchronize-git-repositories/references/branch-naming-policy.md)을 참고하세요.
 
 관찰 가능한 기본값이 충분하다면 프로젝트 수명 주기 계약을 즉시 초기화하세요.
 에이전트에 맞는 경로를 사용하세요.

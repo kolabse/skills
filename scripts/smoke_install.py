@@ -110,9 +110,10 @@ def run_smoke(
         raise SmokeError(f"unsupported agent {agent!r}")
     if scope not in SUPPORTED_SCOPES:
         raise SmokeError(f"unsupported scope {scope!r}")
+    source = source.resolve()
     names = catalog_skills(source)
     with tempfile.TemporaryDirectory(prefix="kolabse-skills-install-") as directory:
-        project = Path(directory)
+        project = Path(directory).resolve()
         environment = os.environ.copy()
         environment["DISABLE_TELEMETRY"] = "1"
         installation_base = project
@@ -173,6 +174,7 @@ def run_smoke(
 def verify_git_policy_bootstrap(
     project: Path, agent: str, environment: dict[str, str], timeout: int
 ) -> None:
+    project = project.resolve()
     helper = project / AGENT_LAYOUTS[agent] / "synchronize-git-repositories/scripts/configure_project.py"
     selected = project / ("AGENTS.md" if agent == "codex" else "CLAUDE.md")
     other = project / ("CLAUDE.md" if agent == "codex" else "AGENTS.md")
@@ -180,6 +182,7 @@ def verify_git_policy_bootstrap(
     command = [
         sys.executable, str(helper), "bootstrap", "--project-path", str(project),
         "--agent", agent, "--json",
+        "--policy-config-root", str(project / "private-naming-policy"),
     ]
 
     def snapshot() -> tuple[dict[str, str], set[str]]:
@@ -206,15 +209,19 @@ def verify_git_policy_bootstrap(
     if planned.get("mutates_repository") is not False or before != snapshot():
         raise SmokeError("Read-only Git policy bootstrap changed the consumer project")
     applied = invoke(True)
-    if applied.get("defaults_configured") is not True or applied.get("configured") is not True:
-        raise SmokeError("Git policy bootstrap did not configure defaults")
-    if not selected.is_file() or "<!-- git-workflow-defaults:start -->" not in selected.read_text(encoding="utf-8"):
-        raise SmokeError("Git policy bootstrap did not create the selected agent defaults")
+    if applied.get("defaults_configured") is not False or applied.get("configured") is not True:
+        raise SmokeError("Git policy bootstrap must configure synchronization without naming defaults")
+    if not selected.is_file() or "<!-- git-workflow-defaults:start -->" in selected.read_text(encoding="utf-8"):
+        raise SmokeError("Git policy bootstrap created unconfirmed naming defaults")
     if (other.read_bytes() if other.exists() else None) != original_other:
         raise SmokeError("Git policy bootstrap changed the other agent rules")
+    if applied.get("naming_policy", {}).get("state") != "unconfigured":
+        raise SmokeError("Installation consent changed the naming preference")
+    if (project / "private-naming-policy").exists():
+        raise SmokeError("Git policy bootstrap wrote private naming preferences")
     configured = snapshot()
     repeated = invoke(True)
-    if repeated.get("changed") is not False or repeated.get("defaults_configured") is not True or configured != snapshot():
+    if repeated.get("changed") is not False or repeated.get("defaults_configured") is not False or configured != snapshot():
         raise SmokeError("Repeated Git policy bootstrap is not idempotent")
 
 

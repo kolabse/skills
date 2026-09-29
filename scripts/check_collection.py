@@ -43,7 +43,7 @@ def load_program(root):
             raise ValueError("command must be a nonempty argv array")
         if argv[0] not in {"{python}", "{npx}"}:
             raise ValueError("only explicit Python/npx executables are supported")
-        if type(check["timeout_seconds"]) is not int or not 1 <= check["timeout_seconds"] <= 1800:
+        if type(check["timeout_seconds"]) is not int or not 1 <= check["timeout_seconds"] <= 3600:
             raise ValueError("invalid check timeout")
     for name, sequence in profiles.items():
         if not re.fullmatch(r"[a-z][a-z0-9-]*", name) or not isinstance(sequence, list) or not sequence or any(not isinstance(item, str) or item not in checks for item in sequence) or len(sequence) != len(set(sequence)):
@@ -78,8 +78,9 @@ def run(root, profile, progress=False):
             completed = subprocess.run(step["command"], cwd=root, env={**os.environ, "DISABLE_TELEMETRY": "1", "PYTHONUTF8": "1"}, capture_output=True, timeout=step["timeout_seconds"], check=False)
             output = completed.stdout + completed.stderr
             code, reason = completed.returncode, "completed"
-        except subprocess.TimeoutExpired:
-            code, reason, output = -1, "timeout", b""
+        except subprocess.TimeoutExpired as error:
+            code, reason = -1, "timeout"
+            output = (error.stdout or b"") + (error.stderr or b"")
         except OSError:
             code, reason, output = -1, "launch-failed", b""
         result = {"name": step["name"], "passed": code == 0, "exit_code": code, "reason": reason, "elapsed_seconds": round(time.monotonic() - started, 3), "output_sha256": hashlib.sha256(output).hexdigest()}

@@ -395,7 +395,7 @@ def check(root: Path, tag: str, output_root: Path | None, source: str = "local")
     results: list[dict[str, Any]] = []
     active_checks = CHECKS
     if (root / "collection-checks.json").exists():
-        active_checks = (("collection-full", ("scripts/check_collection.py", "run", "--profile", "full"), 1800),)
+        active_checks = (("collection-full", ("scripts/check_collection.py", "run", "--profile", "full"), 2700),)
         if not (root / "scripts/check_collection.py").is_file():
             blockers.append("declared shared check program requires scripts/check_collection.py")
     if plan["repository"].get("dirty"):

@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import argparse
+import importlib.util
 import json
 import sys
 from pathlib import Path
@@ -93,7 +94,22 @@ def marker_state(text: str, start: str, end: str) -> tuple[bool, bool]:
     return starts == 1 and ends == 1 and not malformed, malformed
 
 
-def inspect(project_path: Path, agent: str = "codex") -> dict[str, object]:
+def naming_status(agent: str, config_root: Path | None = None) -> dict[str, object]:
+    helper = Path(__file__).with_name("branch_policy.py")
+    spec = importlib.util.spec_from_file_location("kolabse_branch_policy", helper)
+    if spec is None or spec.loader is None:
+        raise ConfigurationError("branch policy helper could not be loaded")
+    module = importlib.util.module_from_spec(spec)
+    sys.modules[spec.name] = module
+    # Loading a status adapter must not create __pycache__ in copied skills.
+    exec(compile(helper.read_bytes(), str(helper), "exec"), module.__dict__)
+    try:
+        return module.status(agent, config_root)
+    except module.PolicyError as error:
+        raise ConfigurationError(str(error)) from error
+
+
+def inspect(project_path: Path, agent: str = "codex", policy_config_root: Path | None = None) -> dict[str, object]:
     path = rules_path(project_path, agent)
     text = read_rules(path)
     configured, malformed = marker_state(text, START, END)
@@ -113,11 +129,12 @@ def inspect(project_path: Path, agent: str = "codex") -> dict[str, object]:
         "managed_block": configured,
         "defaults_configured": defaults_configured,
         "defaults_malformed": defaults_malformed or overlap,
+        "naming_policy": naming_status(agent, policy_config_root),
     }
 
 
-def configure(project_path: Path, agent: str = "codex") -> tuple[dict[str, object], bool]:
-    state = inspect(project_path, agent)
+def configure(project_path: Path, agent: str = "codex", policy_config_root: Path | None = None) -> tuple[dict[str, object], bool]:
+    state = inspect(project_path, agent, policy_config_root)
     if not state["valid"]:
         raise ConfigurationError(f"{AGENTS[agent]['filename']} contains malformed or duplicate managed markers")
     path = rules_path(project_path, agent)
@@ -135,13 +152,10 @@ def configure(project_path: Path, agent: str = "codex") -> tuple[dict[str, objec
             known = [item.replace("`$synchronize-git-repositories`", "`/synchronize-git-repositories`") for item in known]
         if current in known:
             text = text[:start] + block + text[end:]
-    if not state["defaults_configured"]:
-        separator = "" if not text else ("\n" if text.endswith("\n") else "\n\n")
-        text = f"{text}{separator}{DEFAULTS_BLOCK}\n"
     changed = text != original
     if changed:
         path.write_text(text, encoding="utf-8", newline="")
-    result = inspect(project_path, agent)
+    result = inspect(project_path, agent, policy_config_root)
     result["changed"] = changed
     return result, changed
 
@@ -154,24 +168,25 @@ def main(argv: list[str] | None = None) -> int:
         child.add_argument("--project-path", required=True, type=Path)
         child.add_argument("--agent", choices=sorted(AGENTS), default="codex")
         child.add_argument("--json", action="store_true")
+        child.add_argument("--policy-config-root", type=Path)
         if command == "bootstrap":
             child.add_argument("--apply", action="store_true")
             child.add_argument("--yes", action="store_true")
     args = parser.parse_args(argv)
     try:
         if args.command == "bootstrap":
-            state = inspect(args.project_path, args.agent)
+            state = inspect(args.project_path, args.agent, args.policy_config_root)
             if not state["valid"]:
                 raise ConfigurationError("rules contain malformed or duplicate managed markers")
             if args.apply and not args.yes:
                 raise ConfigurationError("bootstrap requires both --apply and --yes")
-            state = configure(args.project_path, args.agent)[0] if args.apply else state
+            state = configure(args.project_path, args.agent, args.policy_config_root)[0] if args.apply else state
             state["mode"] = "bootstrap"
             state["mutates_repository"] = bool(state.get("changed", False))
         else:
-            state = configure(args.project_path, args.agent)[0] if args.command == "configure" else inspect(args.project_path, args.agent)
+            state = configure(args.project_path, args.agent, args.policy_config_root)[0] if args.command == "configure" else inspect(args.project_path, args.agent, args.policy_config_root)
         if args.json:
-            print(json.dumps(state, ensure_ascii=False, sort_keys=True))
+            print(json.dumps(state, ensure_ascii=True, sort_keys=True))
         else:
             print(f"{'configured' if state['configured'] else 'not configured'}: {state['agents_file']}")
         return 0 if state["valid"] and (state["configured"] or args.command == "bootstrap") else 1

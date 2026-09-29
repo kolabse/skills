@@ -28,7 +28,8 @@ checks within that workflow need result updates, not repeated announcements.
    ```
 
    Use `--agent claude-code` for Claude Code. This preserves custom rules and
-   adds missing synchronization and conditional Git-workflow defaults blocks.
+   adds missing synchronization rules. It does not add branch-name templates.
+   Installation approval (`--yes`) is not a naming-policy choice.
    The synchronization block is:
 
    ```markdown
@@ -49,7 +50,15 @@ checks within that workflow need result updates, not repeated announcements.
 3. Do not encode workstation-specific absolute paths. Name stable repository
    roles or relative locations only when the project must always coordinate a
    known set of repositories.
-4. Read [references/git-workflow-defaults.md](references/git-workflow-defaults.md)
+4. On installation/update or first use, read
+   [references/branch-naming-policy.md](references/branch-naming-policy.md) and
+   run its read-only policy status for the selected agent. Offer an unconfigured
+   user the project-policy and fallback choices in the conversation. Save only
+   their explicit answer; without one preserve current behavior and continue
+   work whose naming rule is already resolved. Ordinary updates preserve the
+   accepted choice and templates. A changed template needs a new reviewed
+   confirmation before adoption. Do not treat installing a skill as consent.
+5. Read [references/git-workflow-defaults.md](references/git-workflow-defaults.md)
    before choosing branch names, base roles, or commit messages. Apply each
    default only where explicit project/user policy does not specify otherwise.
    Run the synchronization workflow once after configuration.
@@ -75,6 +84,18 @@ remote-branch checkpoint occurs when publication becomes authorized; do not
 retroactively treat the earlier authorized local edits as a workflow violation.
 The procedure below applies when publication is authorized from the start.
 
+Before selecting a name, load the per-application preference through
+`scripts/branch_policy.py status --agent <agent>`. This explicit skill step is
+the loading adapter; the preference is not a native application-wide rule.
+Read the applicable instructions, prepare the contextual rule evidence and
+run `resolve` as described in the branch-policy reference. Report the task kind,
+proposed name, winning source/priority and any overridden default. The context
+is your interpretation of actual instructions, not authority created by JSON.
+Identify the loaded skill artifact separately from an installed plugin version.
+Use a mandatory binding rule for higher-priority constraints; a preference
+cannot override them. Resolve material ambiguity before publication, but do
+not ask again when the applicable rule is already unambiguous.
+
 1. Classify the task and resolve its configured base role: development for
    `feature/` and `bugfix/`, production for an explicitly requested `hotfix/`.
    Release preparation uses `release/` from development. In a trunk-based
@@ -84,6 +105,10 @@ The procedure below applies when publication is authorized from the start.
 2. Satisfy any protected push gate for that unchanged base SHA.
 3. Choose a task-specific name under the applicable prefix and confirm that its remote ref
    does not already exist. Never overwrite or reuse an ambiguous remote branch.
+   Immediately before the first remote publication, run the branch-policy
+   `check` against the saved decision and exact final name. Re-read changed
+   instructions and resolve again when context or preference changes. A valid
+   naming result does not replace the push gate or publication authorization.
 4. Publish the verified SHA as the new remote feature ref before changing any
    tracked file, then create the local branch tracking that exact ref. For
    example:

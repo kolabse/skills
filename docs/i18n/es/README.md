@@ -82,12 +82,14 @@ python ~/.agents/skills/synchronize-git-repositories/scripts/configure_project.p
 python ~/.claude/skills/synchronize-git-repositories/scripts/configure_project.py bootstrap --project-path . --agent claude-code --apply --yes --json
 ```
 
-Las convenciones no declaradas usan `feature/`, `bugfix/`, `release/`, `hotfix/`
-y los tipos de commit `feat`, `fix`, `refactor`, `docs`, `test`, `chore`.
-Los prefijos, roles de ramas y formatos explícitos del proyecto tienen prioridad.
-No se crean ramas persistentes ni hooks de Git. Las actualizaciones globales
-gestionadas ejecutan el mismo bootstrap para el proyecto activo seleccionado;
-sin confirmación, solo lo planifican.
+Bootstrap configura la sincronización sin añadir plantillas de nombres de ramas.
+El agente instalador ofrece por separado la elección de la política de nombres;
+la aprobación de instalación (`--yes`) no confirma esa elección. Sin respuesta,
+se conserva el comportamiento actual. Las preferencias confirmadas se guardan
+de forma privada por aplicación y esta habilidad las lee antes de elegir una
+rama; no cambian las reglas nativas de la aplicación. Se conservan las reglas
+del proyecto, los roles de ramas y los formatos de commit existentes. No se
+crean ramas ni hooks de Git. Consulte la [política de nombres de ramas](../../../skills/synchronize-git-repositories/references/branch-naming-policy.md).
 
 Inicialice inmediatamente el contrato del ciclo de vida del proyecto cuando
 los valores observables sean suficientes (use la ruta

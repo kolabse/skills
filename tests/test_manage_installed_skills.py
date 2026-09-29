@@ -7,7 +7,7 @@ import sys
 import tempfile
 import unittest
 from contextlib import redirect_stderr
-from io import StringIO
+from io import BytesIO, StringIO, TextIOWrapper
 from pathlib import Path
 from unittest.mock import patch
 
@@ -18,6 +18,15 @@ import manage_installed_skills as manager  # noqa: E402
 
 
 class ManageInstalledSkillsTests(unittest.TestCase):
+    def test_update_json_preserves_unicode_policy_on_ascii_console(self) -> None:
+        payload = {"configuration": [{"result": {"naming_policy": {"source": "\u56e2\u961f"}}}]}
+        buffer = BytesIO()
+        with TextIOWrapper(buffer, encoding="ascii") as stream:
+            with patch.object(manager, "update_skills", return_value=payload), patch.object(sys, "stdout", stream):
+                self.assertEqual(0, manager.main(["update", "synchronize-git-repositories", "--json", "--yes"]))
+            stream.flush()
+            self.assertEqual(payload, json.loads(buffer.getvalue()))
+
     NEW_SKILLS = {
         "orchestrate-agent-work",
         "develop-with-test-first-evidence",
@@ -172,6 +181,20 @@ class ManageInstalledSkillsTests(unittest.TestCase):
                             "--agent", agent, "--json",
                         ] + (["--apply", "--yes"] if confirmed else []), command[1:])
 
+    def test_git_policy_bootstrap_forwards_private_root_without_preference_consent(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory).resolve()
+            name = "synchronize-git-repositories"
+            helper = manager.project_install_root(root) / name / "scripts/configure_project.py"
+            helper.parent.mkdir(parents=True)
+            helper.write_text("# fixture\n", encoding="utf-8")
+            command = manager.git_policy_bootstrap_commands(
+                root, [name], confirmed=True, policy_config_root=root / "private",
+            )[0][1]
+            self.assertEqual(str(root / "private"), command[command.index("--policy-config-root") + 1])
+            self.assertNotIn("configure", command)
+            self.assertNotIn("--confirmed", command)
+
     def test_git_policy_bootstrap_requires_relevant_selection_and_installed_helper(self) -> None:
         name = "synchronize-git-repositories"
         with tempfile.TemporaryDirectory() as directory:
@@ -204,7 +227,8 @@ class ManageInstalledSkillsTests(unittest.TestCase):
                         )
                     run.return_value.stdout = json.dumps({
                         "configured": True, "created": confirmed,
-                        "valid": True, "defaults_configured": confirmed,
+                        "valid": True, "defaults_configured": False,
+                        "naming_policy": {"state": "unconfigured", "scope": "skill-workflows"},
                     })
                     run.return_value.stderr = ""
 
@@ -220,7 +244,8 @@ class ManageInstalledSkillsTests(unittest.TestCase):
                         self.assertEqual(confirmed, "--apply" in command)
                         self.assertEqual(confirmed, "--yes" in command)
                     self.assertEqual([sync, lifecycle], [item["skill"] for item in report["configuration"]])
-                    self.assertEqual("created" if confirmed else "planned", report["configuration"][0]["status"])
+                    self.assertEqual("unconfigured", report["configuration"][0]["result"]["naming_policy"]["state"])
+                    self.assertEqual("created" if confirmed else "configured", report["configuration"][0]["status"])
                     schema = json.loads((SCRIPTS.parent / "schemas/manager-result.schema.json").read_text(encoding="utf-8"))
                     allowed = schema["properties"]["configuration"]["items"]["properties"]["status"]["enum"]
                     for configuration in report["configuration"]:
@@ -269,11 +294,14 @@ class ManageInstalledSkillsTests(unittest.TestCase):
                     )
                     helper.write_text(legacy, encoding="utf-8")
                     for confirmed in (False, True):
-                        command = manager.git_policy_bootstrap_commands(project, [selected], agent, confirmed)[0][1]
+                        command = manager.git_policy_bootstrap_commands(
+                            project, [selected], agent, confirmed,
+                            policy_config_root=Path(directory).resolve() / "private-policy",
+                        )[0][1]
                         completed = subprocess.run(command, capture_output=True, text=True)
                         self.assertEqual(0, completed.returncode, completed.stderr)
                         payload = json.loads(completed.stdout)
-                        self.assertEqual(confirmed, payload["defaults_configured"])
+                        self.assertFalse(payload["defaults_configured"])
                         self.assertEqual(legacy, helper.read_text(encoding="utf-8"))
 
     def test_git_policy_bootstrap_without_bundle_only_uses_selected_sync_helper(self) -> None:

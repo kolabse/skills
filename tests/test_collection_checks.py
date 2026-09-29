@@ -65,6 +65,24 @@ class SharedCollectionChecksTests(unittest.TestCase):
                 self.assertNotIn("shell", execute.call_args.kwargs)
                 self.assertEqual("1", execute.call_args.kwargs["env"]["PYTHONUTF8"])
 
+    def test_timeout_retains_partial_output_for_diagnosis(self):
+        import hashlib
+        import io
+        import subprocess
+        from contextlib import redirect_stdout
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            self.program(root)
+            output = io.StringIO()
+            error = subprocess.TimeoutExpired([], 1, output=b"partial stdout", stderr=b"last test still running")
+            with patch.object(check_collection.subprocess, "run", side_effect=error), redirect_stdout(output):
+                result = check_collection.run(root, "full", progress=True)
+            self.assertFalse(result["passed"])
+            self.assertEqual("timeout", result["results"][0]["reason"])
+            self.assertIn("last test still running", output.getvalue())
+            self.assertEqual(hashlib.sha256(b"partial stdoutlast test still running").hexdigest(),
+                             result["results"][0]["output_sha256"])
+
     def test_invalid_programs_fail_closed(self):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
