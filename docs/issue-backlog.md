@@ -6,8 +6,8 @@ release authorization. Existing Telegram changes remain in progress.
 | Order | Item | State | Completion criteria |
 | --- | --- | --- | --- |
 | 1 | [#131: Telegram bridge](https://github.com/kolabse/skills/issues/131) | Bounded owned-task package merged in #143; release deferred | Installed-package start/reply/completion/cancel acceptance passed, including obsolete-question editing. Existing Desktop task control and restart recovery remain separate work. |
-| 2 | [#142: branch-name policy resolution](https://github.com/kolabse/skills/issues/142) | Implementation and acceptance in progress | Resolve and record the effective naming rule before the first remote branch publication; explain mismatches; cover conflicting defaults in acceptance tests. |
-| Release gate | `report-skill-feedback` stabilization | Candidate for promotion | Complete the [evidence assessment](reports/report-skill-feedback-stability.md), then promote in a versioned release with `stable_since`. |
+| 2 | [#142: branch-name policy resolution](https://github.com/kolabse/skills/issues/142) | Merged in PR #144; release deferred | Resolve and record the effective naming rule before the first remote branch publication; explain mismatches; cover conflicting defaults in acceptance tests. |
+| Release gate | `report-skill-feedback` stabilization | Candidate acceptance; CRLF fix prepared | Complete the [evidence assessment](reports/report-skill-feedback-stability.md), then promote in a versioned release with `stable_since`. |
 
 ## #142 — branch policy preflight
 

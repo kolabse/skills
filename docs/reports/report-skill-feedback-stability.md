@@ -3,7 +3,9 @@
 Assessment date: 2026-09-29. Decision: prioritize promotion in the next suitable
 versioned release; retain `experimental` until the remaining evidence gates pass.
 
-## Candidate identity
+Current continuation: [candidate acceptance and CRLF repair](report-skill-feedback-candidate-20260929.md). The identity and results below are historical; they do not silently transfer to the repaired candidate.
+
+## Initial assessment identity
 
 - Inspected collection version: 1.25.0.
 - Base commit: `378c1d99b3f47449cd002c08a841325e774b4605`.
@@ -13,7 +15,7 @@ versioned release; retain `experimental` until the remaining evidence gates pass
 - This digest identifies the instructions only, not the complete helper bundle.
 - No feedback implementation or maturity metadata was changed in this assessment.
 
-## Observed evidence
+## Historical observed evidence
 
 The maintainer reports repeated successful use to prepare recent issues.
 Public issues provide concrete corroboration:
@@ -35,7 +37,7 @@ Repeated successful publication supports operational maturity. It does not by
 itself demonstrate every privacy refusal, retry, supported-client/platform or
 copied-install boundary for the exact proposed stable candidate.
 
-## Checks run in this assessment
+## Checks run in the initial assessment
 
 On Windows, the unchanged feedback code at the identity above passed:
 

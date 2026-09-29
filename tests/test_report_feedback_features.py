@@ -7,6 +7,7 @@ import io
 import json
 import os
 import re
+import shutil
 import subprocess
 import sys
 import tempfile
@@ -79,6 +80,30 @@ class FeedbackFeaturesTests(unittest.TestCase):
             with self.subTest(first_ending=repr(first_ending)), self.assertRaises(feedback.FeedbackError):
                 feedback.build_input(self.build_args())
             self.assertFalse(self.output.exists())
+
+    def test_copied_bundle_builds_and_previews_outside_repository(self):
+        source = Path(feedback.__file__).resolve().parents[1]
+        copied = self.root / "installed" / "report-skill-feedback"
+        shutil.copytree(source, copied, ignore=shutil.ignore_patterns("__pycache__", "*.pyc"))
+        script = copied / "scripts" / "report_feedback.py"
+        built = self.root / "copied-input.json"
+        report = self.root / "copied-report.md"
+        commands = [
+            ["build-input", "--answers", str(self.answers_path), "--skill-root", str(copied),
+             "--installation-scope", "global", "--collection-consent", "--output", str(built), "--json"],
+            ["draft", "--input", str(built), "--output", str(report), "--collection-consent", "--json"],
+        ]
+        for arguments in commands:
+            result = subprocess.run([sys.executable, str(script), *arguments], cwd=self.root,
+                capture_output=True, timeout=20)
+            self.assertEqual(0, result.returncode, (result.stdout, result.stderr))
+        value = json.loads(built.read_text(encoding="utf-8"))
+        self.assertEqual("report-skill-feedback", value["skill"]["name"])
+        self.assertEqual(hashlib.sha256((copied / "SKILL.md").read_bytes()).hexdigest(),
+                         value["skill"]["artifact"]["skill_sha256"])
+        preview = json.loads(result.stdout)
+        self.assertFalse(preview["submitted"])
+        self.assertEqual(report.read_text(encoding="utf-8"), preview["preview"])
 
     def test_prepare_is_pure_and_contains_no_answers(self):
         with mock.patch.object(Path, "read_bytes", side_effect=AssertionError("read")), \
