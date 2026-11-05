@@ -2,19 +2,149 @@
 
 from pathlib import Path
 from concurrent.futures import ThreadPoolExecutor
+import os
 import sys
 import tempfile
 import time
 import unittest
+from types import SimpleNamespace
+from unittest.mock import Mock
 
 from owned_task_rpc import AppServer, RpcError
+
+
+def assert_fixture_stopped(server):
+    """Do not let filesystem retries conceal a failed transport shutdown."""
+    if server is None:
+        return
+    if server.process is not None and server.process.poll() is None:
+        raise AssertionError("Owned fixture process is still running")
+    for worker in (server._reader, server._writer):
+        if worker is not None and worker.is_alive():
+            raise AssertionError("Owned fixture worker is still running")
+
+
+def cleanup_owned_fixture(directory, owned_path, stopped_probe, *,
+                          windows=os.name == "nt", clock=time.monotonic,
+                          sleep=time.sleep):
+    """Retry only transient Windows sharing locks on this fixture's temp dir."""
+    target = Path(directory.name).resolve()
+    if (target != Path(owned_path).resolve()
+            or target.parent != Path(tempfile.gettempdir()).resolve()
+            or not target.name.startswith("owned-rpc-test-")):
+        raise ValueError("Cleanup target is not the owned fixture temp directory")
+    deadline = clock() + 1.0
+    for attempt in range(21):
+        stopped_probe()
+        try:
+            directory.cleanup()
+            return
+        except OSError as error:
+            if (not windows or getattr(error, "winerror", None) != 32
+                    or attempt == 20 or clock() >= deadline):
+                raise
+            sleep(min(0.05, max(0.0, deadline - clock())))
+
+
+class FixtureCleanupTest(unittest.TestCase):
+    def setUp(self):
+        self.path = Path(tempfile.gettempdir()).resolve() / "owned-rpc-test-fake"
+        self.directory = SimpleNamespace(name=str(self.path), cleanup=Mock())
+        self.probe = Mock()
+        self.now = 0.0
+        self.sleeps = []
+
+    def sleep(self, delay):
+        self.sleeps.append(delay)
+        self.now += delay
+
+    def cleanup(self, **options):
+        cleanup_owned_fixture(self.directory, self.path, self.probe,
+                              windows=True, clock=lambda: self.now,
+                              sleep=self.sleep, **options)
+
+    def error(self, winerror):
+        error = PermissionError("fixture cleanup failed")
+        error.winerror = winerror
+        return error
+
+    def test_sharing_violation_retries_after_shutdown_probe(self):
+        events = []
+        self.probe.side_effect = lambda: events.append("stopped")
+        def attempt():
+            events.append("cleanup")
+            if events.count("cleanup") == 1:
+                raise self.error(32)
+        self.directory.cleanup.side_effect = attempt
+        self.cleanup()
+        self.assertEqual(events, ["stopped", "cleanup", "stopped", "cleanup"])
+        self.assertEqual(self.sleeps, [0.05])
+
+    def test_exhausted_sharing_violation_is_raised_even_if_clock_stalls(self):
+        error = self.error(32)
+        self.directory.cleanup.side_effect = error
+        with self.assertRaises(PermissionError) as raised:
+            cleanup_owned_fixture(self.directory, self.path, self.probe,
+                                  windows=True, clock=lambda: 0.0,
+                                  sleep=self.sleeps.append)
+        self.assertIs(raised.exception, error)
+        self.assertEqual(self.directory.cleanup.call_count, 21)
+        self.assertEqual(len(self.sleeps), 20)
+
+    def test_deadline_stops_retries(self):
+        self.directory.cleanup.side_effect = self.error(32)
+        def sleep(delay):
+            self.sleeps.append(delay)
+            self.now += 2
+        with self.assertRaises(PermissionError):
+            cleanup_owned_fixture(self.directory, self.path, self.probe,
+                                  windows=True, clock=lambda: self.now, sleep=sleep)
+        self.assertEqual(self.directory.cleanup.call_count, 2)
+        self.assertEqual(len(self.sleeps), 1)
+
+    def test_other_errors_and_nonwindows_sharing_errors_are_immediate(self):
+        for windows, code in ((True, 5), (True, None), (False, 32)):
+            with self.subTest(windows=windows, code=code):
+                self.directory.cleanup.reset_mock()
+                error = self.error(code)
+                self.directory.cleanup.side_effect = error
+                with self.assertRaises(PermissionError) as raised:
+                    cleanup_owned_fixture(self.directory, self.path, self.probe,
+                                          windows=windows, sleep=self.sleep)
+                self.assertIs(raised.exception, error)
+                self.directory.cleanup.assert_called_once_with()
+        self.assertEqual(self.sleeps, [])
+
+    def test_live_owned_child_or_thread_prevents_cleanup(self):
+        for process, reader, writer in ((None, False, False), (0, True, False),
+                                        (0, False, True)):
+            with self.subTest(process=process, reader=reader, writer=writer):
+                server = SimpleNamespace(
+                    process=SimpleNamespace(poll=lambda: process),
+                    _reader=SimpleNamespace(is_alive=lambda: reader),
+                    _writer=SimpleNamespace(is_alive=lambda: writer))
+                with self.assertRaises(AssertionError):
+                    cleanup_owned_fixture(self.directory, self.path,
+                                          lambda: assert_fixture_stopped(server))
+                self.directory.cleanup.assert_not_called()
+
+    def test_unsafe_or_mismatched_directory_is_rejected(self):
+        for path in (self.path.parent, self.path.parent / "unowned",
+                     self.path / "owned-rpc-test-nested"):
+            with self.subTest(path=path), self.assertRaises(ValueError):
+                cleanup_owned_fixture(self.directory, path, self.probe)
+        self.directory.cleanup.assert_not_called()
+        self.probe.assert_not_called()
 
 
 class AppServerTest(unittest.TestCase):
     def server(self, source, **options):
         directory = tempfile.TemporaryDirectory(prefix="owned-rpc-test-")
-        self.addCleanup(directory.cleanup)
-        fixture = Path(directory.name) / "fixture.py"
+        owned_path = Path(directory.name).resolve()
+        server = None
+        self.addCleanup(cleanup_owned_fixture, directory, owned_path,
+                        lambda: assert_fixture_stopped(server))
+        fixture = owned_path / "fixture.py"
         fixture.write_text(source, encoding="utf-8")
         server = AppServer([sys.executable, "-u", str(fixture)], Path(directory.name), **options)
         self.addCleanup(server.close)
