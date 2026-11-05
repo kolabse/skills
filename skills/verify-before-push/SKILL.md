@@ -12,6 +12,16 @@ a substitute for review, CI, or deployment verification.
 Announce this skill once at the start of the workflow. Repeated gates within
 that workflow need result updates, not repeated announcements.
 
+## Shared project-policy diagnostics
+
+For read-only inspection of `.agents/kolabse/project-policy.json`, use
+`scripts/project_policy.py status|explain|validate --project-root <root> --json`
+or `migrate --dry-run`. Read [references/project-policy.md](references/project-policy.md)
+for the closed v1 schema, origins, scoped profiles and conservative migration preview.
+This is a diagnostic foundation: execution integration is unavailable, provider
+constraints remain unconfirmed, and all existing gates/evidence rules still apply.
+A `before_merge` declaration does not waive this skill's current before-push gate.
+
 ## Configure the project
 
 1. Invoke `$synchronize-git-repositories` and resolve every repository whose
