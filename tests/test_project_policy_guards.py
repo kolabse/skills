@@ -25,7 +25,9 @@ class PolicyGuardTests(unittest.TestCase):
     def setUp(self):
         temporary = tempfile.TemporaryDirectory()
         self.addCleanup(temporary.cleanup)
-        self.root = Path(temporary.name)
+        # macOS temp paths can pass through /var -> /private/var. Match the
+        # resolved cwd returned by production validation in our mocked roots.
+        self.root = Path(temporary.name).resolve()
         self.verifier = load(SCRIPTS / 'verify_before_push.py')
         self.receipt = self.root / 'receipt.json'
         self.config = {'repositories': [{'name': 'app', 'path': '.'}], 'checks': []}
