@@ -18,8 +18,14 @@ For read-only inspection of `.agents/kolabse/project-policy.json`, use
 `scripts/project_policy.py status|explain|validate --project-root <root> --json`
 or `migrate --dry-run`. Read [references/project-policy.md](references/project-policy.md)
 for the closed v1 schema, origins, scoped profiles and conservative migration preview.
-This is a diagnostic foundation: execution integration is unavailable, provider
-constraints remain unconfirmed, and all existing gates/evidence rules still apply.
+Policy-bound execution and receipt acceptance remain unavailable. The canonical
+verifier blocks local checks, GitHub CI collection and old receipt acceptance
+when a configured, invalid or unsupported policy is present, including an
+explicit `--source local`. Absent-policy projects keep their legacy behavior.
+The guard covers only selected/configured canonical and mapped repository roots,
+rechecking before commands and successful receipt boundaries; it is not an atomic
+lock against concurrent edits. Provider constraints remain unconfirmed. Other
+consumers retain their existing gates.
 A `before_merge` declaration does not waive this skill's current before-push gate.
 
 ## Configure the project

@@ -1,8 +1,12 @@
 # Project policy diagnostics: v1 foundation
 
-This package resolves declarations and reports conflicts. **Execution integration
-is unavailable.** Existing verification, lifecycle, TDD, synchronization,
-publication and cleanup gates continue under their existing contracts. A
+This package resolves declarations and reports conflicts. **Policy-bound execution
+and receipt acceptance are unavailable.** The canonical verifier now guards local
+execution, GitHub CI collection and evidence acceptance: a present configured,
+invalid or unsupported policy blocks these operations before checks or provider
+calls. This includes local declarations; selecting `--source local` cannot override
+a CI-only contract. Existing lifecycle, TDD, synchronization, publication and
+cleanup consumers retain their existing contracts. A
 `before_merge` declaration does not permit skipping a before-push gate.
 Diagnostics never run tests, builds, pipelines, publication or provider calls.
 Do not use this foundation to authorize a push, merge, deployment or cleanup.
@@ -35,7 +39,27 @@ Duplicate keys, unknown fields/providers/versions, booleans used as versions,
 malformed nested objects and invalid enums are rejected. Unknown-field values
 and invalid JSON contents are withheld from error messages. Never put secrets in
 policy strings; the foundation does not scan arbitrary strings for credentials.
-Legacy evidence acceptance and all existing v1/v2/v3 digest inputs are unchanged.
+Without a policy, legacy evidence acceptance and all existing v1/v2/v3 digest
+inputs are unchanged. Under a configured contract, historical receipts cannot
+satisfy the verifier gate. No policy-bound receipt version is implemented yet.
+
+The guard examines the selected project root and explicitly configured repository
+roots, including canonical source and effective workspace-map roots. It does not
+discover other repositories. An unrelated repository still bypasses the gate.
+Broken policy candidates and unsafe or broken policy-parent links fail closed.
+Ordinary absent-policy installations do not require importing the new policy
+modules; an incomplete installation with a present policy fails closed.
+
+The verifier rechecks all these roots before each enabled local command, provider
+collection, receipt save, reuse and acceptance. The low-level GitHub API helper
+also checks the selected project root before each request; repository policies
+that appear during a collection are caught by the receipt boundary checks.
+Workspace maps retain their existing path
+validation. These checks are observations, not atomic locks: a concurrent policy
+change after a boundary observation cannot stop an already started command or
+provider request. Read-only `status`, `explain`, `validate` and migration previews
+remain available for diagnosing declarations; a successful diagnostic exit never
+authorizes execution.
 
 ## Core contract
 

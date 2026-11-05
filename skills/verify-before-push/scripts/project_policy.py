@@ -1,7 +1,8 @@
 #!/usr/bin/env python3
 """Read-only project-policy resolver. Never executes checks or changes project files.
 
-Configured policies describe intent only: consumers do not yet enforce them.
+Configured policies describe intent only; the canonical verifier blocks their
+execution until policy-bound receipt support is implemented.
 The standard-library schema walker intentionally implements only the vocabulary
 used by the bundled closed v1 schema; adding vocabulary requires a validator change.
 """
