@@ -1,0 +1,121 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "GitLab CI read-only observation contract v1 (not a gate)",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "version",
+    "host",
+    "project_id",
+    "mr_iid",
+    "source_sha",
+    "target_branch",
+    "subject_kind",
+    "required_jobs",
+    "require_non_draft",
+    "require_pipeline_success",
+    "require_ready_at_start",
+    "require_source_review",
+    "repository",
+    "profile",
+    "operation",
+    "effective_policy_digest",
+    "source_snapshot_digest",
+    "check_map_digest"
+  ],
+  "properties": {
+    "version": {
+      "type": "integer",
+      "const": 1
+    },
+    "host": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 253,
+      "pattern": "^[A-Za-z0-9](?:[A-Za-z0-9-]*[A-Za-z0-9])?(?:\\.[A-Za-z0-9](?:[A-Za-z0-9-]*[A-Za-z0-9])?)*$"
+    },
+    "project_id": {
+      "type": "integer",
+      "minimum": 1
+    },
+    "mr_iid": {
+      "type": "integer",
+      "minimum": 1
+    },
+    "source_sha": {
+      "type": "string",
+      "minLength": 1,
+      "pattern": "^(?:[0-9a-f]{40}|[0-9a-f]{64})$"
+    },
+    "target_branch": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 255,
+      "pattern": "^[^\\u0000-\\u001f]+$"
+    },
+    "subject_kind": {
+      "const": "source_sha"
+    },
+    "required_jobs": {
+      "type": "array",
+      "minItems": 1,
+      "uniqueItems": true,
+      "items": {
+        "type": "string",
+        "minLength": 1,
+        "maxLength": 255,
+        "pattern": "^[^\\u0000-\\u001f]+$"
+      }
+    },
+    "require_non_draft": {
+      "type": "boolean"
+    },
+    "require_pipeline_success": {
+      "type": "boolean"
+    },
+    "require_ready_at_start": {
+      "type": "boolean",
+      "const": false
+    },
+    "require_source_review": {
+      "type": "boolean",
+      "const": false
+    },
+    "repository": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 255,
+      "pattern": "^[^\\u0000-\\u001f]+$"
+    },
+    "profile": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 255,
+      "pattern": "^[^\\u0000-\\u001f]+$"
+    },
+    "operation": {
+      "enum": [
+        "push",
+        "merge",
+        "build",
+        "deploy",
+        "cleanup"
+      ]
+    },
+    "effective_policy_digest": {
+      "type": "string",
+      "minLength": 1,
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "source_snapshot_digest": {
+      "type": "string",
+      "minLength": 1,
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "check_map_digest": {
+      "type": "string",
+      "minLength": 1,
+      "pattern": "^[0-9a-f]{64}$"
+    }
+  }
+}
