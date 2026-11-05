@@ -1,6 +1,6 @@
 # Implementation queue
 
-Updated: 2026-09-29. This queue records accepted work, not completed fixes or
+Updated: 2026-11-05. This queue records accepted work, not completed fixes or
 release authorization. Version 1.26.0 is authorized; broader Telegram work remains in progress.
 
 | Order | Item | State | Completion criteria |
@@ -8,6 +8,20 @@ release authorization. Version 1.26.0 is authorized; broader Telegram work remai
 | 1 | [#131: Telegram bridge](https://github.com/kolabse/skills/issues/131) | Bounded owned-task package merged in #143; included in 1.26.0 | Installed-package start/reply/completion/cancel acceptance passed, including obsolete-question editing. Existing Desktop task control and restart recovery remain separate work. |
 | 2 | [#142: branch-name policy resolution](https://github.com/kolabse/skills/issues/142) | Merged in PR #144; included in 1.26.0 | Resolve and record the effective naming rule before the first remote branch publication; explain mismatches; cover conflicting defaults in acceptance tests. |
 | After release | `report-skill-feedback` stabilization | CRLF fix included in 1.26.0; colleague acceptance deferred until after release | Gather native-client and real submission observations with report-specific consent; complete the [evidence assessment](reports/report-skill-feedback-stability.md) before promotion. Keep experimental in 1.26.0. |
+
+## Authorized implementation packages, November 2026
+
+The user authorized implementation of the reviewed updates. The packages below
+track remaining scope; preparing one package does not complete another issue.
+
+| Order | Scope | State / acceptance |
+| --- | --- | --- |
+| 1 | #153; examples #159, #160, #161, #163, #164 | In implementation: failed-base recovery must identify the first publishable revision and its exact gate; examples preserve existing behavior. Review and publication pending. |
+| 2 | #152 shared contract with #150/#151/#154 | Pending: opt-in schema and diagnostics, compatible legacy defaults, blocking/background semantics, GitLab MR evidence, exact revision/jobs, reuse and migration preview. Proposed YAML is not yet an implemented interface. |
+| 3 | #155/#162/#166 | Pending: named completion boundary, claim-free task identity and evidence-backed absence of applicable jobs. No fabricated production/pipeline PASS. |
+| 4 | #158 | Pending: digest-bound ancestry-only proof policy with backward-compatible defaults and preserved cleanup safety. |
+| 5 | #156/#157 | Pending: opt-in maintenance ownership adapter and separate external-owned dependency model, scoped authority and revision-bound acceptance. |
+| 6 | #165 | Pending independent contribution validation, scope/overlap decisions for four candidates and isolated generator acceptance; intake branch is not a release implementation. |
 
 ## #142 — branch policy preflight
 
