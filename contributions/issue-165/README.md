@@ -24,3 +24,5 @@ The contributor confirmed the right to share the original material under Apache-
 ## Integrity
 
 Verify the immutable revision and [SHA256SUMS](SHA256SUMS) before reuse. The archive SHA-256 is `f72ce70542b6233360527f182a3a486df014a8021d7144e209a439073787a8bd`.
+
+The local .gitattributes disables line-ending conversion for this directory so the reviewed artifact bytes and SHA256SUMS remain consistent on Windows and Unix.
