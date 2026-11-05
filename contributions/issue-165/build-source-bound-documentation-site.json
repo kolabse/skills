@@ -1,0 +1,184 @@
+{
+  "attestations": {
+    "apache_2_0": true,
+    "no_confidential_information": true,
+    "no_secrets": true,
+    "right_to_share": true
+  },
+  "candidate": {
+    "automation": "deterministic",
+    "classification": "recommended",
+    "completion_criteria": [
+      "Артефакт связан с неизменным source commit, манифестом и проверенным набором output-файлов.",
+      "Код не содержит внутренних адресов, документов или branding исходного проекта; синтетические fixtures и ограничения проверки поставлены отдельно.",
+      "Состояния source acceptance, build success, deployment и доступа не смешиваются."
+    ],
+    "existing_overlap": null,
+    "existing_skill_notes": [
+      "В каталоге коллекции нет владельца полного source-to-static-artifact результата; существующие site-плагины про дизайн и hosting не заменяют переносимый renderer.",
+      "Композиция с verify-before-push для evidence и с coordinate-code-documentation-repositories для канонического источника; не зашивать политику конкретного CI, runner или облака."
+    ],
+    "name": "build-source-bound-documentation-site",
+    "resources": [
+      "reference",
+      "script"
+    ],
+    "review_flags": [],
+    "safety_boundaries": [
+      "Noindex и метка внутреннего использования не являются аутентификацией или разрешением раскрыть содержание.",
+      "Не включать приватный source allowlist, реальные документы, логи, credentials, инфраструктурные manifests или deployment helpers.",
+      "Не обещать полную sanitization HTML, воспроизводимый архив или переносимость, пока это не подтверждено; validation по href/src и эвристики секретов имеют ограничения.",
+      "Лицензии зависимостей сохраняются; исходный код передаётся только после подтверждения прав и просмотра пакета."
+    ],
+    "scope": "cross-project",
+    "score": 19,
+    "score_breakdown": {
+      "automation": 2,
+      "evidence": 3,
+      "overlap_penalty": 0,
+      "portability": 3,
+      "resources": 1,
+      "safety": 2,
+      "stability": 1,
+      "testability": 2,
+      "trigger_clarity": 2,
+      "workflow_depth": 3
+    },
+    "stability": "evolving",
+    "summary": "Собирать статическую производную tracked Markdown с поиском, схемами, точным копированием команд, разрешёнными ссылками на исходники и манифестом source revision, не смешивая сборку с deployment.",
+    "title": "Генерировать веб-документацию из канонических исходников",
+    "triggers": [
+      "Создай производную веб-версию существующей Markdown-документации без второго источника контента.",
+      "Подготовь проверяемый статический пакет с provenance и сохрани ссылки при переносе документов."
+    ],
+    "workflow_steps": [
+      "Разделить канонический Git-контент, renderer, пакет артефакта и deployment. Согласовать разрешённые источники и окружение сборки; не запускать сборку вне разрешённого CI.",
+      "Описать конфигурацию путей, repository source URL, source-link provider, таксономии, локали, branding, аудитории, допустимых вложений и optional redirect map. Не оставлять скрытых ссылок на исходный проект.",
+      "Собирать только выбранные tracked Markdown; небезопасные пути и ссылки вне разрешённого набора отклонять. Машинные файлы не копировать, а связывать через явный allowlist с точной ревизией.",
+      "Сформировать независимые метаданные направления, типа, ограничений использования, source revision и дат содержательного обновления, технической проверки и сборки.",
+      "Сохранить Markdown, Unicode-якоря, таблицы, поиск и Mermaid. Загружать frontend assets локально из закреплённых зависимостей; копирование кода не должно включать prompt или номера строк.",
+      "Проверить output links и anchors, типы файлов, traversal, symlinks, redirect collisions и признаки секретов. Отдельно перечислить границы эвристик и доверие к исходному HTML.",
+      "Проверить неизменность Git-состояния во время сборки; сформировать манифест точной source revision, CI identity, аудитории и SHA-256 файлов, затем ограниченный архив.",
+      "Проверить renderer и интерфейс на синтетическом репозитории с длинным текстом, широкими таблицами, Unicode, схемами и копированием. Реальный build и браузерные проверки выполнять только в разрешённой среде.",
+      "Выдать исходники reference implementation, схему будущей конфигурации, dependency notices и known limitations. Публикацию и runtime-доступ передать отдельно согласованному процессу."
+    ]
+  },
+  "examples": [
+    {
+      "expected_outcomes": [
+        "Только разрешённый состав, проверенные links/anchors, manifest точной ревизии.",
+        "Deployment не выполняется автоматически."
+      ],
+      "prompt": "Подготовь статический пакет tracked Markdown с source provenance."
+    },
+    {
+      "expected_outcomes": [
+        "Представительные синтетические страницы и browser acceptance в разрешённой среде.",
+        "Копируется исходный текст блока без добавленного prompt."
+      ],
+      "prompt": "Сохрани Unicode-якоря, код, широкие таблицы и схемы."
+    },
+    {
+      "expected_outcomes": [
+        "Машинные файлы связываются только по allowlist и точной ревизии.",
+        "Traversal и коллизии redirect отклоняются."
+      ],
+      "prompt": "Сохрани source links и переходы после перестройки docs."
+    },
+    {
+      "expected_outcomes": [
+        "Noindex не заменяет authentication и разрешение раскрытия."
+      ],
+      "prompt": "Размести внутренний сайт публично благодаря noindex."
+    },
+    {
+      "expected_outcomes": [
+        "Source acceptance и веб-выпуск рассматриваются отдельно."
+      ],
+      "prompt": "Опубликуй сайт, потому что source MR принят."
+    },
+    {
+      "expected_outcomes": [
+        "Указать trust boundary и неполное покрытие валидатора."
+      ],
+      "prompt": "Гарантируй полную безопасность произвольного HTML эвристическим scanner."
+    }
+  ],
+  "kind": "skill-candidate-contribution",
+  "known_limitations": [
+    "Передаётся reference extraction с сохранённой примерной структурой, а не готовый универсальный skill.",
+    "Извлечённый код не запускался отдельно: локальные tests, builds и dependency installation не выполнялись; cloud-проверки ещё нужны.",
+    "Regex rewriting, HTML href/src scanning и эвристики секретов имеют ограниченное покрытие; raw Markdown HTML является доверенным входом.",
+    "Нужны versioned configuration, NUL-safe Git filenames, SHA validation, provider URL encoding, pip hashes и runtime-aware cache identity.",
+    "Архив не воспроизводим побайтно; access control и deployment не входят в renderer.",
+    "Происхождение подтверждено выбранными исходниками одного проекта; работоспособность исходного контура не переносится автоматически на extraction."
+  ],
+  "license": "Apache-2.0",
+  "package_sha256": "2dc868dbec725f3e170c5f608dc54c7ed77aaf28abf529f66c9e68ff7450b028",
+  "proposed_tests": [
+    "Синтетический Git repo с tracked Markdown, allowed machine source, empty allowlist, optional redirects и Unicode-путями.",
+    "Negative fixtures для traversal, чувствительных путей, unapproved sources, output symlinks, unsupported schemes и missing anchors.",
+    "Кодовые ограждения и точное копирование команд не искажаются link rewriting.",
+    "Redirect не выходит из output и не перезаписывает текущую страницу.",
+    "Изменение Git-состояния во время build отклоняется; manifest соответствует source revision и output hashes.",
+    "Cloud-only integration build и browser acceptance проверяют длинный текст, таблицы, схемы, поиск и narrow screen.",
+    "Три положительных и три близких отрицательных trigger case."
+  ],
+  "schema_version": 1,
+  "source_evidence": [
+    {
+      "block_id": "block-0cd5b9cbda5c7462",
+      "source_sha256": "b1d1629b53e23fa6264556b8a0f9505c3dbdf82c43924cec44b9fbb49262a53c",
+      "summary": "В публикуемый набор попадают только tracked Markdown; посторонние файлы и source symlinks не считаются страницами."
+    },
+    {
+      "block_id": "block-4cbd8f73df5535a5",
+      "source_sha256": "357ac264e6595a1a7c2d38728a0ef7b32ab39f1f977a3c6f3a0f1400ea81aa6c",
+      "summary": "Рендеринг должен сохранять копируемый текст команд, таблицы, схемы, доступность навигации и читаемость широкого содержимого."
+    },
+    {
+      "block_id": "block-575d1d1235542989",
+      "source_sha256": "4c5df004006e9dce25e6f6d779678acfc810d5da874219ef659b19885330341f",
+      "summary": "Приёмка исходного шаблона, интеграция Markdown, сборка и проверка реального доступа являются разными результатами."
+    },
+    {
+      "block_id": "block-5dabb138d54821de",
+      "source_sha256": "76d1b4571626d185aa1dcd3f07b73ad98fcc26793fed560068b1b158a3a68a90",
+      "summary": "Направление, тип, ограничение использования и разные даты актуальности независимы; дата сборки не доказывает свежесть технической проверки."
+    },
+    {
+      "block_id": "block-5e1bb0ed0c200abf",
+      "source_sha256": "14ccb67486336d74035d06c030f65ab470af7f6f600d629845317c57277ea37a",
+      "summary": "Builder работает с clean committed checkout, сверяет неизменность Git после сборки, создаёт manifest source revision и SHA-256 output-файлов и ограниченный архив."
+    },
+    {
+      "block_id": "block-5ebe08feaca1ebee",
+      "source_sha256": "bc70ad5f2ef5109ec052be8c82578d550d83a58ad825695cdf07e35352446c63",
+      "summary": "Внешние машинные источники не копируются в сайт: разрешённые ссылки преобразуются в source URL точной ревизии, опасные пути запрещаются."
+    },
+    {
+      "block_id": "block-74c6e71a9d0c3eaa",
+      "source_sha256": "af080d753a9a1a3a354944fa5f5e7e60bbcb83525daec1bf66ba0ebaf04ba2b0",
+      "summary": "Конфигурационный hook читает source revision, tracked-состав, даты изменения, allowlist и карту legacy-переходов."
+    },
+    {
+      "block_id": "block-9c332b0cf6a4b99d",
+      "source_sha256": "7411370c34ee3f999c08c19b77e61b755c9a5078e988f3bbd5093f480035558e",
+      "summary": "Renderer формирует переходы по карте старых и текущих путей, отклоняет выход из output и коллизии с существующими страницами."
+    },
+    {
+      "block_id": "block-ad46fddc4de8a514",
+      "source_sha256": "c765a665aa3f39ade36ac0e2306f2d1e19e67c3c48d5e7f44abb558485a291f5",
+      "summary": "Hook переписывает назначения Markdown-ссылок, сохраняя fenced code и различая обычные и reference links."
+    },
+    {
+      "block_id": "block-dc96f6cffdbbaeed",
+      "source_sha256": "240093f4b0c1b0ab82828076b7687697579577e9c42dec3e16f264795e1391ae",
+      "summary": "Output inspector ограничивает типы файлов, проверяет href/src и якоря, отклоняет небезопасные пути и признаки отдельных классов секретов."
+    }
+  ],
+  "source_report": {
+    "inventory_sha256": "09f9b68719f9b980bbc2cfc157d7339f6de25b20738228d8bebf23d9d87844f0",
+    "report_sha256": "250e50daa093f022517274acc59b578607a81baacde9576f949daec2e51e6fa1"
+  }
+}
