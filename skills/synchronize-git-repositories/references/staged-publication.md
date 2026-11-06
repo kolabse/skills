@@ -36,14 +36,17 @@ further implementation work. The already-authorized local changes remain valid.
    existing authorization; do not automatically stash, reset, rebase, merge or
    clean as part of synchronization. Ask only if the target or preservation
    decision remains materially ambiguous.
-3. Verify the current configured base in a clean anchor. Use the
+3. Verify the current configured base in a clean anchor. If that base fails,
+   use the bounded recovery procedure below instead of repeating this checkpoint.
+   Otherwise use the
    [linked-worktree recipe](linked-worktrees.md) when the task worktree is dirty
    or already contains commits. Satisfy every applicable protected-push gate
    for that anchor; evidence for a dirty or different worktree is insufficient.
 4. Resolve the branch naming policy and check the final name against its saved
    decision using [branch-policy preflight](branch-naming-policy.md), then
    select an unused remote task ref and publish the verified base SHA to it.
-   Do not push the local task HEAD in place of the base bootstrap. If the
+   Outside the explicitly selected failed-base recovery route below, do not
+   push the local task HEAD in place of the base bootstrap. If the
    intended ref is occupied, establish its recorded ownership or choose a new
    unambiguous task name; never overwrite it to make the checkpoint pass.
 5. Bind the existing local task branch to its own new remote ref, preserving
@@ -71,6 +74,46 @@ retain the local work and record the remaining checkpoint.
 | Base moved or task diverged | Preserve work; resolve required integration deliberately and obtain fresh evidence. |
 | A remote task ref is unexpectedly occupied | Establish ownership or select another name; no forced replacement. |
 
+## Recovery when the unchanged base fails its gate
+
+A failing base is a recorded blocker, not permission to bypass verification.
+Record the exact base SHA, failed check and observed failure before choosing a
+route. Do not repeatedly demand a successful unchanged base as the prerequisite
+for repairing that same failure.
+
+First determine whether existing project instructions and authorization allow
+local repair before the first publication. Reuse an applicable authorization;
+otherwise obtain a bounded exception covering the local repair and, separately,
+the proposed publication route. A mandatory project rule requiring a successful
+unchanged-base bootstrap remains blocking until explicitly amended by its
+authorized owner. This reference does not override that rule.
+
+When the project permits a repair-first route:
+
+1. Preserve the failed base and work in a local task branch from its recorded
+   SHA. Record that no remote task ref exists yet. Limit edits to the authorized
+   repair; retain unrelated work separately.
+2. Review and commit the repair when authorized. Run every applicable protected
+   push check against this exact repaired commit and worktree. A failed baseline
+   is evidence of the defect, never successful push evidence.
+3. The gate must support the actual unpublished branch state under the approved
+   project contract. Do not fabricate an upstream, attach the primary ref as the
+   task upstream, edit a receipt, or silently disable an upstream/check rule. If
+   the gate cannot represent this route, stop publication and report the needed
+   project configuration decision.
+4. Fetch and re-evaluate base freshness, review validity, branch naming and the
+   unused destination ref. Once the exact repaired state passes its gate, publish
+   that commit as the first remote task revision and bind its own upstream.
+   Continue through ordinary review/CI/integration requirements.
+
+For example, base B fails a required check; bounded local repair produces R.
+Under an explicitly permitted repair-first contract, review and all required
+checks on R authorize its publication. The first remote task SHA is R, not B;
+the record retains both the failure on B and success on R. Without that contract
+or successful evidence on R, neither revision is publishable through this route.
+
 Completion criterion: local work remains intact, publication starts only when
 authorized, the task tracks its own remote ref, and each protected push has
-evidence for the actual state being published.
+evidence for the actual state being published. The normal route bootstraps the
+verified unchanged base; an authorized failed-base recovery records the explicit
+exception and the verified repaired first revision without rewriting history.
