@@ -53,7 +53,8 @@ class PolicyReceiptTests(unittest.TestCase):
     def setUp(self):
         self.temp = tempfile.TemporaryDirectory()
         self.addCleanup(self.temp.cleanup)
-        self.root = Path(self.temp.name) / 'source'
+        # Git and the consumer resolve aliases such as macOS /var -> /private/var.
+        self.root = (Path(self.temp.name) / 'source').resolve()
         self.root.mkdir()
         self.remote = Path(self.temp.name) / 'remote.git'
         self.git('init', '-b', 'feature/test')
