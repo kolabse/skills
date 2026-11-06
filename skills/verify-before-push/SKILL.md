@@ -9,6 +9,11 @@ Use project configuration as the source of truth for checks. Evidence proves
 only that declared checks passed for recorded commits and worktrees; it is not
 a substitute for review, CI, or deployment verification.
 
+For the experimental read-only GitLab MR CI collector, see
+[GitLab CI observations](references/gitlab-ci.md). It produces observations only;
+it does not enable `--source gitlab-ci`, create canonical verifier receipts, or
+authorize a merge gate.
+
 Announce this skill once at the start of the workflow. Repeated gates within
 that workflow need result updates, not repeated announcements.
 
