@@ -48,6 +48,15 @@ class ReuseUnavailable(VerificationError):
     """Full verification is supported, but runtime identity is ambiguous."""
 
 
+def policy_ci_module():
+    """Load the explicit CI-only consumer without changing legacy dispatch."""
+    path = Path(__file__).resolve().with_name('policy_gitlab_ci.py')
+    spec = importlib.util.spec_from_file_location('_verify_policy_gitlab_ci', path)
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module
+
+
 def guard_project_policy(project_root: Path, config: dict[str, Any] | None = None,
                          *, action: str = 'execute_local_check') -> None:
     """Inspect only the selected project and explicitly configured repositories."""
@@ -339,7 +348,7 @@ def load_execution_context(
 def validate_config_document(
     config: dict[str, Any], project_root: Path, *, validate_checks: bool = True,
 ) -> Path:
-    if set(config) - {"version", "repositories", "checks", "evidence_file", "reuse_verified_results", "github_ci"}:
+    if set(config) - {"version", "repositories", "checks", "evidence_file", "reuse_verified_results", "github_ci", "gitlab_ci"}:
         raise VerificationError("Configuration contains unknown fields")
     if type(config.get("version")) is not int or config["version"] != 1:
         raise VerificationError("Configuration version must be 1")
@@ -360,6 +369,11 @@ def validate_config_document(
         raise VerificationError("Repository names and Git roots must be unique")
     if "github_ci" in config:
         validate_github_ci_policy(config)
+    if "gitlab_ci" in config:
+        try:
+            policy_ci_module().validate_gitlab_ci_policy(config)
+        except Exception as error:
+            raise VerificationError('Invalid or unsupported gitlab_ci configuration') from error
     if not validate_checks:
         return evidence_path
     names: set[str] = set()
@@ -1168,8 +1182,16 @@ def verify_evidence(project_root: Path, repository: Path | None = None, trusted_
 
 
 def main(argv: list[str] | None = None) -> int:
+    argv = list(sys.argv[1:] if argv is None else argv)
+    if argv and argv[0] == 'policy-ci':
+        try:
+            return policy_ci_module().main(argv[1:])
+        except Exception as error:
+            print(f'VERIFICATION_FAILED: policy CI adapter unavailable ({type(error).__name__})', file=sys.stderr)
+            return 1
     parser = argparse.ArgumentParser(description="Run and validate Git-state-bound pre-push evidence.")
     subparsers = parser.add_subparsers(dest="command", required=True)
+    subparsers.add_parser('policy-ci', help='Collect or revalidate policy-bound GitLab CI checks only')
     for command in ("run", "verify", "gate", "configure", "status", "migrate"):
         child = subparsers.add_parser(command)
         child.add_argument("--project-root", type=Path, default=Path.cwd())

@@ -54,7 +54,10 @@ JSON keys, bool-as-integer IDs, malformed hosts/digests and unknown requirements
 Digests bind the caller's effective policy, source snapshot and exact check map;
 the collector does not inspect or prove those policy files. Its MR project IDs
 do not establish that the local tracked remote is the declared repository.
-These obligations belong to a future guarded consumer.
+The experimental [policy-bound consumer](policy-gitlab-ci.md) adds those local
+bindings for CI-only evidence. It does not turn standalone observations into
+action authorization. A base-policy contract can use `profile: null`; named
+profiles still require a nonempty string.
 
 ```sh
 python skills/verify-before-push/scripts/gitlab_ci.py collect --contract contract.json --output observation.json

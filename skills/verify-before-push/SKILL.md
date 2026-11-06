@@ -14,6 +14,11 @@ For the experimental read-only GitLab MR CI collector, see
 it does not enable `--source gitlab-ci`, create canonical verifier receipts, or
 authorize a merge gate.
 
+For CI checks bound to the current project policy and tracked GitLab repository,
+use the experimental `policy-ci collect|verify` route described in
+[policy-bound GitLab CI checks](references/policy-gitlab-ci.md). Its evidence is
+CI-only; the ordinary push/merge gates remain unchanged.
+
 Announce this skill once at the start of the workflow. Repeated gates within
 that workflow need result updates, not repeated announcements.
 
@@ -23,10 +28,12 @@ For read-only inspection of `.agents/kolabse/project-policy.json`, use
 `scripts/project_policy.py status|explain|validate --project-root <root> --json`
 or `migrate --dry-run`. Read [references/project-policy.md](references/project-policy.md)
 for the closed v1 schema, origins, scoped profiles and conservative migration preview.
-Policy-bound execution and receipt acceptance remain unavailable. The canonical
+Policy-bound action gates remain unavailable. The canonical
 verifier blocks local checks, GitHub CI collection and old receipt acceptance
 when a configured, invalid or unsupported policy is present, including an
 explicit `--source local`. Absent-policy projects keep their legacy behavior.
+The separate `policy-ci` consumer can collect and revalidate CI-only evidence;
+it does not relax this guard or authorize publication/integration.
 The guard covers only selected/configured canonical and mapped repository roots,
 rechecking before commands and successful receipt boundaries; it is not an atomic
 lock against concurrent edits. Provider constraints remain unconfirmed. Other

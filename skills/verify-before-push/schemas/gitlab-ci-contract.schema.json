@@ -88,7 +88,7 @@
       "pattern": "^[^\\u0000-\\u001f]+$"
     },
     "profile": {
-      "type": "string",
+      "type": ["string", "null"],
       "minLength": 1,
       "maxLength": 255,
       "pattern": "^[^\\u0000-\\u001f]+$"
