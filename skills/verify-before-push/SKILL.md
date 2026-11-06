@@ -17,6 +17,22 @@ authorize a merge gate.
 Announce this skill once at the start of the workflow. Repeated gates within
 that workflow need result updates, not repeated announcements.
 
+## Shared project-policy diagnostics
+
+For read-only inspection of `.agents/kolabse/project-policy.json`, use
+`scripts/project_policy.py status|explain|validate --project-root <root> --json`
+or `migrate --dry-run`. Read [references/project-policy.md](references/project-policy.md)
+for the closed v1 schema, origins, scoped profiles and conservative migration preview.
+Policy-bound execution and receipt acceptance remain unavailable. The canonical
+verifier blocks local checks, GitHub CI collection and old receipt acceptance
+when a configured, invalid or unsupported policy is present, including an
+explicit `--source local`. Absent-policy projects keep their legacy behavior.
+The guard covers only selected/configured canonical and mapped repository roots,
+rechecking before commands and successful receipt boundaries; it is not an atomic
+lock against concurrent edits. Provider constraints remain unconfirmed. Other
+consumers retain their existing gates.
+A `before_merge` declaration does not waive this skill's current before-push gate.
+
 ## Configure the project
 
 1. Invoke `$synchronize-git-repositories` and resolve every repository whose
@@ -394,3 +410,8 @@ For STOP, name the remaining failed check or state/evidence blocker. These
 reporting rules neither bypass the gate nor add a permission requirement.
 Report a push or CI outcome only when separately observed; gate PASS proves
 neither publication nor CI success.
+
+For example: "Local gate PASS for the checked HEAD; required checks passed;
+the project-approved optional manual job was skipped for its configured
+reason. CI outcome unconfirmed." Preserve the skipped status in the report;
+do not turn a local gate PASS into a claim that the manual job or CI passed.

@@ -84,6 +84,12 @@ remote-branch checkpoint occurs when publication becomes authorized; do not
 retroactively treat the earlier authorized local edits as a workflow violation.
 The procedure below applies when publication is authorized from the start.
 
+If the unchanged base fails its gate, follow the
+[bounded failed-base recovery](references/staged-publication.md#recovery-when-the-unchanged-base-fails-its-gate).
+Only an explicitly authorized route permitted by project rules may publish a
+repaired first revision; retain mandatory project constraints and require
+passing evidence for that exact repaired state.
+
 Before selecting a name, load the per-application preference through
 `scripts/branch_policy.py status --agent <agent>`. This explicit skill step is
 the loading adapter; the preference is not a native application-wide rule.
@@ -128,7 +134,9 @@ upstream and the normal verification gate.
 
 Completion criterion: the remote feature branch exists before the first edit,
 the local feature branch tracks it at the verified base SHA, and no source or
-history change was included in the bootstrap push.
+history change was included in the bootstrap push. For an explicitly permitted
+failed-base recovery, use the reference's completion criterion and record the
+verified repaired first revision and the authorization for that route instead.
 
 ## Identify the synchronization set
 
