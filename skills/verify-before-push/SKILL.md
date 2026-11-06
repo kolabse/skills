@@ -405,3 +405,8 @@ For STOP, name the remaining failed check or state/evidence blocker. These
 reporting rules neither bypass the gate nor add a permission requirement.
 Report a push or CI outcome only when separately observed; gate PASS proves
 neither publication nor CI success.
+
+For example: "Local gate PASS for the checked HEAD; required checks passed;
+the project-approved optional manual job was skipped for its configured
+reason. CI outcome unconfirmed." Preserve the skipped status in the report;
+do not turn a local gate PASS into a claim that the manual job or CI passed.

@@ -47,4 +47,10 @@ required approval state. Do not present an old review as current after the
 subject or governing policy changes. Follow the reference when supplying the
 existing lifecycle `review-complete` gate.
 
+For example, a self-review of the exact candidate may satisfy a project's
+review requirement when its policy permits self-review. Report that review
+and its scope. If the provider separately requires an independent approval,
+report that approval as pending until observed; a no-findings self-review
+does not satisfy the provider requirement.
+
 Completion criterion: the exact change scope was examined, each finding is reproducible or evidence-backed and precisely located, uncertainty is explicit, and no review action or code change occurred without authorization.

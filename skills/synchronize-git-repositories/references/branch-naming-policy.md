@@ -131,6 +131,12 @@ for any mismatch with another default. Do not equate an installed plugin's
 version with the loaded local skill's version. The result identifies actual
 artifact hashes separately from caller-reported collection metadata.
 
+For example, if the project declares `migration/integration` as the integration
+branch during a migration, use that declared role instead of inferring
+`develop` from fallback conventions. Explain the applicable project rule;
+following it needs no extra exception approval. Naming resolution still does
+not authorize integration or replace its configured gates.
+
 Immediately before the first authorized publication, re-read relevant rules
 and run:
 

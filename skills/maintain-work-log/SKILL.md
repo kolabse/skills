@@ -73,6 +73,11 @@ transaction. Follow the owning plan/generator for the actual plan update.
    reconstruct the missing period. State the proposed date range and available
    sources before performing a large retrospective update.
 
+   For example, if the user already declined reconstruction before the first
+   reliable entry, preserve that deferred boundary on later maintenance runs.
+   Continue recording current work without repeating the same offer; revisit
+   the boundary when the user requests reconstruction or changes its scope.
+
 Inspect configuration without changing files with:
 
 ```shell
