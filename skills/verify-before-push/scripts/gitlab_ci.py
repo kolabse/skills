@@ -77,7 +77,7 @@ def validate_contract(contract):
     for key in ('effective_policy_digest', 'source_snapshot_digest', 'check_map_digest'):
         require(isinstance(contract[key], str) and re.fullmatch('[0-9a-f]{64}', contract[key]),
                 'invalid policy/check-map digest')
-    for key in ('repository', 'profile', 'target_branch'):
+    for key in ('repository', 'target_branch') + (() if contract['profile'] is None else ('profile',)):
         require(isinstance(contract[key], str) and 0 < len(contract[key]) <= 255 and
                 not any(ord(c) < 32 for c in contract[key]), 'invalid contract text')
     require(contract['operation'] in ('push', 'merge', 'build', 'deploy', 'cleanup'), 'invalid operation')
@@ -102,6 +102,7 @@ class GlabTransport:
 
     def get(self, endpoint):
         patterns = (
+            r'projects/[1-9][0-9]*',
             r'projects/[1-9][0-9]*/merge_requests/[1-9][0-9]*',
             r'projects/[1-9][0-9]*/merge_requests/[1-9][0-9]*/pipelines\?per_page=100&page=[1-9][0-9]*',
             r'projects/[1-9][0-9]*/pipelines/[1-9][0-9]*',

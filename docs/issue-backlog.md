@@ -1,6 +1,6 @@
 # Implementation queue
 
-Updated: 2026-11-05. This queue records accepted work, not completed fixes or
+Updated: 2026-11-06. This queue records accepted work, not completed fixes or
 release authorization. Version 1.26.0 is authorized; broader Telegram work remains in progress.
 
 | Order | Item | State | Completion criteria |
@@ -16,8 +16,8 @@ track remaining scope; preparing one package does not complete another issue.
 
 | Order | Scope | State / acceptance |
 | --- | --- | --- |
-| 1 | #153; examples #159, #160, #161, #163, #164 | In implementation: failed-base recovery must identify the first publishable revision and its exact gate; examples preserve existing behavior. Review and publication pending. |
-| 2 | #152 shared contract with #150/#151/#154 | Pending: opt-in schema and diagnostics, compatible legacy defaults, blocking/background semantics, GitLab MR evidence, exact revision/jobs, reuse and migration preview. Proposed YAML is not yet an implemented interface. |
+| 1 | #153; examples #159, #160, #161, #163, #164 | Merged in PR #167 after all required CI checks passed. |
+| 2 | #152 shared contract with #150/#151/#154 | Foundations merged in PR #168 (diagnostics/guards) and #169 (read-only GitLab collector), each after full CI. Integration in progress: policy-bound CI-only receipts first; action gates, readiness decisions, background semantics and remaining consumers still pending. Proposed YAML is not an implemented interface. |
 | 3 | #155/#162/#166 | Pending: named completion boundary, claim-free task identity and evidence-backed absence of applicable jobs. No fabricated production/pipeline PASS. |
 | 4 | #158 | Pending: digest-bound ancestry-only proof policy with backward-compatible defaults and preserved cleanup safety. |
 | 5 | #156/#157 | Pending: opt-in maintenance ownership adapter and separate external-owned dependency model, scoped authority and revision-bound acceptance. |

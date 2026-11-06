@@ -1,7 +1,7 @@
 # Project policy diagnostics: v1 foundation
 
-This package resolves declarations and reports conflicts. **Policy-bound execution
-and receipt acceptance are unavailable.** The canonical verifier now guards local
+This package resolves declarations and reports conflicts. **Policy-bound action
+gates remain unavailable.** The canonical verifier guards local
 execution, GitHub CI collection and evidence acceptance: a present configured,
 invalid or unsupported policy blocks these operations before checks or provider
 calls. This includes local declarations; selecting `--source local` cannot override
@@ -10,6 +10,9 @@ cleanup consumers retain their existing contracts. A
 `before_merge` declaration does not permit skipping a before-push gate.
 Diagnostics never run tests, builds, pipelines, publication or provider calls.
 Do not use this foundation to authorize a push, merge, deployment or cleanup.
+The separate experimental [GitLab CI-only consumer](policy-gitlab-ci.md) derives
+and revalidates evidence against current declarations without relaxing these
+action gates or confirming source review and historical readiness.
 
 ## File, commands, and compatibility
 
