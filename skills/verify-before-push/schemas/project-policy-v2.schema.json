@@ -1,0 +1,804 @@
+{
+  "type": "object",
+  "properties": {
+    "schema_version": {
+      "type": "integer",
+      "const": 2
+    },
+    "verification": {
+      "type": "object",
+      "properties": {
+        "execution": {
+          "type": "string",
+          "enum": [
+            "local",
+            "ci"
+          ]
+        },
+        "provider": {
+          "type": "string",
+          "enum": [
+            "none",
+            "github",
+            "gitlab"
+          ]
+        },
+        "subject": {
+          "type": "string",
+          "enum": [
+            "source_sha",
+            "merge_result_sha"
+          ]
+        },
+        "local_execution": {
+          "type": "string",
+          "enum": [
+            "allowed",
+            "forbidden"
+          ]
+        },
+        "reuse_successful_result": {
+          "type": "boolean"
+        },
+        "checks": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "string",
+                "minLength": 1,
+                "pattern": "^[^\\x00-\\x1f\\x7f]+$"
+              },
+              "blocks": {
+                "type": "array",
+                "minItems": 0,
+                "uniqueItems": true,
+                "items": {
+                  "type": "string",
+                  "enum": [
+                    "push",
+                    "merge",
+                    "build",
+                    "deploy",
+                    "cleanup"
+                  ]
+                }
+              },
+              "scope": {
+                "type": "object",
+                "properties": {
+                  "repositories": {
+                    "type": "array",
+                    "minItems": 1,
+                    "uniqueItems": true,
+                    "items": {
+                      "type": "string",
+                      "minLength": 1,
+                      "pattern": "^[^\\x00-\\x1f\\x7f]+$"
+                    }
+                  },
+                  "include_paths": {
+                    "type": "array",
+                    "minItems": 1,
+                    "uniqueItems": true,
+                    "items": {
+                      "type": "string",
+                      "minLength": 1,
+                      "pattern": "^(?!/)(?!.*(?:^|/)\\.{1,2}(?:/|$))(?!.*[\\\\:\\x00-\\x1f\\x7f?\\[\\]{}!])(?!.*//)(?!.*\\*\\*[^/])(?!.*[^/]\\*\\*)(?!.*\\*\\*\\*)(?!.* /)(?!.* /$)[^/]+(?:/[^/]+)*$"
+                    }
+                  },
+                  "exclude_paths": {
+                    "type": "array",
+                    "minItems": 0,
+                    "uniqueItems": true,
+                    "items": {
+                      "type": "string",
+                      "minLength": 1,
+                      "pattern": "^(?!/)(?!.*(?:^|/)\\.{1,2}(?:/|$))(?!.*[\\\\:\\x00-\\x1f\\x7f?\\[\\]{}!])(?!.*//)(?!.*\\*\\*[^/])(?!.*[^/]\\*\\*)(?!.*\\*\\*\\*)(?!.* /)(?!.* /$)[^/]+(?:/[^/]+)*$"
+                    }
+                  },
+                  "change_types": {
+                    "type": "array",
+                    "minItems": 1,
+                    "uniqueItems": true,
+                    "items": {
+                      "type": "string",
+                      "enum": [
+                        "added",
+                        "modified",
+                        "deleted",
+                        "renamed",
+                        "type_changed"
+                      ]
+                    }
+                  }
+                },
+                "required": [
+                  "repositories",
+                  "include_paths",
+                  "exclude_paths",
+                  "change_types"
+                ],
+                "additionalProperties": false
+              }
+            },
+            "required": [
+              "id",
+              "blocks",
+              "scope"
+            ],
+            "additionalProperties": false
+          }
+        }
+      },
+      "required": [
+        "execution",
+        "provider",
+        "subject",
+        "local_execution",
+        "reuse_successful_result",
+        "checks"
+      ],
+      "additionalProperties": false
+    },
+    "development": {
+      "type": "object",
+      "properties": {
+        "evidence_mode": {
+          "type": "string",
+          "enum": [
+            "test_first",
+            "final_verification"
+          ]
+        }
+      },
+      "required": [
+        "evidence_mode"
+      ],
+      "additionalProperties": false
+    },
+    "publication": {
+      "type": "object",
+      "properties": {
+        "draft_until": {
+          "type": "string",
+          "enum": [
+            "implementation_and_source_review_complete"
+          ]
+        },
+        "pipeline": {
+          "type": "object",
+          "properties": {
+            "event": {
+              "type": "string",
+              "enum": [
+                "push",
+                "merge_request"
+              ]
+            },
+            "target_branch": {
+              "type": "string",
+              "minLength": 1,
+              "pattern": "\\S"
+            },
+            "require_ready": {
+              "type": "boolean"
+            },
+            "bootstrap": {
+              "type": "string",
+              "enum": [
+                "suppress",
+                "allow"
+              ]
+            },
+            "duplicate_active_run": {
+              "type": "string",
+              "enum": [
+                "forbidden",
+                "allowed"
+              ]
+            }
+          },
+          "required": [
+            "event",
+            "target_branch",
+            "require_ready",
+            "bootstrap",
+            "duplicate_active_run"
+          ],
+          "additionalProperties": false
+        }
+      },
+      "required": [
+        "draft_until",
+        "pipeline"
+      ],
+      "additionalProperties": false
+    },
+    "documentation": {
+      "type": "object",
+      "properties": {
+        "source_updates": {
+          "type": "string",
+          "enum": [
+            "required",
+            "optional"
+          ]
+        },
+        "web": {
+          "type": "object",
+          "properties": {
+            "trigger": {
+              "type": "string",
+              "enum": [
+                "explicit_request",
+                "automatic"
+              ]
+            },
+            "blocks_primary_task": {
+              "type": "boolean"
+            },
+            "execution": {
+              "type": "string",
+              "enum": [
+                "local",
+                "ci"
+              ]
+            },
+            "runner_tag": {
+              "type": "string",
+              "minLength": 1,
+              "pattern": "\\S"
+            },
+            "require_success_for_published_sha": {
+              "type": "boolean"
+            }
+          },
+          "required": [
+            "trigger",
+            "blocks_primary_task",
+            "execution",
+            "runner_tag",
+            "require_success_for_published_sha"
+          ],
+          "additionalProperties": false
+        }
+      },
+      "required": [
+        "source_updates",
+        "web"
+      ],
+      "additionalProperties": false
+    },
+    "profiles": {
+      "type": "object",
+      "propertyNames": {
+        "pattern": "^[a-z][a-z0-9_-]{0,63}$"
+      },
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "version": {
+            "type": "integer",
+            "const": 1
+          },
+          "reason": {
+            "type": "string",
+            "minLength": 1,
+            "pattern": "\\S"
+          },
+          "scope": {
+            "type": "object",
+            "properties": {
+              "repositories": {
+                "type": "array",
+                "minItems": 1,
+                "uniqueItems": true,
+                "items": {
+                  "type": "string",
+                  "minLength": 1,
+                  "pattern": "\\S"
+                }
+              },
+              "operations": {
+                "type": "array",
+                "minItems": 1,
+                "uniqueItems": true,
+                "items": {
+                  "type": "string",
+                  "enum": [
+                    "push",
+                    "merge",
+                    "build",
+                    "deploy",
+                    "cleanup"
+                  ]
+                }
+              }
+            },
+            "required": [
+              "repositories",
+              "operations"
+            ],
+            "additionalProperties": false
+          },
+          "overrides": {
+            "type": "object",
+            "properties": {
+              "verification": {
+                "type": "object",
+                "properties": {
+                  "execution": {
+                    "type": "string",
+                    "enum": [
+                      "local",
+                      "ci"
+                    ]
+                  },
+                  "provider": {
+                    "type": "string",
+                    "enum": [
+                      "none",
+                      "github",
+                      "gitlab"
+                    ]
+                  },
+                  "subject": {
+                    "type": "string",
+                    "enum": [
+                      "source_sha",
+                      "merge_result_sha"
+                    ]
+                  },
+                  "local_execution": {
+                    "type": "string",
+                    "enum": [
+                      "allowed",
+                      "forbidden"
+                    ]
+                  },
+                  "reuse_successful_result": {
+                    "type": "boolean"
+                  },
+                  "checks": {
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string",
+                          "minLength": 1,
+                          "pattern": "^[^\\x00-\\x1f\\x7f]+$"
+                        },
+                        "blocks": {
+                          "type": "array",
+                          "minItems": 0,
+                          "uniqueItems": true,
+                          "items": {
+                            "type": "string",
+                            "enum": [
+                              "push",
+                              "merge",
+                              "build",
+                              "deploy",
+                              "cleanup"
+                            ]
+                          }
+                        },
+                        "scope": {
+                          "type": "object",
+                          "properties": {
+                            "repositories": {
+                              "type": "array",
+                              "minItems": 1,
+                              "uniqueItems": true,
+                              "items": {
+                                "type": "string",
+                                "minLength": 1,
+                                "pattern": "^[^\\x00-\\x1f\\x7f]+$"
+                              }
+                            },
+                            "include_paths": {
+                              "type": "array",
+                              "minItems": 1,
+                              "uniqueItems": true,
+                              "items": {
+                                "type": "string",
+                                "minLength": 1,
+                                "pattern": "^(?!/)(?!.*(?:^|/)\\.{1,2}(?:/|$))(?!.*[\\\\:\\x00-\\x1f\\x7f?\\[\\]{}!])(?!.*//)(?!.*\\*\\*[^/])(?!.*[^/]\\*\\*)(?!.*\\*\\*\\*)(?!.* /)(?!.* /$)[^/]+(?:/[^/]+)*$"
+                              }
+                            },
+                            "exclude_paths": {
+                              "type": "array",
+                              "minItems": 0,
+                              "uniqueItems": true,
+                              "items": {
+                                "type": "string",
+                                "minLength": 1,
+                                "pattern": "^(?!/)(?!.*(?:^|/)\\.{1,2}(?:/|$))(?!.*[\\\\:\\x00-\\x1f\\x7f?\\[\\]{}!])(?!.*//)(?!.*\\*\\*[^/])(?!.*[^/]\\*\\*)(?!.*\\*\\*\\*)(?!.* /)(?!.* /$)[^/]+(?:/[^/]+)*$"
+                              }
+                            },
+                            "change_types": {
+                              "type": "array",
+                              "minItems": 1,
+                              "uniqueItems": true,
+                              "items": {
+                                "type": "string",
+                                "enum": [
+                                  "added",
+                                  "modified",
+                                  "deleted",
+                                  "renamed",
+                                  "type_changed"
+                                ]
+                              }
+                            }
+                          },
+                          "required": [
+                            "repositories",
+                            "include_paths",
+                            "exclude_paths",
+                            "change_types"
+                          ],
+                          "additionalProperties": false
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "blocks",
+                        "scope"
+                      ],
+                      "additionalProperties": false
+                    }
+                  }
+                },
+                "required": [],
+                "additionalProperties": false
+              },
+              "development": {
+                "type": "object",
+                "properties": {
+                  "evidence_mode": {
+                    "type": "string",
+                    "enum": [
+                      "test_first",
+                      "final_verification"
+                    ]
+                  }
+                },
+                "required": [],
+                "additionalProperties": false
+              },
+              "publication": {
+                "type": "object",
+                "properties": {
+                  "draft_until": {
+                    "type": "string",
+                    "enum": [
+                      "implementation_and_source_review_complete"
+                    ]
+                  },
+                  "pipeline": {
+                    "type": "object",
+                    "properties": {
+                      "event": {
+                        "type": "string",
+                        "enum": [
+                          "push",
+                          "merge_request"
+                        ]
+                      },
+                      "target_branch": {
+                        "type": "string",
+                        "minLength": 1,
+                        "pattern": "\\S"
+                      },
+                      "require_ready": {
+                        "type": "boolean"
+                      },
+                      "bootstrap": {
+                        "type": "string",
+                        "enum": [
+                          "suppress",
+                          "allow"
+                        ]
+                      },
+                      "duplicate_active_run": {
+                        "type": "string",
+                        "enum": [
+                          "forbidden",
+                          "allowed"
+                        ]
+                      }
+                    },
+                    "required": [],
+                    "additionalProperties": false
+                  }
+                },
+                "required": [],
+                "additionalProperties": false
+              },
+              "documentation": {
+                "type": "object",
+                "properties": {
+                  "source_updates": {
+                    "type": "string",
+                    "enum": [
+                      "required",
+                      "optional"
+                    ]
+                  },
+                  "web": {
+                    "type": "object",
+                    "properties": {
+                      "trigger": {
+                        "type": "string",
+                        "enum": [
+                          "explicit_request",
+                          "automatic"
+                        ]
+                      },
+                      "blocks_primary_task": {
+                        "type": "boolean"
+                      },
+                      "execution": {
+                        "type": "string",
+                        "enum": [
+                          "local",
+                          "ci"
+                        ]
+                      },
+                      "runner_tag": {
+                        "type": "string",
+                        "minLength": 1,
+                        "pattern": "\\S"
+                      },
+                      "require_success_for_published_sha": {
+                        "type": "boolean"
+                      }
+                    },
+                    "required": [],
+                    "additionalProperties": false
+                  }
+                },
+                "required": [],
+                "additionalProperties": false
+              }
+            },
+            "required": [],
+            "additionalProperties": false
+          },
+          "expires_on": {
+            "type": "string",
+            "format": "date"
+          },
+          "review_condition": {
+            "type": "string",
+            "minLength": 1,
+            "pattern": "\\S"
+          }
+        },
+        "required": [
+          "version",
+          "reason",
+          "scope",
+          "overrides"
+        ],
+        "additionalProperties": false,
+        "anyOf": [
+          {
+            "required": [
+              "expires_on"
+            ]
+          },
+          {
+            "required": [
+              "review_condition"
+            ]
+          }
+        ]
+      }
+    }
+  },
+  "required": [
+    "schema_version",
+    "verification",
+    "development",
+    "publication",
+    "documentation"
+  ],
+  "additionalProperties": false,
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/kolabse/skills/project-policy-v2.schema.json",
+  "title": "Read-only project policy declarations v2",
+  "allOf": [
+    {
+      "not": {
+        "type": "object",
+        "required": [
+          "verification"
+        ],
+        "properties": {
+          "verification": {
+            "type": "object",
+            "required": [
+              "execution",
+              "local_execution"
+            ],
+            "properties": {
+              "execution": {
+                "enum": [
+                  "local"
+                ]
+              },
+              "local_execution": {
+                "enum": [
+                  "forbidden"
+                ]
+              }
+            }
+          }
+        }
+      },
+      "description": "Local execution is forbidden",
+      "x-conflict-pointers": [
+        "/verification/execution",
+        "/verification/local_execution"
+      ]
+    },
+    {
+      "not": {
+        "type": "object",
+        "required": [
+          "verification"
+        ],
+        "properties": {
+          "verification": {
+            "type": "object",
+            "required": [
+              "execution",
+              "provider"
+            ],
+            "properties": {
+              "execution": {
+                "enum": [
+                  "local"
+                ]
+              },
+              "provider": {
+                "enum": [
+                  "github",
+                  "gitlab"
+                ]
+              }
+            }
+          }
+        }
+      },
+      "description": "Local execution requires provider none",
+      "x-conflict-pointers": [
+        "/verification/execution",
+        "/verification/provider"
+      ]
+    },
+    {
+      "not": {
+        "type": "object",
+        "required": [
+          "verification"
+        ],
+        "properties": {
+          "verification": {
+            "type": "object",
+            "required": [
+              "execution",
+              "provider"
+            ],
+            "properties": {
+              "execution": {
+                "enum": [
+                  "ci"
+                ]
+              },
+              "provider": {
+                "enum": [
+                  "none"
+                ]
+              }
+            }
+          }
+        }
+      },
+      "description": "CI execution requires github or gitlab",
+      "x-conflict-pointers": [
+        "/verification/execution",
+        "/verification/provider"
+      ]
+    },
+    {
+      "not": {
+        "type": "object",
+        "required": [
+          "verification"
+        ],
+        "properties": {
+          "verification": {
+            "type": "object",
+            "required": [
+              "execution",
+              "subject"
+            ],
+            "properties": {
+              "execution": {
+                "enum": [
+                  "local"
+                ]
+              },
+              "subject": {
+                "enum": [
+                  "merge_result_sha"
+                ]
+              }
+            }
+          }
+        }
+      },
+      "description": "Local verification supports source_sha only",
+      "x-conflict-pointers": [
+        "/verification/execution",
+        "/verification/subject"
+      ]
+    },
+    {
+      "not": {
+        "type": "object",
+        "required": [
+          "verification",
+          "documentation"
+        ],
+        "properties": {
+          "verification": {
+            "type": "object",
+            "required": [
+              "local_execution"
+            ],
+            "properties": {
+              "local_execution": {
+                "enum": [
+                  "forbidden"
+                ]
+              }
+            }
+          },
+          "documentation": {
+            "type": "object",
+            "required": [
+              "web"
+            ],
+            "properties": {
+              "web": {
+                "type": "object",
+                "required": [
+                  "execution"
+                ],
+                "properties": {
+                  "execution": {
+                    "enum": [
+                      "local"
+                    ]
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "description": "Local documentation execution is forbidden",
+      "x-conflict-pointers": [
+        "/verification/local_execution",
+        "/documentation/web/execution"
+      ]
+    }
+  ]
+}

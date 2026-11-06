@@ -4,7 +4,7 @@
 Configured policies describe intent only; the canonical verifier blocks their
 execution until policy-bound receipt support is implemented.
 The standard-library schema walker intentionally implements only the vocabulary
-used by the bundled closed v1 schema; adding vocabulary requires a validator change.
+used by the bundled closed schemas; adding vocabulary requires a validator change.
 """
 from __future__ import annotations
 
@@ -33,6 +33,61 @@ stale evidence as a stop condition for a protected push.
 <!-- verify-before-push:end -->'''
 MANAGED = ('verify-before-push', 'develop-with-test-first-evidence',
            'execute-verified-development-lifecycle', 'synchronize-git-repositories')
+
+
+CHANGE_TYPES = ('added', 'modified', 'deleted', 'renamed', 'type_changed')
+
+
+def portable_path(value, *, glob=False):
+    """Validate repository-relative POSIX paths and the closed segment glob syntax."""
+    if (not isinstance(value, str) or not value or value.startswith('/') or '\\' in value
+            or ':' in value or any(ord(c) < 32 or ord(c) == 127 for c in value)):
+        return False
+    parts = value.split('/')
+    if any(part in ('', '.', '..') for part in parts):
+        return False
+    if glob and (any(c in value for c in '?[]{}!')
+                 or any('**' in part and part != '**' for part in parts)):
+        return False
+    return True
+
+
+def _catalog_error(pointer, message):
+    return {'code': 'invalid_check_catalog', 'severity': 'error', 'path': POLICY,
+            'pointer': pointer, 'message': message, 'affected_operations': list(OPERATIONS)}
+
+
+def _catalog_errors(document):
+    errors = []
+    verification = document.get('verification', {})
+    catalogs = [('/verification/checks', verification.get('checks'))] if isinstance(verification, dict) else []
+    profiles = document.get('profiles', {})
+    if isinstance(profiles, dict):
+        for name, profile in profiles.items():
+            if isinstance(profile, dict) and isinstance(profile.get('overrides'), dict):
+                v = profile['overrides'].get('verification', {})
+                if isinstance(v, dict) and 'checks' in v:
+                    catalogs.append((_pointer('/profiles', name) + '/overrides/verification/checks', v['checks']))
+    for pointer, checks in catalogs:
+        if not isinstance(checks, list):
+            continue
+        seen = set()
+        for i, check in enumerate(checks):
+            if not isinstance(check, dict):
+                continue
+            ident = check.get('id')
+            if isinstance(ident, str):
+                if not ident.strip() or any(ord(c) < 32 or ord(c) == 127 for c in ident) or ident in seen:
+                    errors.append(_catalog_error(pointer + '/' + str(i) + '/id', 'Check IDs must be nonblank, control-free and unique'))
+                seen.add(ident)
+            scope = check.get('scope', {})
+            if isinstance(scope, dict):
+                for key in ('include_paths', 'exclude_paths'):
+                    if isinstance(scope.get(key), list):
+                        for n, pattern in enumerate(scope[key]):
+                            if not portable_path(pattern, glob=True):
+                                errors.append(_catalog_error(pointer + '/' + str(i) + '/scope/' + key + '/' + str(n), 'Unsupported portable path pattern'))
+    return errors
 
 
 def _digest(value):
@@ -213,6 +268,19 @@ def _conflicts(result, assertions):
         result['diagnostics'].append({'code': code, 'severity': 'conflict', 'path': POLICY,
             'pointer': pointer, 'sources': sources, 'affected_operations': operations,
             'message': message, 'resolution': 'Reconcile the explicit declarations before the affected action; no legacy gate is weakened'})
+    timing_pointer = '/verification/required_at' if policy['schema_version'] == 1 else '/verification/checks'
+    def push_weakened(names=None):
+        if policy['schema_version'] == 1:
+            return v['required_at'] == 'before_merge'
+        catalog = v['checks']
+        if names is not None and not all(isinstance(name, str) and name.strip() for name in names):
+            return True
+        selected = [c for c in catalog if c['id'] in names] if names is not None else [c for c in catalog if c['blocks']]
+        if not selected or (names is not None and {c['id'] for c in selected} != set(names)):
+            return True
+        return any('push' not in c['blocks'] or c['scope']['repositories'] != [result['repository']]
+                   or c['scope']['include_paths'] != ['**'] or c['scope']['exclude_paths']
+                   or set(c['scope']['change_types']) != set(CHANGE_TYPES) for c in selected)
     for path, entry in result['legacy_inputs'].items():
         doc = entry.get('document', {})
         if path.endswith('verify-before-push/config.json'):
@@ -220,13 +288,17 @@ def _conflicts(result, assertions):
             commands = [(i, c) for i, c in enumerate(doc.get('checks', []))
                         if c.get('enabled', True) is True and c.get('command')]
             required = [(i, c) for i, c in commands if c.get('required', True) is True]
-            if not doc.get('github_ci'):
+            ci_capability = doc.get('github_ci') or (policy['schema_version'] == 2 and isinstance(doc.get('gitlab_ci'), dict) and doc['gitlab_ci'].get('version') == 2)
+            if not ci_capability:
                 if commands and v['local_execution'] == 'forbidden':
                     conflict('legacy_local_execution', '/verification/local_execution', path,
                              f'/checks/{commands[0][0]}/command', ['push'], 'Legacy push verification executes local commands')
-                if required and v['required_at'] == 'before_merge':
-                    conflict('legacy_before_push', '/verification/required_at', path,
+                if required and push_weakened([c.get('name') for _, c in required]):
+                    conflict('legacy_before_push', timing_pointer, path,
                              f'/checks/{required[0][0]}/required', ['push'], 'Legacy verifier still requires checks before push')
+            if policy['schema_version'] == 2 and ci_capability and required and push_weakened([c.get('name') for _, c in required]):
+                conflict('legacy_before_push', timing_pointer, path,
+                         f'/checks/{required[0][0]}/required', ['push'], 'Legacy verifier still requires checks before push')
         if path.endswith('execute-verified-development-lifecycle/config.json'):
             for index, gate in enumerate(doc.get('gates', [])):
                 if isinstance(gate, dict) and gate.get('id') == 'tdd-red' and gate.get('required') is True:
@@ -237,18 +309,18 @@ def _conflicts(result, assertions):
             conflict('legacy_local_red', '/verification/local_execution', path, '/red_execution',
                      ['push', 'merge'], 'Explicit TDD configuration requires local RED execution')
         for block in entry.get('managed_blocks', []):
-            if block['recognized'] and block['name'] == 'verify-before-push' and v['required_at'] == 'before_merge':
-                conflict('legacy_before_push', '/verification/required_at', path, '', ['push'],
+            if block['recognized'] and block['name'] == 'verify-before-push' and push_weakened():
+                conflict('legacy_before_push', timing_pointer, path, '', ['push'],
                          'Recognized managed block invokes verification before push', block['line'])
 
 
     declarations = {
-        'mandatory_before_push': ('legacy_before_push', '/verification/required_at', v['required_at'] == 'before_merge'),
+        'mandatory_before_push': ('legacy_before_push', timing_pointer, push_weakened()),
         'local_execution_required': ('legacy_local_execution', '/verification/local_execution', v['local_execution'] == 'forbidden'),
         'local_red_required': ('legacy_local_red', '/verification/local_execution', v['local_execution'] == 'forbidden'),
         'tdd_red_required': ('legacy_tdd_red', '/development/evidence_mode', policy['development']['evidence_mode'] == 'final_verification'),
         'bootstrap_run_pipeline_fallback': ('legacy_bootstrap_fallback', '/publication/pipeline/bootstrap',
-             policy['publication']['pipeline']['bootstrap'] == 'suppress' and v['required_at'] == 'before_merge'),
+             policy['publication']['pipeline']['bootstrap'] == 'suppress' and push_weakened()),
         'website_required_for_task_completion': ('legacy_website_required', '/documentation/web/blocks_primary_task',
              policy['documentation']['web']['blocks_primary_task'] is False)}
     for assertion in assertions:
@@ -322,8 +394,14 @@ def load_project_policy(root, *, repository, operation, profile=None, today=None
             raw = _safe(root, POLICY).read_bytes()
             snapshots[POLICY] = hashlib.sha256(raw).hexdigest()
             document = _parse(raw)
-            schema = _parse((Path(__file__).resolve().parent.parent / 'schemas/project-policy.schema.json').read_bytes())
+            version = document.get('schema_version') if isinstance(document, dict) else None
+            schema_name = 'project-policy-v2.schema.json' if type(version) is int and version == 2 else 'project-policy.schema.json'
+            schema = _parse((Path(__file__).resolve().parent.parent / 'schemas' / schema_name).read_bytes())
             errors = _validate(document, schema)
+            if type(version) is int and version == 2:
+                errors.extend(_catalog_errors(document))
+                if isinstance(document.get('verification'), dict) and 'required_at' in document['verification']:
+                    errors.append(_catalog_error('/schema_version', 'Version two requires the per-check catalog contract'))
             if errors:
                 result['status'] = 'invalid'; result['compatibility_mode'] = 'blocked'
                 result['diagnostics'].extend(errors)
@@ -352,6 +430,11 @@ def load_project_policy(root, *, repository, operation, profile=None, today=None
                             result['diagnostics'].append({'code': 'profile_review_unconfirmed', 'severity': 'needs_review',
                                 'path': POLICY, 'pointer': _pointer('/profiles', profile) + '/review_condition',
                                 'message': selected['review_condition'], 'affected_operations': [operation]})
+                if version == 2:
+                    effective_errors = _validate(effective, schema) + _catalog_errors(effective)
+                    if effective_errors:
+                        result['status'] = 'invalid'; result['compatibility_mode'] = 'blocked'
+                        result['diagnostics'].extend(effective_errors)
                 for left, right, message in _cross_fields(effective):
                     error('contradictory_fields', message, left)
                     result['diagnostics'][-1]['sources'] = [{'path': POLICY, 'pointer': origins[p]['source_pointer']} for p in (left, right)]
