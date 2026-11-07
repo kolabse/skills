@@ -1,4 +1,9 @@
-# GitLab MR CI observation foundation
+# GitLab MR CI observations: contract v1
+
+Contract/observation v2 uses a separate
+[schema](../schemas/gitlab-ci-contract-v2.schema.json) and
+[applicability/background semantics](check-applicability.md). The v1 behavior
+below is preserved, including full-snapshot revalidation.
 
 This standalone, dependency-free collector is read-only and opt-in. It does not
 implement `verify_before_push.py --source gitlab-ci`. A successful observation

@@ -1,5 +1,9 @@
 # Project policy diagnostics: v1 foundation
 
+For the separate v2 check catalog and CI-only applicability consumer, read
+[applicability and background CI](check-applicability.md). The v1 schema and
+stage semantics described below remain unchanged.
+
 This package resolves declarations and reports conflicts. **Policy-bound action
 gates remain unavailable.** The canonical verifier guards local
 execution, GitHub CI collection and evidence acceptance: a present configured,
