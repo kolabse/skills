@@ -229,6 +229,10 @@ preserved unchanged until consumers implement enforcement. UTF-8 custom text,
 including a UTF-8 BOM and CRLF, is retained byte-for-byte in `preserved_content`; legacy content
 is also listed as unmapped. There is no `--apply` command.
 
+The separate [development-readiness contract](development-readiness.md) records
+explicit mode choices and checks source-readiness consistency without executing
+checks or relaxing existing gates. It does not establish provider Ready status.
+
 Future packages must implement operation planning, lifecycle decision history,
 provider adapters with exact-subject/job evidence, and consumer integration
 before declarations can change execution. This foundation does not complete

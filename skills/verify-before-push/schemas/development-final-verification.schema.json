@@ -1,0 +1,306 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "development-final-verification",
+  "description": "Caller-supplied diagnostic assertions only. Hash binding proves neither chronology nor execution, identity or Git provenance. Never authorizes an action.",
+  "type": "object",
+  "properties": {
+    "schema_version": {
+      "type": "integer",
+      "const": 1
+    },
+    "repository": {
+      "type": "string",
+      "minLength": 1,
+      "pattern": "\\S"
+    },
+    "operation": {
+      "type": "string",
+      "enum": [
+        "push",
+        "merge",
+        "build",
+        "deploy",
+        "cleanup"
+      ]
+    },
+    "profile": {
+      "anyOf": [
+        {
+          "type": "null"
+        },
+        {
+          "type": "string",
+          "minLength": 1,
+          "pattern": "\\S"
+        }
+      ]
+    },
+    "policy_digest": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "source_snapshot_digest": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "format": {
+      "type": "string",
+      "const": "development_final_verification"
+    },
+    "decision_digest": {
+      "type": "string",
+      "pattern": "^sha256:[0-9a-f]{64}$"
+    },
+    "subject": {
+      "type": "object",
+      "properties": {
+        "kind": {
+          "type": "string",
+          "enum": [
+            "commit",
+            "worktree"
+          ]
+        },
+        "identity": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "kind",
+        "identity"
+      ],
+      "additionalProperties": false,
+      "oneOf": [
+        {
+          "properties": {
+            "kind": {
+              "const": "commit"
+            },
+            "identity": {
+              "pattern": "^[0-9a-f]{40}(?:[0-9a-f]{24})?$"
+            }
+          }
+        },
+        {
+          "properties": {
+            "kind": {
+              "const": "worktree"
+            },
+            "identity": {
+              "type": "string",
+              "pattern": "^sha256:[0-9a-f]{64}$"
+            }
+          }
+        }
+      ]
+    },
+    "checks": {
+      "type": "object",
+      "properties": {
+        "focused": {
+          "oneOf": [
+            {
+              "type": "object",
+              "properties": {
+                "source": {
+                  "type": "string",
+                  "const": "local"
+                },
+                "command": {
+                  "type": "array",
+                  "minItems": 1,
+                  "items": {
+                    "type": "string",
+                    "minLength": 1,
+                    "pattern": "\\S"
+                  }
+                },
+                "exit_code": {
+                  "type": "integer",
+                  "const": 0
+                },
+                "summary": {
+                  "type": "string",
+                  "minLength": 1,
+                  "pattern": "\\S"
+                }
+              },
+              "required": [
+                "source",
+                "command",
+                "exit_code",
+                "summary"
+              ],
+              "additionalProperties": false
+            },
+            {
+              "type": "object",
+              "properties": {
+                "source": {
+                  "type": "string",
+                  "const": "ci"
+                },
+                "provider": {
+                  "type": "string",
+                  "enum": [
+                    "github",
+                    "gitlab"
+                  ]
+                },
+                "source_sha": {
+                  "type": "string",
+                  "pattern": "^[0-9a-f]{40}(?:[0-9a-f]{24})?$"
+                },
+                "pipeline_id": {
+                  "type": "integer",
+                  "minimum": 1
+                },
+                "job_id": {
+                  "type": "integer",
+                  "minimum": 1
+                },
+                "url": {
+                  "type": "string",
+                  "pattern": "^https://"
+                },
+                "status": {
+                  "type": "string",
+                  "const": "passed"
+                },
+                "summary": {
+                  "type": "string",
+                  "minLength": 1,
+                  "pattern": "\\S"
+                }
+              },
+              "required": [
+                "source",
+                "provider",
+                "source_sha",
+                "pipeline_id",
+                "job_id",
+                "url",
+                "status",
+                "summary"
+              ],
+              "additionalProperties": false
+            }
+          ]
+        },
+        "broader": {
+          "oneOf": [
+            {
+              "type": "object",
+              "properties": {
+                "source": {
+                  "type": "string",
+                  "const": "local"
+                },
+                "command": {
+                  "type": "array",
+                  "minItems": 1,
+                  "items": {
+                    "type": "string",
+                    "minLength": 1,
+                    "pattern": "\\S"
+                  }
+                },
+                "exit_code": {
+                  "type": "integer",
+                  "const": 0
+                },
+                "summary": {
+                  "type": "string",
+                  "minLength": 1,
+                  "pattern": "\\S"
+                }
+              },
+              "required": [
+                "source",
+                "command",
+                "exit_code",
+                "summary"
+              ],
+              "additionalProperties": false
+            },
+            {
+              "type": "object",
+              "properties": {
+                "source": {
+                  "type": "string",
+                  "const": "ci"
+                },
+                "provider": {
+                  "type": "string",
+                  "enum": [
+                    "github",
+                    "gitlab"
+                  ]
+                },
+                "source_sha": {
+                  "type": "string",
+                  "pattern": "^[0-9a-f]{40}(?:[0-9a-f]{24})?$"
+                },
+                "pipeline_id": {
+                  "type": "integer",
+                  "minimum": 1
+                },
+                "job_id": {
+                  "type": "integer",
+                  "minimum": 1
+                },
+                "url": {
+                  "type": "string",
+                  "pattern": "^https://"
+                },
+                "status": {
+                  "type": "string",
+                  "const": "passed"
+                },
+                "summary": {
+                  "type": "string",
+                  "minLength": 1,
+                  "pattern": "\\S"
+                }
+              },
+              "required": [
+                "source",
+                "provider",
+                "source_sha",
+                "pipeline_id",
+                "job_id",
+                "url",
+                "status",
+                "summary"
+              ],
+              "additionalProperties": false
+            }
+          ]
+        }
+      },
+      "required": [
+        "focused",
+        "broader"
+      ],
+      "additionalProperties": false
+    },
+    "evidence_digest": {
+      "type": "string",
+      "pattern": "^sha256:[0-9a-f]{64}$"
+    }
+  },
+  "required": [
+    "schema_version",
+    "repository",
+    "operation",
+    "profile",
+    "policy_digest",
+    "source_snapshot_digest",
+    "format",
+    "decision_digest",
+    "subject",
+    "checks",
+    "evidence_digest"
+  ],
+  "additionalProperties": false
+}
