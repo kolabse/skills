@@ -1,5 +1,9 @@
 # Policy-bound GitLab CI checks
 
+This page describes the unversioned GitLab mapping, policy v1 and receipt v4.
+For explicit v2 mappings, per-check applicability/background outcomes and receipt
+v5, read [applicability and background CI](check-applicability.md).
+
 Use this experimental read-only consumer to bind GitLab results to the selected
 project policy and local repository. It confirms CI checks only. It does not
 authorize push, merge, deployment or task completion, confirm independent source

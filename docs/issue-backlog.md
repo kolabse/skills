@@ -17,7 +17,7 @@ track remaining scope; preparing one package does not complete another issue.
 | Order | Scope | State / acceptance |
 | --- | --- | --- |
 | 1 | #153; examples #159, #160, #161, #163, #164 | Merged in PR #167 after all required CI checks passed. |
-| 2 | #152 shared contract with #150/#151/#154 | Foundations merged in PR #168/#169; policy-bound CI-only receipts merged in PR #170 after full CI. V2 check applicability/background evidence published in PR #171; full CI required before merge. Development-mode/source-readiness diagnostics in local implementation. Action gates, lifecycle integration, orchestration, remaining consumers and live acceptance are still pending. Proposed YAML is not an implemented interface. |
+| 2 | #152 shared contract with #150/#151/#154 | Foundations merged in PR #168/#169; policy-bound CI-only receipts merged in PR #170 after full CI. V2 check applicability/background evidence merged in PR #171 after full CI. Development-mode/source-readiness diagnostics published in PR #172; integration checks pending. Action gates, lifecycle integration, orchestration, remaining consumers and live acceptance are still pending. Proposed YAML is not an implemented interface. |
 | 3 | #155/#162/#166 | Pending: named completion boundary, claim-free task identity and evidence-backed absence of applicable jobs. No fabricated production/pipeline PASS. |
 | 4 | #158 | Pending: digest-bound ancestry-only proof policy with backward-compatible defaults and preserved cleanup safety. |
 | 5 | #156/#157 | Pending: opt-in maintenance ownership adapter and separate external-owned dependency model, scoped authority and revision-bound acceptance. |

@@ -19,6 +19,11 @@ use the experimental `policy-ci collect|verify` route described in
 [policy-bound GitLab CI checks](references/policy-gitlab-ci.md). Its evidence is
 CI-only; the ordinary push/merge gates remain unchanged.
 
+For check-specific blocking stages, path applicability, and visible nonblocking
+background outcomes, read [applicability and background CI](references/check-applicability.md).
+This opt-in v2 mode derives its change inventory from Git and preserves the
+existing contracts; a `not_required` decision is not pipeline success.
+
 Announce this skill once at the start of the workflow. Repeated gates within
 that workflow need result updates, not repeated announcements.
 

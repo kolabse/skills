@@ -67,7 +67,7 @@ CONTRACT_KEYS = {
 }
 
 
-def validate_contract(contract):
+def _validate_contract_v1(contract):
     require(type(contract) is dict and set(contract) == CONTRACT_KEYS,
             'contract must contain exactly the documented keys')
     require(type(contract['version']) is int and contract['version'] == 1, 'unsupported contract version')
@@ -90,6 +90,44 @@ def validate_contract(contract):
     require(contract['subject_kind'] == 'source_sha', 'only detached source_sha evidence is supported')
     require(not contract['require_ready_at_start'], 'Ready-at-start history is unconfirmed')
     require(not contract['require_source_review'], 'independent source review is unconfirmed')
+    return contract
+
+
+CONTRACT_V2_KEYS = CONTRACT_KEYS | {
+    'observed_jobs', 'target_head', 'diff_base_sha', 'diff_start_sha', 'applicability_digest',
+}
+
+
+def valid_text(value):
+    return (isinstance(value, str) and 0 < len(value) <= 255 and bool(value.strip()) and
+            not any(ord(c) < 32 or ord(c) == 127 for c in value))
+
+
+def validate_contract(contract):
+    """Explicit version dispatch keeps the legacy contract closed and unchanged."""
+    require(type(contract) is dict and type(contract.get('version')) is int,
+            'unsupported contract version')
+    if contract['version'] == 1:
+        return _validate_contract_v1(contract)
+    require(contract['version'] == 2, 'unsupported contract version')
+    require(set(contract) == CONTRACT_V2_KEYS, 'contract must contain exactly the documented keys')
+    legacy = {key: value for key, value in contract.items() if key in CONTRACT_KEYS}
+    legacy.update(version=1, required_jobs=['v2-validation-placeholder'])
+    _validate_contract_v1(legacy)
+    for field in ('repository', 'target_branch') + (() if contract['profile'] is None else ('profile',)):
+        require(valid_text(contract[field]) and contract[field].strip(), 'invalid contract text')
+    require(contract['require_pipeline_success'] is False,
+            'v2 observes whole-pipeline status without requiring success')
+    for field in ('target_head', 'diff_base_sha', 'diff_start_sha'):
+        require(sha(contract[field]), 'invalid provenance SHA')
+    require(isinstance(contract['applicability_digest'], str) and
+            re.fullmatch('[0-9a-f]{64}', contract['applicability_digest']), 'invalid applicability digest')
+    for field in ('required_jobs', 'observed_jobs'):
+        jobs = contract[field]
+        require(type(jobs) is list and all(valid_text(name) and name.strip() for name in jobs) and
+                len(set(jobs)) == len(jobs), 'jobs must be unique exact names')
+    require(set(contract['required_jobs']) <= set(contract['observed_jobs']),
+            'observed jobs must include required jobs')
     return contract
 
 
@@ -223,10 +261,207 @@ def now():
     return datetime.now(timezone.utc).isoformat()
 
 
+MR_KEYS = {'iid', 'project_id', 'source_project_id', 'target_project_id', 'state',
+           'draft', 'sha', 'target_branch', 'source_branch', 'diff_refs'}
+PIPELINE_KEYS = {'id', 'project_id', 'sha', 'source', 'ref', 'status', 'web_url'}
+JOB_KEYS = {'id', 'name', 'status', 'web_url'}
+JOB_OPTIONAL_KEYS = {'duration', 'started_at', 'finished_at'}
+PIPELINE_STATUSES = {'created', 'waiting_for_resource', 'preparing', 'pending',
+                     'running', 'success', 'failed', 'canceled', 'skipped', 'manual', 'scheduled'}
+
+
+def read_mr_context(transport, *, host, project_id, mr_iid, source_sha,
+                    target_branch, require_non_draft):
+    """Read bounded current MR provenance, excluding unrelated provider progress."""
+    valid_host(host)
+    require(positive(project_id) and positive(mr_iid) and sha(source_sha) and
+            valid_text(target_branch) and type(require_non_draft) is bool,
+            'invalid MR context request')
+    base = f'projects/{project_id}'
+    raw = object_response(transport.get(f'{base}/merge_requests/{mr_iid}'))
+    mr = {key: raw.get(key) for key in MR_KEYS}
+    refs = object_response(mr['diff_refs'])
+    mr['diff_refs'] = {key: refs.get(key) for key in ('base_sha', 'start_sha', 'head_sha')}
+    _validate_mr(mr, project_id=project_id, mr_iid=mr_iid, source_sha=source_sha,
+                 target_branch=target_branch, require_non_draft=require_non_draft)
+    branch = object_response(transport.get(f'{base}/repository/branches/{quote(target_branch, safe="")}'))
+    require(branch.get('name') == target_branch and type(branch.get('commit')) is dict and
+            sha(branch['commit'].get('id')), 'invalid current target HEAD')
+    return dict(mr=mr, target_head=branch['commit']['id'])
+
+
+def _validate_mr(mr, *, project_id, mr_iid, source_sha, target_branch, require_non_draft):
+    require(type(mr) is dict and set(mr) == MR_KEYS, 'invalid MR observation shape')
+    require(all(type(mr.get(k)) is int and mr[k] == value for k, value in
+                [('iid', mr_iid), ('project_id', project_id), ('source_project_id', project_id),
+                 ('target_project_id', project_id)]), 'MR identity mismatch or unsupported fork')
+    require(mr['state'] == 'opened' and mr['sha'] == source_sha and
+            mr['target_branch'] == target_branch and valid_text(mr['source_branch']),
+            'MR state/source/target mismatch')
+    require(type(mr['draft']) is bool, 'unknown MR Draft state')
+    require(not require_non_draft or not mr['draft'], 'MR is Draft')
+    refs = mr['diff_refs']
+    require(type(refs) is dict and set(refs) == {'base_sha', 'start_sha', 'head_sha'} and
+            all(sha(value) for value in refs.values()) and refs['head_sha'] == source_sha,
+            'incomplete MR diff refs')
+
+
+def _validate_selected_pipeline(pipeline, contract):
+    require(type(pipeline) is dict and set(pipeline) == PIPELINE_KEYS,
+            'invalid pipeline observation shape')
+    require(positive(pipeline['id']) and type(pipeline['project_id']) is int and
+            pipeline['project_id'] == contract['project_id'] and
+            pipeline['sha'] == contract['source_sha'] and
+            pipeline['source'] == 'merge_request_event' and
+            pipeline['ref'] == f"refs/merge-requests/{contract['mr_iid']}/head",
+            'unknown or merged-results pipeline provenance')
+    require(isinstance(pipeline['status'], str) and pipeline['status'] in PIPELINE_STATUSES,
+            'unknown pipeline status')
+    safe_url(pipeline['web_url'], contract['host'])
+
+
+def _validate_job(job, contract):
+    require(type(job) is dict and JOB_KEYS <= set(job) <= JOB_KEYS | JOB_OPTIONAL_KEYS,
+            'invalid job observation shape')
+    require(positive(job['id']) and valid_text(job['name']) and valid_text(job['status']),
+            'invalid job identity/status')
+    safe_url(job['web_url'], contract['host'])
+    if 'duration' in job:
+        duration = job['duration']
+        require(duration is None or (type(duration) in (int, float) and
+                0 <= duration < float('inf')), 'invalid job duration')
+    for field in ('started_at', 'finished_at'):
+        if field in job:
+            require(job[field] is None or valid_text(job[field]), 'invalid job timestamp')
+
+
+def snapshot_v2(contract, transport):
+    context = read_mr_context(transport, **{key: contract[key] for key in
+                              ('host', 'project_id', 'mr_iid', 'source_sha',
+                               'target_branch', 'require_non_draft')})
+    require(context['target_head'] == contract['target_head'] and
+            context['mr']['diff_refs']['base_sha'] == contract['diff_base_sha'] and
+            context['mr']['diff_refs']['start_sha'] == contract['diff_start_sha'],
+            'MR diff/current target changed from applicability context')
+    base = f"projects/{contract['project_id']}"
+    pipelines = pages(transport, f"{base}/merge_requests/{contract['mr_iid']}/pipelines")
+    relevant = []
+    for entry in pipelines:
+        pipeline = object_response(transport.get(f"{base}/pipelines/{entry['id']}"))
+        require(type(pipeline.get('id')) is int and pipeline['id'] == entry['id'] and
+                type(pipeline.get('project_id')) is int and pipeline['project_id'] == contract['project_id'] and
+                sha(pipeline.get('sha')) and valid_text(pipeline.get('source')) and
+                valid_text(pipeline.get('ref')) and isinstance(pipeline.get('status'), str) and
+                pipeline['status'] in PIPELINE_STATUSES, 'invalid pipeline identity/status')
+        safe_url(pipeline.get('web_url'), contract['host'])
+        if pipeline['sha'] != contract['source_sha'] or pipeline['source'] != 'merge_request_event':
+            continue
+        selected = {key: pipeline[key] for key in PIPELINE_KEYS}
+        _validate_selected_pipeline(selected, contract)
+        relevant.append(selected)
+    if not relevant:
+        require(not contract['required_jobs'], 'no supported current MR source pipeline')
+        return dict(**context, pipeline=None, relevant_pipeline_ids=[], jobs=[],
+                    pipeline_observation='absent' if contract['observed_jobs'] else 'not_needed')
+    pipeline = max(relevant, key=lambda p: p['id'])
+    jobs = pages(transport, f"{base}/pipelines/{pipeline['id']}/jobs", jobs=True)
+    current = []
+    for raw in jobs:
+        identity = raw.get('pipeline')
+        require(type(identity) is dict and type(identity.get('id')) is int and
+                identity['id'] == pipeline['id'] and type(identity.get('project_id')) is int and
+                identity['project_id'] == contract['project_id'] and
+                identity.get('sha') == contract['source_sha'], 'job pipeline/project/source mismatch')
+        require(raw.get('retried', False) is False, 'retried job returned as current')
+        job = {key: raw[key] for key in JOB_KEYS | JOB_OPTIONAL_KEYS if key in raw}
+        _validate_job(job, contract)
+        current.append(job)
+    for name in contract['required_jobs']:
+        matches = [job for job in current if job['name'] == name]
+        require(len(matches) == 1 and matches[0]['status'] == 'success',
+                'required job missing, ambiguous or unsuccessful')
+    return dict(**context, pipeline=pipeline, relevant_pipeline_ids=sorted(p['id'] for p in relevant),
+                jobs=sorted(current, key=lambda job: job['id']), pipeline_observation='observed')
+
+
+def _make_observation(contract, state, started):
+    result = dict(kind='gitlab-ci-observation', observation_version=2,
+                  contract=contract, contract_digest=digest(contract),
+                  observed_from=started, observed_until=now(), reused_existing_pipeline=True,
+                  unconfirmed_conditions=['ready_at_start', 'source_review'], authority='observation_only',
+                  unproved_bindings=['tracked_remote', 'source_review', 'ready_at_start',
+                                     'policy_file_freshness', 'action_authorization',
+                                     'applicability_digest'], **state)
+    result['integrity_digest'] = observation_digest(result)
+    return result
+
+
+def binding_key(observation):
+    """Validated v2 required-proof identity; background progress grants no authority."""
+    keys = {'kind', 'observation_version', 'contract', 'contract_digest', 'observed_from',
+            'observed_until', 'reused_existing_pipeline', 'unconfirmed_conditions', 'authority',
+            'unproved_bindings', 'integrity_digest', 'mr', 'target_head', 'pipeline',
+            'relevant_pipeline_ids', 'jobs', 'pipeline_observation'}
+    require(type(observation) is dict and set(observation) == keys and
+            type(observation['observation_version']) is int and observation['observation_version'] == 2,
+            'invalid v2 observation shape')
+    contract = validate_contract(observation['contract'])
+    require(contract['version'] == 2 and observation['contract_digest'] == digest(contract) and
+            observation['integrity_digest'] == observation_digest(observation), 'observation digest mismatch')
+    require(observation['kind'] == 'gitlab-ci-observation' and observation['authority'] == 'observation_only' and
+            observation['reused_existing_pipeline'] is True and
+            observation['unconfirmed_conditions'] == ['ready_at_start', 'source_review'] and
+            observation['unproved_bindings'] == ['tracked_remote', 'source_review', 'ready_at_start',
+                'policy_file_freshness', 'action_authorization', 'applicability_digest'] and
+            all(valid_text(observation[key]) for key in ('observed_from', 'observed_until')),
+            'invalid observation authority/metadata')
+    _validate_mr(observation['mr'], **{key: contract[key] for key in
+                 ('project_id', 'mr_iid', 'source_sha', 'target_branch', 'require_non_draft')})
+    require(observation['target_head'] == contract['target_head'] and
+            observation['mr']['diff_refs']['base_sha'] == contract['diff_base_sha'] and
+            observation['mr']['diff_refs']['start_sha'] == contract['diff_start_sha'],
+            'observation provenance mismatch')
+    ids, jobs = observation['relevant_pipeline_ids'], observation['jobs']
+    require(type(ids) is list and all(positive(identity) for identity in ids) and
+            ids == sorted(set(ids)) and type(jobs) is list, 'invalid observed collections')
+    job_ids = []
+    for job in jobs:
+        _validate_job(job, contract)
+        job_ids.append(job['id'])
+    require(job_ids == sorted(set(job_ids)), 'duplicate or unsorted current job identity')
+    pipeline = observation['pipeline']
+    if pipeline is None:
+        require(not contract['required_jobs'] and not ids and not jobs and
+                observation['pipeline_observation'] == ('absent' if contract['observed_jobs'] else 'not_needed'),
+                'invalid absent pipeline observation')
+    else:
+        _validate_selected_pipeline(pipeline, contract)
+        require(ids and pipeline['id'] == max(ids) and observation['pipeline_observation'] == 'observed',
+                'invalid selected pipeline identity')
+    required = []
+    for name in contract['required_jobs']:
+        matches = [job for job in jobs if job['name'] == name]
+        require(len(matches) == 1 and matches[0]['status'] == 'success',
+                'required job missing, ambiguous or unsuccessful')
+        required.append({key: matches[0][key] for key in JOB_KEYS})
+    proof = dict(contract_digest=digest(contract), mr=observation['mr'], target_head=observation['target_head'])
+    if contract['required_jobs']:
+        proof.update(relevant_pipeline_ids=ids,
+                     pipeline={key: value for key, value in pipeline.items() if key != 'status'},
+                     required_jobs=required)
+    return digest(proof)
+
+
 def collect(contract, transport):
     """Collect and reobserve; caller must recollect at gate use and recheck policy."""
     contract = copy.deepcopy(validate_contract(contract))
     started = now()
+    if contract['version'] == 2:
+        first = _make_observation(contract, snapshot_v2(contract, transport), started)
+        second = _make_observation(contract, snapshot_v2(contract, transport), started)
+        require(binding_key(first) == binding_key(second),
+                'provider required-proof state changed during collection; recollect')
+        return second
     first = snapshot(contract, transport)
     second = snapshot(contract, transport)
     require(first == second, 'provider state changed during collection; recollect')

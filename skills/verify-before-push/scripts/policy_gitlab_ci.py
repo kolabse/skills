@@ -38,7 +38,12 @@ def validate_gitlab_ci_policy(config):
     if 'gitlab_ci' not in config:
         return None
     block = config['gitlab_ci']
-    require(type(block) is dict and set(block) == {'host', 'project_id', 'remote', 'mr_iid', 'checks'},
+    require(type(block) is dict, 'gitlab_ci must be an object')
+    version = block.get('version', 1)
+    require(type(version) is int and version in (1, 2) and ('version' not in block or version == 2),
+            'unsupported explicit gitlab_ci version')
+    keys = {'host', 'project_id', 'remote', 'mr_iid', 'checks'} | ({'version'} if version == 2 else set())
+    require(set(block) == keys,
             'gitlab_ci requires exactly host, project_id, remote, mr_iid and checks')
     g.valid_host(block['host'])
     require(g.positive(block['project_id']) and g.positive(block['mr_iid']), 'invalid configured project/MR identity')
@@ -53,7 +58,7 @@ def validate_gitlab_ci_policy(config):
         enabled, mandatory = check.get('enabled', True), check.get('required', True)
         require(type(enabled) is bool and type(mandatory) is bool, 'check flags must be booleans')
         require(enabled or not mandatory, 'required checks cannot be disabled')
-        if enabled and mandatory:
+        if enabled and (mandatory or version == 2):
             required.add(check['name'])
     mapping = block['checks']
     require(type(mapping) is dict and required and set(mapping) == required,
@@ -129,7 +134,7 @@ def identity(v, root, block, transport):
                 urls=urls, project_id=project['id'], path_with_namespace=project['path_with_namespace'])
 
 
-def safe_evidence(v, root, value):
+def safe_evidence(v, root, value, *, expected_version=4, expected_keys=None):
     path = Path(value or DEFAULT_EVIDENCE)
     require(not path.is_absolute() and ':' not in str(path) and '..' not in path.parts,
             'evidence path must stay inside project root')
@@ -147,8 +152,8 @@ def safe_evidence(v, root, value):
     if path.exists():
         require(path.is_file(), 'evidence must be a regular file')
         existing = g.loads_strict(path.read_text(encoding='utf-8'))
-        require(type(existing) is dict and set(existing) == RECEIPT_KEYS and
-                type(existing.get('version')) is int and existing['version'] == 4 and
+        require(type(existing) is dict and set(existing) == (RECEIPT_KEYS if expected_keys is None else expected_keys) and
+                type(existing.get('version')) is int and existing['version'] == expected_version and
                 existing.get('source') == 'gitlab-ci' and existing.get('scope') == 'ci-checks-only',
                 'refusing to overwrite a non-policy-CI receipt or configuration')
     return path
@@ -167,6 +172,7 @@ def context(v, root, repository, operation, profile, transport, expected_config_
     require(g.digest(parsed) == g.digest(config), 'configuration changed during loading')
     block = validate_gitlab_ci_policy(config)
     require(block is not None, 'explicit gitlab_ci configuration is required')
+    require('version' not in block, 'version 2 configuration requires the applicability consumer')
     require(getattr(transport, 'host', block['host']) == block['host'], 'transport host differs from selected configuration')
     entries = config['repositories']
     require(len(entries) == 1 and entries[0]['name'] == repository and
@@ -180,6 +186,7 @@ def context(v, root, repository, operation, profile, transport, expected_config_
     require(report['status'] == 'configured' and not report['dependent_action_blockers'].get(operation),
             'policy is absent, invalid, expired or blocked for operation')
     policy = report['effective_policy']
+    require(policy['schema_version'] == 1, 'version 2 policy requires version 2 GitLab configuration')
     verification = policy['verification']
     require(verification['execution'] == 'ci' and verification['provider'] == 'gitlab' and
             verification['subject'] == 'source_sha', 'unsupported policy provider/execution/subject')
@@ -227,13 +234,16 @@ def timestamp(value):
 def execute(root, repository, operation, profile, evidence_file, transport, verify):
     root = Path(root).resolve()
     v = sibling('verify_before_push')
-    path = safe_evidence(v, root, evidence_file)
     # Host is configured locally, never taken from caller-supplied receipt.
     initial_raw = (root / v.CONFIG_RELATIVE).read_bytes()
     initial = g.loads_strict(initial_raw.decode('utf-8-sig'))
     initial_digest = g.hashlib.sha256(initial_raw).hexdigest()
     block = validate_gitlab_ci_policy(initial)
     require(block is not None, 'explicit gitlab_ci configuration is required')
+    if block.get('version') == 2:
+        return sibling('policy_gitlab_checks').execute(root, repository, operation, profile,
+                evidence_file, transport, verify, initial_raw=initial_raw, wrapper=globals())
+    path = safe_evidence(v, root, evidence_file)
     transport = transport or g.GlabTransport(block['host'])
     before = context(v, root, repository, operation, profile, transport, initial_digest)
     old = None
@@ -282,15 +292,20 @@ def main(argv=None):
     parser.add_argument('command', choices=('collect', 'verify'))
     parser.add_argument('--project-root', required=True, type=Path)
     parser.add_argument('--repository', required=True)
-    parser.add_argument('--operation', choices=('merge',), required=True)
+    parser.add_argument('--operation', choices=policy_loader.OPERATIONS, required=True)
     parser.add_argument('--profile')
     parser.add_argument('--evidence-file')
     args = parser.parse_args(argv)
     try:
         action = collect_evidence if args.command == 'collect' else verify_evidence
         result = action(args.project_root, args.repository, args.operation, args.profile, args.evidence_file)
-        print('GitLab CI checks ' + ('collected' if args.command == 'collect' else 'revalidated') +
-              '; push/merge authorization not granted; source review and Ready-at-start unconfirmed.')
+        if result['version'] == 5:
+            print('GitLab CI checks ' + result['evaluation']['blocking_state'] +
+                  '; background ' + str(result['evaluation']['background_counts']) +
+                  '; authorization not granted; source review and Ready-at-start unconfirmed.')
+        else:
+            print('GitLab CI checks ' + ('collected' if args.command == 'collect' else 'revalidated') +
+                  '; push/merge authorization not granted; source review and Ready-at-start unconfirmed.')
         return 0
     except Exception as exc:
         # Never export provider diagnostics, repository URLs, tokens or caller artifact contents.

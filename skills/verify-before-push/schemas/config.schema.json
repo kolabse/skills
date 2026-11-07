@@ -12,6 +12,7 @@
       "type": "object", "additionalProperties": false,
       "required": ["host", "project_id", "remote", "mr_iid", "checks"],
       "properties": {
+        "version": {"const": 2},
         "host": {"type": "string", "maxLength": 253, "pattern": "^[A-Za-z0-9](?:[A-Za-z0-9-]*[A-Za-z0-9])?(?:\\.[A-Za-z0-9](?:[A-Za-z0-9-]*[A-Za-z0-9])?)*$"},
         "project_id": {"type": "integer", "minimum": 1},
         "remote": {"type": "string", "minLength": 1},
