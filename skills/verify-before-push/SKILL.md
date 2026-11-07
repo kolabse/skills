@@ -24,6 +24,10 @@ that workflow need result updates, not repeated announcements.
 
 ## Shared project-policy diagnostics
 
+For explicit development-mode decisions and diagnostic source-readiness
+records, read [development readiness](references/development-readiness.md).
+These records do not change lifecycle checkpoints or publication gates.
+
 For read-only inspection of `.agents/kolabse/project-policy.json`, use
 `scripts/project_policy.py status|explain|validate --project-root <root> --json`
 or `migrate --dry-run`. Read [references/project-policy.md](references/project-policy.md)
