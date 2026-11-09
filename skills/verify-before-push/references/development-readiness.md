@@ -101,9 +101,21 @@ by local-run observations. Unsupported merge-result subjects remain explicitly
 unsupported rather than being treated as source-SHA checks.
 
 This final-verification format does not replace the existing test-first format.
-Policy-bound test-first ingestion into these diagnostics remains unavailable;
-use the existing version 1 validator for its declared scope. Neither format
-alone proves that all checks in a separate project catalog were executed.
+The distinct `validate_test_first_binding` library API accepts a policy-bound
+wrapper using an injected trusted canonical v1 validator; the
+`develop-with-test-first-evidence` consumer supplies that fixed validator through
+its `evidence.py accept` command. The existing final-only API remains final-only.
+Neither format alone proves that all checks in a separate project catalog were
+executed.
+
+The test-first wrapper and result use
+[development-test-first-binding.schema.json](../schemas/development-test-first-binding.schema.json)
+and [development-test-first-result.schema.json](../schemas/development-test-first-result.schema.json).
+Nested v1 evidence is unchanged and must pass its canonical validator. Local
+RED/GREEN observations cannot satisfy CI-only or forbidden-local execution;
+native CI test-first evidence remains unsupported. The fixed runtime API and
+capabilities are declared in [runtime-api.json](runtime-api.json). Installation
+identity and API checks do not authenticate arbitrary filesystem contents.
 
 Implementation completion, successful verification observations, and source
 review are separate inputs. They must refer to the same final source identity.

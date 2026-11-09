@@ -54,7 +54,24 @@ def validate(data):
 def main():
     parser=argparse.ArgumentParser(description=__doc__); subs=parser.add_subparsers(dest="command",required=True)
     for name in ("validate","digest"): subs.add_parser(name).add_argument("--input",required=True)
-    args=parser.parse_args(); data=json.loads(Path(args.input).read_text(encoding="utf-8"))
+    accept=subs.add_parser("accept")
+    for name in ("input","project-root","repository","operation"):
+        accept.add_argument("--"+name,required=True)
+    for name in ("profile","decision","previous-decision","subject","policy-runtime-root"):
+        accept.add_argument("--"+name)
+    args=parser.parse_args()
+    if args.command=="accept":
+        import importlib.util
+        path=Path(__file__).resolve().with_name("policy_evidence.py")
+        spec=importlib.util.spec_from_file_location("_test_first_policy_evidence",path)
+        adapter=importlib.util.module_from_spec(spec); spec.loader.exec_module(adapter)
+        result=adapter.accept_records(args.input,args.project_root,args.repository,args.operation,
+            legacy_validator=validate,profile=args.profile,decision_path=args.decision,
+            previous_decision_path=args.previous_decision,subject_path=args.subject,
+            policy_runtime_root=args.policy_runtime_root)
+        print(json.dumps(result,sort_keys=True,indent=2,ensure_ascii=True))
+        raise SystemExit(2 if result["status"]=="blocked" else 0)
+    data=json.loads(Path(args.input).read_text(encoding="utf-8"))
     if args.command=="digest": print(digest(data)); return
     errors=validate(data); print(json.dumps({"valid":not errors,"errors":errors},sort_keys=True)); raise SystemExit(1 if errors else 0)
 if __name__=="__main__": main()

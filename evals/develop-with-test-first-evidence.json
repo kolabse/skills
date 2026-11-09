@@ -2,6 +2,10 @@
   "skill": "develop-with-test-first-evidence",
   "positive": [
     {
+      "prompt": "Implement the parser correction under our explicit final_verification project policy: checks run only in CI and intermediate RED runs are forbidden.",
+      "reason": "Behavior implementation still selects this workflow; its declared final-verification route must honor project policy instead of requiring RED."
+    },
+    {
       "prompt": "Implement this parser change using strict TDD and show me the red and green commands.",
       "reason": "Explicit TDD with evidence."
     },
@@ -35,6 +39,10 @@
     }
   ],
   "negative": [
+    {
+      "prompt": "Explain the difference between final verification and test-first development; do not change code or run checks.",
+      "reason": "Conceptual explanation alone does not invoke implementation or evidence acceptance."
+    },
     {
       "prompt": "Add unit tests for the implementation I already finished.",
       "reason": "After-the-fact test coverage is not test-first development."

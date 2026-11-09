@@ -1,0 +1,15 @@
+{
+  "schema_version": 1,
+  "provider": "verify-before-push",
+  "collection": "kolabse-skills",
+  "api_version": 1,
+  "capabilities": [
+    "project-policy-v1-v2",
+    "development-readiness-v1",
+    "test-first-binding-v1"
+  ],
+  "entrypoints": {
+    "project_policy": "scripts/project_policy.py",
+    "development_readiness": "scripts/development_readiness.py"
+  }
+}
