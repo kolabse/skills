@@ -25,6 +25,8 @@ CONTEXT = {'repository', 'operation', 'profile', 'policy_digest', 'source_snapsh
 DECISION = CONTEXT | {'schema_version', 'format', 'mode', 'selection_subject', 'phase',
                       'rationale', 'predecessor_digest', 'change_reason', 'decision_digest'}
 EVIDENCE = CONTEXT | {'schema_version', 'format', 'decision_digest', 'subject', 'checks', 'evidence_digest'}
+TEST_FIRST_BINDING = CONTEXT | {'schema_version', 'format', 'decision_digest', 'subject',
+                                'test_first_evidence', 'binding_digest'}
 REVIEW = CONTEXT | {'schema_version', 'format', 'decision_digest', 'subject', 'outcome',
                     'reviewer', 'summary', 'review_digest'}
 LOCAL = {'source', 'command', 'exit_code', 'summary'}
@@ -87,7 +89,7 @@ def _record(value, expected, name, digest_key, errors):
             valid = False
     if not valid:
         _diagnostic(errors, 'invalid_' + {'decision_digest': 'decision', 'evidence_digest': 'evidence',
-                    'review_digest': 'review'}[digest_key], 'Record structure, version or canonical binding is invalid')
+                    'review_digest': 'review', 'binding_digest': 'binding'}[digest_key], 'Record structure, version or canonical binding is invalid')
     return valid
 
 
@@ -316,6 +318,66 @@ def validate_final_verification(policy_report, decision, evidence, subject, prev
                   check_scope='focused_and_broader_contract_only')
     return _receipt(result, policy_report, decision, subject,
                     {'evidence_digest': evidence.get('evidence_digest') if isinstance(evidence, dict) else None},
+                    'report_digest')
+
+
+
+def validate_test_first_binding(policy_report, decision, binding, subject, legacy_validator,
+                                previous_decision=None):
+    """Check local v1 evidence through the trusted caller's canonical validator.
+
+    No cross-skill import, runtime discovery, check execution or CI conversion
+    occurs here. Library callers supply the trusted validator; the consumer CLI
+    injects its fixed canonical v1 validator. Schema validation alone is not
+    sufficient for the opaque nested evidence. All observations remain supplied
+    assertions, never execution, chronology, provider or authorization proof.
+    """
+    result = _selected(policy_report, decision, previous_decision)
+    errors = result['diagnostics']
+    if result['mode'] != 'test_first':
+        _diagnostic(errors, 'mode_conflict', 'Test-first binding requires an explicit test_first decision')
+    if not _subject(subject):
+        _diagnostic(errors, 'invalid_subject', 'Supply an exact commit or worktree subject')
+    if _record(binding, TEST_FIRST_BINDING, 'development_test_first_binding', 'binding_digest', errors):
+        if _policy_usable(policy_report):
+            _scope(policy_report, binding, errors)
+        if not _subject(binding['subject']) or binding['subject'] != subject:
+            _diagnostic(errors, 'evidence_subject_mismatch', 'Binding must match the exact final subject')
+        if (not isinstance(decision, dict) or not _match(SHA, binding['decision_digest'])
+                or binding['decision_digest'] != decision.get('decision_digest')):
+            _diagnostic(errors, 'evidence_decision_mismatch', 'Binding must match the selected decision')
+        nested = binding['test_first_evidence']
+        if (not isinstance(nested, dict) or not _subject(nested.get('subject'))
+                or nested.get('subject') != subject or nested.get('subject') != binding['subject']):
+            _diagnostic(errors, 'evidence_subject_mismatch', 'Nested v1 evidence, binding and expected subject must agree')
+        effective = policy_report.get('effective_policy') if isinstance(policy_report, dict) else None
+        verification = effective.get('verification') if isinstance(effective, dict) else None
+        if not isinstance(verification, dict) or verification.get('subject') != 'source_sha':
+            _diagnostic(errors, 'unsupported_verification_subject', 'Only source_sha observations are supported; merge-result evidence is deferred')
+        if (not isinstance(verification, dict) or verification.get('execution') != 'local'
+                or verification.get('provider') != 'none' or verification.get('local_execution') != 'allowed'):
+            _diagnostic(errors, 'unsupported_test_first_execution', 'Only policy-allowed local v1 RED/GREEN observations are supported; CI test-first evidence is unavailable')
+        if not callable(legacy_validator):
+            _diagnostic(errors, 'invalid_legacy_validator', 'An injected canonical v1 validator is required')
+        else:
+            try:
+                # Preserve the caller's original nested record even if its
+                # trusted library validator mutates the object it receives.
+                legacy_errors = legacy_validator(copy.deepcopy(nested))
+                valid_result = isinstance(legacy_errors, list) and all(isinstance(item, str) for item in legacy_errors)
+            except Exception:
+                valid_result = False
+                legacy_errors = None
+            if not valid_result:
+                _diagnostic(errors, 'invalid_legacy_validator', 'Canonical v1 validation raised or returned a malformed result')
+            elif legacy_errors:
+                _diagnostic(errors, 'invalid_test_first_evidence', 'Canonical v1 validation rejected the nested test-first evidence')
+    result.update(status='blocked' if errors else 'verified', test_first_satisfied=not errors,
+                  check_scope='focused_and_broader_contract_only')
+    nested = binding.get('test_first_evidence') if isinstance(binding, dict) else None
+    return _receipt(result, policy_report, decision, subject,
+                    {'binding_digest': binding.get('binding_digest') if isinstance(binding, dict) else None,
+                     'evidence_digest': nested.get('evidence_digest') if isinstance(nested, dict) else None},
                     'report_digest')
 
 
