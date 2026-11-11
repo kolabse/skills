@@ -1,14 +1,11 @@
 #!/usr/bin/env python3
 """Private-network room API for the #175 pilot."""
 import argparse
-from contextlib import closing, contextmanager
-import hashlib
 from http import HTTPStatus
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 import ipaddress
 import json
 from pathlib import Path
-import secrets
 import sqlite3
 import ssl
 import sys
@@ -16,15 +13,12 @@ import time
 from urllib.parse import parse_qs, urlsplit
 
 import room
+import room_team
 
 
 MAX_JSON = 16 * 1024
 MAX_ID = 2**63 - 1
-CREATE_TOKENS = """CREATE TABLE IF NOT EXISTS room_tokens (
-    digest TEXT PRIMARY KEY,
-    actor TEXT UNIQUE NOT NULL REFERENCES members(id) ON DELETE CASCADE,
-    expires_at INTEGER NOT NULL
-)"""
+transaction = room.transaction
 
 
 class RequestError(Exception):
@@ -33,41 +27,22 @@ class RequestError(Exception):
         self.status = status
 
 
-@contextmanager
-def transaction(path, write):
-    with closing(room.database(path, False)) as db, db:
-        db.row_factory = sqlite3.Row
-        db.execute("PRAGMA foreign_keys = ON")
-        db.execute("BEGIN IMMEDIATE" if write else "BEGIN")
-        yield db
-
-
-def token_digest(token):
-    return hashlib.sha256(token.encode("ascii")).hexdigest()
-
-
 def issue_token(db_path, actor, minutes):
-    token = secrets.token_urlsafe(32)
     with transaction(db_path, True) as db:
         room.member(db, actor)
-        db.execute(CREATE_TOKENS)
-        db.execute(
-            """INSERT INTO room_tokens (digest, actor, expires_at) VALUES (?, ?, ?)
-            ON CONFLICT(actor) DO UPDATE SET digest = excluded.digest, expires_at = excluded.expires_at""",
-            (token_digest(token), actor, int(time.time()) + minutes * 60),
-        )
-    return {"token": token}
+        room.install_tokens(db)
+        return {"token": room.mint_token(db, actor, minutes)}
 
 
-def authenticated_actor(db, headers):
+def authenticated_actor(db, headers, auth_mode=None):
     values = headers.get_all("Authorization", [])
     if len(values) == 1:
         kind, _, token = values[0].partition(" ")
         if kind.lower() == "bearer" and token.isascii() and len(token) == 43:
             row = db.execute(
                 """SELECT m.id FROM room_tokens t JOIN members m ON m.id = t.actor
-                WHERE t.digest = ? AND t.expires_at > ?""",
-                (token_digest(token), int(time.time())),
+                WHERE t.digest = ? AND t.expires_at > ? AND t.auth_mode IS ?""",
+                (room.token_digest(token), int(time.time()), auth_mode),
             ).fetchone()
             if row:
                 return row["id"]
@@ -161,6 +136,8 @@ class RoomHandler(BaseHTTPRequestHandler):
             self.send_json(error.status, {"error": str(error)})
         except ValueError as error:
             self.send_json(HTTPStatus.BAD_REQUEST, {"error": str(error)})
+        except room_team.TeamAccessError as error:
+            self.send_json(HTTPStatus.UNAUTHORIZED, {"error": str(error)})
         except room.RoomError as error:
             self.send_json(HTTPStatus.FORBIDDEN, {"error": str(error)})
         except sqlite3.Error:
@@ -175,6 +152,14 @@ class RoomHandler(BaseHTTPRequestHandler):
         route = self.command, url.path
         if route == ("GET", "/health") and not url.query:
             return {"status": "ok"}
+        team = {
+            ("POST", "/v1/team/join"): room_team.join,
+            ("POST", "/v1/team/renew"): room_team.renew,
+        }.get(route)
+        if self.server.invite_only and team is not None and not url.query:
+            payload = self.read_json()
+            with transaction(self.server.db_path, True) as db:
+                return team(db, payload)
         handler = {
             ("GET", "/v1/history"): room.history,
             ("GET", "/v1/access"): room.access,
@@ -196,14 +181,15 @@ class RoomHandler(BaseHTTPRequestHandler):
                 raise ValueError("scope requires projects")
             arguments = {"project": project_ids(payload["projects"])}
         with transaction(self.server.db_path, self.command == "POST") as db:
-            actor = authenticated_actor(db, self.headers)
+            actor = authenticated_actor(db, self.headers, room_team.MODE if self.server.invite_only else None)
             return handler(db, argparse.Namespace(actor=actor, **arguments))
 
 
 class RoomServer(ThreadingHTTPServer):
-    def __init__(self, address, db_path, tls):
+    def __init__(self, address, db_path, tls, invite_only=False):
         self.db_path = db_path
         self.tls = tls
+        self.invite_only = invite_only
         super().__init__(address, RoomHandler)
 
     def get_request(self):
@@ -228,8 +214,10 @@ def serve(args):
         tls.load_cert_chain(args.cert, args.key)
     with transaction(args.db, True) as db:
         db.execute("SELECT 1 FROM members LIMIT 1")
-        db.execute(CREATE_TOKENS)
-    with RoomServer((str(address), args.port), args.db, tls) as server:
+        room.install_tokens(db)
+        if args.invite_only:
+            room_team.install(db)
+    with RoomServer((str(address), args.port), args.db, tls, args.invite_only) as server:
         print(json.dumps({"port": server.server_port, "tls": tls is not None}), flush=True)
         server.serve_forever()
 
@@ -243,13 +231,22 @@ def main():
     server.add_argument("--port", type=int, default=8766)
     server.add_argument("--cert", type=Path)
     server.add_argument("--key", type=Path)
+    server.add_argument("--invite-only", action="store_true")
     token = commands.add_parser("issue-token")
     token.add_argument("actor", type=room.identifier)
     token.add_argument("--minutes", type=int, default=60)
+    invite = commands.add_parser("issue-invite")
+    invite.add_argument("actor", type=room.identifier)
+    invite.add_argument("--minutes", type=int, default=30)
     args = parser.parse_args()
     try:
         if args.command == "serve":
             serve(args)
+        elif args.command == "issue-invite":
+            with transaction(args.db, True) as db:
+                room_team.install(db)
+                invitation = room_team.issue_invite(db, args.actor, args.minutes)
+            print(json.dumps({"invite": invitation}))
         else:
             if not 1 <= args.minutes <= 1440:
                 raise ValueError("token lifetime must be between 1 and 1440 minutes")
