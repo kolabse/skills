@@ -9,8 +9,45 @@ Use project configuration as the source of truth for checks. Evidence proves
 only that declared checks passed for recorded commits and worktrees; it is not
 a substitute for review, CI, or deployment verification.
 
+For the experimental read-only GitLab MR CI collector, see
+[GitLab CI observations](references/gitlab-ci.md). It produces observations only;
+it does not enable `--source gitlab-ci`, create canonical verifier receipts, or
+authorize a merge gate.
+
+For CI checks bound to the current project policy and tracked GitLab repository,
+use the experimental `policy-ci collect|verify` route described in
+[policy-bound GitLab CI checks](references/policy-gitlab-ci.md). Its evidence is
+CI-only; the ordinary push/merge gates remain unchanged.
+
+For check-specific blocking stages, path applicability, and visible nonblocking
+background outcomes, read [applicability and background CI](references/check-applicability.md).
+This opt-in v2 mode derives its change inventory from Git and preserves the
+existing contracts; a `not_required` decision is not pipeline success.
+
 Announce this skill once at the start of the workflow. Repeated gates within
 that workflow need result updates, not repeated announcements.
+
+## Shared project-policy diagnostics
+
+For explicit development-mode decisions and diagnostic source-readiness
+records, read [development readiness](references/development-readiness.md).
+These records do not change lifecycle checkpoints or publication gates.
+
+For read-only inspection of `.agents/kolabse/project-policy.json`, use
+`scripts/project_policy.py status|explain|validate --project-root <root> --json`
+or `migrate --dry-run`. Read [references/project-policy.md](references/project-policy.md)
+for the closed v1 schema, origins, scoped profiles and conservative migration preview.
+Policy-bound action gates remain unavailable. The canonical
+verifier blocks local checks, GitHub CI collection and old receipt acceptance
+when a configured, invalid or unsupported policy is present, including an
+explicit `--source local`. Absent-policy projects keep their legacy behavior.
+The separate `policy-ci` consumer can collect and revalidate CI-only evidence;
+it does not relax this guard or authorize publication/integration.
+The guard covers only selected/configured canonical and mapped repository roots,
+rechecking before commands and successful receipt boundaries; it is not an atomic
+lock against concurrent edits. Provider constraints remain unconfirmed. Other
+consumers retain their existing gates.
+A `before_merge` declaration does not waive this skill's current before-push gate.
 
 ## Configure the project
 
@@ -389,3 +426,8 @@ For STOP, name the remaining failed check or state/evidence blocker. These
 reporting rules neither bypass the gate nor add a permission requirement.
 Report a push or CI outcome only when separately observed; gate PASS proves
 neither publication nor CI success.
+
+For example: "Local gate PASS for the checked HEAD; required checks passed;
+the project-approved optional manual job was skipped for its configured
+reason. CI outcome unconfirmed." Preserve the skipped status in the report;
+do not turn a local gate PASS into a claim that the manual job or CI passed.

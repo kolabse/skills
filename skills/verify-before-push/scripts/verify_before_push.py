@@ -3,6 +3,7 @@ from __future__ import annotations
 import argparse
 import copy
 import hashlib
+import importlib.util
 import json
 import os
 import platform
@@ -45,6 +46,85 @@ class VerificationError(RuntimeError):
 
 class ReuseUnavailable(VerificationError):
     """Full verification is supported, but runtime identity is ambiguous."""
+
+
+def policy_ci_module():
+    """Load the explicit CI-only consumer without changing legacy dispatch."""
+    path = Path(__file__).resolve().with_name('policy_gitlab_ci.py')
+    spec = importlib.util.spec_from_file_location('_verify_policy_gitlab_ci', path)
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module
+
+
+def guard_project_policy(project_root: Path, config: dict[str, Any] | None = None,
+                         *, action: str = 'execute_local_check') -> None:
+    """Inspect only the selected project and explicitly configured repositories."""
+    roots = [project_root]
+    if config:
+        for entry in config.get('repositories', []):
+            # Leave malformed legacy entries to the existing config validator.
+            if isinstance(entry, dict) and isinstance(entry.get('path'), str) and entry['path']:
+                root = resolve_inside(project_root, entry['path'], 'repository')
+                if root not in roots:
+                    roots.append(root)
+    for root in roots:
+        _guard_project_policy_root(root, config, action=action)
+
+
+def _guard_project_policy_root(project_root: Path, config: dict[str, Any] | None,
+                               *, action: str) -> None:
+    """Keep legacy installations independent; present declarations fail closed.
+
+    Load bundled siblings by path, including under importlib/installed copies.
+    Probe on every boundary so a newly created policy cannot inherit a legacy
+    receipt. This is an observation, not an atomic filesystem or provider lock.
+    """
+    try:
+        project_root = project_root.resolve()
+        for relative in ('.agents', '.agents/kolabse'):
+            parent = project_root / relative
+            try:
+                parent.lstat()
+            except FileNotFoundError:
+                continue
+            if parent.is_symlink() or (hasattr(parent, 'is_junction') and parent.is_junction()):
+                if not parent.resolve(strict=True).is_relative_to(project_root):
+                    raise VerificationError('Project policy parent resolves outside the selected root')
+        present = False
+        for suffix in ('json', 'yaml', 'yml'):
+            path = project_root / f'.agents/kolabse/project-policy.{suffix}'
+            try:
+                path.lstat()  # Broken links are present, never a legacy sentinel.
+            except FileNotFoundError:
+                continue
+            present = True
+        if not present:
+            return
+        modules = {}
+        for name in ('project_policy', 'project_policy_plan'):
+            path = Path(__file__).resolve().with_name(name + '.py')
+            spec = importlib.util.spec_from_file_location('_verify_' + name, path)
+            module = importlib.util.module_from_spec(spec)
+            spec.loader.exec_module(module)
+            modules[name] = module
+        roles = [entry['name'] for entry in config['repositories']] if config else ['project']
+        for role in roles:
+            report = modules['project_policy'].load_project_policy(project_root, repository=role, operation='push')
+            plan = modules['project_policy_plan'].plan_operation(
+                report, repository=role, operation='push', action=action)
+            if plan['decision'] != 'legacy':
+                raise VerificationError('Project policy blocks verifier execution: '
+                                        + ', '.join(plan['blockers'] or ['unsupported policy contract'])
+                                        + '; use project_policy.py status/explain/migrate for diagnostics')
+        # A present file may disappear during loading. Do not claim an absent
+        # snapshot for an execution that observed a configured policy candidate.
+        raise VerificationError('Project policy changed during loading; rerun after reviewing the contract')
+    except VerificationError:
+        raise
+    except Exception as error:
+        raise VerificationError('Project policy cannot be safely evaluated; bundled policy execution support '
+                                'is unavailable or the installation is incomplete') from error
 
 
 def canonical_json(value: Any) -> bytes:
@@ -268,7 +348,7 @@ def load_execution_context(
 def validate_config_document(
     config: dict[str, Any], project_root: Path, *, validate_checks: bool = True,
 ) -> Path:
-    if set(config) - {"version", "repositories", "checks", "evidence_file", "reuse_verified_results", "github_ci"}:
+    if set(config) - {"version", "repositories", "checks", "evidence_file", "reuse_verified_results", "github_ci", "gitlab_ci"}:
         raise VerificationError("Configuration contains unknown fields")
     if type(config.get("version")) is not int or config["version"] != 1:
         raise VerificationError("Configuration version must be 1")
@@ -289,6 +369,11 @@ def validate_config_document(
         raise VerificationError("Repository names and Git roots must be unique")
     if "github_ci" in config:
         validate_github_ci_policy(config)
+    if "gitlab_ci" in config:
+        try:
+            policy_ci_module().validate_gitlab_ci_policy(config)
+        except Exception as error:
+            raise VerificationError('Invalid or unsupported gitlab_ci configuration') from error
     if not validate_checks:
         return evidence_path
     names: set[str] = set()
@@ -507,7 +592,9 @@ def validate_check(
     return name, cwd, command, timeout, enabled, reason
 
 
-def execute_checks(config: dict[str, Any], project_root: Path, *, pin_executables: bool = False) -> list[dict[str, Any]]:
+def execute_checks(config: dict[str, Any], project_root: Path, *, pin_executables: bool = False,
+                   policy_root: Path | None = None,
+                   policy_config: dict[str, Any] | None = None) -> list[dict[str, Any]]:
     results: list[dict[str, Any]] = []
     names: set[str] = set()
     allowed_roots = [validate_repository_entry(entry, project_root)[1] for entry in config["repositories"]]
@@ -521,6 +608,9 @@ def execute_checks(config: dict[str, Any], project_root: Path, *, pin_executable
             continue
         if pin_executables:
             command = [executable_identity(command[0], cwd)["path"], *command[1:]]
+        guard_project_policy(policy_root or project_root, policy_config or config)
+        if policy_root is not None and policy_root != project_root:
+            guard_project_policy(project_root, config)
         result = run_process(command, cwd, timeout)
         status = "passed" if result.returncode == 0 else "failed"
         results.append({"name": name, "status": status, "exit_code": result.returncode})
@@ -775,6 +865,7 @@ def validate_github_ci_policy(config: dict[str, Any]) -> dict[str, Any]:
 
 
 def github_api(project_root: Path, endpoint: str) -> dict[str, Any]:
+    guard_project_policy(project_root, action='collect_ci')
     # Pin the official host even when GH_HOST points at another installation.
     result = run_process(["gh", "api", "--hostname", "github.com", "-H", "Accept: application/vnd.github+json",
                           "-H", "X-GitHub-Api-Version: 2022-11-28", endpoint], project_root, 60)
@@ -872,6 +963,7 @@ def latest_ci_run(project_root: Path, policy: dict[str, Any], workflow: str, hea
 
 
 def collect_github_ci(config: dict[str, Any], project_root: Path, states: list[dict[str, Any]]) -> dict[str, Any]:
+    guard_project_policy(project_root, config, action='collect_ci')
     policy = validate_github_ci_policy(config)
     identity = github_ci_git_identity(config, project_root, states)
     head = states[0]["head"]
@@ -944,6 +1036,7 @@ def run_github_ci_verification(project_root: Path, workspace_map: Path | None = 
     _, config, _, evidence_path, binding = context
     completed = False
     try:
+        guard_project_policy(project_root, config, action='collect_ci')
         validate_config_document(config, project_root)
         validate_github_ci_policy(config)
         refresh_required_upstreams(config, project_root)
@@ -958,6 +1051,7 @@ def run_github_ci_verification(project_root: Path, workspace_map: Path | None = 
             else:
                 if context != load_execution_context(project_root) or before != capture_states(config, project_root):
                     raise VerificationError("State or configuration changed while validating GitHub CI evidence")
+                guard_project_policy(project_root, config, action='accept_evidence')
                 completed = True
                 print(f"GitHub CI results reused without rewriting evidence: {evidence_path}")
                 return evidence_path
@@ -971,6 +1065,7 @@ def run_github_ci_verification(project_root: Path, workspace_map: Path | None = 
                     "checked_at": datetime.now(timezone.utc).replace(microsecond=0).isoformat().replace("+00:00", "Z"),
                     "repositories": before, "checks": github_ci_results(config), "github_ci": observations}
         evidence["receipt_sha256"] = digest(evidence)
+        guard_project_policy(project_root, config, action='accept_evidence')
         write_atomic(evidence_path, evidence)
         completed = True
         print(f"GitHub CI evidence written: {evidence_path}")
@@ -986,6 +1081,9 @@ def run_verification(project_root: Path, trusted_environment: str | None = None,
     _, config, project_root, evidence_path, binding = context
     reused = False
     try:
+        guard_project_policy(canonical_root, context[0])
+        if project_root != canonical_root:
+            guard_project_policy(project_root, config)
         validate_config_document(config, project_root)
         refresh_required_upstreams(config, project_root)
         before = capture_states(config, project_root)
@@ -1002,6 +1100,9 @@ def run_verification(project_root: Path, trusted_environment: str | None = None,
                     raise VerificationError("State changed while validating reusable evidence")
                 if context != load_execution_context(canonical_root, workspace_map):
                     raise VerificationError("Configuration or workspace map changed while validating reusable evidence")
+                guard_project_policy(canonical_root, context[0], action='accept_evidence')
+                if project_root != canonical_root:
+                    guard_project_policy(project_root, config, action='accept_evidence')
                 reused = True
                 print(f"Verified results reused without rewriting evidence: {evidence_path}")
                 return evidence_path
@@ -1010,7 +1111,11 @@ def run_verification(project_root: Path, trusted_environment: str | None = None,
         # reuse is read-only and retains the original verification timestamp.
         if not reused:
             evidence_path.unlink(missing_ok=True)
-    checks = execute_checks(config, project_root, pin_executables=identity is not None)
+    execution_options = {'policy_root': canonical_root, 'policy_config': context[0]} if project_root != canonical_root else {}
+    checks = execute_checks(config, project_root, pin_executables=identity is not None, **execution_options)
+    guard_project_policy(canonical_root, context[0])
+    if project_root != canonical_root:
+        guard_project_policy(project_root, config)
     refresh_required_upstreams(config, project_root)
     after = capture_states(config, project_root)
     if before != after or identity != reuse_identity(config, project_root, trusted_environment):
@@ -1030,6 +1135,9 @@ def run_verification(project_root: Path, trusted_environment: str | None = None,
     if reusable:
         evidence["reuse_identity"] = identity
         evidence["receipt_sha256"] = digest(evidence)
+    guard_project_policy(canonical_root, context[0], action='accept_evidence')
+    if project_root != canonical_root:
+        guard_project_policy(project_root, config, action='accept_evidence')
     write_atomic(evidence_path, evidence)
     print(f"Evidence written: {evidence_path}")
     return evidence_path
@@ -1046,6 +1154,9 @@ def verify_evidence(project_root: Path, repository: Path | None = None, trusted_
         if candidate not in configured_roots:
             print(f"Repository is not gated: {candidate}")
             return False
+    guard_project_policy(canonical_root, context[0], action='accept_evidence')
+    if project_root != canonical_root:
+        guard_project_policy(project_root, config, action='accept_evidence')
     validate_config_document(config, project_root)
     refresh_required_upstreams(config, project_root)
     evidence = load_json(evidence_path, "Evidence")
@@ -1056,19 +1167,31 @@ def verify_evidence(project_root: Path, repository: Path | None = None, trusted_
         validate_github_ci_receipt(config, evidence, project_root, current, binding)
         if context != load_execution_context(canonical_root) or current != capture_states(config, project_root):
             raise VerificationError("State or configuration changed while validating GitHub CI evidence")
+        guard_project_policy(canonical_root, context[0], action='accept_evidence')
         print(f"GitHub CI evidence is current: {evidence_path}")
         return True
     identity = reuse_identity(config, project_root, trusted_environment) if evidence.get("version") == 2 else None
     validate_receipt(config, evidence, current, identity, project_root, expected_binding=binding)
     if workspace_map is not None and context != load_execution_context(canonical_root, workspace_map):
         raise VerificationError("Configuration or workspace map changed while validating evidence")
+    guard_project_policy(canonical_root, context[0], action='accept_evidence')
+    if project_root != canonical_root:
+        guard_project_policy(project_root, config, action='accept_evidence')
     print(f"Evidence is current: {evidence_path}")
     return True
 
 
 def main(argv: list[str] | None = None) -> int:
+    argv = list(sys.argv[1:] if argv is None else argv)
+    if argv and argv[0] == 'policy-ci':
+        try:
+            return policy_ci_module().main(argv[1:])
+        except Exception as error:
+            print(f'VERIFICATION_FAILED: policy CI adapter unavailable ({type(error).__name__})', file=sys.stderr)
+            return 1
     parser = argparse.ArgumentParser(description="Run and validate Git-state-bound pre-push evidence.")
     subparsers = parser.add_subparsers(dest="command", required=True)
+    subparsers.add_parser('policy-ci', help='Collect or revalidate policy-bound GitLab CI checks only')
     for command in ("run", "verify", "gate", "configure", "status", "migrate"):
         child = subparsers.add_parser(command)
         child.add_argument("--project-root", type=Path, default=Path.cwd())

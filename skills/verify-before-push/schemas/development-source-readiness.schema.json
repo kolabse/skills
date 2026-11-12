@@ -1,0 +1,209 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "development-source-readiness",
+  "type": "object",
+  "properties": {
+    "schema_version": {
+      "type": "integer",
+      "const": 1
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "blocked",
+        "source_ready"
+      ]
+    },
+    "source_ready": {
+      "type": "boolean"
+    },
+    "mode": {
+      "enum": [
+        "test_first",
+        "final_verification",
+        null
+      ]
+    },
+    "diagnostics": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "code": {
+            "type": "string",
+            "minLength": 1,
+            "pattern": "\\S"
+          },
+          "message": {
+            "type": "string",
+            "minLength": 1,
+            "pattern": "\\S"
+          }
+        },
+        "required": [
+          "code",
+          "message"
+        ],
+        "additionalProperties": false
+      }
+    },
+    "readiness_kind": {
+      "type": "string",
+      "const": "diagnostic_consistency_only"
+    },
+    "provider_confirmation": {
+      "type": "string",
+      "const": "unconfirmed"
+    },
+    "authorization": {
+      "type": "string",
+      "const": "not_granted"
+    },
+    "observations": {
+      "type": "string",
+      "const": "caller_supplied"
+    },
+    "chronology": {
+      "type": "string",
+      "const": "not_attested"
+    },
+    "subject_provenance": {
+      "type": "string",
+      "const": "caller_supplied_not_reconstructed"
+    },
+    "bindings": {
+      "anyOf": [
+        {
+          "type": "null"
+        },
+        {
+          "type": "object",
+          "properties": {
+            "repository": {
+              "type": "string",
+              "minLength": 1,
+              "pattern": "\\S"
+            },
+            "operation": {
+              "type": "string",
+              "enum": [
+                "push",
+                "merge",
+                "build",
+                "deploy",
+                "cleanup"
+              ]
+            },
+            "profile": {
+              "anyOf": [
+                {
+                  "type": "null"
+                },
+                {
+                  "type": "string",
+                  "minLength": 1,
+                  "pattern": "\\S"
+                }
+              ]
+            },
+            "policy_digest": {
+              "type": "string",
+              "pattern": "^[0-9a-f]{64}$"
+            },
+            "source_snapshot_digest": {
+              "type": "string",
+              "pattern": "^[0-9a-f]{64}$"
+            },
+            "subject": {
+              "type": "object",
+              "properties": {
+                "kind": {
+                  "type": "string",
+                  "enum": [
+                    "commit",
+                    "worktree"
+                  ]
+                },
+                "identity": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "kind",
+                "identity"
+              ],
+              "additionalProperties": false,
+              "oneOf": [
+                {
+                  "properties": {
+                    "kind": {
+                      "const": "commit"
+                    },
+                    "identity": {
+                      "pattern": "^[0-9a-f]{40}(?:[0-9a-f]{24})?$"
+                    }
+                  }
+                },
+                {
+                  "properties": {
+                    "kind": {
+                      "const": "worktree"
+                    },
+                    "identity": {
+                      "type": "string",
+                      "pattern": "^sha256:[0-9a-f]{64}$"
+                    }
+                  }
+                }
+              ]
+            },
+            "decision_digest": {
+              "type": "string",
+              "pattern": "^sha256:[0-9a-f]{64}$"
+            },
+            "review_digest": {
+              "type": "string",
+              "pattern": "^sha256:[0-9a-f]{64}$"
+            },
+            "implementation_complete": {
+              "type": "boolean",
+              "const": true
+            }
+          },
+          "required": [
+            "repository",
+            "operation",
+            "profile",
+            "policy_digest",
+            "source_snapshot_digest",
+            "subject",
+            "decision_digest",
+            "review_digest",
+            "implementation_complete"
+          ],
+          "additionalProperties": false
+        }
+      ]
+    },
+    "readiness_digest": {
+      "type": "string",
+      "pattern": "^sha256:[0-9a-f]{64}$"
+    }
+  },
+  "required": [
+    "schema_version",
+    "status",
+    "source_ready",
+    "mode",
+    "diagnostics",
+    "readiness_kind",
+    "provider_confirmation",
+    "authorization",
+    "observations",
+    "chronology",
+    "subject_provenance",
+    "bindings",
+    "readiness_digest"
+  ],
+  "additionalProperties": false
+}

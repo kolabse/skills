@@ -63,6 +63,11 @@ Completion criterion: requested changes appear once, IDs remain stable, the
 active queue retains unfinished work, and unresolved dates or dependencies are
 visible.
 
+For example, an undated application task may depend on an item in an external
+infrastructure queue. Retain the external item reference and requested queue
+order, and record the dependency as pending. Adding that dependency does not
+supply an execution date or authorize scheduling either item in a calendar.
+
 ## Transfer verified completion to the work log
 
 Read [references/completion-transfer.md](references/completion-transfer.md)
