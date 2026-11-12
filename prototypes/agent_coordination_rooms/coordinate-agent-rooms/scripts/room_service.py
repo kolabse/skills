@@ -13,6 +13,7 @@ import time
 from urllib.parse import parse_qs, urlsplit
 
 import room
+from room_invitation import REVISION, SOURCE, VERSION
 from room_registry import ROOM_ID, RoomRegistry
 import room_team
 
@@ -106,9 +107,14 @@ class RoomHandler(BaseHTTPRequestHandler):
 
     def send_json(self, status, result):
         body = json.dumps(result, separators=(",", ":")).encode("utf-8")
+        self.send_content(status, body, "application/json")
+
+    def send_content(self, status, body, media_type):
         self.send_response(status)
-        self.send_header("Content-Type", "application/json; charset=utf-8")
+        self.send_header("Content-Type", media_type + "; charset=utf-8")
+        self.send_header("X-Content-Type-Options", "nosniff")
         self.send_header("Cache-Control", "no-store")
+        self.send_header("Vary", "Accept")
         self.send_header("Content-Length", str(len(body)))
         self.end_headers()
         self.wfile.write(body)
@@ -132,7 +138,10 @@ class RoomHandler(BaseHTTPRequestHandler):
     def dispatch(self):
         try:
             result = self.route()
-            self.send_json(HTTPStatus.OK, result)
+            if isinstance(result, str):
+                self.send_content(HTTPStatus.OK, result.encode("utf-8"), "text/html")
+            else:
+                self.send_json(HTTPStatus.OK, result)
         except RequestError as error:
             self.send_json(error.status, {"error": str(error)})
         except ValueError as error:
@@ -154,6 +163,22 @@ class RoomHandler(BaseHTTPRequestHandler):
             return {"status": "ok"}
         db_path, path = self.server.room_route(url.path)
         route = self.command, path
+        if (self.server.invite_only and route == ("GET", "/invite")
+                and url.path.startswith("/rooms/") and not url.query):
+            name = url.path.split("/")[2]  # Already validated by room_route.
+            revision = self.server.onboarding_revision
+            if self.headers.get("Accept") == "application/json":
+                manifest = {"version": VERSION, "room": name}
+                if revision is not None:
+                    manifest["client_revision"] = revision
+                return manifest
+            source = (f'<p>Agent setup: <a href="{SOURCE.format(revision=revision)}">AICQ client and instructions</a>.</p>'
+                      if revision else "")
+            return ('<!doctype html><html lang="en"><meta charset="utf-8">'
+                    f"<title>AICQ · {name}</title><h1>AICQ · {name}</h1>"
+                    "<p>Give this link and your private invitation JSON to your agent. "
+                    "Ask it to connect you to this room and verify your access.</p>"
+                    f"{source}</html>")
         team = {
             ("POST", "/v1/team/join"): room_team.join,
             ("POST", "/v1/team/renew"): room_team.renew,
@@ -188,10 +213,13 @@ class RoomHandler(BaseHTTPRequestHandler):
 
 
 class RoomServer(ThreadingHTTPServer):
-    def __init__(self, address, db_path, tls, invite_only=False, *, registry=None):
+    def __init__(self, address, db_path, tls, invite_only=False, *, registry=None, onboarding_revision=None):
         self.db_path = db_path
         self.tls = tls
+        if onboarding_revision is not None and not REVISION.fullmatch(onboarding_revision):
+            raise ValueError("--onboarding-revision requires a full lowercase Git commit SHA")
         self.registry = registry
+        self.onboarding_revision = onboarding_revision
         self.invite_only = invite_only
         super().__init__(address, RoomHandler)
 
@@ -240,7 +268,8 @@ def serve(args):
             room.install_tokens(db)
             if args.invite_only:
                 room_team.install(db)
-    with RoomServer((str(address), args.port), args.db, tls, args.invite_only, registry=registry) as server:
+    with RoomServer((str(address), args.port), args.db, tls, args.invite_only, registry=registry,
+                    onboarding_revision=args.onboarding_revision) as server:
         print(json.dumps({"port": server.server_port, "tls": tls is not None}), flush=True)
         server.serve_forever()
 
@@ -256,6 +285,7 @@ def main():
     server.add_argument("--cert", type=Path)
     server.add_argument("--key", type=Path)
     server.add_argument("--invite-only", action="store_true")
+    server.add_argument("--onboarding-revision", help="trusted client source commit advertised on invitation links")
     token = commands.add_parser("issue-token")
     token.add_argument("actor", type=room.identifier)
     token.add_argument("--minutes", type=int, default=60)

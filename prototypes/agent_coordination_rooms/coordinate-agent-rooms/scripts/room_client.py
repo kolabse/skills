@@ -39,7 +39,7 @@ def parse(argv=None):
     return parser.parse_args(argv)
 
 
-def connection(origin, ca):
+def validate_url(origin):
     url = urlsplit(origin)
     if (not url.hostname or url.username is not None or url.password is not None
             or "?" in origin or "#" in origin
@@ -48,6 +48,11 @@ def connection(origin, ca):
     if url.scheme != "https":
         if url.scheme != "http" or not ipaddress.ip_address(url.hostname).is_loopback:
             raise ValueError("the room client requires HTTPS outside loopback")
+    return url
+
+
+def connection(origin, ca):
+    validate_url(origin)
     context = ssl.create_default_context(cafile=str(ca) if ca else None)
     opener = build_opener(ProxyHandler({}), NoRedirect(), HTTPSHandler(context=context))
     return origin.rstrip("/"), opener

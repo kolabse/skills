@@ -54,13 +54,18 @@ def payload_digest(payload, field):
 
 
 def join(db, payload):
-    digest = payload_digest(payload, "invite")
+    bound = payload.keys() == {"invite", "actor", "projects"}
+    digest = payload_digest({"invite": payload["invite"]} if bound else payload, "invite")
     now = int(time.time())
     invite = db.execute("SELECT actor FROM room_team_invites WHERE digest = ? AND expires_at > ?",
                         (digest, now)).fetchone()
     if invite is None:
         raise TeamAccessError("invalid or expired team access secret")
     actor = invite["actor"]
+    if bound:
+        readable, _ = room.member(db, actor)
+        if payload["actor"] != actor or payload["projects"] != sorted(readable):
+            raise TeamAccessError("invalid or expired team access secret")
     credential = secrets.token_urlsafe(32)
     db.execute("DELETE FROM room_team_invites WHERE digest = ?", (digest,))
     db.execute("""INSERT INTO room_team_credentials VALUES (?, ?, ?)

@@ -12,13 +12,13 @@ from urllib.request import Request
 import room_client
 
 
-def save(path, key, secret):
+def save_document(path, document):
     path.parent.mkdir(parents=True, exist_ok=True)
     temporary = None
     try:
         with tempfile.NamedTemporaryFile(mode="w", dir=path.parent, encoding="utf-8", delete=False) as stream:
             temporary = Path(stream.name)
-            json.dump({key: secret}, stream)
+            json.dump(document, stream)
         temporary.replace(path)
     finally:
         if temporary is not None:
@@ -55,8 +55,8 @@ def main(argv=None):
         with opener.open(request, timeout=15) as response:
             result = json.load(response)
         if join:
-            save(args.credential_file, "credential", result["credential"])
-        save(args.token_file, "token", result["token"])
+            save_document(args.credential_file, {"credential": result["credential"]})
+        save_document(args.token_file, {"token": result["token"]})
         print(json.dumps({"status": "joined" if join else "renewed", "actor": result["actor"]}))
     except HTTPError as error:
         print(room_client.http_error_message(error), file=sys.stderr)

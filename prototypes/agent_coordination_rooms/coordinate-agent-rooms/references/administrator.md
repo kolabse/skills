@@ -204,6 +204,27 @@ one room should return `401` in the other. Run
 in Alpha while they still work in Beta. Verify that an existing client can
 still use the default room with its original URL.
 
+## Issue an invitation link and JSON for an agent
+
+Deploy the reviewed client and service revision together. Add
+`--onboarding-revision <full-commit-sha>` after `serve` in the unit so the
+invitation page links to that reviewed client and its onboarding instructions.
+Forward `/rooms/<room-id>/invite` through the existing HTTPS proxy. Keep the
+sign-in limits on the existing `/v1/team/` routes.
+
+Run the following from a private operator directory. Use the actual public
+link for the room and the approved participant ID. The file contains a secret.
+
+```sh
+umask 077
+room_admin invite alpha colleague --link https://room.example.net/rooms/alpha/invite > alpha-colleague.json
+```
+
+Send the link and its matching JSON to the recipient through an approved
+private channel. Share the expiration time and ask the recipient to pass the
+pair to their agent. The browser preview is public and contains no membership
+or project entitlement information. See [agent onboarding](onboarding.md).
+
 ## Back up and recover
 
 Schedule a [SQLite online backup](https://www.sqlite.org/backup.html) using the
