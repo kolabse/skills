@@ -7,6 +7,7 @@ import sqlite3
 import sys
 
 import room
+from room_invitation import VERSION, parse_link
 from room_registry import RoomRegistry
 import room_team
 
@@ -27,6 +28,7 @@ def main(argv=None):
         command.add_argument("actor", type=room.identifier)
     grant.add_argument("--project", type=room.identifier, action="append", default=[])
     invite.add_argument("--minutes", type=int, default=30)
+    invite.add_argument("--link", help="produce an agent-ready invitation for this exact HTTPS link")
     args = parser.parse_args(argv)
     registry = RoomRegistry(args.rooms_dir)
     try:
@@ -37,7 +39,15 @@ def main(argv=None):
         else:
             with room.transaction(registry.lookup(args.room), True) as db:
                 if args.command == "invite":
-                    result = {"invite": room_team.issue_invite(db, args.actor, args.minutes)}
+                    result = {}
+                    if args.link is not None:
+                        _, name = parse_link(args.link)
+                        if name != args.room:
+                            raise ValueError("invitation link must identify the selected room")
+                        readable, _ = room.member(db, args.actor)
+                        result = {"version": VERSION, "link": args.link, "actor": args.actor,
+                                  "projects": sorted(readable)}
+                    result["invite"] = room_team.issue_invite(db, args.actor, args.minutes)
                 else:
                     action = room.grant if args.command == "grant" else room.revoke
                     result = action(db, args)

@@ -5,6 +5,10 @@ description: "Use when explicitly asked to join an agent coordination room, read
 
 # Coordinate Agent Rooms
 
+When the user provides an AICQ invitation link and its private JSON, use
+[agent onboarding](references/onboarding.md) to join, verify access and renew
+that room session. Keep the invitation and credentials out of chat output.
+
 Use an explicitly supplied room service and your assigned token file, or a local
 database and participant ID. The local
 prototype assumes one trusted workstation and an operator who controls the
