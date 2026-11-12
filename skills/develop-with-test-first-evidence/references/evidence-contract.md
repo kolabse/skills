@@ -16,3 +16,9 @@ python scripts/evidence.py validate --input <evidence.json>
 ```
 
 Both commands are read-only. `digest` prints the expected value; `validate` checks exact structure and binding. Neither proves chronology, unchanged tests or assertions, narrative truth, or subject provenance. Retain actual observations and comparison proof for those claims. Failed or unavailable focused or broader checks belong in an incomplete-cycle report, not a successful version 1 record.
+
+For an explicitly configured shared project policy, retain this v1 document
+unchanged inside the policy-bound test-first wrapper and use the consumer's
+`accept` command. See [policy-aware evidence](policy-evidence.md) for context,
+runtime and final-verification formats. Standalone `validate`/`digest` remain
+format operations; they do not establish compatibility with a project policy.

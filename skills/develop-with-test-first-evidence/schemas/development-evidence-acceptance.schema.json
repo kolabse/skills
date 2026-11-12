@@ -1,0 +1,68 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "development-evidence-acceptance",
+  "description": "Read-only consistency acceptance of caller-supplied records. The separate outer seal preserves the shared provider result unchanged. Metadata and hashes are installation/byte consistency, not authenticity, execution, chronology or authorization attestation.",
+  "type": "object",
+  "properties": {
+    "schema_version": {"type": "integer", "const": 1},
+    "format": {"type": "string", "const": "development_evidence_acceptance"},
+    "status": {"type": "string", "enum": ["accepted", "blocked", "legacy"]},
+    "diagnostics": {
+      "type": "array", "items": {
+        "type": "object", "properties": {
+          "code": {"type": "string", "minLength": 1},
+          "message": {"type": "string", "minLength": 1}
+        }, "required": ["code", "message"], "additionalProperties": false
+      }
+    },
+    "input_sha256": {"anyOf": [{"type": "null"}, {"type": "string", "pattern": "^[0-9a-f]{64}$"}]},
+    "context_sha256": {
+      "type": "object", "properties": {
+        "decision": {"anyOf": [{"type": "null"}, {"type": "string", "pattern": "^[0-9a-f]{64}$"}]},
+        "previous_decision": {"anyOf": [{"type": "null"}, {"type": "string", "pattern": "^[0-9a-f]{64}$"}]},
+        "subject": {"anyOf": [{"type": "null"}, {"type": "string", "pattern": "^[0-9a-f]{64}$"}]}
+      }, "required": ["decision", "previous_decision", "subject"], "additionalProperties": false
+    },
+    "repository": {"type": "string"},
+    "operation": {"type": "string"},
+    "profile": {"anyOf": [{"type": "null"}, {"type": "string"}]},
+    "subject": {"anyOf": [{"type": "null"}, {"type": "object"}]},
+    "provider_result": {"anyOf": [{"type": "null"}, {"type": "object", "description": "Unchanged provider report, checked against its selected bundled result schema and canonical report_digest."}]},
+    "consumer_provenance": {
+      "anyOf": [
+        {"type": "null"},
+        {"type": "object", "properties": {
+          "root": {"type": "string", "minLength": 1},
+          "file_sha256": {"type": "object", "additionalProperties": {"type": "string", "pattern": "^[0-9a-f]{64}$"}},
+          "validator_kind": {"type": "string", "enum": ["fixed_consumer_validate", "trusted_library_callable"]},
+          "validator_artifact": {"anyOf": [
+            {"type": "null"},
+            {"type": "object", "properties": {
+              "path": {"type": "string", "minLength": 1},
+              "sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"}
+            }, "required": ["path", "sha256"], "additionalProperties": false}
+          ]}
+        }, "required": ["root", "file_sha256", "validator_kind", "validator_artifact"], "additionalProperties": false}
+      ]
+    },
+    "runtime_provenance": {
+      "anyOf": [
+        {"type": "null"},
+        {"type": "object", "properties": {
+          "root": {"type": "string", "minLength": 1},
+          "api_version": {"type": "integer", "const": 1},
+          "file_sha256": {"type": "object", "additionalProperties": {"type": "string", "pattern": "^[0-9a-f]{64}$"}},
+          "consumer_metadata_sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+          "consumer_validator_sha256": {"anyOf": [{"type": "null"}, {"type": "string", "pattern": "^[0-9a-f]{64}$"}]}
+        }, "required": ["root", "api_version", "file_sha256", "consumer_metadata_sha256", "consumer_validator_sha256"], "additionalProperties": false}
+      ]
+    },
+    "authorization": {"type": "string", "const": "not_granted"},
+    "provider_confirmation": {"type": "string", "const": "unconfirmed"},
+    "chronology": {"type": "string", "const": "not_attested"},
+    "observations": {"type": "string", "const": "caller_supplied"},
+    "acceptance_digest": {"type": "string", "pattern": "^sha256:[0-9a-f]{64}$"}
+  },
+  "required": ["schema_version", "format", "status", "diagnostics", "input_sha256", "context_sha256", "repository", "operation", "profile", "subject", "provider_result", "runtime_provenance", "consumer_provenance", "authorization", "provider_confirmation", "chronology", "observations", "acceptance_digest"],
+  "additionalProperties": false
+}

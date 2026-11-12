@@ -69,11 +69,13 @@
       "trigger_evals": "evals/develop-with-test-first-evidence.json",
       "license": "Apache-2.0",
       "provides": [
-        "test-first-development-evidence"
+        "test-first-development-evidence",
+        "policy-aware-development-evidence"
       ],
       "requires": [],
       "optional_integrations": [
-        "software-defect-diagnosis"
+        "software-defect-diagnosis",
+        "project-policy-runtime"
       ],
       "configuration": {
         "scope": "project",
@@ -295,7 +297,8 @@
       "trigger_evals": "evals/verify-before-push.json",
       "license": "Apache-2.0",
       "provides": [
-        "push-verification-evidence"
+        "push-verification-evidence",
+        "project-policy-runtime"
       ],
       "requires": [
         "repository-freshness"

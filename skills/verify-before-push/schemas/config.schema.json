@@ -8,6 +8,24 @@
   "properties": {
     "version": {"const": 1},
     "reuse_verified_results": {"type": "boolean", "default": false},
+    "gitlab_ci": {
+      "type": "object", "additionalProperties": false,
+      "required": ["host", "project_id", "remote", "mr_iid", "checks"],
+      "properties": {
+        "version": {"const": 2},
+        "host": {"type": "string", "maxLength": 253, "pattern": "^[A-Za-z0-9](?:[A-Za-z0-9-]*[A-Za-z0-9])?(?:\\.[A-Za-z0-9](?:[A-Za-z0-9-]*[A-Za-z0-9])?)*$"},
+        "project_id": {"type": "integer", "minimum": 1},
+        "remote": {"type": "string", "minLength": 1},
+        "mr_iid": {"type": "integer", "minimum": 1},
+        "checks": {
+          "type": "object", "minProperties": 1,
+          "additionalProperties": {
+            "type": "array", "minItems": 1, "uniqueItems": true,
+            "items": {"type": "string", "minLength": 1, "maxLength": 255, "pattern": "^[^\\u0000-\\u001f]+$"}
+          }
+        }
+      }
+    },
     "github_ci": {
       "type": "object", "additionalProperties": false,
       "required": ["repository", "remote", "branch", "event", "checks"],
