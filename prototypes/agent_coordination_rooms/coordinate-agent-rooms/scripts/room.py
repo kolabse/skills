@@ -1,12 +1,15 @@
 #!/usr/bin/env python3
 """Single-workstation prototype for the agent coordination room in #175."""
 import argparse
-from contextlib import closing
+from contextlib import closing, contextmanager
+import hashlib
 import json
 from pathlib import Path
 import re
+import secrets
 import sqlite3
 import sys
+import time
 
 
 SCHEMA = (
@@ -30,6 +33,14 @@ SCHEMA = (
 )
 
 
+TOKEN_TABLE = """CREATE TABLE IF NOT EXISTS room_tokens (
+    digest TEXT PRIMARY KEY,
+    actor TEXT UNIQUE NOT NULL REFERENCES members(id) ON DELETE CASCADE,
+    expires_at INTEGER NOT NULL,
+    auth_mode TEXT
+)"""
+
+
 class RoomError(Exception):
     pass
 
@@ -38,6 +49,44 @@ def database(path, initialize):
     if initialize:
         return sqlite3.connect(path)
     return sqlite3.connect(path.resolve().as_uri() + "?mode=rw", uri=True)
+
+
+@contextmanager
+def transaction(path, write, *, initialize=False):
+    with closing(database(path, initialize)) as db, db:
+        db.row_factory = sqlite3.Row
+        db.execute("PRAGMA foreign_keys = ON")
+        db.execute("BEGIN IMMEDIATE" if write else "BEGIN")
+        yield db
+
+
+def install_tokens(db):
+    db.execute(TOKEN_TABLE)
+    if not any(column["name"] == "auth_mode" for column in db.execute("PRAGMA table_info(room_tokens)")):
+        db.execute("ALTER TABLE room_tokens ADD COLUMN auth_mode TEXT")
+
+
+def membership_event(db, actor, event):
+    db.execute("""CREATE TABLE IF NOT EXISTS room_membership_audit (
+        id INTEGER PRIMARY KEY, actor TEXT NOT NULL, event TEXT NOT NULL, occurred_at INTEGER NOT NULL
+    )""")
+    db.execute("INSERT INTO room_membership_audit (actor, event, occurred_at) VALUES (?, ?, ?)",
+               (actor, event, int(time.time())))
+
+
+def token_digest(token):
+    return hashlib.sha256(token.encode("ascii")).hexdigest()
+
+
+def mint_token(db, actor, minutes, auth_mode=None):
+    token = secrets.token_urlsafe(32)
+    db.execute(
+        """INSERT INTO room_tokens (digest, actor, expires_at, auth_mode) VALUES (?, ?, ?, ?)
+        ON CONFLICT(actor) DO UPDATE SET digest = excluded.digest,
+            expires_at = excluded.expires_at, auth_mode = excluded.auth_mode""",
+        (token_digest(token), actor, int(time.time()) + minutes * 60, auth_mode),
+    )
+    return token
 
 
 def init(db, args):
@@ -76,7 +125,10 @@ def grant(db, args):
 
 
 def revoke(db, args):
-    db.execute("DELETE FROM members WHERE id = ?", (args.actor,))
+    if db.execute("DELETE FROM members WHERE id = ?", (args.actor,)).rowcount:
+        membership_event(db, args.actor, "revoked")
+        if db.execute("SELECT 1 FROM sqlite_master WHERE type='table' AND name='room_team_retired'").fetchone():
+            db.execute("INSERT OR IGNORE INTO room_team_retired VALUES (?)", (args.actor,))
     return {"revoked": args.actor}
 
 
@@ -196,11 +248,8 @@ def parse(argv):
 def main(argv=None):
     args = parse(argv)
     try:
-        with closing(database(args.db, args.command == "init")) as db, db:
-            db.row_factory = sqlite3.Row
-            db.execute("PRAGMA foreign_keys = ON")
-            read_only = args.command in {"access", "history"}
-            db.execute("BEGIN" if read_only else "BEGIN IMMEDIATE")
+        write = args.command not in {"access", "history"}
+        with transaction(args.db, write, initialize=args.command == "init") as db:
             result = args.handler(db, args)
         print(json.dumps(result))
     except (RoomError, sqlite3.Error) as error:

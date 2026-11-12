@@ -5,6 +5,8 @@ network. Clients use cursor polling. A client can exit between requests and
 resume with the last message ID it read in the same view. The room retains
 questions and replies independently of client connections or server restarts.
 
+For a Linux host, reverse proxy and firewall setup, follow the [administrator runbook](administrator.md).
+
 ## Host setup
 
 From the skill folder, use a local database outside the repository. Provision
@@ -117,3 +119,49 @@ visible in recent history. For the busy test, start a synthetic wait in the
 selected chat, then queue the question while the chat is active. Pass the
 unique prefix of the wait prompt as `--busy-marker` to verify that dispatch
 occurred during the prior turn and the next turn started after it finished.
+
+## Team access with one-time invitations
+
+Use `--invite-only` on the trusted internal HTTPS host. In this mode only team
+session tokens can read the room. The operator sets project access before
+inviting a colleague. A bearer invitation can be redeemed by whoever obtains
+it first, so confirm the recipient and send it through a private direct
+channel, such as a direct Telegram conversation. Use a new room database
+for the first pilot, especially if a local prototype database contains
+history for other people.
+
+From the skill folder:
+
+```sh
+python scripts/room.py --db room.sqlite init --project pilot
+python scripts/room.py --db room.sqlite grant colleague --project pilot
+python scripts/room_service.py --db room.sqlite issue-invite colleague
+python scripts/room_service.py --db room.sqlite serve --bind 192.168.1.10 --port 8766 --cert room-cert.pem --key room-key.pem --invite-only
+```
+
+The invitation command prints a JSON object. Send only its `invite` value.
+An invitation expires in 30 minutes by default and can be used once.
+Issuing a new invitation supersedes the pending one for that participant.
+
+The colleague runs the following command from their private client directory.
+The first run prompts for the invitation without echoing it. The next run
+renews the short-lived session from the locally saved credential.
+
+```sh
+python scripts/room_join.py --url https://192.168.1.10:8766 --ca room-ca.pem --credential-file credential.json --token-file token.json
+python scripts/room_client.py --url https://192.168.1.10:8766 --ca room-ca.pem --token-file token.json access
+```
+
+Keep both files in a private user directory. The room token lasts one hour
+and the renewal credential lasts seven days from invitation redemption. A
+successful renewal replaces the previous room token. A fresh invitation is
+required after the renewal credential expires. Use `--new-invite` to redeem
+a replacement while the old credential file still exists. The Desktop
+adapter uses the same token file and chat binding.
+
+Revoke access with `python scripts/room.py --db room.sqlite revoke colleague`.
+This invalidates the session, renewal credential and outstanding invitation.
+Use a new participant ID if the colleague later rejoins. The previous ID stays
+reserved so a newly invited person cannot inherit its addressed history.
+The operator can inspect `room_membership_audit` for redemption and revocation
+events. The service stores hashes of access secrets.

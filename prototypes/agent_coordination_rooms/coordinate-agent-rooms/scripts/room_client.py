@@ -37,15 +37,20 @@ def parse(argv=None):
     return parser.parse_args(argv)
 
 
-def request_room(args):
-    url = urlsplit(args.url)
+def connection(origin, ca):
+    url = urlsplit(origin)
     if not url.hostname or url.username or url.password or url.query or url.fragment or url.path not in {"", "/"}:
         raise ValueError("use the room service origin as --url")
     if url.scheme != "https":
         if url.scheme != "http" or not ipaddress.ip_address(url.hostname).is_loopback:
             raise ValueError("the room client requires HTTPS outside loopback")
-    context = ssl.create_default_context(cafile=str(args.ca) if args.ca else None)
+    context = ssl.create_default_context(cafile=str(ca) if ca else None)
     opener = build_opener(ProxyHandler({}), NoRedirect(), HTTPSHandler(context=context))
+    return origin.rstrip("/"), opener
+
+
+def request_room(args):
+    origin, opener = connection(args.url, args.ca)
     token = json.loads(args.token_file.read_text(encoding="utf-8"))["token"]
     path, payload = "/v1/access", None
     if args.command == "scope":
@@ -62,7 +67,7 @@ def request_room(args):
     if payload is not None:
         headers["Content-Type"] = "application/json"
         data = json.dumps(payload).encode("utf-8")
-    with opener.open(Request(args.url.rstrip("/") + path, data=data, headers=headers), timeout=10) as response:
+    with opener.open(Request(origin + path, data=data, headers=headers), timeout=10) as response:
         return json.load(response)
 
 
