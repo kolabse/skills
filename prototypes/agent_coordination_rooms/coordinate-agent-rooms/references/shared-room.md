@@ -1,7 +1,7 @@
 # Shared room service pilot
 
-Use one service process and one SQLite database per room on a trusted private
-network. Clients use cursor polling. A client can exit between requests and
+Use one service process and a separate SQLite database for each room on a
+trusted private network. Clients use cursor polling. A client can exit between requests and
 resume with the last message ID it read in the same view. The room retains
 questions and replies independently of client connections or server restarts.
 
@@ -62,7 +62,7 @@ notifications, public hosting and automated turns over project data are outside 
 
 ## Addressed Codex turn on each PC
 
-Copy `room_worker.py` and `smoke_app_server.py` alongside `room_client.py`.
+Keep the scripts from the same revision together in the client directory.
 The worker uses an already signed-in local Codex executable. Give each PC its
 own token file and private worker state directory.
 
@@ -152,6 +152,12 @@ python scripts/room_join.py --url https://192.168.1.10:8766 --ca room-ca.pem --c
 python scripts/room_client.py --url https://192.168.1.10:8766 --ca room-ca.pem --token-file token.json access
 ```
 
+For a named project room, use its full URL, such as
+`https://room.example.net/rooms/alpha`, for sign-in, client commands and
+Desktop binding. Use separate token, credential and state files per room.
+The original unprefixed URL remains valid for the default room when the
+server is configured with one.
+
 Keep both files in a private user directory. The room token lasts one hour
 and the renewal credential lasts seven days from invitation redemption. A
 successful renewal replaces the previous room token. A fresh invitation is
@@ -159,7 +165,9 @@ required after the renewal credential expires. Use `--new-invite` to redeem
 a replacement while the old credential file still exists. The Desktop
 adapter uses the same token file and chat binding.
 
-Revoke access with `python scripts/room.py --db room.sqlite revoke colleague`.
+For named rooms, revoke access with
+`python scripts/room_admin.py --rooms-dir rooms revoke alpha colleague`.
+For the default room, use `python scripts/room.py --db room.sqlite revoke colleague`.
 This invalidates the session, renewal credential and outstanding invitation.
 Use a new participant ID if the colleague later rejoins. The previous ID stays
 reserved so a newly invited person cannot inherit its addressed history.

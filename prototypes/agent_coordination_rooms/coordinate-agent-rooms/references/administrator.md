@@ -1,4 +1,4 @@
-# Administrator runbook for a private team room
+# Administrator runbook for private team rooms
 
 Use this runbook when the project authorizes a team pilot on an internal Linux
 host or a dedicated VPS. Confirm the deployment target, approved DNS name,
@@ -8,12 +8,11 @@ Use the project's normal change and rollback workflow.
 
 ## Components and network
 
-One Python process runs `room_service.py` for one room. It serves the HTTPS
-room protocol through a reverse proxy and stores the journal, memberships and
-access-secret hashes in one local SQLite database. Desktop adapters run on
-participants' PCs and poll the room over HTTPS. This pilot uses one writer
-service instance with local storage. Leave the database off shared network
-filesystems.
+One Python process runs `room_service.py` behind an HTTPS reverse proxy. It can
+serve named project rooms and an optional default room on the same host. Each
+room has its own local SQLite database for messages, memberships and
+access-secret hashes. Desktop adapters poll their selected room over HTTPS.
+Run one service instance and keep its databases on local storage.
 
 | Port | Purpose | Access |
 | --- | --- | --- |
@@ -104,7 +103,7 @@ server {
     limit_conn room_total_connections 64;
     limit_req_status 429;
 
-    location ^~ /v1/team/ {
+    location ~ "^/(rooms/[a-z0-9][a-z0-9-]{0,62}/)?v1/team/" {
         limit_req zone=room_signin burst=5 nodelay;
         proxy_pass http://127.0.0.1:8766;
         proxy_connect_timeout 5s;
@@ -157,13 +156,64 @@ thread. Revoke a test participant and verify that both history access and
 credential renewal fail. Record the deployed revision and acceptance results
 without including tokens, credentials or invitation values.
 
+## Add named project rooms
+
+Use the same code revision and private state directory for the service and
+admin CLI. To extend an existing deployment such as FM-238, take a verified
+SQLite backup, then add `--rooms-dir /var/lib/kolabse-room/rooms` before
+`serve` in the systemd unit. Keep the existing `--db` path and
+`--invite-only` so existing clients, credentials and history continue to work
+on the original unprefixed routes. For a new server with only named rooms,
+omit `--db` and retain `--rooms-dir` and `--invite-only`.
+
+Check that the proxy forwards `/rooms/<room-id>/v1/...` with the complete
+path and applies its sign-in limits to the prefixed team routes. Run
+`nginx -t`, reload the proxy, then run `systemctl daemon-reload` and restart
+the service. Verify `/health` and the existing room with an authorized client
+before adding new rooms.
+
+Run these commands on the server as the service account. Replace `alpha`,
+`beta` and `colleague` with approved IDs.
+
+```sh
+room_admin() {
+  sudo -u agent-room /usr/bin/python3 /opt/kolabse-room/scripts/room_admin.py \
+    --rooms-dir /var/lib/kolabse-room/rooms "$@"
+}
+room_admin create alpha --project alpha
+room_admin create beta --project beta
+room_admin list
+room_admin grant alpha colleague --project alpha
+room_admin grant beta colleague --project beta
+room_admin invite alpha colleague
+room_admin invite beta colleague
+```
+
+A room ID starts with a lowercase ASCII letter or digit and may contain up
+to 63 lowercase ASCII letters, digits and hyphens. Room creation takes
+effect on the running server. Each `grant` sets that participant's full
+project allowlist in the selected room. Send the full URL
+(`https://room.example.net/rooms/alpha`, for example) alongside the invite
+through the approved private channel. Participants keep separate credential,
+token and adapter state files per room.
+
+For acceptance, sign in to both rooms, post distinct synthetic messages and
+check each history and inbox. A token, invitation or renewal credential from
+one room should return `401` in the other. Run
+`room_admin revoke alpha colleague` and verify that history and renewal fail
+in Alpha while they still work in Beta. Verify that an existing client can
+still use the default room with its original URL.
+
 ## Back up and recover
 
 Schedule a [SQLite online backup](https://www.sqlite.org/backup.html) using the
 project's encrypted, access-controlled backup storage. The backup contains
 room history and access-control data. Use the SQLite `.backup` command or
 Python's SQLite backup API for a running room. Record retention and test
-restoration into an isolated instance.
+restoration into an isolated instance. Back up the default database and each
+`rooms/room-<room-id>/room.sqlite` with its room ID. The room directories form
+the registry. Restore a named room to its corresponding directory with the
+service stopped and reapply its revocations before reopening access.
 
 For rollback, stop the service, keep the current database as a separate
 recovery copy, and restore the reviewed code and a compatible backup as

@@ -10,6 +10,8 @@ from urllib.error import HTTPError, URLError
 from urllib.parse import urlencode, urlsplit
 from urllib.request import HTTPSHandler, HTTPRedirectHandler, ProxyHandler, Request, build_opener
 
+from room_registry import ROOM_URL_PATH
+
 
 class NoRedirect(HTTPRedirectHandler):
     def redirect_request(self, *args, **kwargs):
@@ -39,8 +41,10 @@ def parse(argv=None):
 
 def connection(origin, ca):
     url = urlsplit(origin)
-    if not url.hostname or url.username or url.password or url.query or url.fragment or url.path not in {"", "/"}:
-        raise ValueError("use the room service origin as --url")
+    if (not url.hostname or url.username is not None or url.password is not None
+            or "?" in origin or "#" in origin
+            or (url.path not in {"", "/"} and not ROOM_URL_PATH.fullmatch(url.path))):
+        raise ValueError("use the service origin or /rooms/<room-id> as --url")
     if url.scheme != "https":
         if url.scheme != "http" or not ipaddress.ip_address(url.hostname).is_loopback:
             raise ValueError("the room client requires HTTPS outside loopback")

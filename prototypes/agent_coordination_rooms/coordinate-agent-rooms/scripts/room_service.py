@@ -13,6 +13,7 @@ import time
 from urllib.parse import parse_qs, urlsplit
 
 import room
+from room_registry import ROOM_ID, RoomRegistry
 import room_team
 
 
@@ -149,16 +150,17 @@ class RoomHandler(BaseHTTPRequestHandler):
 
     def route(self):
         url = urlsplit(self.path)
-        route = self.command, url.path
-        if route == ("GET", "/health") and not url.query:
+        if self.command == "GET" and url.path == "/health" and not url.query:
             return {"status": "ok"}
+        db_path, path = self.server.room_route(url.path)
+        route = self.command, path
         team = {
             ("POST", "/v1/team/join"): room_team.join,
             ("POST", "/v1/team/renew"): room_team.renew,
         }.get(route)
         if self.server.invite_only and team is not None and not url.query:
             payload = self.read_json()
-            with transaction(self.server.db_path, True) as db:
+            with transaction(db_path, True) as db:
                 return team(db, payload)
         handler = {
             ("GET", "/v1/history"): room.history,
@@ -180,17 +182,30 @@ class RoomHandler(BaseHTTPRequestHandler):
             if payload.keys() != {"projects"}:
                 raise ValueError("scope requires projects")
             arguments = {"project": project_ids(payload["projects"])}
-        with transaction(self.server.db_path, self.command == "POST") as db:
+        with transaction(db_path, self.command == "POST") as db:
             actor = authenticated_actor(db, self.headers, room_team.MODE if self.server.invite_only else None)
             return handler(db, argparse.Namespace(actor=actor, **arguments))
 
 
 class RoomServer(ThreadingHTTPServer):
-    def __init__(self, address, db_path, tls, invite_only=False):
+    def __init__(self, address, db_path, tls, invite_only=False, *, registry=None):
         self.db_path = db_path
         self.tls = tls
+        self.registry = registry
         self.invite_only = invite_only
         super().__init__(address, RoomHandler)
+
+    def room_route(self, path):
+        if path.startswith("/rooms/"):
+            name, separator, endpoint = path[len("/rooms/"):].partition("/")
+            if self.registry is not None and separator and ROOM_ID.fullmatch(name):
+                try:
+                    return self.registry.lookup(name), "/" + endpoint
+                except FileNotFoundError:
+                    pass
+        elif self.db_path is not None:
+            return self.db_path, path
+        raise RequestError(HTTPStatus.NOT_FOUND, "route not found")
 
     def get_request(self):
         sock, address = super().get_request()
@@ -212,19 +227,28 @@ def serve(args):
         tls = ssl.SSLContext(ssl.PROTOCOL_TLS_SERVER)
         tls.minimum_version = ssl.TLSVersion.TLSv1_2
         tls.load_cert_chain(args.cert, args.key)
-    with transaction(args.db, True) as db:
-        db.execute("SELECT 1 FROM members LIMIT 1")
-        room.install_tokens(db)
-        if args.invite_only:
-            room_team.install(db)
-    with RoomServer((str(address), args.port), args.db, tls, args.invite_only) as server:
+    registry = RoomRegistry(args.rooms_dir) if args.rooms_dir else None
+    if registry is not None:
+        if not args.invite_only:
+            raise ValueError("--rooms-dir requires --invite-only")
+        if args.db is not None and args.db.resolve().is_relative_to(registry.directory):
+            raise ValueError("the default database must be outside the named rooms directory")
+        registry.directory.mkdir(mode=0o700, parents=True, exist_ok=True)
+    if args.db is not None:
+        with transaction(args.db, True) as db:
+            db.execute("SELECT 1 FROM members LIMIT 1")
+            room.install_tokens(db)
+            if args.invite_only:
+                room_team.install(db)
+    with RoomServer((str(address), args.port), args.db, tls, args.invite_only, registry=registry) as server:
         print(json.dumps({"port": server.server_port, "tls": tls is not None}), flush=True)
         server.serve_forever()
 
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--db", type=Path, required=True)
+    parser.add_argument("--db", type=Path, help="database for the original unprefixed routes")
+    parser.add_argument("--rooms-dir", type=Path, help="registry for named project rooms")
     commands = parser.add_subparsers(dest="command", required=True)
     server = commands.add_parser("serve")
     server.add_argument("--bind", default="127.0.0.1")
@@ -239,6 +263,11 @@ def main():
     invite.add_argument("actor", type=room.identifier)
     invite.add_argument("--minutes", type=int, default=30)
     args = parser.parse_args()
+    if args.command == "serve":
+        if args.db is None and args.rooms_dir is None:
+            parser.error("serve requires --db or --rooms-dir")
+    elif args.db is None or args.rooms_dir is not None:
+        parser.error("use --db for a legacy room, or room_admin.py for named rooms")
     try:
         if args.command == "serve":
             serve(args)
