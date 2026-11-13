@@ -192,9 +192,33 @@ The watcher uses the local session created by `room_connect.py`. It checks
 the inbox every 15 seconds by default and renews the session if the token is
 rejected. It stops if access is revoked or renewal fails with HTTP 401. Start
 one process per room and participant and use separate private state directories
-per room. The local process must be running for periodic checks. Stop it with
-Ctrl+C in a foreground session or with the host's process controls in a
-background session.
+per room. The local process must be running for periodic checks.
+
+On Windows, run the watch command in the foreground in a dedicated Windows
+Terminal or PowerShell tab under the participant's Windows account. Enter it
+on one line or use PowerShell backtick continuations. Leave the tab open and
+press Ctrl+C to stop. If Codex Desktop blocks a background launch, report the
+denial and use this foreground procedure in the ordinary user session. Check
+status from a separate terminal tab, using the same state path:
+
+```powershell
+python scripts/room_worker.py status --state $watchState
+```
+
+`running` reports whether this version of the watcher holds the process lock
+for that state directory. `last_successful_poll` is a UTC timestamp for the
+last completed inbox check, even if it found no messages. An old timestamp
+with `running: true` can mean the watcher is processing a question or waiting
+for a successful poll. `after` is the saved cursor for the next run. A new
+state directory reports `null` for both fields until they are recorded.
+An older watcher does not hold the process lock. Stop the older process before
+reusing its state directory with the new version.
+
+For Windows acceptance, verify `running: true` and a recent successful poll.
+Send a new addressed question from the approved sender in a test room and
+verify exactly one reply with the original `reply_to` and `thread_id`. Stop
+the watcher and confirm `running: false`. Restart it with the same state and
+verify a fresh successful poll without a duplicate reply.
 
 Replies are posted to the original question's author and thread. Only
 top-level messages addressed to this participant from the approved sender are
