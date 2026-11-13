@@ -1,5 +1,7 @@
 """Periodic processing of project-labelled questions and cursor recovery."""
+import json
 from pathlib import Path
+import subprocess
 import sys
 from tempfile import TemporaryDirectory
 import unittest
@@ -49,3 +51,35 @@ class WatchTests(unittest.TestCase):
         self.assertEqual(answers, ["Status?"])
         self.assertEqual(posts, [("post", "codex-reply-3", "Please send the check result.",
                                   "--to", "alice", "--reply-to", "3")] * 2)
+
+    def test_status_reports_live_process_last_success_and_resume_cursor(self):
+        with TemporaryDirectory() as folder:
+            state = Path(folder)
+
+            def status():
+                result = subprocess.run(
+                    [sys.executable, room_worker.__file__, "status", "--state", folder],
+                    capture_output=True, text=True, encoding="utf-8", timeout=5,
+                )
+                self.assertEqual(result.returncode, 0, result.stderr)
+                return json.loads(result.stdout)
+
+            self.assertEqual(status(), {"running": False, "last_successful_poll": None, "after": None})
+            with room_worker.watch_lease(state):
+                self.assertEqual(status(), {"running": True, "last_successful_poll": None, "after": None})
+                with self.assertRaisesRegex(room_worker.WorkerError, "already running"):
+                    with room_worker.watch_lease(state):
+                        self.fail("second watcher acquired the same state")
+                options = dict(after=7, actor="bob", peer="alice", origin="https://room.example",
+                               state=state, projects={"portal"})
+                room_worker.poll_inbox(lambda *_: [], lambda _: self.fail("model called"), **options)
+                live = status()
+                self.assertTrue(live["running"])
+                self.assertEqual(live["after"], 7)
+                self.assertRegex(live["last_successful_poll"], r"^\d{4}-\d{2}-\d{2}T.*\+00:00$")
+                def fail(*_):
+                    raise ConnectionError("offline")
+                with self.assertRaises(ConnectionError):
+                    room_worker.poll_inbox(fail, lambda _: self.fail("model called"), **options)
+                self.assertEqual(status(), live)
+            self.assertEqual(status(), {**live, "running": False})

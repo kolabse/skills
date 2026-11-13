@@ -1,6 +1,8 @@
 #!/usr/bin/env python3
 """Run one text-only Codex turn for a question in the private room pilot."""
 import argparse
+from contextlib import closing, contextmanager
+from datetime import datetime, timezone
 import json
 from pathlib import Path
 import sqlite3
@@ -70,6 +72,50 @@ def publish_reply(room, answer, question, *, origin, actor, peer, state):
             "thread_id": reply["thread_id"], **metrics}
 
 
+@contextmanager
+def watch_lease(state, *, probe=False):
+    path = state / "watch-process.sqlite"
+    if probe and not path.is_file():
+        yield False
+        return
+    if not probe:
+        state.mkdir(mode=0o700, parents=True, exist_ok=True)
+    # An empty SQLite database supplies an OS-released write lock. Its file
+    # can remain after a crash without being mistaken for a running process.
+    target = path.resolve().as_uri() + ("?mode=rw" if probe else "?mode=rwc")
+    with closing(sqlite3.connect(target, uri=True, timeout=0)) as db:
+        try:
+            db.execute("BEGIN IMMEDIATE")
+        except sqlite3.OperationalError as error:
+            if error.sqlite_errorcode != sqlite3.SQLITE_BUSY:
+                raise
+            if not probe:
+                raise WorkerError("watcher is already running for this state") from None
+            yield True
+        else:
+            yield not probe
+
+
+def watch_status(state):
+    with watch_lease(state, probe=True) as running:
+        cursor = state / "cursor.json"
+        checkpoint = json.loads(cursor.read_text(encoding="utf-8")) if cursor.is_file() else {}
+        return {"running": running, "last_successful_poll": checkpoint.get("last_successful_poll"),
+                "after": checkpoint.get("after")}
+
+
+def status_main(argv):
+    parser = argparse.ArgumentParser(description="Report local AICQ watcher status")
+    parser.add_argument("--state", type=Path, required=True)
+    args = parser.parse_args(argv)
+    try:
+        print(json.dumps(watch_status(args.state)))
+    except (OSError, ValueError, sqlite3.Error) as error:
+        print(f"Watcher status unavailable: {error}", file=sys.stderr)
+        return 1
+    return 0
+
+
 def poll_inbox(room, answer, *, after, actor, peer, origin, state, projects):
     binding = {"origin": origin, "actor": actor, "peer": peer, "projects": sorted(projects)}
     state.mkdir(mode=0o700, parents=True, exist_ok=True)
@@ -82,7 +128,8 @@ def poll_inbox(room, answer, *, after, actor, peer, origin, state, projects):
                 raise WorkerError("watch state belongs to a different binding")
             after = checkpoint["after"]
         else:
-            save_document(cursor_file, {"binding": binding, "after": after})
+            checkpoint = {"binding": binding, "after": after}
+            save_document(cursor_file, checkpoint)
 
         answered = 0
         for item in room("history", "--inbox", "--after", str(after)):
@@ -93,8 +140,11 @@ def poll_inbox(room, answer, *, after, actor, peer, origin, state, projects):
                     and item["reply_to"] is None and set(item["projects"]) <= projects):
                 publish_reply(room, answer, item, origin=origin, actor=actor, peer=peer, state=state)
                 answered += 1
-            save_document(cursor_file, {"binding": binding, "after": number})
+            checkpoint["after"] = number
+            save_document(cursor_file, checkpoint)
             after = number
+        checkpoint["last_successful_poll"] = datetime.now(timezone.utc).isoformat()
+        save_document(cursor_file, checkpoint)
         return answered
 
 
@@ -154,7 +204,8 @@ def watch_main(argv):
     if args.after < 0 or not 5 <= args.interval <= 600:
         parser.error("use a nonnegative cursor and an interval from 5 to 600 seconds")
     try:
-        watch(args)
+        with watch_lease(args.state):
+            watch(args)
     except KeyboardInterrupt:
         return 0
     except (WorkerError, SmokeError, KeyError, ValueError, OSError, sqlite3.Error, subprocess.SubprocessError) as error:
@@ -213,6 +264,8 @@ def codex_answer(executable, question, *, project_mode=False):
 
 
 def main():
+    if sys.argv[1:2] == ["status"]:
+        return status_main(sys.argv[2:])
     if sys.argv[1:2] == ["watch"]:
         return watch_main(sys.argv[2:])
     parser = argparse.ArgumentParser(description=__doc__)

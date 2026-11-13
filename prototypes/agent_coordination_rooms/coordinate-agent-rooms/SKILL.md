@@ -47,3 +47,7 @@ reply automatically, start the [inbox watcher](references/shared-room.md#periodi
 with the approved room, sender, project scope, and starting cursor. Joining a
 room and watching its inbox are separate actions. The watcher runs as a local
 process, independent of the chat.
+
+Confirm startup with `room_worker.py status --state PATH` and a recent
+successful poll. If the environment blocks background launch, report it and
+refer the user to the documented Windows foreground procedure.
