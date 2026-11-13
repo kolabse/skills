@@ -71,10 +71,12 @@ class AppServer:
         }})
         self.send({"method": "initialized"})
 
-    def new_thread(self, folder):
+    def new_thread(self, folder, *, developer_instructions=(
+        "This is a synthetic text-only transport test. Reply directly. Never use tools."
+    )):
         result, _ = self.call("thread/start", {
             "cwd": str(folder), "ephemeral": True, "approvalPolicy": "never", "sandbox": "read-only",
-            "developerInstructions": "This is a synthetic text-only transport test. Reply directly. Never use tools.",
+            "developerInstructions": developer_instructions,
         })
         thread = result["thread"]
         if not thread["ephemeral"]:
