@@ -93,3 +93,40 @@ class RoomOnboardingTests(unittest.TestCase):
                 self.assertNotIn(secret, joined.stdout + renewed.stdout)
 
         self.assertEqual(len(list(state.glob("*.json"))), 2)
+
+    def test_outgoing_id_does_not_hide_unacknowledged_inbox_after_restart(self):
+        link = self.base + "/rooms/alpha/invite"
+        self.admin("grant", "alpha", "bob", "--project", "portal")
+
+        def join(actor):
+            invite_file = self.folder / (actor + ".json")
+            invite_file.write_text(json.dumps(self.admin("invite", "alpha", actor, "--link", link)),
+                                   encoding="utf-8")
+            result = self.run_cli("room_connect.py", "--link", link, "--invite-file", invite_file,
+                                  "--state-dir", self.folder / actor)
+            self.assertEqual(result.returncode, 0, result.stderr)
+            return json.loads(result.stdout)["session_file"]
+
+        alice, bob = join("alice"), join("bob")
+
+        def client(token_file, *args, status=0):
+            result = self.run_cli("room_client.py", "--url", link.removesuffix("/invite"),
+                                  "--token-file", token_file, *args)
+            self.assertEqual(result.returncode, status, result.stderr)
+            return json.loads(result.stdout)
+
+        client(bob, "post", "seed", "Earlier message")
+        question = client(alice, "post", "q", "Question for Bob", "--to", "bob")
+        outgoing = client(bob, "post", "legacy", "A later outgoing question", "--to", "alice")
+        self.assertEqual((question["id"], outgoing["id"]), (2, 3))
+        self.assertEqual(client(bob, "history", "--inbox", "--after", "3"), [])
+
+        # Each CLI call is a fresh process. Reading alone does not acknowledge.
+        self.assertEqual(client(bob, "inbox"), [question])
+        blocked = client(bob, "ask", "new", "New question", "--to", "alice", status=2)
+        self.assertEqual(blocked, {"status": "pending_inbox", "messages": [question]})
+        self.assertEqual(client(bob, "inbox"), [question])
+        self.assertEqual(client(bob, "ack-inbox", "2"), {"after": 2})
+        self.assertEqual(client(bob, "inbox"), [])
+        self.assertEqual(client(bob, "ask", "new", "New question", "--to", "alice")["id"], 4)
+        self.assertEqual([item["id"] for item in client(alice, "inbox")], [3, 4])

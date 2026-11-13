@@ -65,18 +65,22 @@ def secret(document, key):
     return value
 
 
+def session_path(link, state_dir=None):
+    session_id = hashlib.sha256(link.encode("utf-8")).hexdigest()
+    return (state_dir or default_state()) / (session_id + ".json")
+
+
 def connect(args):
     room_url, name = parse_link(args.link)
-    state_dir = args.state_dir or default_state()
-    session_id = hashlib.sha256(args.link.encode("utf-8")).hexdigest()
-    session_file = state_dir / (session_id + ".json")
+    session_file = session_path(args.link, args.state_dir)
+    state_dir = session_file.parent
     new_invitation = args.invite_file is not None
     if new_invitation and args.invite_file.resolve() == session_file.resolve():
         raise ValueError("invitation and session files must differ")
     state_dir.mkdir(mode=0o700, parents=True, exist_ok=True)
     # Serialize renewals of the same locally saved session. Each renewal
     # invalidates the previous token on the server.
-    with room.transaction(state_dir / (session_id + ".lock"), True, initialize=True):
+    with room.transaction(session_file.with_suffix(".lock"), True, initialize=True):
         source = args.invite_file if new_invitation else session_file
         if not new_invitation and not source.is_file():
             raise ValueError("no saved session for this room; provide its invitation JSON")
