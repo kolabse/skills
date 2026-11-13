@@ -51,3 +51,5 @@ process, independent of the chat.
 Confirm startup with `room_worker.py status --state PATH` and a recent
 successful poll. If the environment blocks background launch, report it and
 refer the user to the documented Windows foreground procedure.
+
+For an operator-configured Git check, use the [revision handoff pilot](references/revision-handoff.md).

@@ -16,6 +16,7 @@ import room
 from room_invitation import REVISION, SOURCE, VERSION
 from room_registry import ROOM_ID, RoomRegistry
 import room_team
+import room_revision
 
 
 MAX_JSON = 16 * 1024
@@ -142,7 +143,7 @@ class RoomHandler(BaseHTTPRequestHandler):
                 self.send_content(HTTPStatus.OK, result.encode("utf-8"), "text/html")
             else:
                 self.send_json(HTTPStatus.OK, result)
-        except RequestError as error:
+        except (RequestError, room_revision.HandoffError) as error:
             self.send_json(error.status, {"error": str(error)})
         except ValueError as error:
             self.send_json(HTTPStatus.BAD_REQUEST, {"error": str(error)})
@@ -187,6 +188,14 @@ class RoomHandler(BaseHTTPRequestHandler):
             payload = self.read_json()
             with transaction(db_path, True) as db:
                 return team(db, payload)
+        prefix = "/v1/revision-check/"
+        action = path.removeprefix(prefix)
+        if (self.server.invite_only and self.command == "POST" and path.startswith(prefix)
+                and action in room_revision.ACTIONS and not url.query):
+            payload = self.read_json()
+            with transaction(db_path, action in {"submit", "complete"}) as db:
+                actor = authenticated_actor(db, self.headers, room_team.MODE)
+                return room_revision.handle(db, actor, action, payload)
         handler = {
             ("GET", "/v1/history"): room.history,
             ("GET", "/v1/access"): room.access,
