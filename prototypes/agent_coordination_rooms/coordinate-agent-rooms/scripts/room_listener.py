@@ -53,8 +53,7 @@ SCHEMA = (
 def capture_desktop_inbox(state, binding, request):
     origin, actor, thread = (binding[key] for key in ("origin", "actor", "thread"))
     projects = set(binding["projects"])
-    senders = set(binding["auto_reply_from"])
-    settings = json.dumps([thread, sorted(projects), sorted(senders)])
+    settings = json.dumps([thread, sorted(projects)])
     initial_cursor = binding.get("after", 0)
     if type(initial_cursor) is not int or initial_cursor < 0:
         raise ListenerError("invalid initial room cursor")
@@ -65,7 +64,7 @@ def capture_desktop_inbox(state, binding, request):
                    (origin, actor, settings, initial_cursor))
         row = db.execute("SELECT settings, cursor FROM bindings WHERE origin=? AND actor=?",
                          (origin, actor)).fetchone()
-        if row["settings"] != settings:
+        if json.loads(row["settings"])[:2] != [thread, sorted(projects)]:
             raise ListenerError("room participant is already bound to different settings")
         cursor = row["cursor"]
 
@@ -82,8 +81,7 @@ def capture_desktop_inbox(state, binding, request):
         if (message["actor"] == actor or message["recipient"] not in (None, actor)
                 or not set(message["projects"]) <= projects):
             continue
-        auto = (bool(message["projects"]) and message["recipient"] == actor and message["reply_to"] is None
-                and message["actor"] in senders)
+        auto = can_reply(binding, message)
         pending.append((origin, actor, number, thread, json.dumps(message), int(auto)))
 
     with room.transaction(state, True) as db:
@@ -110,6 +108,21 @@ def desktop_pending(state, thread):
                  "auto_reply": bool(row["auto_reply"])} for row in rows]
 
 
+def can_reply(binding, message):
+    if message["reply_to"] is not None:
+        return False
+    if binding.get("auto_reply") is True:
+        return (message["recipient"] == binding["actor"]
+                or (message["recipient"] is None and message.get("question") is True))
+    # Previously approved sender-specific bindings keep their existing scope.
+    return ("auto_reply" not in binding and message["recipient"] == binding["actor"]
+            and bool(message["projects"]) and message["actor"] in binding.get("auto_reply_from", []))
+
+
+def auto_reply_enabled(binding):
+    return binding.get("auto_reply", bool(binding.get("auto_reply_from")))
+
+
 def deliver_desktop_message(state, binding, request, queue, observe, *, active=lambda: True):
     origin, actor, thread = (binding[key] for key in ("origin", "actor", "thread"))
     with room.transaction(state, True) as db:
@@ -118,16 +131,16 @@ def deliver_desktop_message(state, binding, request, queue, observe, *, active=l
                FROM desktop_inbox i LEFT JOIN desktop_answers a USING (origin, actor, message_id)
                LEFT JOIN desktop_turns t USING (origin, actor, message_id)
                WHERE i.origin=? AND i.actor=? AND i.thread=?
-                 AND ((i.auto_reply=1 AND a.reply_id IS NULL)
-                      OR (i.auto_reply=0 AND t.answer IS NULL))
+                 AND ((i.auto_reply=1 AND ? AND a.reply_id IS NULL)
+                      OR ((i.auto_reply=0 OR NOT ?) AND t.answer IS NULL))
                ORDER BY (t.prompt IS NOT NULL), i.auto_reply DESC, i.message_id LIMIT 1""",
-            (origin, actor, thread),
+            (origin, actor, thread, auto_reply_enabled(binding), auto_reply_enabled(binding)),
         ).fetchone()
         if row is None:
             return
         number = row["message_id"]
         question = json.loads(row["payload"])
-        auto_reply = bool(row["auto_reply"])
+        auto_reply = bool(row["auto_reply"]) and can_reply(binding, question)
         identity = (origin, actor, number)
         prompt = row["prompt"]
         submit = prompt is None
@@ -181,16 +194,18 @@ def validate_binding(binding):
         raise ListenerError("invalid binding")
     link = binding["link"]
     origin, _ = parse_link(link)
-    if not isinstance(binding["projects"], list) or not isinstance(binding["auto_reply_from"], list):
+    senders = binding.get("auto_reply_from", [])
+    if (not isinstance(binding["projects"], list) or not isinstance(senders, list)
+            or ("auto_reply" in binding and type(binding["auto_reply"]) is not bool)):
         raise ListenerError("invalid project or sender list")
-    for value in [binding["actor"], *binding["projects"], *binding["auto_reply_from"]]:
+    for value in [binding["actor"], *binding["projects"], *senders]:
         if not isinstance(value, str) or not value:
             raise ListenerError("invalid participant, project or sender ID")
     if not isinstance(binding["thread"], str) or str(UUID(binding["thread"])) != binding["thread"]:
         raise ListenerError("expected the canonical Desktop chat UUID")
     if type(binding.get("after")) is not int or binding["after"] < 0:
         raise ListenerError("choose an initial room cursor")
-    if binding["auto_reply_from"] or binding.get("codex"):
+    if auto_reply_enabled(binding) or binding.get("codex"):
         codex = Path(binding["codex"])
         if not codex.is_absolute() or not codex.is_file():
             raise ListenerError("Codex executable is unavailable")
@@ -205,8 +220,7 @@ def register_binding(config, binding):
         existing = next((item for item in bindings if item["actor"] == binding["actor"]
                          and parse_link(item["link"])[0] == origin), None)
         if existing is not None:
-            settings = {key: value for key, value in binding.items() if key not in {"after", "codex"}}
-            if any(existing.get(key) != value for key, value in settings.items()):
+            if any(existing[key] != binding[key] for key in ("thread", "projects")):
                 raise ListenerError("room participant is already bound to different settings")
             binding["after"] = existing["after"]
             bindings[bindings.index(existing)] = binding
@@ -285,13 +299,13 @@ def onboard(args, config, state):
     joined = connect(Namespace(link=args.link, ca=None, state_dir=None, invite_file=None))
     binding = {
         "link": link, "actor": joined["actor"], "thread": thread,
-        "projects": sorted(set(args.project)), "auto_reply_from": sorted(set(args.auto_reply_from)),
+        "projects": sorted(set(args.project)), "auto_reply": args.auto_reply,
         "after": args.after, "codex": str(args.codex.resolve()) if args.codex else "",
     }
     validate_binding(binding)
     if not set(binding["projects"]) <= set(joined["readable"]):
         raise ListenerError("the approved project is unavailable in this room session")
-    if binding["auto_reply_from"]:
+    if auto_reply_enabled(binding):
         options = Namespace(url=origin, ca=None, token_file=Path(joined["session_file"]))
         access = worker_request(options, "access")
         publishable = set(access["publishable"])
@@ -327,7 +341,7 @@ def capture_binding(state, binding, on_capture=None, *, active=lambda: True):
     if binding.get("codex"):
         codex = Path(binding["codex"])
         access = request("access")
-        if binding["auto_reply_from"] and not set(binding["projects"]) <= set(access["publishable"]):
+        if auto_reply_enabled(binding) and not set(binding["projects"]) <= set(access["publishable"]):
             raise ListenerError("project scope is no longer approved")
         deliver_desktop_message(state, {**binding, "origin": origin}, request,
                                 lambda thread, prompt: queue_desktop(codex, thread, prompt),
@@ -388,7 +402,7 @@ def main(argv=None):
     link.add_argument("--link")
     link.add_argument("--link-stdin", action="store_true")
     parser.add_argument("--project", action="append", default=[])
-    parser.add_argument("--auto-reply-from", action="append", default=[])
+    parser.add_argument("--auto-reply", action="store_true")
     parser.add_argument("--codex", type=Path)
     parser.add_argument("--after", type=int)
 

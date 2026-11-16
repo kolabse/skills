@@ -68,7 +68,7 @@ def project_ids(value):
 
 
 def post_arguments(data):
-    if not {"request", "body"} <= data.keys() <= {"request", "body", "projects", "to", "reply_to"}:
+    if not {"request", "body"} <= data.keys() <= {"request", "body", "projects", "to", "reply_to", "question"}:
         raise ValueError("invalid message fields")
     body = data["body"]
     if not isinstance(body, str) or not body.strip() or len(body) > 4000:
@@ -78,10 +78,14 @@ def post_arguments(data):
     if reply_to is not None and (type(reply_to) is not int or not 1 <= reply_to <= MAX_ID):
         raise ValueError("reply_to must be a valid message ID")
     recipient = data.get("to")
+    question = data.get("question", False)
+    if type(question) is not bool or (question and (recipient is not None or reply_to is not None)):
+        raise ValueError("only a top-level message without a recipient can be marked as a broadcast question")
     return {
         "request": identifier(data["request"]), "body": body,
         "project": project_ids(data.get("projects", [])),
         "to": identifier(recipient) if recipient is not None else None, "reply_to": reply_to,
+        "question": question,
     }
 
 

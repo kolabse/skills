@@ -10,6 +10,24 @@ import room_listener
 
 
 class ListenerTests(unittest.TestCase):
+    def test_auto_reply_accepts_addressed_and_broadcast_requests_from_any_sender(self):
+        with TemporaryDirectory() as folder:
+            state = Path(folder) / "listener.sqlite"
+            binding = dict(origin="https://room.example/rooms/portal", actor="bob", projects=["portal"],
+                           thread="chat-a", auto_reply=True, auto_reply_from=[])
+            base = {"actor": "new-colleague", "recipient": "bob", "projects": ["portal"],
+                    "reply_to": None, "body": "Can you confirm?"}
+            page = [
+                dict(base, id=1, thread_id=1),
+                dict(base, id=2, thread_id=2, recipient=None, question=True, projects=[]),
+                dict(base, id=3, thread_id=3, recipient=None),
+                dict(base, id=4, thread_id=2, reply_to=2),
+                dict(base, id=5, thread_id=5, recipient="other"),
+            ]
+            room_listener.capture_desktop_inbox(state, binding, lambda *_: page)
+            self.assertEqual([(row["message"]["id"], row["auto_reply"])
+                              for row in room_listener.desktop_pending(state, "chat-a")],
+                             [(1, True), (2, True), (3, False), (4, False)])
     def test_visible_notification_does_not_publish_or_enqueue_twice(self):
         with TemporaryDirectory() as folder:
             state = Path(folder) / "listener.sqlite"

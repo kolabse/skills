@@ -40,7 +40,7 @@ def parse(argv=None):
     for command in (post, ask):
         command.add_argument("request")
         command.add_argument("body")
-        command.add_argument("--to", required=command is ask)
+        command.add_argument("--to")
         command.add_argument("--project", action="append", default=[])
     post.add_argument("--reply-to", type=int)
     ask.set_defaults(reply_to=None)
@@ -79,6 +79,8 @@ def request_room(args):
             "request": args.request, "body": args.body, "to": args.to,
             "reply_to": args.reply_to, "projects": args.project,
         }
+        if getattr(args, "question", False):
+            payload["question"] = True
     headers = {"Authorization": f"Bearer {token}"}
     data = None
     if payload is not None:
@@ -119,7 +121,9 @@ def managed_inbox(args):
         if args.command == "ask":
             if messages:
                 return {"status": "pending_inbox", "messages": messages}, 2
-            return request_room(argparse.Namespace(**{**vars(args), "command": "post"})), 0
+            return request_room(argparse.Namespace(
+                **{**vars(args), "command": "post", "question": args.to is None}
+            )), 0
         if args.id != after:
             if not any(item["id"] == args.id for item in messages):
                 raise ValueError("acknowledge only through an ID in the current inbox page")

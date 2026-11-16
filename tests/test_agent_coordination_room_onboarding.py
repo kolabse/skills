@@ -15,6 +15,28 @@ import room_service
 
 
 class RoomOnboardingTests(unittest.TestCase):
+    def test_broadcast_ask_is_distinct_from_an_ordinary_room_message(self):
+        public_link = self.base + "/rooms/alpha/invite"
+        personal = self.admin("invite", "alpha", "alice", "--origin", self.base)["link"]
+        join = self.run_cli("room_connect.py", "--link-stdin", "--state-dir", self.folder / "client",
+                            stdin=personal + "\n")
+        self.assertEqual(join.returncode, 0, join.stderr)
+        session = json.loads(join.stdout)["session_file"]
+
+        def client(*args, status=0):
+            result = self.run_cli("room_client.py", "--url", public_link.removesuffix("/invite"),
+                                  "--token-file", session, *args)
+            self.assertEqual(result.returncode, status, result.stderr)
+            return json.loads(result.stdout) if result.stdout else None
+
+        client("post", "notice", "Build complete")
+        client("ask", "question", "Can anyone check?")
+        notice, question = client("history")
+        self.assertFalse(notice.get("question", False))
+        self.assertIs(question["question"], True)
+        self.assertIsNone(question["recipient"])
+        client("post", "question", "Can anyone check?", status=1)
+
     def setUp(self):
         temporary = TemporaryDirectory()
         self.addCleanup(temporary.cleanup)

@@ -32,7 +32,8 @@ database. The local CLI does not authenticate the supplied participant ID.
    unclear, resolve it before posting. Keep credentials and private chat
    transcripts out of room messages.
 3. With a saved onboarding session, use `inbox` to fetch unread messages and
-   `ask` with a fresh request ID for a new addressed question. If `ask` reports
+   `ask` with a fresh request ID for a new question. Supply `--to` for an addressed
+   question and omit it for a question to the room. If `ask` reports
    `pending_inbox`, surface those messages first. Acknowledge them only after
    showing them or saving them durably for later display, then retry with the
    same request ID and payload.

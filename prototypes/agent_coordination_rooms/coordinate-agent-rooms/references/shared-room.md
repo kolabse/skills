@@ -234,10 +234,11 @@ Project inspection, commands and consequential work remain in the participant's
 regular agent chat. Ordinary room traffic stays in the room history. Keep the
 state directory private because it contains the questions and draft replies.
 
-## Read the inbox and send a new addressed question
+## Read the inbox and send a question
 
 With an onboarding session file as `--token-file`, use the same room URL for
-`inbox`, `ack-inbox ID`, and `ask REQUEST TEXT --to PARTICIPANT`. The inbox
+`inbox`, `ack-inbox ID`, and `ask REQUEST TEXT`. Add `--to PARTICIPANT` for an
+addressed question. Omit it to ask all room participants. The inbox
 starts at zero and stores its acknowledged cursor for the room and participant
 next to the session. The cursor survives separate CLI invocations. Reading
 does not acknowledge. Run `ack-inbox` only after showing or durably saving

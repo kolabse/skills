@@ -20,7 +20,7 @@ class ChatOnboardingTests(unittest.TestCase):
             chat = "00000000-0000-4000-8000-000000000001"
             link = "https://room.example/rooms/portal/invite"
             secret = "a" * 43
-            args = Namespace(link=link + "#" + secret, project=["portal"], auto_reply_from=["alice"],
+            args = Namespace(link=link + "#" + secret, project=["portal"], auto_reply=True,
                              codex=codex, after=0)
             config = root / "bindings.json"
             state = root / "listener.sqlite"
@@ -36,7 +36,7 @@ class ChatOnboardingTests(unittest.TestCase):
                 again = room_listener.onboard(args, config, state)
             binding, = json.loads(config.read_text(encoding="utf-8"))
             self.assertEqual(binding["thread"], chat)
-            self.assertEqual(binding["auto_reply_from"], ["alice"])
+            self.assertIs(binding["auto_reply"], True)
             self.assertEqual(result, again)
             self.assertEqual(result["listener"], {"polled": True, "after": 0})
             self.assertEqual(startup.call_count, 2)
@@ -48,7 +48,7 @@ class ChatOnboardingTests(unittest.TestCase):
     def test_missing_chat_stops_before_consuming_the_invite(self):
         with TemporaryDirectory() as folder:
             args = Namespace(link="https://room.example/rooms/portal/invite", project=["portal"],
-                             auto_reply_from=[], codex=None, after=0)
+                             auto_reply=False, codex=None, after=0)
             with (patch.dict(os.environ, {"CODEX_THREAD_ID": ""}),
                   patch.object(room_listener, "connect") as connect):
                 with self.assertRaisesRegex(room_listener.ListenerError, "current Desktop chat"):
