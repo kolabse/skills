@@ -98,7 +98,7 @@ def deliver(path, binding, question, queue, observe, publish, *, queue_only=Fals
         return {**result, "status": "answered", "turn_id": row["turn"], "reply_id": reply["id"]}
 
 
-def completed_reply(turns, prompt, expected, *, require_text_only=False):
+def completed_reply(turns, prompt, expected):
     matched = [turn for turn in turns if any(
         item["type"] == "userMessage" and any(
             part.get("type") == "text" and part.get("text") == prompt for part in item["content"]
@@ -109,30 +109,17 @@ def completed_reply(turns, prompt, expected, *, require_text_only=False):
     if not matched or matched[0]["status"] != "completed":
         return None
     turn = matched[0]
-    if require_text_only and any(item["type"] not in {"userMessage", "reasoning", "agentMessage"}
-                                 for item in turn["items"]):
-        raise AdapterError("Desktop turn used a tool or produced other non-text activity")
     answers = [item["text"].strip() for item in turn["items"]
                if item["type"] == "agentMessage" and item.get("phase") == "final_answer"]
-    if expected is None:
-        if len(answers) != 1 or not answers[0] or len(answers[0]) > 4000:
-            raise AdapterError("Desktop turn did not produce one valid final answer")
-    elif answers != [expected]:
+    if answers != [expected]:
         raise AdapterError("Desktop turn did not produce the expected synthetic reply")
     return {"id": turn["id"], "answer": answers[0]}
 
 
-class DesktopSessionUnavailable(AdapterError):
-    pass
-
-
 def queue_desktop(codex, thread, prompt):
     result = subprocess.run([str(codex), "queue", "--thread", thread, "--message", prompt],
-                            capture_output=True, text=True, encoding="utf-8", errors="replace", timeout=20,
-                            creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0))
+                            capture_output=True, text=True, encoding="utf-8", errors="replace", timeout=20)
     if result.returncode:
-        if re.fullmatch(r"Error: No active session found matching '[a-f0-9-]{36}'\.?", result.stderr.strip()):
-            raise DesktopSessionUnavailable("the bound Desktop chat is not active")
         raise AdapterError(f"Desktop queue rejected the request: {result.stderr.strip()}")
     match = re.fullmatch(r"Queued message ([a-f0-9-]{36}) for thread ([a-f0-9-]{36})\.", result.stdout.strip())
     if not match or match[2] != thread:
@@ -140,15 +127,14 @@ def queue_desktop(codex, thread, prompt):
     return match[1]
 
 
-def observe_desktop(codex, thread, prompt, expected, wait, *, require_text_only=False):
+def observe_desktop(codex, thread, prompt, expected, wait):
     with tempfile.TemporaryDirectory(prefix="desktop-room-observe-") as folder:
         with subprocess.Popen([str(codex), "app-server", "--listen", "stdio://"], cwd=folder,
                               stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.DEVNULL,
-                              text=True, encoding="utf-8",
-                              creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0)) as process:
+                              text=True, encoding="utf-8") as process:
             try:
                 server = AppServer(process)
-                server.initialize(experimental=True)
+                server.initialize()
                 deadline = time.monotonic() + wait
                 while True:
                     turns = []
@@ -160,7 +146,7 @@ def observe_desktop(codex, thread, prompt, expected, wait, *, require_text_only=
                         if not cursor:
                             break
                         params["cursor"] = cursor
-                    answer = completed_reply(turns, prompt, expected, require_text_only=require_text_only)
+                    answer = completed_reply(turns, prompt, expected)
                     if answer is not None:
                         return answer
                     remaining = deadline - time.monotonic()

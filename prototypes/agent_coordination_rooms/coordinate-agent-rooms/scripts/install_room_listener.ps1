@@ -23,7 +23,7 @@ if ($task -and ($task.Description -ne $description -or $task.Principal.UserId -n
 }
 
 # The verified archive is temporary. Retain a versioned runtime for logon and rollback.
-$files = @('room_listener.py','desktop_room.py','room_worker.py','room_client.py','room_connect.py',
+$files = @('room_listener.py','room_worker.py','room_client.py','room_connect.py',
     'room_invitation.py','room_join.py','room_registry.py','room_team.py','room.py','smoke_app_server.py')
 $version = ($files | ForEach-Object { (Get-FileHash -LiteralPath (Join-Path $PSScriptRoot $_)).Hash }) -join ''
 $sha = [Security.Cryptography.SHA256]::Create()

@@ -3,13 +3,66 @@ from pathlib import Path
 import sys
 from tempfile import TemporaryDirectory
 import unittest
+from unittest.mock import patch
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] /
                        "prototypes/agent_coordination_rooms/coordinate-agent-rooms/scripts"))
 import room_listener
+import room_worker
 
 
 class ListenerTests(unittest.TestCase):
+    def test_worker_restricts_capabilities_before_sending_room_text(self):
+        with TemporaryDirectory() as folder:
+            executable = Path(folder) / "codex.exe"
+            with patch.object(room_worker.subprocess, "Popen") as spawn, patch.object(room_worker, "AppServer") as server:
+                spawn.return_value.__enter__.return_value.poll.return_value = 0
+                server.return_value.call.return_value = ({"config": {}}, [])
+                server.return_value.turn.return_value = ("Answer", {})
+                room_worker.codex_answer(executable, "Synthetic question", project_mode=True)
+                argv = spawn.call_args.args[0]
+                for feature in ("shell_tool", "apps", "plugins", "hooks", "multi_agent_v2"):
+                    self.assertIn(("--disable", feature), list(zip(argv, argv[1:])))
+                self.assertIn("mcp_servers={}", argv)
+                self.assertTrue(server.return_value.new_thread.call_args.kwargs["restricted"])
+                self.assertTrue(server.return_value.turn.call_args.kwargs["restricted"])
+                server.reset_mock()
+                server.return_value.call.return_value = ({"config": {"mcp_servers": {"synthetic": {}}}}, [])
+                with self.assertRaisesRegex(room_worker.WorkerError, "enabled MCP server"):
+                    room_worker.codex_answer(executable, "Synthetic question", project_mode=True)
+                server.return_value.new_thread.assert_not_called()
+                server.return_value.turn.assert_not_called()
+    def test_resume_before_reply_and_after_publish_without_duplicates(self):
+        with TemporaryDirectory() as folder:
+            state = Path(folder) / "listener.sqlite"
+            binding = dict(origin="https://room.example/rooms/portal", actor="bob", projects=["portal"],
+                           thread="chat-a", auto_reply=True)
+            question = dict(id=2, actor="alice", recipient="bob", projects=["portal"],
+                            reply_to=None, thread_id=2, body="Synthetic question")
+            room_listener.capture_desktop_inbox(state, binding, lambda *_: [question])
+            answered, receipts = [], {}
+
+            def answer(text):
+                answered.append(text)
+                if len(answered) == 1:
+                    raise InterruptedError("listener stopped before saving its answer")
+                return "Synthetic answer"
+
+            def request(*args):
+                receipt = dict(id=3, actor="bob", recipient="alice", reply_to=2, thread_id=2)
+                if args[1] not in receipts:
+                    receipts[args[1]] = receipt
+                    raise ConnectionError("response lost after server accepted reply")
+                return receipts[args[1]]
+
+            for error in (InterruptedError, ConnectionError):
+                with self.assertRaises(error):
+                    room_listener.process_desktop_reply(state, binding, request, answer)
+            for _ in range(2):
+                room_listener.process_desktop_reply(state, binding, request, answer)
+            self.assertEqual(answered, ["Synthetic question"] * 2)
+            self.assertEqual(list(receipts), ["codex-reply-2"])
+            self.assertEqual(len(room_listener.desktop_pending(state, "chat-a")), 1)
     def test_auto_reply_accepts_addressed_and_broadcast_requests_from_any_sender(self):
         with TemporaryDirectory() as folder:
             state = Path(folder) / "listener.sqlite"
@@ -28,53 +81,6 @@ class ListenerTests(unittest.TestCase):
             self.assertEqual([(row["message"]["id"], row["auto_reply"])
                               for row in room_listener.desktop_pending(state, "chat-a")],
                              [(1, True), (2, True), (3, False), (4, False)])
-    def test_visible_notification_does_not_publish_or_enqueue_twice(self):
-        with TemporaryDirectory() as folder:
-            state = Path(folder) / "listener.sqlite"
-            binding = dict(origin="https://room.example/rooms/portal", actor="bob", projects={"portal"},
-                           thread="chat-a", auto_reply_from=set())
-            message = {"id": 1, "actor": "alice", "recipient": "bob", "projects": ["portal"],
-                       "reply_to": 4, "thread_id": 4, "body": "Status is green."}
-            room_listener.capture_desktop_inbox(state, binding, lambda *_: [message])
-            queued = []
-            for _ in range(2):
-                room_listener.deliver_desktop_message(
-                    state, binding, lambda *_: self.fail("notification published to room"),
-                    lambda thread, prompt: queued.append((thread, prompt)),
-                    lambda *_: {"id": "turn-a", "answer": "Received."},
-                )
-            self.assertEqual(len(queued), 1)
-            self.assertEqual(queued[0][0], "chat-a")
-            self.assertIn("Status is green.", queued[0][1])
-
-    def test_closed_chat_defers_delivery_until_the_chat_is_active(self):
-        with TemporaryDirectory() as folder:
-            state = Path(folder) / "listener.sqlite"
-            binding = dict(origin="https://room.example/rooms/portal", actor="bob", projects={"portal"},
-                           thread="chat-a", auto_reply_from=set())
-            message = {"id": 1, "actor": "alice", "recipient": "bob", "projects": ["portal"],
-                       "reply_to": None, "thread_id": 1, "body": "Status is green."}
-            room_listener.capture_desktop_inbox(state, binding, lambda *_: [message])
-            queued = []
-
-            def queue(thread, prompt):
-                queued.append((thread, prompt))
-                if len(queued) == 1:
-                    raise room_listener.DesktopSessionUnavailable("chat is closed")
-
-            def deliver():
-                room_listener.deliver_desktop_message(
-                    state, binding, lambda *_: self.fail("notification published to room"),
-                    queue, lambda *_: {"id": "turn-a", "answer": "Received."},
-                )
-
-            with self.assertRaises(room_listener.DesktopSessionUnavailable):
-                deliver()
-            deliver()
-            deliver()
-            self.assertEqual(len(queued), 2)
-            self.assertEqual(queued[0], queued[1])
-
     def test_routes_each_room_to_its_chat_and_retains_replies_without_triggering_a_turn(self):
         def message(number, sender="alice", recipient="bob", project="portal", parent=None):
             return {"id": number, "actor": sender, "recipient": recipient, "projects": [project],
@@ -123,43 +129,3 @@ class ListenerTests(unittest.TestCase):
             self.assertEqual(room_listener.desktop_pending(state, "chat-a"), [])
             room_listener.capture_desktop_inbox(state, binding, lambda *_: [question])
             self.assertEqual(len(room_listener.desktop_pending(state, "chat-a")), 1)
-
-    def test_desktop_turn_and_room_reply_are_recovered_without_requeueing(self):
-        with TemporaryDirectory() as folder:
-            state = Path(folder) / "listener.sqlite"
-            binding = dict(origin="https://room.example/rooms/portal", actor="bob", projects={"portal"},
-                           thread="chat-a", auto_reply_from={"alice"})
-            question = {"id": 2, "actor": "alice", "recipient": "bob", "projects": ["portal"],
-                        "reply_to": None, "thread_id": 2, "body": "Status?"}
-            messages = [question]
-            room_listener.capture_desktop_inbox(state, binding, lambda *_: messages)
-            queued, observed, posts = [], [], []
-
-            def queue(thread, prompt):
-                queued.append((thread, prompt))
-                raise TimeoutError("acknowledgement lost")
-
-            def observe(thread, prompt):
-                observed.append((thread, prompt))
-                return {"id": "turn-a", "answer": "The check is pending."}
-
-            def request(*args):
-                posts.append(args)
-                if len(posts) == 1:
-                    raise ConnectionError("reply acknowledgement lost")
-                return {"id": 3, "actor": "bob", "recipient": "alice", "reply_to": 2, "thread_id": 2}
-
-            with self.assertRaises(TimeoutError):
-                room_listener.deliver_desktop_message(state, binding, request, queue, observe)
-            with self.assertRaises(ConnectionError):
-                room_listener.deliver_desktop_message(state, binding, request, queue, observe)
-            room_listener.deliver_desktop_message(state, binding, request, queue, observe)
-            room_listener.deliver_desktop_message(state, binding, request, queue, observe)
-            self.assertEqual(len(queued), 1)
-            self.assertEqual(queued[0][0], "chat-a")
-            self.assertIn("Status?", queued[0][1])
-            self.assertEqual(observed, queued)
-            self.assertEqual(posts, [("post", "codex-reply-2", "The check is pending.",
-                                      "--to", "alice", "--reply-to", "2")] * 2)
-            self.assertEqual([entry["message"]["id"] for entry in room_listener.desktop_pending(state, "chat-a")],
-                             [2])
