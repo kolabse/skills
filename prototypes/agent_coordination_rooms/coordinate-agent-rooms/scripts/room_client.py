@@ -1,9 +1,11 @@
 #!/usr/bin/env python3
 """Command-line client for a private agent coordination room."""
 import argparse
+import hashlib
 import ipaddress
 import json
 from pathlib import Path
+import sqlite3
 import ssl
 import sys
 from urllib.error import HTTPError, URLError
@@ -30,12 +32,18 @@ def parse(argv=None):
     history = commands.add_parser("history")
     history.add_argument("--inbox", action="store_true")
     history.add_argument("--after", type=int, default=0)
+    commands.add_parser("inbox")
+    ack = commands.add_parser("ack-inbox")
+    ack.add_argument("id", type=int)
     post = commands.add_parser("post")
-    post.add_argument("request")
-    post.add_argument("body")
-    post.add_argument("--to")
+    ask = commands.add_parser("ask")
+    for command in (post, ask):
+        command.add_argument("request")
+        command.add_argument("body")
+        command.add_argument("--to", required=command is ask)
+        command.add_argument("--project", action="append", default=[])
     post.add_argument("--reply-to", type=int)
-    post.add_argument("--project", action="append", default=[])
+    ask.set_defaults(reply_to=None)
     return parser.parse_args(argv)
 
 
@@ -89,14 +97,48 @@ def http_error_message(error):
     return f"Room returned HTTP {error.code}" + (f": {detail}" if detail else "")
 
 
+def managed_inbox(args):
+    # Import here because the onboarding CLI also uses the HTTP client.
+    import room
+    from room_join import save_document
+
+    identity = json.loads(args.token_file.read_text(encoding="utf-8"))
+    origin = args.url.rstrip("/")
+    actor = identity.get("actor")
+    if not actor or identity.get("link") != origin + "/invite":
+        raise ValueError("use the saved onboarding session for this room")
+    key = hashlib.sha256(json.dumps([origin, actor]).encode("utf-8")).hexdigest()
+    checkpoint = args.token_file.parent / f"inbox-{key}.json"
+
+    with room.transaction(checkpoint.with_suffix(".lock"), True, initialize=True):
+        after = json.loads(checkpoint.read_text(encoding="utf-8"))["after"] if checkpoint.exists() else 0
+        history = argparse.Namespace(**{**vars(args), "command": "history", "inbox": True, "after": after})
+        messages = request_room(history)
+        if args.command == "inbox":
+            return messages, 0
+        if args.command == "ask":
+            if messages:
+                return {"status": "pending_inbox", "messages": messages}, 2
+            return request_room(argparse.Namespace(**{**vars(args), "command": "post"})), 0
+        if args.id != after:
+            if not any(item["id"] == args.id for item in messages):
+                raise ValueError("acknowledge only through an ID in the current inbox page")
+            save_document(checkpoint, {"after": args.id})
+        return {"after": args.id}, 0
+
+
 def main():
     args = parse()
     try:
+        if args.command in {"inbox", "ack-inbox", "ask"}:
+            result, status = managed_inbox(args)
+            print(json.dumps(result))
+            return status
         print(json.dumps(request_room(args)))
     except HTTPError as error:
         print(http_error_message(error), file=sys.stderr)
         return 1
-    except (OSError, ValueError, KeyError, URLError) as error:
+    except (OSError, ValueError, KeyError, URLError, sqlite3.Error) as error:
         print(f"Room request failed: {error}", file=sys.stderr)
         return 1
     return 0

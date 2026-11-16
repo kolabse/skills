@@ -62,8 +62,8 @@ def join(db, payload):
     if invite is None:
         raise TeamAccessError("invalid or expired team access secret")
     actor = invite["actor"]
+    readable, _ = room.member(db, actor)
     if bound:
-        readable, _ = room.member(db, actor)
         if payload["actor"] != actor or payload["projects"] != sorted(readable):
             raise TeamAccessError("invalid or expired team access secret")
     credential = secrets.token_urlsafe(32)
@@ -72,7 +72,10 @@ def join(db, payload):
         ON CONFLICT(actor) DO UPDATE SET digest = excluded.digest, expires_at = excluded.expires_at""",
                (room.token_digest(credential), actor, now + CREDENTIAL_SECONDS))
     room.membership_event(db, actor, "invitation_redeemed")
-    return {"actor": actor, "credential": credential, "token": room.mint_token(db, actor, SESSION_MINUTES, MODE)}
+    result = {"actor": actor, "credential": credential, "token": room.mint_token(db, actor, SESSION_MINUTES, MODE)}
+    if not bound:
+        result["projects"] = sorted(readable)
+    return result
 
 
 def renew(db, payload):

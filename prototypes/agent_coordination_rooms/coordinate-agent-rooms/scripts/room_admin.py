@@ -7,6 +7,7 @@ import sqlite3
 import sys
 
 import room
+from room_client import validate_url
 from room_invitation import VERSION, parse_link
 from room_registry import RoomRegistry
 import room_team
@@ -28,7 +29,9 @@ def main(argv=None):
         command.add_argument("actor", type=room.identifier)
     grant.add_argument("--project", type=room.identifier, action="append", default=[])
     invite.add_argument("--minutes", type=int, default=30)
-    invite.add_argument("--link", help="produce an agent-ready invitation for this exact HTTPS link")
+    formats = invite.add_mutually_exclusive_group()
+    formats.add_argument("--origin", help="issue a personal link for this HTTPS service origin")
+    formats.add_argument("--link", help="produce a legacy JSON bundle for this exact invitation page")
     args = parser.parse_args(argv)
     registry = RoomRegistry(args.rooms_dir)
     try:
@@ -47,7 +50,16 @@ def main(argv=None):
                         readable, _ = room.member(db, args.actor)
                         result = {"version": VERSION, "link": args.link, "actor": args.actor,
                                   "projects": sorted(readable)}
-                    result["invite"] = room_team.issue_invite(db, args.actor, args.minutes)
+                    if args.origin is not None:
+                        origin = validate_url(args.origin)
+                        if origin.path not in {"", "/"}:
+                            raise ValueError("--origin must be the service origin")
+                        manifest = f"{args.origin.rstrip('/')}/rooms/{args.room}/invite"
+                        parse_link(manifest)
+                        token = room_team.issue_invite(db, args.actor, args.minutes)
+                        result = {"link": f"{manifest}#{token}"}
+                    else:
+                        result["invite"] = room_team.issue_invite(db, args.actor, args.minutes)
                 else:
                     action = room.grant if args.command == "grant" else room.revoke
                     result = action(db, args)
