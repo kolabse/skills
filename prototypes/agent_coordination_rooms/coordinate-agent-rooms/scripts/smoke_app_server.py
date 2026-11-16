@@ -65,10 +65,13 @@ class AppServer:
                 raise SmokeError(f"App Server rejected {method} (code {code})")
             return message["result"], pending
 
-    def initialize(self):
-        self.call("initialize", {"clientInfo": {
+    def initialize(self, *, experimental=False):
+        params = {"clientInfo": {
             "name": "coordination_rooms_smoke", "title": "Coordination Rooms Smoke", "version": "0.1",
-        }})
+        }}
+        if experimental:
+            params["capabilities"] = {"experimentalApi": True}
+        self.call("initialize", params)
         self.send({"method": "initialized"})
 
     def new_thread(self, folder, *, developer_instructions=(

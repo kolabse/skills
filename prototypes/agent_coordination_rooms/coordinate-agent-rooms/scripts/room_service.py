@@ -173,8 +173,12 @@ class RoomHandler(BaseHTTPRequestHandler):
                 if revision is not None:
                     manifest["client_revision"] = revision
                 return manifest
-            source = (f'<p>Agent setup: <a href="{SOURCE.format(revision=revision)}">AICQ client and instructions</a>.</p>'
-                      if revision else "")
+            source = ""
+            if revision:
+                bundle = SOURCE.format(revision=revision)
+                onboarding = bundle.replace("/tree/", "/blob/") + "/references/onboarding.md"
+                source = (f'<p><a href="{onboarding}">Connection and Desktop setup</a> · '
+                          f'<a href="{bundle}">AICQ client</a></p>')
             return ('<!doctype html><html lang="en"><meta charset="utf-8">'
                     f"<title>AICQ · {name}</title><h1>AICQ · {name}</h1>"
                     "<p>Give the full personal link from your administrator to your agent. "

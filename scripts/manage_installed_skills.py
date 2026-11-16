@@ -647,6 +647,26 @@ def targeted_update_source(item: dict[str, Any]) -> str:
     raise ManagerError(f"cannot resolve a verified update source for {item['name']}")
 
 
+def refresh_aicq_listener(project, agent, timeout, *, platform=None):
+    if (platform or os.name) != "nt" or agent != "codex" or not os.environ.get("LOCALAPPDATA"):
+        return None
+    state = Path(os.environ["LOCALAPPDATA"]) / "Formika/AICQ/listener"
+    if not (state / "bindings.json").is_file():
+        return None
+    installer = REPOSITORY_ROOT / (
+        "prototypes/agent_coordination_rooms/coordinate-agent-rooms/scripts/install_room_listener.ps1"
+    )
+    try:
+        run_checked(
+            ["powershell.exe", "-NoProfile", "-NonInteractive", "-File", str(installer),
+             "-Python", sys.executable, "-State", str(state)],
+            project.resolve(), timeout,
+        )
+    except ManagerError:
+        return "startup_failed"
+    return "startup_requested"
+
+
 def update_skills(
     project: Path,
     skills: list[str],
@@ -796,6 +816,16 @@ def update_skills(
                 "provenance_status": new["provenance_status"],
             }
         )
+    listener = refresh_aicq_listener(project, agent, timeout)
+    if listener is not None:
+        requested = listener == "startup_requested"
+        configuration.append({"skill": "coordinate-agent-rooms", "status": listener,
+                              "result": {"startup_requested": requested}})
+        if not as_json:
+            if requested:
+                print("AICQ listener startup requested.")
+            else:
+                print("AICQ listener startup failed. Check Windows Task Scheduler and local policy.")
     installation_notice = project_installation_notice(project, agent)
     if installation_notice["required"] and not as_json:
         print(f"NOTICE: {installation_notice['message']}")

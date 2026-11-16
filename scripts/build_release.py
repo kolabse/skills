@@ -41,6 +41,18 @@ OPTIONAL_COLLECTION_FILES = (
     "scripts/trigger_evals.py",
 )
 OPTIONAL_COLLECTION_DIRECTORIES = ("evals", "schemas", "docs/i18n")
+AICQ_DIRECTORY = "prototypes/agent_coordination_rooms/coordinate-agent-rooms"
+AICQ_FILES = (
+    "SKILL.md", "references/local-room.md", "references/shared-room.md",
+    "references/onboarding.md", "references/administrator.md",
+    "references/revision-handoff.md",
+    "scripts/install_room_listener.ps1", "scripts/room_listener.py", "scripts/desktop_room.py",
+    "scripts/room_worker.py", "scripts/room_client.py", "scripts/room_connect.py",
+    "scripts/room_invitation.py", "scripts/room_join.py", "scripts/room_registry.py",
+    "scripts/room_team.py", "scripts/room.py", "scripts/smoke_app_server.py",
+    "scripts/room_revision.py", "scripts/room_revision_worker.py",
+)
+
 TAG_PATTERN = re.compile(
     r"^v[0-9]+\.[0-9]+\.[0-9]+(?:[-+][0-9A-Za-z]+(?:[.-][0-9A-Za-z]+)*)?$"
 )
@@ -161,6 +173,13 @@ def validate_plugin_release_version(source: Path, tag: str) -> None:
 def release_files(source: Path) -> list[Path]:
     source = source.resolve()
     files: list[Path] = []
+    aicq_root = source / AICQ_DIRECTORY
+    if (aicq_root / "scripts/install_room_listener.ps1").is_file():
+        for name in AICQ_FILES:
+            path = aicq_root / name
+            if not path.is_file() or any(part.is_symlink() for part in (path, *path.parents)):
+                raise ValueError(f"Invalid AICQ release input: {name}")
+            files.append(path)
     for name in ROOT_FILES:
         path = source / name
         if not path.is_file():
@@ -248,6 +267,7 @@ def source_commit(source: Path) -> str:
             *OPTIONAL_MARKETPLACE_FILES,
             *OPTIONAL_COLLECTION_FILES,
             *OPTIONAL_COLLECTION_DIRECTORIES,
+            AICQ_DIRECTORY,
             "skills",
         ],
         capture_output=True,

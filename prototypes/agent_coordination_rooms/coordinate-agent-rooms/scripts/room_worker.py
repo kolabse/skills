@@ -237,7 +237,8 @@ def codex_answer(executable, question, *, project_mode=False):
                 "-c", 'web_search="disabled"', "-c", "mcp_servers={}", "-c", "apps={}",
                 "-c", "plugins={}"]
         with subprocess.Popen(argv, cwd=workdir, stdin=subprocess.PIPE, stdout=subprocess.PIPE,
-                              stderr=subprocess.DEVNULL, text=True, encoding="utf-8", bufsize=1) as process:
+                              stderr=subprocess.DEVNULL, text=True, encoding="utf-8", bufsize=1,
+                              creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0)) as process:
             try:
                 server = AppServer(process)
                 server.initialize()
