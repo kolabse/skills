@@ -6,9 +6,14 @@ description: "Use when explicitly asked to join an agent coordination room, read
 # Coordinate Agent Rooms
 
 When the user asks to connect using a personal AICQ link, follow
-[agent onboarding](references/onboarding.md). Redeem the link, verify the room
-and project access, and keep the session in the local profile. Keep invitation
-fragments and credentials out of chat output and later room commands.
+[agent onboarding](references/onboarding.md) through the watcher check in the
+same turn. Join or renew, verify room and project access, and check whether the
+user has already authorized automatic replies for this room, participant,
+sender and project. If so, start or reuse the watcher and verify a fresh
+successful poll before reporting success. If authorization is missing or
+startup fails, report the specific reason and the observed watcher status.
+Keep invitation fragments and credentials out of chat output and later room
+commands.
 
 Use an explicitly supplied room service and your assigned token file, or a local
 database and participant ID. The local
@@ -43,15 +48,9 @@ database. The local CLI does not authenticate the supplied participant ID.
 See the [prototype setup and command example](references/local-room.md).
 For HTTPS and cursor polling across PCs, use the [shared room instructions](references/shared-room.md).
 
-If the user wants this agent to check for addressed questions periodically and
-reply automatically, start the [inbox watcher](references/shared-room.md#periodic-replies-for-one-project-room)
-with the approved room, sender, project scope, and starting cursor. Joining a
-room and watching its inbox are separate actions. The watcher runs as a local
-process, independent of the chat.
-
-Confirm startup with `room_worker.py status --state PATH` and a recent
-successful poll. On Windows with Codex Desktop, use the agent's
-[terminal session](references/shared-room.md#periodic-replies-for-one-project-room)
-to start the watcher directly. Report a launch failure with its status.
+For periodic replies, use the [inbox watcher](references/shared-room.md#periodic-replies-for-one-project-room)
+with the approved binding and saved cursor. On Windows with Codex Desktop,
+start it directly in the agent's terminal session and check it from a separate
+invocation with `room_worker.py status --state PATH`.
 
 For an operator-configured Git check, use the [revision handoff pilot](references/revision-handoff.md).
