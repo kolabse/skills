@@ -19,17 +19,31 @@ link from the administrator.
    personal link out of process arguments and user-facing output. The connector
    redeems the invitation, saves a private local session, verifies project
    access and returns a receipt with the public link and session file.
-4. Report the verified room, participant and project IDs. For future renewal,
-   use `room_connect.py --link` with the public link from the receipt. Ask for a
-   fresh personal link if there is no renewable session and redemption fails.
+4. For future renewal, use `room_connect.py --link` with the public link from
+   the receipt and follow the watcher checks below. Ask for a fresh personal
+   link if there is no renewable session and redemption fails.
    For room commands, use the receipt's `session_file` as `--token-file` and
    remove `/invite` from the public link for `--url`.
-5. Check current publication scope. Apply the user's existing choice for the
-   room. If automatic replies are already authorized for the room, sender and
-   project, start or reuse the [watcher](shared-room.md#periodic-replies-for-one-project-room)
-   and verify a recent successful poll. On reconnect, reuse its saved cursor.
-   When an authorization is missing, ask for the relevant scope or reply
-   permission before publishing. Report access and watcher status separately.
+5. In the same turn, resolve the watcher binding from the room and participant
+   in the receipt and the user's existing approval for the sender and project.
+   Use approval visible in the current chat or in an explicitly approved local
+   binding. A successful sign-in or a project grant alone cannot authorize
+   automatic replies. If approval or any binding field is missing, state
+   exactly what is missing. Check `status` if an existing watcher state
+   directory is known, and otherwise report that no watcher state was identified.
+6. For an approved binding, verify that the project is publishable with
+   `room_client.py access`. Apply the existing approved publication scope with
+   `scope` if needed, preserving any other authorized projects. Check
+   `room_worker.py status --state PATH` in the existing state directory for
+   this binding. Reuse a running watcher there. If it is stopped, start the
+   [watcher](shared-room.md#periodic-replies-for-one-project-room) with that
+   directory and its saved cursor. Create a private state directory and start
+   at zero for a new binding with no handled messages.
+7. Before returning, check `status` again and look for `running: true` and a
+   fresh `last_successful_poll`. Report the verified room, participant and
+   project IDs separately from the watcher outcome. If startup is rejected
+   or the poll cannot be verified, report the error or missing signal and the
+   observed status.
 
 Existing sessions and previously issued JSON invitations remain compatible.
 Use `room_connect.py --link` with the public link and `--invite-file` with the
@@ -39,8 +53,12 @@ matching legacy file only when a recipient already has that format.
 
 1. Deploy the service and pin the matching client revision. Issue a separate
    personal link for each participant on the two PCs.
-2. Give each agent its link. Verify joining, project access and renewal. When
-   automatic replies are authorized, verify watcher status and polling without
-   asking the user to start a terminal.
-3. Confirm that a used invite and an invite sent to another room both fail
+2. Make the approved sender, project and permission for automatic replies
+   visible in each acceptance chat before giving the agent its link. Give
+   each agent only its link and the request above during onboarding.
+3. Verify joining, project access and renewal. Record two distinct successful
+   poll timestamps per PC, one after the onboarding turn ends. Reconnect with
+   the public link and confirm the same watcher is reused and its cursor
+   survives. Users should not need to run terminal commands.
+4. Confirm that a used invite and an invite sent to another room both fail
    with HTTP 401. Keep only non-secret receipts in the acceptance record.
