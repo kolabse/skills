@@ -68,7 +68,7 @@ def project_ids(value):
 
 
 def post_arguments(data):
-    if not {"request", "body"} <= data.keys() <= {"request", "body", "projects", "to", "reply_to"}:
+    if not {"request", "body"} <= data.keys() <= {"request", "body", "projects", "to", "reply_to", "question"}:
         raise ValueError("invalid message fields")
     body = data["body"]
     if not isinstance(body, str) or not body.strip() or len(body) > 4000:
@@ -78,10 +78,14 @@ def post_arguments(data):
     if reply_to is not None and (type(reply_to) is not int or not 1 <= reply_to <= MAX_ID):
         raise ValueError("reply_to must be a valid message ID")
     recipient = data.get("to")
+    question = data.get("question", False)
+    if type(question) is not bool or (question and (recipient is not None or reply_to is not None)):
+        raise ValueError("only a top-level message without a recipient can be marked as a broadcast question")
     return {
         "request": identifier(data["request"]), "body": body,
         "project": project_ids(data.get("projects", [])),
         "to": identifier(recipient) if recipient is not None else None, "reply_to": reply_to,
+        "question": question,
     }
 
 
@@ -173,8 +177,12 @@ class RoomHandler(BaseHTTPRequestHandler):
                 if revision is not None:
                     manifest["client_revision"] = revision
                 return manifest
-            source = (f'<p>Agent setup: <a href="{SOURCE.format(revision=revision)}">AICQ client and instructions</a>.</p>'
-                      if revision else "")
+            source = ""
+            if revision:
+                bundle = SOURCE.format(revision=revision)
+                onboarding = bundle.replace("/tree/", "/blob/") + "/references/onboarding.md"
+                source = (f'<p><a href="{onboarding}">Connection and Desktop setup</a> · '
+                          f'<a href="{bundle}">AICQ client</a></p>')
             return ('<!doctype html><html lang="en"><meta charset="utf-8">'
                     f"<title>AICQ · {name}</title><h1>AICQ · {name}</h1>"
                     "<p>Give the full personal link from your administrator to your agent. "

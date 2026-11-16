@@ -65,29 +65,38 @@ class AppServer:
                 raise SmokeError(f"App Server rejected {method} (code {code})")
             return message["result"], pending
 
-    def initialize(self):
-        self.call("initialize", {"clientInfo": {
+    def initialize(self, *, experimental=False):
+        params = {"clientInfo": {
             "name": "coordination_rooms_smoke", "title": "Coordination Rooms Smoke", "version": "0.1",
-        }})
+        }}
+        if experimental:
+            params["capabilities"] = {"experimentalApi": True}
+        self.call("initialize", params)
         self.send({"method": "initialized"})
 
     def new_thread(self, folder, *, developer_instructions=(
         "This is a synthetic text-only transport test. Reply directly. Never use tools."
-    )):
-        result, _ = self.call("thread/start", {
+    ), restricted=False):
+        params = {
             "cwd": str(folder), "ephemeral": True, "approvalPolicy": "never", "sandbox": "read-only",
             "developerInstructions": developer_instructions,
-        })
+        }
+        if restricted:
+            params.update(environments=[], dynamicTools=[])
+        result, _ = self.call("thread/start", params)
         thread = result["thread"]
         if not thread["ephemeral"]:
             raise SmokeError("App Server did not create an ephemeral thread")
         return thread["id"]
 
-    def turn(self, thread, prompt):
+    def turn(self, thread, prompt, *, restricted=False):
         started = monotonic()
-        result, pending = self.call("turn/start", {
+        params = {
             "threadId": thread, "input": [{"type": "text", "text": prompt}],
-        })
+        }
+        if restricted:
+            params["environments"] = []
+        result, pending = self.call("turn/start", params)
         turn_id = result["turn"]["id"]
         deadline = started + TIMEOUT
         fragments = {}

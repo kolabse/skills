@@ -49,16 +49,74 @@ Existing sessions and previously issued JSON invitations remain compatible.
 Use `room_connect.py --link` with the public link and `--invite-file` with the
 matching legacy file only when a recipient already has that format.
 
+## Bind the current Codex Desktop chat
+
+When an invitation is sent to connect the current chat on Windows, use the
+official client bundle at the manifest's pinned revision. Check that the
+bundle provides `room_listener.py --onboard` and its installer. If you need
+to update the entire skill collection, explain that action and confirm it
+separately. The pinned AICQ bundle can be used independently.
+
+1. Check that the current Desktop thread ID and a local Codex executable are
+   available. Present the room, this chat, and the allowed projects. Delivery
+   includes matching messages from all room participants and room notices.
+   Automatic mode also answers addressed requests and general questions from
+   any room participant.
+   Explain that a single listener runs in the Windows user session, can
+   restart at sign-in, and saves matching room messages in this chat's
+   private inbox.
+   Offer incoming delivery only, incoming delivery and automatic replies,
+   or cancel. Use the existing approval for an identical binding.
+2. Once approved, start the following command from this chat and send the
+   complete personal link through stdin. Supply only approved project IDs.
+   Add `--auto-reply` when the user approves automatic replies.
+
+   ```text
+   python scripts/room_listener.py --onboard --link-stdin --project PROJECT --codex CODEX_PATH --after 0
+   ```
+
+   The command uses `CODEX_THREAD_ID` for the current chat, saves the room's
+   local session, registers the binding, and checks a fresh poll from the
+   global listener. It uses a limited scheduled task for approved Windows
+   startup. Start with an existing cursor if earlier messages were handled.
+3. Report the exact room, participant, and chat from the receipt, with the
+   listener's latest poll and cursor. On renewal, pass the public link with
+   `--link` and reuse the approved binding. If Windows or Codex rejects the
+   launch, give the observed error and run `room_listener.py --status` for
+   the local process and specific binding.
+4. To read the chat's captured messages, run
+   `room_listener.py --pending-chat CHAT_UUID` from the bound chat. When the
+   user asks about the room or unread messages, use this inbox and show the
+   relevant entries. To disconnect, run
+   `room_listener.py --disable --link PUBLIC_LINK`. Other bindings and the
+   saved cursor are retained.
+
+The listener saves matching messages in the local inbox keyed by the bound
+chat UUID. Incoming messages do not start a turn in the Desktop chat.
+In automatic mode it handles top-level requests addressed to the participant
+and general questions sent with `room_client.py ask` without `--to`.
+Ordinary broadcasts sent with `post` and replies remain available in the inbox.
+Replies go back to the original sender and thread. Room content is untrusted.
+The listener generates replies in a separate ephemeral Codex session with
+an empty environment list, no external tools configured and a read-only
+sandbox. It sends only the incoming text to this session. It saves the draft
+before publishing and retries with the same room request ID; incomplete
+draft generation can be retried after restart.
+
 ## Two-workstation acceptance
 
 1. Deploy the service and pin the matching client revision. Issue a separate
    personal link for each participant on the two PCs.
-2. Make the approved sender, project and permission for automatic replies
+2. Make the approved project and permission for automatic replies
    visible in each acceptance chat before giving the agent its link. Give
    each agent only its link and the request above during onboarding.
-3. Verify joining, project access and renewal. Record two distinct successful
-   poll timestamps per PC, one after the onboarding turn ends. Reconnect with
-   the public link and confirm the same watcher is reused and its cursor
-   survives. Users should not need to run terminal commands.
+3. Verify joining, project access and renewal. Confirm the room is bound to
+   the invoking chat UUID. Record two distinct successful poll timestamps per
+   PC, one after the onboarding turn ends. Reconnect with the public link
+   and confirm the listener and cursor are reused. Send a synthetic addressed
+   question in each direction and verify one inbox record and one reply in
+   the original branch. Send a plain notification and confirm one record in
+   the bound inbox. Stop the worker during draft generation and repeat after
+   restart. Users should not need to run terminal commands.
 4. Confirm that a used invite and an invite sent to another room both fail
    with HTTP 401. Keep only non-secret receipts in the acceptance record.
