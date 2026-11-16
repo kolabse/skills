@@ -35,16 +35,41 @@ class RoomOnboardingTests(unittest.TestCase):
         self.server.server_close()
         self.worker.join(5)
 
-    def run_cli(self, script, *args):
+    def run_cli(self, script, *args, stdin=None):
         return subprocess.run(
             [sys.executable, str(SCRIPTS / script), *map(str, args)],
-            capture_output=True, text=True, encoding="utf-8", timeout=15,
+            input=stdin, capture_output=True, text=True, encoding="utf-8", timeout=15,
         )
 
     def admin(self, *args):
         result = self.run_cli("room_admin.py", "--rooms-dir", self.registry.directory, *args)
         self.assertEqual(result.returncode, 0, result.stderr)
         return json.loads(result.stdout)
+
+    def test_personal_link_joins_and_renews_without_an_invitation_file(self):
+        invitation = self.admin("invite", "alpha", "alice", "--origin", self.base)["link"]
+        manifest, secret = invitation.split("#", 1)
+        self.assertEqual(manifest, self.base + "/rooms/alpha/invite")
+        state = self.folder / "client"
+
+        def connect(link):
+            return self.run_cli("room_connect.py", "--link-stdin", "--state-dir", state, stdin=link + "\n")
+
+        wrong_room = connect(invitation.replace("/alpha/", "/beta/"))
+        self.assertIn("HTTP 401", wrong_room.stderr)
+        joined = connect(invitation)
+        self.assertEqual(joined.returncode, 0, joined.stderr)
+        receipt = json.loads(joined.stdout)
+        self.assertEqual((receipt["status"], receipt["actor"], receipt["readable"]),
+                         ("joined", "alice", ["portal"]))
+        renewed = connect(manifest)
+        self.assertEqual(renewed.returncode, 0, renewed.stderr)
+        self.assertEqual(json.loads(renewed.stdout)["status"], "renewed")
+        self.assertEqual(json.loads(renewed.stdout)["session_file"], receipt["session_file"])
+        replay = connect(invitation)
+        self.assertIn("HTTP 401", replay.stderr)
+        self.assertNotIn(secret, joined.stdout + renewed.stdout + wrong_room.stderr + replay.stderr)
+        self.assertNotIn(secret, Path(receipt["session_file"]).read_text(encoding="utf-8"))
 
     def test_link_and_bundle_connect_and_renew_two_isolated_sessions(self):
         alpha = self.base + "/rooms/alpha/invite"

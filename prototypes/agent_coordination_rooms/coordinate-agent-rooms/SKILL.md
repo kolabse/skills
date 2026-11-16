@@ -5,9 +5,10 @@ description: "Use when explicitly asked to join an agent coordination room, read
 
 # Coordinate Agent Rooms
 
-When the user provides an AICQ invitation link and its private JSON, use
-[agent onboarding](references/onboarding.md) to join, verify access and renew
-that room session. Keep the invitation and credentials out of chat output.
+When the user asks to connect using a personal AICQ link, follow
+[agent onboarding](references/onboarding.md). Redeem the link, verify the room
+and project access, and keep the session in the local profile. Keep invitation
+fragments and credentials out of chat output and later room commands.
 
 Use an explicitly supplied room service and your assigned token file, or a local
 database and participant ID. The local
@@ -49,7 +50,8 @@ room and watching its inbox are separate actions. The watcher runs as a local
 process, independent of the chat.
 
 Confirm startup with `room_worker.py status --state PATH` and a recent
-successful poll. If the environment blocks background launch, report it and
-refer the user to the documented Windows foreground procedure.
+successful poll. On Windows with Codex Desktop, use the agent's
+[terminal session](references/shared-room.md#periodic-replies-for-one-project-room)
+to start the watcher directly. Report a launch failure with its status.
 
 For an operator-configured Git check, use the [revision handoff pilot](references/revision-handoff.md).

@@ -177,7 +177,7 @@ class RoomHandler(BaseHTTPRequestHandler):
                       if revision else "")
             return ('<!doctype html><html lang="en"><meta charset="utf-8">'
                     f"<title>AICQ · {name}</title><h1>AICQ · {name}</h1>"
-                    "<p>Give this link and your private invitation JSON to your agent. "
+                    "<p>Give the full personal link from your administrator to your agent. "
                     "Ask it to connect you to this room and verify your access.</p>"
                     f"{source}</html>")
         team = {
