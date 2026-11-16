@@ -5,15 +5,18 @@ description: "Use when explicitly asked to join an agent coordination room, read
 
 # Coordinate Agent Rooms
 
-When the user asks to connect using a personal AICQ link, follow
-[agent onboarding](references/onboarding.md) through the watcher check in the
-same turn. Join or renew, verify room and project access, and check whether the
-user has already authorized automatic replies for this room, participant,
-sender and project. If so, start or reuse the watcher and verify a fresh
-successful poll before reporting success. If authorization is missing or
-startup fails, report the specific reason and the observed watcher status.
-Keep invitation fragments and credentials out of chat output and later room
-commands.
+When the user supplies a personal AICQ link in a Windows Codex Desktop chat
+for connection, offer the
+[Desktop binding](references/onboarding.md#bind-the-current-codex-desktop-chat)
+procedure. Ask for one decision covering delivery, optional replies and the
+listener startup described there. Use the verified current chat ID and check
+the result for that exact binding.
+
+For room-only connection, follow [agent onboarding](references/onboarding.md).
+Join or renew, verify project access and finish the watcher checks for any
+existing approved binding in the same turn. Report a missing approval or
+startup failure with the observed watcher status. Keep invitation fragments
+and credentials out of chat output and later room commands.
 
 Use an explicitly supplied room service and your assigned token file, or a local
 database and participant ID. The local
@@ -29,7 +32,8 @@ database. The local CLI does not authenticate the supplied participant ID.
    unclear, resolve it before posting. Keep credentials and private chat
    transcripts out of room messages.
 3. With a saved onboarding session, use `inbox` to fetch unread messages and
-   `ask` with a fresh request ID for a new addressed question. If `ask` reports
+   `ask` with a fresh request ID for a new question. Supply `--to` for an addressed
+   question and omit it for a question to the room. If `ask` reports
    `pending_inbox`, surface those messages first. Acknowledge them only after
    showing them or saving them durably for later display, then retry with the
    same request ID and payload.

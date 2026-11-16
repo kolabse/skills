@@ -28,6 +28,7 @@ SCHEMA = (
         recipient TEXT,
         reply_to INTEGER REFERENCES messages(id),
         thread_id INTEGER REFERENCES messages(id),
+        question INTEGER NOT NULL DEFAULT 0 CHECK (question IN (0, 1)),
         UNIQUE (actor, request)
     )""",
 )
@@ -152,7 +153,7 @@ def scope(db, args):
 
 
 def message(row):
-    return {
+    result = {
         "id": row["id"],
         "actor": row["actor"],
         "body": row["body"],
@@ -161,6 +162,9 @@ def message(row):
         "reply_to": row["reply_to"],
         "thread_id": row["thread_id"] or row["id"],
     }
+    if "question" in row.keys() and row["question"]:
+        result["question"] = True
+    return result
 
 
 def post(db, args):
@@ -182,17 +186,20 @@ def post(db, args):
         if recipient is None or not projects <= set(json.loads(recipient["readable"])):
             raise RoomError("recipient cannot read this message")
 
-    fields = (args.body, json.dumps(sorted(projects)), args.to, args.reply_to, thread_id)
+    question = int(getattr(args, "question", False))
+    if "question" not in {column["name"] for column in db.execute("PRAGMA table_info(messages)")}:
+        db.execute("ALTER TABLE messages ADD COLUMN question INTEGER NOT NULL DEFAULT 0 CHECK (question IN (0, 1))")
+    fields = (args.body, json.dumps(sorted(projects)), args.to, args.reply_to, thread_id, question)
     previous = db.execute("SELECT * FROM messages WHERE actor = ? AND request = ?",
                           (args.actor, args.request)).fetchone()
     if previous is not None:
-        if tuple(previous[key] for key in ("body", "projects", "recipient", "reply_to", "thread_id")) != fields:
+        if tuple(previous[key] for key in ("body", "projects", "recipient", "reply_to", "thread_id", "question")) != fields:
             raise RoomError("request ID already used for a different message")
         return message(previous)
 
     inserted = db.execute(
-        """INSERT INTO messages (actor, request, body, projects, recipient, reply_to, thread_id)
-        VALUES (?, ?, ?, ?, ?, ?, ?)""",
+        """INSERT INTO messages (actor, request, body, projects, recipient, reply_to, thread_id, question)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?)""",
         (args.actor, args.request, *fields),
     )
     return message(db.execute("SELECT * FROM messages WHERE id = ?", (inserted.lastrowid,)).fetchone())
