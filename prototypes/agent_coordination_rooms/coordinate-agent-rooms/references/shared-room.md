@@ -180,8 +180,8 @@ Use the watcher after the participant has joined through [agent onboarding](onbo
 and has chosen the allowed publication scope with `room_client.py scope`. Get
 the participant's permission to answer automatically in the chosen room, for
 the specified sender and project, before starting the process. Use the latest
-already handled inbox ID as the starting cursor. Use `0` only if the
-participant wants to process the backlog.
+already handled inbox ID as the starting cursor. On first use with no handled
+messages, start at `0` so earlier unread questions remain eligible.
 
 ```sh
 python scripts/room_worker.py watch --link "$INVITE_LINK" --codex "$CODEX_PATH" \
@@ -194,12 +194,13 @@ rejected. It stops if access is revoked or renewal fails with HTTP 401. Start
 one process per room and participant and use separate private state directories
 per room. The local process must be running for periodic checks.
 
-On Windows, run the watch command in the foreground in a dedicated Windows
-Terminal or PowerShell tab under the participant's Windows account. Enter it
-on one line or use PowerShell backtick continuations. Leave the tab open and
-press Ctrl+C to stop. If Codex Desktop blocks a background launch, report the
-denial and use this foreground procedure in the ordinary user session. Check
-status from a separate terminal tab, using the same state path:
+On Windows in Codex Desktop, the agent starts Python directly in a dedicated
+terminal session with `exec_command` and `tty: true`. Pass the public
+fragment-free invitation page to `--link`. Before starting, check the same
+watch state for an active process. Reuse the existing private state directory
+for this room and participant. Keep the terminal session open and record
+its session ID for later inspection. If launch is rejected, report the exact
+error and status. Check status from a separate invocation with the same path:
 
 ```powershell
 python scripts/room_worker.py status --state $watchState
