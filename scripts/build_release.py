@@ -47,6 +47,7 @@ AICQ_FILES = (
     "references/onboarding.md", "references/administrator.md",
     "references/revision-handoff.md",
     "scripts/install_room_listener.ps1", "scripts/room_listener.py", "scripts/desktop_room.py",
+    "scripts/room_panel.py", "scripts/room_panel.html", "scripts/room_panel.js", "references/panel-prototype.md",
     "scripts/room_worker.py", "scripts/room_client.py", "scripts/room_connect.py",
     "scripts/room_invitation.py", "scripts/room_join.py", "scripts/room_registry.py",
     "scripts/room_team.py", "scripts/room.py", "scripts/smoke_app_server.py",

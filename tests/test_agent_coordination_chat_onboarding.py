@@ -37,6 +37,7 @@ class ChatOnboardingTests(unittest.TestCase):
             binding, = json.loads(config.read_text(encoding="utf-8"))
             self.assertEqual(binding["thread"], chat)
             self.assertIs(binding["auto_reply"], True)
+            self.assertIs(binding["panel"], True)
             self.assertEqual(result, again)
             self.assertEqual(result["listener"], {"polled": True, "after": 0})
             self.assertEqual(startup.call_count, 2)

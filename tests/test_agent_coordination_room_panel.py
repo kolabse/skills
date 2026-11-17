@@ -2,12 +2,38 @@
 from pathlib import Path
 from tempfile import TemporaryDirectory
 import unittest
+from urllib.error import HTTPError
+from urllib.request import Request, urlopen
 
 from test_agent_coordination_project_rooms import SCRIPTS
 import room_listener
+import room_panel
 
 
 class PanelTests(unittest.TestCase):
+    def test_listener_panel_is_reusable_after_restart_and_closes_on_unbind(self):
+        with TemporaryDirectory() as folder:
+            state = Path(folder) / "room.sqlite"
+            thread = "00000000-0000-4000-8000-000000000001"
+            selections = {thread: {("https://room.example/rooms/pilot", "bob")}}
+            with room_panel.PanelHosts(state) as first:
+                first.sync(selections)
+                original = room_panel.panel_link(state, thread)
+                first.sync(selections)
+                self.assertEqual(room_panel.panel_link(state, thread), original)
+            with room_panel.PanelHosts(state) as restarted:
+                restarted.sync(selections)
+                self.assertEqual(room_panel.panel_link(state, thread), original)
+                address, key = original.split("#", 1)
+                with urlopen(Request(address + "messages", headers={"Authorization": "Bearer " + key})) as receipt:
+                    self.assertEqual(receipt.read(), b"[]")
+                with self.assertRaises(HTTPError) as rejected:
+                    urlopen(address + "messages")
+                rejected.exception.close()
+                self.assertEqual(rejected.exception.code, 401)
+                restarted.sync({})
+                with self.assertRaises(FileNotFoundError):
+                    room_panel.panel_link(state, thread)
     def test_snapshot_includes_incoming_and_own_replies_once(self):
         with TemporaryDirectory() as folder:
             db = Path(folder) / "room.sqlite"

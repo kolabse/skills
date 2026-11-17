@@ -17,6 +17,7 @@ import room
 from room_connect import connect, default_state, session_path
 from room_invitation import parse_link, split_invitation
 from room_join import save_document
+from room_panel import PanelHosts, panel_link
 from room_worker import WorkerError, codex_answer, room_client as worker_request, watch_lease
 from smoke_app_server import SmokeError
 
@@ -305,6 +306,7 @@ def onboard(args, config, state):
     binding = {
         "link": link, "actor": joined["actor"], "thread": thread,
         "projects": sorted(set(args.project)), "auto_reply": args.auto_reply,
+        "panel": True,
         "after": args.after, "codex": str(args.codex.resolve()) if args.codex else "",
     }
     validate_binding(binding)
@@ -353,11 +355,20 @@ def capture_binding(state, binding, on_capture=None, *, active=lambda: True):
 
 
 def listen(config, state, *, once=False):
-    with watch_lease(state.parent):
+    with watch_lease(state.parent), PanelHosts(state, desktop_transcript) as panels:
         while True:
             bindings = json.loads(config.read_text(encoding="utf-8"))
             if not isinstance(bindings, list):
                 raise ListenerError("the bindings file must contain a list")
+            selections = {}
+            for binding in bindings:
+                if isinstance(binding, dict) and binding.get("panel") is True:
+                    try:
+                        origin = validate_binding(binding)
+                        selections.setdefault(binding["thread"], set()).add((origin, binding["actor"]))
+                    except (ListenerError, KeyError, TypeError, ValueError):
+                        continue
+            available = panels.sync(selections)
             statuses = []
             for index, binding in enumerate(bindings, start=1):
                 status = {"binding": index, "polled": False}
@@ -368,7 +379,8 @@ def listen(config, state, *, once=False):
                     status["last_successful_poll"] = datetime.now(timezone.utc).isoformat()
 
                 try:
-                    status.update(origin=validate_binding(binding), actor=binding["actor"], thread=binding["thread"])
+                    status.update(origin=validate_binding(binding), actor=binding["actor"], thread=binding["thread"],
+                                  panel_ready=binding["thread"] in available)
                     capture_binding(state, binding, on_capture, active=lambda: binding in json.loads(
                         config.read_text(encoding="utf-8")))
                 except HTTPError as error:
@@ -397,6 +409,7 @@ def main(argv=None):
     operation.add_argument("--status", action="store_true")
     operation.add_argument("--onboard", action="store_true")
     operation.add_argument("--disable", action="store_true")
+    operation.add_argument("--panel-url", action="store_true")
     link = parser.add_mutually_exclusive_group()
     link.add_argument("--link")
     link.add_argument("--link-stdin", action="store_true")
@@ -414,6 +427,13 @@ def main(argv=None):
         try:
             if args.status:
                 print(json.dumps(listener_status(state)))
+            elif args.panel_url:
+                thread = os.environ.get("CODEX_THREAD_ID", "")
+                status = listener_status(state)
+                if not status["running"] or not any(row.get("thread") == thread and row.get("panel_ready")
+                                                     for row in status.get("bindings", [])):
+                    raise ListenerError("no running panel for the current Desktop chat")
+                print(panel_link(state, thread))
             elif args.disable:
                 thread = os.environ.get("CODEX_THREAD_ID")
                 if not thread:

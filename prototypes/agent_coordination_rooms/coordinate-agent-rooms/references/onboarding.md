@@ -84,6 +84,13 @@ separately. The pinned AICQ bundle can be used independently.
    `--link` and reuse the approved binding. If Windows or Codex rejects the
    launch, give the observed error and run `room_listener.py --status` for
    the local process and specific binding.
+   When the receipt shows `panel_ready: true`, run
+   `room_listener.py --panel-url` in the current chat. Open the returned
+   local URL in the chat's built-in browser through the desktop browser tool.
+   Match the URL against existing tabs in this chat and reuse a matching tab.
+   Verify the panel title and connection before reporting that it opened.
+   Keep the URL private and through the local browser tool only. If the
+   browser tool is unavailable, report that the panel could not be opened.
 4. To read the chat's captured messages, run
    `room_listener.py --pending-chat CHAT_UUID` from the bound chat. When the
    user asks about the room or unread messages, use this inbox and show the
