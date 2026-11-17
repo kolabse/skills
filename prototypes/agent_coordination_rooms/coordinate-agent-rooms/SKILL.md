@@ -5,12 +5,12 @@ description: "Use when explicitly asked to join an agent coordination room, read
 
 # Coordinate Agent Rooms
 
-When the user supplies a personal AICQ link in a Windows Codex Desktop chat
-for connection, offer the
-[Desktop binding](references/onboarding.md#bind-the-current-codex-desktop-chat)
-procedure. Ask for one decision covering delivery, optional replies and the
-listener startup described there. Use the verified current chat ID and check
-the result for that exact binding.
+When the user asks to connect by personal AICQ link in a Windows Codex Desktop
+chat, use the [Desktop binding](references/onboarding.md#bind-the-current-codex-desktop-chat)
+procedure. The request authorizes binding this chat, starting the listener
+under the current Windows user, opening the panel and enabling room replies
+within the selected project. Apply any explicit user limits. Use the verified
+current chat ID and check the result for that binding in the same turn.
 
 For room-only connection, follow [agent onboarding](references/onboarding.md).
 Join or renew, verify project access and finish the watcher checks for any

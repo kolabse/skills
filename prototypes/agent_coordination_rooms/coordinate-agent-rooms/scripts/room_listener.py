@@ -296,21 +296,23 @@ def onboard(args, config, state):
         raise ListenerError("the current Desktop chat UUID is unavailable") from None
     link, _ = split_invitation(args.link)
     origin, _ = parse_link(link)
-    if not args.project:
-        raise ListenerError("the approved project is required")
     if type(args.after) is not int or args.after < 0:
         raise ListenerError("choose a nonnegative initial room cursor")
     if args.codex is None or not args.codex.is_file():
         raise ListenerError("the Codex executable is required for Desktop delivery")
     joined = connect(Namespace(link=args.link, ca=None, state_dir=None, invite_file=None))
+    readable = set(joined["readable"])
+    if not args.project and len(readable) != 1:
+        return {**joined, "chat": thread,
+                "binding_status": "project_required" if readable else "no_project_access"}
     binding = {
         "link": link, "actor": joined["actor"], "thread": thread,
-        "projects": sorted(set(args.project)), "auto_reply": args.auto_reply,
+        "projects": sorted(set(args.project) or readable), "auto_reply": args.auto_reply,
         "panel": True,
         "after": args.after, "codex": str(args.codex.resolve()) if args.codex else "",
     }
     validate_binding(binding)
-    if not set(binding["projects"]) <= set(joined["readable"]):
+    if not set(binding["projects"]) <= readable:
         raise ListenerError("the approved project is unavailable in this room session")
     if auto_reply_enabled(binding):
         options = Namespace(url=origin, ca=None, token_file=Path(joined["session_file"]))

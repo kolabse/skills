@@ -12,6 +12,38 @@ import room_listener
 
 
 class ChatOnboardingTests(unittest.TestCase):
+    def test_multiple_grants_leave_session_available_for_explicit_selection(self):
+        with TemporaryDirectory() as folder:
+            root = Path(folder)
+            codex = root / "codex.exe"
+            codex.touch()
+            config = root / "bindings.json"
+            state = root / "listener.sqlite"
+            chat = "00000000-0000-4000-8000-000000000001"
+            public_link = "https://room.example/rooms/portal/invite"
+            args = Namespace(link=public_link + "#" + "a" * 43, project=[], auto_reply=True,
+                             codex=codex, after=0)
+            joined = {"status": "joined", "actor": "bob", "link": public_link,
+                      "readable": ["infra", "portal"], "session_file": str(root / "session.json")}
+            with (patch.dict(os.environ, {"CODEX_THREAD_ID": chat}),
+                  patch.object(room_listener, "connect", return_value=joined) as connect,
+                  patch.object(room_listener, "worker_request",
+                               return_value={"publishable": ["portal"]}) as request,
+                  patch.object(room_listener, "ensure_running", return_value={"polled": True}) as startup):
+                receipt = room_listener.onboard(args, config, state)
+                self.assertEqual(receipt["binding_status"], "project_required")
+                self.assertEqual(receipt["link"], public_link)
+                self.assertFalse(config.exists())
+                request.assert_not_called()
+                startup.assert_not_called()
+                args.link = public_link
+                args.project = ["portal"]
+                room_listener.onboard(args, config, state)
+                self.assertEqual(connect.call_args.args[0].link, public_link)
+                startup.assert_called_once()
+            binding, = json.loads(config.read_text(encoding="utf-8"))
+            self.assertEqual(binding["projects"], ["portal"])
+
     def test_approved_link_registers_current_chat_and_verifies_fresh_poll(self):
         with TemporaryDirectory() as folder:
             root = Path(folder)
@@ -20,7 +52,7 @@ class ChatOnboardingTests(unittest.TestCase):
             chat = "00000000-0000-4000-8000-000000000001"
             link = "https://room.example/rooms/portal/invite"
             secret = "a" * 43
-            args = Namespace(link=link + "#" + secret, project=["portal"], auto_reply=True,
+            args = Namespace(link=link + "#" + secret, project=[], auto_reply=True,
                              codex=codex, after=0)
             config = root / "bindings.json"
             state = root / "listener.sqlite"
@@ -29,18 +61,21 @@ class ChatOnboardingTests(unittest.TestCase):
             with (patch.dict(os.environ, {"CODEX_THREAD_ID": chat}),
                   patch.object(room_listener, "connect", return_value=joined),
                   patch.object(room_listener, "worker_request",
-                               return_value={"readable": ["portal"], "publishable": ["portal"]}),
+                               side_effect=[{"readable": ["portal"], "publishable": []}, {},
+                                            {"readable": ["portal"], "publishable": ["portal"]}]) as request,
                   patch.object(room_listener, "ensure_running", return_value={"polled": True, "after": 0},
                                create=True) as startup):
                 result = room_listener.onboard(args, config, state)
                 again = room_listener.onboard(args, config, state)
             binding, = json.loads(config.read_text(encoding="utf-8"))
             self.assertEqual(binding["thread"], chat)
+            self.assertEqual(binding["projects"], ["portal"])
             self.assertIs(binding["auto_reply"], True)
             self.assertIs(binding["panel"], True)
             self.assertEqual(result, again)
             self.assertEqual(result["listener"], {"polled": True, "after": 0})
             self.assertEqual(startup.call_count, 2)
+            self.assertEqual(request.call_args_list[1].args[1:], ("scope", "--project", "portal"))
             self.assertNotIn(secret, str(result) + str(binding))
             self.assertFalse(room_listener.disable_binding(config, link, "another-chat"))
             self.assertTrue(room_listener.disable_binding(config, link, chat))
