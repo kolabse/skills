@@ -46,6 +46,11 @@ SCHEMA = (
         origin TEXT NOT NULL, actor TEXT NOT NULL, message_id INTEGER NOT NULL,
         answer TEXT NOT NULL, PRIMARY KEY(origin, actor, message_id)
     )""",
+    """CREATE TABLE IF NOT EXISTS desktop_sent (
+        origin TEXT NOT NULL, actor TEXT NOT NULL, message_id INTEGER NOT NULL,
+        thread TEXT NOT NULL, payload TEXT NOT NULL,
+        PRIMARY KEY(origin, actor, message_id)
+    )""",
 )
 
 
@@ -71,14 +76,19 @@ def capture_desktop_inbox(state, binding, request):
     if not isinstance(page, list):
         raise ListenerError("invalid room history page")
     pending = []
+    sent = []
     after = cursor
     for message in page:
         number = message["id"]
         if type(number) is not int or number <= after:
             raise ListenerError("invalid room history sequence")
         after = number
-        if (message["actor"] == actor or message["recipient"] not in (None, actor)
-                or not set(message["projects"]) <= projects):
+        if not set(message["projects"]) <= projects:
+            continue
+        if message["actor"] == actor:
+            sent.append((origin, actor, number, thread, json.dumps(message)))
+            continue
+        if message["recipient"] not in (None, actor):
             continue
         auto = can_reply(binding, message)
         pending.append((origin, actor, number, thread, json.dumps(message), int(auto)))
@@ -91,6 +101,7 @@ def capture_desktop_inbox(state, binding, request):
         )
         if updated.rowcount:
             db.executemany("INSERT OR IGNORE INTO desktop_inbox VALUES (?, ?, ?, ?, ?, ?)", pending)
+            db.executemany("INSERT OR IGNORE INTO desktop_sent VALUES (?, ?, ?, ?, ?)", sent)
         return db.execute("SELECT cursor FROM bindings WHERE origin=? AND actor=?",
                           (origin, actor)).fetchone()["cursor"]
 
@@ -105,6 +116,22 @@ def desktop_pending(state, thread):
         )
         return [{"origin": row["origin"], "actor": row["actor"], "message": json.loads(row["payload"]),
                  "auto_reply": bool(row["auto_reply"])} for row in rows]
+
+
+def desktop_transcript(state, thread):
+    if not state.is_file():
+        return []
+    with room.transaction(state, False) as db:
+        if not db.execute("SELECT 1 FROM sqlite_master WHERE type='table' AND name='desktop_inbox'").fetchone():
+            return []
+        inbound = "SELECT origin, actor, message_id, payload FROM desktop_inbox WHERE thread=?"
+        query, args = inbound, (thread,)
+        if db.execute("SELECT 1 FROM sqlite_master WHERE type='table' AND name='desktop_sent'").fetchone():
+            query += " UNION ALL SELECT origin, actor, message_id, payload FROM desktop_sent WHERE thread=?"
+            args += (thread,)
+        rows = db.execute(query + " ORDER BY origin, actor, message_id", args)
+        return [{"origin": row["origin"], "actor": row["actor"], "message": json.loads(row["payload"])}
+                for row in rows]
 
 
 def can_reply(binding, message):
