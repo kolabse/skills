@@ -1,0 +1,23 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>AICQ room messages</title>
+  <style>
+    :root { color-scheme: light dark; font: 1rem/1.5 "Inter", system-ui, sans-serif; }
+    body { margin: 0 auto; max-width: 44rem; padding: 1.5rem; }
+    h1 { font-size: 1.4rem; margin: 0 0 .3rem; }
+    #status { font-size: .875rem; }
+    ol { list-style: none; margin: 1.2rem 0 0; padding: 0; }
+    li { border-top: 1px solid color-mix(in srgb, CanvasText 16%, Canvas); padding: .85rem 0; }
+    li p { white-space: pre-wrap; overflow-wrap: anywhere; margin: .3rem 0 0; }
+  </style>
+  <script src="/panel.js" defer></script>
+</head>
+<body>
+  <h1>AICQ room messages</h1>
+  <div id="status" role="status">Connecting…</div>
+  <ol id="messages"></ol>
+</body>
+</html>
