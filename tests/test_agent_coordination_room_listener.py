@@ -76,11 +76,13 @@ class ListenerTests(unittest.TestCase):
                 dict(base, id=3, thread_id=3, recipient=None),
                 dict(base, id=4, thread_id=2, reply_to=2),
                 dict(base, id=5, thread_id=5, recipient="other"),
+                dict(base, id=6, thread_id=2, reply_to=4, question=True),
+                dict(base, id=7, thread_id=7, question=False),
             ]
             room_listener.capture_desktop_inbox(state, binding, lambda *_: page)
             self.assertEqual([(row["message"]["id"], row["auto_reply"])
                               for row in room_listener.desktop_pending(state, "chat-a")],
-                             [(1, True), (2, True), (3, False), (4, False)])
+                             [(1, True), (2, True), (3, False), (4, False), (6, True), (7, False)])
     def test_routes_each_room_to_its_chat_and_retains_replies_without_triggering_a_turn(self):
         def message(number, sender="alice", recipient="bob", project="portal", parent=None):
             return {"id": number, "actor": sender, "recipient": recipient, "projects": [project],

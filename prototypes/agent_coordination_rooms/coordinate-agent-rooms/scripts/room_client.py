@@ -42,8 +42,7 @@ def parse(argv=None):
         command.add_argument("body")
         command.add_argument("--to")
         command.add_argument("--project", action="append", default=[])
-    post.add_argument("--reply-to", type=int)
-    ask.set_defaults(reply_to=None)
+        command.add_argument("--reply-to", type=int)
     return parser.parse_args(argv)
 
 
@@ -79,8 +78,7 @@ def request_room(args):
             "request": args.request, "body": args.body, "to": args.to,
             "reply_to": args.reply_to, "projects": args.project,
         }
-        if getattr(args, "question", False):
-            payload["question"] = True
+        payload["question"] = getattr(args, "question", False)
     headers = {"Authorization": f"Bearer {token}"}
     data = None
     if payload is not None:
@@ -122,7 +120,7 @@ def managed_inbox(args):
             if messages:
                 return {"status": "pending_inbox", "messages": messages}, 2
             return request_room(argparse.Namespace(
-                **{**vars(args), "command": "post", "question": args.to is None}
+                **{**vars(args), "command": "post", "question": True}
             )), 0
         if args.id != after:
             if not any(item["id"] == args.id for item in messages):

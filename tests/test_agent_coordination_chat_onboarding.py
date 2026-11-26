@@ -52,7 +52,7 @@ class ChatOnboardingTests(unittest.TestCase):
             chat = "00000000-0000-4000-8000-000000000001"
             link = "https://room.example/rooms/portal/invite"
             secret = "a" * 43
-            args = Namespace(link=link + "#" + secret, project=[], auto_reply=True,
+            args = Namespace(link=link + "#" + secret, project=[], auto_reply=None,
                              codex=codex, after=0)
             config = root / "bindings.json"
             state = root / "listener.sqlite"
@@ -77,6 +77,16 @@ class ChatOnboardingTests(unittest.TestCase):
             self.assertEqual(startup.call_count, 2)
             self.assertEqual(request.call_args_list[1].args[1:], ("scope", "--project", "portal"))
             self.assertNotIn(secret, str(result) + str(binding))
+            with (patch.dict(os.environ, {"CODEX_THREAD_ID": chat}),
+                  patch.object(room_listener, "connect", return_value=joined),
+                  patch.object(room_listener, "worker_request") as request,
+                  patch.object(room_listener, "ensure_running", return_value={"polled": True})):
+                args.auto_reply = False
+                room_listener.onboard(args, config, state)
+                args.link = link
+                args.auto_reply = None
+                self.assertFalse(room_listener.onboard(args, config, state)["auto_reply"])
+                request.assert_not_called()
             self.assertFalse(room_listener.disable_binding(config, link, "another-chat"))
             self.assertTrue(room_listener.disable_binding(config, link, chat))
             self.assertEqual(json.loads(config.read_text(encoding="utf-8")), [])

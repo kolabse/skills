@@ -5,7 +5,7 @@ description: "Use when explicitly asked to join an agent coordination room, read
 
 # Coordinate Agent Rooms
 
-When the user asks to connect by personal AICQ link in a Windows Codex Desktop
+When the user sends a personal AICQ invitation link alone or asks to connect by link in a Windows Codex Desktop
 chat, use the [Desktop binding](references/onboarding.md#bind-the-current-codex-desktop-chat)
 procedure. The request authorizes binding this chat, starting the listener
 under the current Windows user, opening the panel and enabling room replies

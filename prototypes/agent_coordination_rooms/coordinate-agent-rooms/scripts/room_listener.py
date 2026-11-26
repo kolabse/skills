@@ -136,11 +136,12 @@ def desktop_transcript(state, thread):
 
 
 def can_reply(binding, message):
-    if message["reply_to"] is not None:
+    # Older clients marked addressed top-level questions only by their recipient.
+    addressed = message["recipient"] == binding["actor"]
+    if not message.get("question", addressed and message["reply_to"] is None):
         return False
     if binding.get("auto_reply") is True:
-        return (message["recipient"] == binding["actor"]
-                or (message["recipient"] is None and message.get("question") is True))
+        return addressed or message["recipient"] is None
     # Previously approved sender-specific bindings keep their existing scope.
     return ("auto_reply" not in binding and message["recipient"] == binding["actor"]
             and bool(message["projects"]) and message["actor"] in binding.get("auto_reply_from", []))
@@ -176,7 +177,19 @@ def process_desktop_reply(state, binding, request, generate, *, active=lambda: T
     identity = (origin, actor, number)
     answer = row["answer"]
     if answer is None:
-        answer = generate(question["body"])
+        prompt = question["body"]
+        if question["reply_to"] is not None and question["recipient"] == actor:
+            with room.transaction(state, False) as db:
+                parent = db.execute(
+                    "SELECT payload FROM desktop_sent WHERE origin=? AND actor=? AND thread=? AND message_id=?",
+                    (origin, actor, thread, question["reply_to"]),
+                ).fetchone()
+            if parent:
+                previous = json.loads(parent["payload"])
+                if (previous["recipient"] == question["actor"] and previous["thread_id"] == question["thread_id"]
+                        and set(previous["projects"]) <= set(question["projects"])):
+                    prompt = json.dumps({"previous_reply": previous["body"], "followup": prompt}, ensure_ascii=False)
+        answer = generate(prompt)
         if not isinstance(answer, str) or not answer.strip() or len(answer) > 4000:
             raise ListenerError("isolated worker returned an invalid answer")
         with room.transaction(state, True) as db:
@@ -311,6 +324,17 @@ def onboard(args, config, state):
         "panel": True,
         "after": args.after, "codex": str(args.codex.resolve()) if args.codex else "",
     }
+    if args.auto_reply is None:
+        binding["auto_reply"] = True
+        if config.is_file():
+            for saved in json.loads(config.read_text(encoding="utf-8")):
+                if (saved["actor"], parse_link(saved["link"])[0]) == (joined["actor"], origin):
+                    if "auto_reply" in saved:
+                        binding["auto_reply"] = saved["auto_reply"]
+                    else:
+                        del binding["auto_reply"]
+                        binding["auto_reply_from"] = saved.get("auto_reply_from", [])
+                    break
     validate_binding(binding)
     if not set(binding["projects"]) <= readable:
         raise ListenerError("the approved project is unavailable in this room session")
@@ -322,7 +346,7 @@ def onboard(args, config, state):
             projects = sorted(publishable | set(binding["projects"]))
             worker_request(options, "scope", *[option for project in projects for option in ("--project", project)])
     register_binding(config, binding)
-    return {**joined, "chat": thread, "listener": ensure_running(state, binding)}
+    return {**joined, "chat": thread, "projects": binding["projects"], "auto_reply": auto_reply_enabled(binding), "listener": ensure_running(state, binding)}
 
 
 def capture_binding(state, binding, on_capture=None, *, active=lambda: True):
@@ -416,7 +440,9 @@ def main(argv=None):
     link.add_argument("--link")
     link.add_argument("--link-stdin", action="store_true")
     parser.add_argument("--project", action="append", default=[])
-    parser.add_argument("--auto-reply", action="store_true")
+    mode = parser.add_mutually_exclusive_group()
+    mode.add_argument("--auto-reply", action="store_true", default=None)
+    mode.add_argument("--incoming-only", dest="auto_reply", action="store_false", default=None)
     parser.add_argument("--codex", type=Path)
     parser.add_argument("--after", type=int)
 
