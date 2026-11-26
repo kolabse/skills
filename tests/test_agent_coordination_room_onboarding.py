@@ -10,6 +10,8 @@ from urllib.request import Request, urlopen
 from test_agent_coordination_project_rooms import SCRIPTS
 from tempfile import TemporaryDirectory
 
+import room_listener
+import room_client
 import room_registry
 import room_service
 
@@ -36,6 +38,56 @@ class RoomOnboardingTests(unittest.TestCase):
         self.assertIs(question["question"], True)
         self.assertIsNone(question["recipient"])
         client("post", "question", "Can anyone check?", status=1)
+
+    def test_two_listeners_answer_followup_once_in_original_thread(self):
+        self.admin("grant", "alpha", "bob", "--project", "portal")
+        url = self.base + "/rooms/alpha"
+        sessions = {}
+        for actor in ("alice", "bob"):
+            link = self.admin("invite", "alpha", actor, "--origin", self.base)["link"]
+            joined = self.run_cli("room_connect.py", "--link-stdin", "--state-dir", self.folder / actor,
+                                  stdin=link + "\n")
+            self.assertEqual(joined.returncode, 0, joined.stderr)
+            sessions[actor] = json.loads(joined.stdout)["session_file"]
+
+        def request(actor, *command):
+            args = room_client.parse(["--url", url, "--token-file", sessions[actor], *command])
+            if args.command in ("ask", "ack-inbox"):
+                result, status = room_client.managed_inbox(args)
+                self.assertEqual(status, 0, result)
+                return result
+            return room_client.request_room(args)
+
+        generated = []
+        def poll(actor):
+            state = self.folder / actor / "listener.sqlite"
+            binding = dict(origin=url, actor=actor, projects=["portal"], thread=actor, auto_reply=True)
+            def send(*command):
+                return request(actor, *command)
+            def answer(body):
+                generated.append((actor, body))
+                return "Response to " + body
+            room_listener.capture_desktop_inbox(state, binding, send)
+            room_listener.process_desktop_reply(state, binding, send, answer)
+
+        question = request("alice", "ask", "first", "Check revision?", "--to", "bob")
+        poll("bob")
+        first_reply = request("alice", "history")[-1]
+        request("alice", "ack-inbox", str(first_reply["id"]))
+        followup = request("alice", "ask", "followup", "Which revision?", "--to", "bob",
+                           "--reply-to", str(first_reply["id"]))
+        for _ in range(3):
+            poll("alice")
+            poll("bob")
+        history = request("alice", "history")
+        self.assertEqual([actor for actor, _ in generated], ["bob", "bob"])
+        self.assertEqual(generated[0][1], "Check revision?")
+        self.assertEqual(json.loads(generated[1][1]), {
+            "previous_reply": "Response to Check revision?", "followup": "Which revision?",
+        })
+        self.assertEqual([m["reply_to"] for m in history],
+                         [None, question["id"], first_reply["id"], followup["id"]])
+        self.assertEqual({m["thread_id"] for m in history}, {question["id"]})
 
     def setUp(self):
         temporary = TemporaryDirectory()

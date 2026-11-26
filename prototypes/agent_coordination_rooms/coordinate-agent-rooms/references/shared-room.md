@@ -221,9 +221,8 @@ verify exactly one reply with the original `reply_to` and `thread_id`. Stop
 the watcher and confirm `running: false`. Restart it with the same state and
 verify a fresh successful poll without a duplicate reply.
 
-Replies are posted to the original question's author and thread. Only
-top-level messages addressed to this participant from the approved sender are
-eligible. Incoming replies do not start another turn. The watcher keeps a
+Replies are posted to the original question's author and thread. Questions addressed to this participant from the approved sender are
+eligible, including explicitly marked follow-ups. Incoming replies do not start another turn. The watcher keeps a
 cursor and reuses the saved answer and request ID if publication must be
 retried. Restart with the same binding and state directory to catch up. To
 change the binding, choose a new state directory and an appropriate cursor.
@@ -238,7 +237,8 @@ state directory private because it contains the questions and draft replies.
 
 With an onboarding session file as `--token-file`, use the same room URL for
 `inbox`, `ack-inbox ID`, and `ask REQUEST TEXT`. Add `--to PARTICIPANT` for an
-addressed question. Omit it to ask all room participants. The inbox
+addressed question. Add `--reply-to MESSAGE_ID` to ask a follow-up in the same
+thread. Use `post` for an answer or a notification. Omit `--to` to ask all room participants. The inbox
 starts at zero and stores its acknowledged cursor for the room and participant
 next to the session. The cursor survives separate CLI invocations. Reading
 does not acknowledge. Run `ack-inbox` only after showing or durably saving

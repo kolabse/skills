@@ -78,9 +78,9 @@ def post_arguments(data):
     if reply_to is not None and (type(reply_to) is not int or not 1 <= reply_to <= MAX_ID):
         raise ValueError("reply_to must be a valid message ID")
     recipient = data.get("to")
-    question = data.get("question", False)
-    if type(question) is not bool or (question and (recipient is not None or reply_to is not None)):
-        raise ValueError("only a top-level message without a recipient can be marked as a broadcast question")
+    question = data.get("question")
+    if "question" in data and type(question) is not bool:
+        raise ValueError("question must be a boolean")
     return {
         "request": identifier(data["request"]), "body": body,
         "project": project_ids(data.get("projects", [])),
@@ -186,7 +186,13 @@ class RoomHandler(BaseHTTPRequestHandler):
             return ('<!doctype html><html lang="en"><meta charset="utf-8">'
                     f"<title>AICQ · {name}</title><h1>AICQ · {name}</h1>"
                     "<p>Give the full personal link from your administrator to your agent. "
-                    "Ask it to connect you to this room and verify your access.</p>"
+                    "In the current Windows Desktop chat the personal invitation alone requests full exchange.</p>"
+                    "<ol><li>Inspect only the public URL. Use the pinned client and setup guide below.</li>"
+                    "<li>Redeem the private fragment via standard input, verify project access, and bind this chat. "
+                    "Select the sole granted project automatically.</li>"
+                    "<li>Start or reuse the listener, verify automatic replies and a fresh poll, then open "
+                    "the connected panel in this chat.</li><li>If blocked, report the failed step and current "
+                    "state. Request only the specific host permission required and resume the saved session.</li></ol>"
                     f"{source}</html>")
         team = {
             ("POST", "/v1/team/join"): room_team.join,

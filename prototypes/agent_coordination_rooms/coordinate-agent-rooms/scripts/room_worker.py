@@ -138,7 +138,7 @@ def poll_inbox(room, answer, *, after, actor, peer, origin, state, projects):
             if type(number) is not int or number <= after:
                 raise WorkerError("room returned an invalid inbox sequence")
             if (item["actor"] == peer and item["recipient"] == actor
-                    and item["reply_to"] is None and set(item["projects"]) <= projects):
+                    and item.get("question", item["reply_to"] is None) and set(item["projects"]) <= projects):
                 publish_reply(room, answer, item, origin=origin, actor=actor, peer=peer, state=state)
                 answered += 1
             checkpoint["after"] = number
